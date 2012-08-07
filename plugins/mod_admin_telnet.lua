@@ -955,14 +955,14 @@ function printbanner(session)
 	local option = module:get_option("console_banner");
 	if option == nil or option == "full" or option == "graphic" then
 		session.print [[ 
-
-           /===========\
-           | Mêtronôme |
-           \===========/
-
-           When things tick and tack...
-
-]]
+|
+|          /===========\
+|          | Mêtronôme |
+|          \===========/
+|
+|          When things tick and tack...
+|
+|]]
 	end
 	if option == nil or option == "short" or option == "full" then
 	session.print("Welcome to the Metronome administration console. For a list of commands, type: help");
