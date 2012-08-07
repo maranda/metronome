@@ -96,11 +96,17 @@ local function handle_registration_stanza(event)
 	else -- stanza.attr.type == "set"
 		if query.tags[1] and query.tags[1].name == "remove" then
 			local username, host = session.username, session.host;
-			session.saved_stanza_reply = st.reply(stanza);			
 
+			local _close_session = session.close;
+			session.close = function(session, ...)
+				session.send(st.reply(stanza));
+				return _close_session(session, ...);
+			end
+			
 			local ok, err = usermanager_delete_user(username, host, "mod_register");
 			
 			if not ok then
+				session.close = _close_session;
 				module:log("debug", "Removing user account %s@%s failed: %s", username, host, err);
 				session.send(st.error_reply(stanza, "cancel", "service-unavailable", err));
 				return true;
@@ -257,15 +263,3 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 	end
 	return true;
 end);
-
-module:hook_global("user-deleted", function(event)
-	local host, user, source = event.host, event.session, event.source
-	if host == module:get_host() and user and source == "mod_register" then
-		for _, session in pairs(user.sessions) do
-			-- just send the stanza saved reply and return, mod_c2s will do the rest
-			if session.saved_stanza_reply then session.send(session.saved_stanza_reply); return; end 
-		end
-	else
-		return;
-	end
-end, 100)
