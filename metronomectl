@@ -1,8 +1,6 @@
 #!/usr/bin/env lua
 -- metronomectl - command-line controller for Metronome XMPP server
 
--- Will be modified by configure script if run --
-
 CFG_SOURCEDIR=os.getenv("METRONOME_SRCDIR");
 CFG_CONFIGDIR=os.getenv("METRONOME_CFGDIR");
 CFG_PLUGINDIR=os.getenv("METRONOME_PLUGINDIR");
@@ -16,7 +14,6 @@ local function is_relative(path)
 	or (path_sep == "\\" and (path:sub(1,1) ~= "/" and path:sub(2,3) ~= ":\\")))
 end
 
--- Tell Lua where to find our libraries
 if CFG_SOURCEDIR then
 	local function filter_relative_paths(path)
 		if is_relative(path) then return ""; end
@@ -28,14 +25,12 @@ if CFG_SOURCEDIR then
 	package.cpath = sanitise_paths(CFG_SOURCEDIR.."/?.so;"..package.cpath);
 end
 
--- Substitute ~ with path to home directory in data path
 if CFG_DATADIR then
 	if os.getenv("HOME") then
 		CFG_DATADIR = CFG_DATADIR:gsub("^~", os.getenv("HOME"));
 	end
 end
 
--- Global 'metronome' object
 local metronome = {
 	hosts = {};
 	events = require "util.events".new();
@@ -113,7 +108,6 @@ require "core.loggingmanager"
 
 dependencies.log_warnings();
 
--- Switch away from root and into the metronome user --
 local switched_user, current_uid;
 
 local want_pposix_version = "0.3.5";
@@ -123,7 +117,6 @@ if ok and pposix then
 	if pposix._VERSION ~= want_pposix_version then print(string.format("Unknown version (%s) of binary pposix module, expected %s", tostring(pposix._VERSION), want_pposix_version)); return; end
 	current_uid = pposix.getuid();
 	if current_uid == 0 then
-		-- We haz root!
 		local desired_user = config.get("*", "core", "metronome_user") or "metronome";
 		local desired_group = config.get("*", "core", "metronome_group") or desired_user;
 		local ok, err = pposix.setgid(desired_group);
@@ -133,17 +126,14 @@ if ok and pposix then
 		if ok then
 			ok, err = pposix.setuid(desired_user);
 			if ok then
-				-- Yay!
 				switched_user = true;
 			end
 		end
 		if not switched_user then
-			-- Boo!
 			print("Warning: Couldn't switch to Metronome user/group '"..tostring(desired_user).."'/'"..tostring(desired_group).."': "..tostring(err));
 		end
 	end
 	
-	-- Set our umask to protect data files
 	pposix.umask(config.get("*", "core", "umask") or "027");
 else
 	print("Error: Unable to load pposix module. Check that Metronome is installed correctly.")

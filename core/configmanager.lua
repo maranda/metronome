@@ -16,10 +16,8 @@ local parsers = {};
 local config_mt = { __index = function (t, k) return rawget(t, "*"); end};
 local config = setmetatable({ ["*"] = { core = {} } }, config_mt);
 
--- When host not found, use global
 local host_mt = { };
 
--- When key not found in section, check key in global's section
 function section_mt(section_name)
 	return { __index = 	function (t, k)
 					local section = rawget(config["*"], section_name);
@@ -72,12 +70,10 @@ function _M.set(host, section, key, value)
 	return set(config, host, section, key, value);
 end
 
--- Helper function to resolve relative paths (needed by config)
 do
 	local rel_path_start = ".."..path_sep;
 	function resolve_relative_path(parent_path, path)
 		if path then
-			-- Some normalization
 			parent_path = parent_path:gsub("%"..path_sep.."+$", "");
 			path = path:gsub("^%.%"..path_sep.."+", "");
 			
@@ -95,7 +91,6 @@ do
 	end	
 end
 
--- Helper function to convert a glob to a Lua pattern
 local function glob_to_pattern(glob)
 	return "^"..glob:gsub("[%p*?]", function (c)
 		if c == "*" then
@@ -146,7 +141,6 @@ function addparser(format, parser)
 	end
 end
 
--- _M needed to avoid name clash with local 'parsers'
 function _M.parsers()
 	local p = {};
 	for format in pairs(parsers) do
@@ -155,7 +149,6 @@ function _M.parsers()
 	return p;
 end
 
--- Built-in Lua parser
 do
 	local pcall, setmetatable = _G.pcall, _G.setmetatable;
 	local rawget, tostring = _G.rawget, _G.tostring;
@@ -178,7 +171,7 @@ do
 				end
 		});
 		
-		rawset(env, "__currenthost", "*") -- Default is global
+		rawset(env, "__currenthost", "*")
 		function env.VirtualHost(name)
 			if rawget(config, name) and rawget(config[name].core, "component_module") then
 				error(format("Host %q clashes with previously defined %s Component %q, for services use a sub-domain like conference.%s",
@@ -188,7 +181,7 @@ do
 			-- Needs at least one setting to logically exist :)
 			set(config, name or "*", "core", "defined", true);
 			return function (config_options)
-				rawset(env, "__currenthost", "*"); -- Return to global scope
+				rawset(env, "__currenthost", "*");
 				for option_name, option_value in pairs(config_options) do
 					set(config, name or "*", "core", option_name, option_value);
 				end
@@ -202,11 +195,10 @@ do
 					name, name, name), 0);
 			end
 			set(config, name, "core", "component_module", "component");
-			-- Don't load the global modules by default
 			set(config, name, "core", "load_global_modules", false);
 			rawset(env, "__currenthost", name);
 			local function handle_config_options(config_options)
-				rawset(env, "__currenthost", "*"); -- Return to global scope
+				rawset(env, "__currenthost", "*");
 				for option_name, option_value in pairs(config_options) do
 					set(config, name or "*", "core", option_name, option_value);
 				end

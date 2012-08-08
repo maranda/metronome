@@ -26,7 +26,6 @@ do
 	end
 end
 
-
 -- Default; can be set per-user
 local iteration_count = 4096;
 
@@ -139,4 +138,3 @@ function new_hashpass_provider(host)
 end
 
 module:add_item("auth-provider", new_hashpass_provider(module.host));
-

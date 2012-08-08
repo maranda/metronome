@@ -32,7 +32,6 @@ function inject_roster_contacts(username, host, roster)
 		end
 	end
 
-	-- Find groups this JID is a member of
 	if members[bare_jid] then
 		for _, group_name in ipairs(members[bare_jid]) do
 			--module:log("debug", "Importing group %s", group_name);
@@ -40,7 +39,6 @@ function inject_roster_contacts(username, host, roster)
 		end
 	end
 	
-	-- Import public groups
 	if members[false] then
 		for _, group_name in ipairs(members[false]) do
 			--module:log("debug", "Importing group %s", group_name);

@@ -17,7 +17,6 @@ end
 
 module "certmanager"
 
--- Global SSL options if not overridden per-host
 local default_ssl_config = configmanager.get("*", "core", "ssl");
 local default_capath = "/etc/ssl/certs";
 local default_verify = (ssl and ssl.x509 and { "peer", "client_once", "continue", "ignore_purpose" }) or "none";
@@ -44,8 +43,6 @@ function create_context(host, mode, user_ssl_config)
 
 	local ctx, err = ssl_newcontext(ssl_config);
 
-	-- LuaSec ignores the cipher list from the config, so we have to take care
-	-- of it ourselves (W/A for #x)
 	if ctx and user_ssl_config.ciphers then
 		local success;
 		success, err = ssl.context.setcipher(ctx, user_ssl_config.ciphers);

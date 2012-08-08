@@ -52,9 +52,9 @@ function initialize_host(host)
 			host_session.users = new_null_provider();
 		end
 	end);
-	host_session.users = new_null_provider(); -- Start with the default usermanager provider
+	host_session.users = new_null_provider();
 	local auth_provider = config.get(host, "core", "authentication") or default_provider;
-	if config.get(host, "core", "anonymous_login") then auth_provider = "anonymous"; end -- COMPAT 0.7
+	if config.get(host, "core", "anonymous_login") then auth_provider = "anonymous"; end
 	if auth_provider ~= "null" then
 		modulemanager.load(host, "auth_"..auth_provider);
 	end
@@ -140,8 +140,7 @@ function is_admin(jid, host)
 			log("error", "Global option 'admins' is not a list");
 		end
 	end
-	
-	-- Still not an admin, check with auth provider
+
 	if not is_admin and host ~= "*" and hosts[host].users and hosts[host].users.is_admin then
 		is_admin = hosts[host].users.is_admin(jid);
 	end

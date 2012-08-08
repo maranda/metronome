@@ -20,11 +20,9 @@ _G.log = logger.init("general");
 
 module "loggingmanager"
 
--- The log config used if none specified in the config file (see reload_logging for initialization)
 local default_logging;
 local default_file_logging;
 local default_timestamp = "%b %d %H:%M:%S";
--- The actual config loggingmanager is using
 local logging_config;
 
 local apply_sink_rules;
@@ -32,15 +30,11 @@ local log_sink_types = setmetatable({}, { __newindex = function (t, k, v) rawset
 local get_levels;
 local logging_levels = { "debug", "info", "warn", "error" }
 
--- Put a rule into action. Requires that the sink type has already been registered.
--- This function is called automatically when a new sink type is added [see apply_sink_rules()]
 local function add_rule(sink_config)
 	local sink_maker = log_sink_types[sink_config.to];
 	if sink_maker then
-		-- Create sink
 		local sink = sink_maker(sink_config);
 		
-		-- Set sink for all chosen levels
 		for level in pairs(get_levels(sink_config.levels or logging_levels)) do
 			logger.add_level_sink(level, sink);
 		end
@@ -49,9 +43,6 @@ local function add_rule(sink_config)
 	end
 end
 
--- Search for all rules using a particular sink type, and apply
--- them. Called automatically when a new sink type is added to
--- the log_sink_types table.
 function apply_sink_rules(sink_type)
 	if type(logging_config) == "table" then
 		
@@ -82,22 +73,16 @@ function apply_sink_rules(sink_type)
 			end
 		end
 	elseif type(logging_config) == "string" and (not logging_config:match("^%*")) and sink_type == "file" then
-		-- User specified simply a filename, and the "file" sink type
-		-- was just added
 		for _, sink_config in pairs(default_file_logging) do
 			sink_config.filename = logging_config;
 			add_rule(sink_config);
 			sink_config.filename = nil;
 		end
 	elseif type(logging_config) == "string" and logging_config:match("^%*(.+)") == sink_type then
-		-- Log all levels (debug+) to this sink
 		add_rule({ levels = { min = "debug" }, to = sink_type });
 	end
 end
 
-
-
---- Helper function to get a set of levels given a "criteria" table
 function get_levels(criteria, set)
 	set = set or {};
 	if type(criteria) == "string" then
@@ -126,7 +111,6 @@ function get_levels(criteria, set)
 	return set;
 end
 
--- Initialize config, etc. --
 function reload_logging()
 	local old_sink_types = {};
 	
@@ -160,19 +144,17 @@ metronome.events.add_handler("config-reloaded", reload_logging);
 
 --- Definition of built-in logging sinks ---
 
--- Null sink, must enter log_sink_types *first*
 function log_sink_types.nowhere()
 	return function () return false; end;
 end
 
--- Column width for "source" (used by stdout and console)
 local sourcewidth = 20;
 
 function log_sink_types.stdout(config)
 	local timestamps = config.timestamps;
 	
 	if timestamps == true then
-		timestamps = default_timestamp; -- Default format
+		timestamps = default_timestamp;
 	end
 	
 	return function (name, level, message, ...)
@@ -199,7 +181,6 @@ do
 		logstyles["error"] = getstyle("bold", "red");
 	end
 	function log_sink_types.console(config)
-		-- Really if we don't want pretty colours then just use plain stdout
 		if not do_pretty_printing then
 			return log_sink_types.stdout(config);
 		end
@@ -207,7 +188,7 @@ do
 		local timestamps = config.timestamps;
 
 		if timestamps == true then
-			timestamps = default_timestamp; -- Default format
+			timestamps = default_timestamp;
 		end
 
 		return function (name, level, message, ...)
@@ -242,7 +223,7 @@ function log_sink_types.file(config)
 	local timestamps = config.timestamps;
 
 	if timestamps == nil or timestamps == true then
-		timestamps = default_timestamp; -- Default format
+		timestamps = default_timestamp;
 	end
 
 	return function (name, level, message, ...)

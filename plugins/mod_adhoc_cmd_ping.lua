@@ -1,9 +1,3 @@
--- Copyright (C) 2009 Thilo Cestonaro
--- 
--- This file is MIT/X11 licensed. Please see the
--- COPYING file in the source package for more information.
---
-
 local st = require "util.stanza";
 local adhoc_new = module:require "adhoc".new;
 

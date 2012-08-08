@@ -2,10 +2,8 @@
 -- todo: nxdomain, error handling
 -- todo: cache results of encodeName
 
-
 -- reference: http://tools.ietf.org/html/rfc1035
 -- reference: http://tools.ietf.org/html/rfc1876 (LOC)
-
 
 local socket = require "socket";
 local timer = require "util.timer";

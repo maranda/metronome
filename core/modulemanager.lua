@@ -24,17 +24,14 @@ end
 local autoload_modules = {"presence", "message", "iq", "offline", "c2s", "s2s"};
 local component_inheritable_modules = {"tls", "dialback", "iq", "s2s"};
 
--- We need this to let modules access the real global namespace
 local _G = _G;
 
 module "modulemanager"
 
 local api = _G.require "core.moduleapi"; -- Module API container
 
--- [host] = { [module] = module_env }
 local modulemap = { ["*"] = {} };
 
--- Load modules when a host is activated
 function load_modules_for_host(host)
 	local component = config.get(host, "core", "component_module");
 	
@@ -51,13 +48,6 @@ function load_modules_for_host(host)
 		global_modules = set.intersection(set.new(component_inheritable_modules), global_modules);
 	end
 	local modules = (global_modules + set.new(host_modules_enabled)) - set.new(host_modules_disabled);
-	
-	-- COMPAT w/ pre 0.8
-	if modules:contains("console") then
-		log("error", "The mod_console plugin has been renamed to mod_admin_telnet. Please update your config.");
-		modules:remove("console");
-		modules:add("admin_telnet");
-	end
 	
 	if component then
 		load(host, component);
@@ -88,7 +78,7 @@ local function do_unload_module(host, name)
 		object.remove_handler(event, handler);
 	end
 	
-	if mod.module.items then -- remove items
+	if mod.module.items then
 		local events = (host == "*" and metronome.events) or hosts[host].events;
 		for key,t in pairs(mod.module.items) do
 			for i = #t,1,-1 do
@@ -164,7 +154,6 @@ local function do_load_module(host, module_name)
 	modulemap[host][module_name] = pluginenv;
 	local ok, err = pcall(mod);
 	if ok then
-		-- Call module's "load"
 		if module_has_method(pluginenv, "load") then
 			ok, err = call_module_method(pluginenv, "load");
 			if not ok then
@@ -173,7 +162,7 @@ local function do_load_module(host, module_name)
 		end
 
 		if api_instance.host == "*" then
-			if not api_instance.global then -- COMPAT w/pre-0.9
+			if not api_instance.global then
 				if host ~= "*" then
 					log("warn", "mod_%s: Setting module.host = '*' deprecated, call module:set_global() instead", module_name);
 				end
@@ -182,7 +171,6 @@ local function do_load_module(host, module_name)
 			modulemap[host][module_name] = nil;
 			modulemap[api_instance.host][module_name] = pluginenv;
 			if host ~= api_instance.host and module_has_method(pluginenv, "add_host") then
-				-- Now load the module again onto the host it was originally being loaded on
 				ok, err = do_load_module(host, module_name);
 			end
 		end
@@ -198,7 +186,7 @@ local function do_reload_module(host, name)
 	local mod = get_module(host, name);
 	if not mod then return nil, "module-not-loaded"; end
 
-	local _mod, err = pluginloader.load_code(name); -- checking for syntax errors
+	local _mod, err = pluginloader.load_code(name);
 	if not _mod then
 		log("error", "Unable to load module '%s': %s", name or "nil", err or "nil");
 		return nil, err;
@@ -236,7 +224,6 @@ end
 
 --- Public API ---
 
--- Load a module and fire module-loaded event
 function load(host, name)
 	local mod, err = do_load_module(host, name);
 	if mod then
@@ -245,7 +232,6 @@ function load(host, name)
 	return mod, err;
 end
 
--- Unload a module and fire module-unloaded
 function unload(host, name)
 	local ok, err = do_unload_module(host, name);
 	if ok then

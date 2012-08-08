@@ -33,12 +33,12 @@ local function handle_unhandled_stanza(host, origin, stanza)
 		end
 	end
 	if stanza.attr.xmlns == nil and origin.send then
-		log("debug", "Unhandled %s stanza: %s; xmlns=%s", origin.type, stanza.name, xmlns); -- we didn't handle it
+		log("debug", "Unhandled %s stanza: %s; xmlns=%s", origin.type, stanza.name, xmlns);
 		if stanza.attr.type ~= "error" and stanza.attr.type ~= "result" then
 			origin.send(st.error_reply(stanza, "cancel", "service-unavailable"));
 		end
 	elseif not((name == "features" or name == "error") and xmlns == "http://etherx.jabber.org/streams") then -- FIXME remove check once we handle S2S features
-		log("warn", "Unhandled %s stream element or stanza: %s; xmlns=%s: %s", origin.type, stanza.name, xmlns, tostring(stanza)); -- we didn't handle it
+		log("warn", "Unhandled %s stream element or stanza: %s; xmlns=%s: %s", origin.type, stanza.name, xmlns, tostring(stanza));
 		origin:close("unsupported-stanza-type");
 	end
 end
@@ -50,7 +50,7 @@ function core_process_stanza(origin, stanza)
 	-- TODO verify validity of stanza (as well as JID validity)
 	if stanza.attr.type == "error" and #stanza.tags == 0 then return; end -- TODO invalid stanza, log
 	if stanza.name == "iq" then
-		if not stanza.attr.id then stanza.attr.id = ""; end -- COMPAT Jabiru doesn't send the id attribute on roster requests
+		if not stanza.attr.id then stanza.attr.id = ""; end
 		if not iq_types[stanza.attr.type] or ((stanza.attr.type == "set" or stanza.attr.type == "get") and (#stanza.tags ~= 1)) then
 			origin.send(st.error_reply(stanza, "modify", "bad-request", "Invalid IQ type or incorrect number of children"));
 			return;
@@ -61,7 +61,6 @@ function core_process_stanza(origin, stanza)
 		if not origin.full_jid
 			and not(stanza.name == "iq" and stanza.attr.type == "set" and stanza.tags[1] and stanza.tags[1].name == "bind"
 					and stanza.tags[1].attr.xmlns == "urn:ietf:params:xml:ns:xmpp-bind") then
-			-- authenticated client isn't bound and current stanza is not a bind request
 			if stanza.attr.type ~= "result" and stanza.attr.type ~= "error" then
 				origin.send(st.error_reply(stanza, "auth", "not-authorized")); -- FIXME maybe allow stanzas to account or server
 			end
@@ -88,13 +87,12 @@ function core_process_stanza(origin, stanza)
 				end
 				return;
 			end
-			to_bare = node and (node.."@"..host) or host; -- bare JID
+			to_bare = node and (node.."@"..host) or host;
 			if resource then to = to_bare.."/"..resource; else to = to_bare; end
 			stanza.attr.to = to;
 		end
 	end
 	if from and not origin.full_jid then
-		-- We only stamp the 'from' on c2s stanzas, so we still need to check validity
 		from_node, from_host, from_resource = jid_prepped_split(from);
 		if not from_host then
 			log("warn", "Received stanza with invalid source JID: %s", from);
@@ -103,7 +101,7 @@ function core_process_stanza(origin, stanza)
 			end
 			return;
 		end
-		from_bare = from_node and (from_node.."@"..from_host) or from_host; -- bare JID
+		from_bare = from_node and (from_node.."@"..from_host) or from_host;
 		if from_resource then from = from_bare.."/"..from_resource; else from = from_bare; end
 		stanza.attr.from = from;
 	end
@@ -111,7 +109,7 @@ function core_process_stanza(origin, stanza)
 	if (origin.type == "s2sin" or origin.type == "c2s" or origin.type == "component") and xmlns == nil then
 		if origin.type == "s2sin" and not origin.dummy then
 			local host_status = origin.hosts[from_host];
-			if not host_status or not host_status.authed then -- remote server trying to impersonate some other server?
+			if not host_status or not host_status.authed then
 				log("warn", "Received a stanza claiming to be from %s, over a stream authed for %s!", from_host, origin.from_host);
 				origin:close("not-authorized");
 				return;
@@ -137,7 +135,7 @@ function core_process_stanza(origin, stanza)
 			end
 			if h.events.fire_event(event, {origin = origin, stanza = stanza}) then return; end
 		end
-		if host and not hosts[host] then host = nil; end -- COMPAT: workaround for a Pidgin bug which sets 'to' to the SRV result
+		if host and not hosts[host] then host = nil; end
 		handle_unhandled_stanza(host or origin.host or origin.to_host, origin, stanza);
 	end
 end
@@ -145,7 +143,7 @@ end
 function core_post_stanza(origin, stanza, preevents)
 	local to = stanza.attr.to;
 	local node, host, resource = jid_split(to);
-	local to_bare = node and (node.."@"..host) or host; -- bare JID
+	local to_bare = node and (node.."@"..host) or host;
 
 	local to_type, to_self;
 	if node then
@@ -168,13 +166,13 @@ function core_post_stanza(origin, stanza, preevents)
 	end
 
 	local event_data = {origin=origin, stanza=stanza};
-	if preevents then -- c2s connection
-		if hosts[origin.host].events.fire_event('pre-'..stanza.name..to_type, event_data) then return; end -- do preprocessing
+	if preevents then
+		if hosts[origin.host].events.fire_event('pre-'..stanza.name..to_type, event_data) then return; end
 	end
 	local h = hosts[to_bare] or hosts[host or origin.host];
 	if h then
-		if h.events.fire_event(stanza.name..to_type, event_data) then return; end -- do processing
-		if to_self and h.events.fire_event(stanza.name..'/self', event_data) then return; end -- do processing
+		if h.events.fire_event(stanza.name..to_type, event_data) then return; end
+		if to_self and h.events.fire_event(stanza.name..'/self', event_data) then return; end
 		handle_unhandled_stanza(h.host, origin, stanza);
 	else
 		core_route_stanza(origin, stanza);
@@ -185,12 +183,10 @@ function core_route_stanza(origin, stanza)
 	local node, host, resource = jid_split(stanza.attr.to);
 	local from_node, from_host, from_resource = jid_split(stanza.attr.from);
 
-	-- Auto-detect origin if not specified
 	origin = origin or hosts[from_host];
 	if not origin then return false; end
 	
 	if hosts[host] then
-		-- old stanza routing code removed
 		core_post_stanza(origin, stanza);
 	else
 		log("debug", "Routing to remote...");

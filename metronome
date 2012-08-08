@@ -12,7 +12,6 @@ local function is_relative(path)
 	or (path_sep == "\\" and (path:sub(1,1) ~= "/" and path:sub(2,3) ~= ":\\")))
 end
 
--- Tell Lua where to find our libraries
 if CFG_SOURCEDIR then
 	local function filter_relative_paths(path)
 		if is_relative(path) then return ""; end
@@ -24,30 +23,21 @@ if CFG_SOURCEDIR then
 	package.cpath = sanitise_paths(CFG_SOURCEDIR.."/?.so;"..package.cpath);
 end
 
--- Substitute ~ with path to home directory in data path
 if CFG_DATADIR then
 	if os.getenv("HOME") then
 		CFG_DATADIR = CFG_DATADIR:gsub("^~", os.getenv("HOME"));
 	end
 end
 
--- Global 'metronome' object
 local metronome = { events = require "util.events".new(); };
 _G.metronome = metronome;
 
--- Check dependencies
 local dependencies = require "util.dependencies";
 if not dependencies.check_dependencies() then
 	os.exit(1);
 end
 
--- Load the config-parsing module
 config = require "core.configmanager"
-
--- -- -- --
--- Define the functions we call during startup, the 
--- actual startup happens right at the end, where these
--- functions get called
 
 function read_config()
 	local filenames = {};
@@ -98,12 +88,10 @@ function read_config()
 end
 
 function load_libraries()
-	-- Load socket framework
 	server = require "net.server"
 end	
 
 function init_logging()
-	-- Initialize logging
 	require "core.loggingmanager"
 end
 
@@ -125,8 +113,6 @@ function sanity_check()
 end
 
 function sandbox_require()
-	-- Replace require() with one that doesn't pollute _G, required
-	-- for neat sandboxing of modules
 	local _realG = _G;
 	local _real_require = require;
 	if not getfenv then
@@ -212,7 +198,6 @@ function init_global_state()
 		metronome.installed = true;
 	end
 	
-	-- Function to reload the config file
 	function metronome.reload_config()
 		log("info", "Reloading configuration file");
 		metronome.events.fire_event("reloading-config");
@@ -227,13 +212,11 @@ function init_global_state()
 		return ok, (err and tostring(level)..": "..tostring(err)) or nil;
 	end
 
-	-- Function to reopen logfiles
 	function metronome.reopen_logfiles()
 		log("info", "Re-opening log files");
 		metronome.events.fire_event("reopen-log-files");
 	end
 
-	-- Function to initiate metronome shutdown
 	function metronome.shutdown(reason)
 		log("info", "Shutting down: %s", reason or "unknown reason");
 		metronome.shutdown_reason = reason;
@@ -241,7 +224,6 @@ function init_global_state()
 		server.setquitting(true);
 	end
 
-	-- Load SSL settings from config, and create a ctx table
 	local certmanager = require "core.certmanager";
 	local global_ssl_ctx = certmanager.create_context("*", "server");
 	metronome.global_ssl_ctx = global_ssl_ctx;
@@ -249,7 +231,6 @@ function init_global_state()
 end
 
 function read_version()
-	-- Try to determine version
 	local version_file = io.open((CFG_SOURCEDIR or ".").."/metronome.version");
 	if version_file then
 		metronome.version = version_file:read("*a"):gsub("%s*$", "");
@@ -263,7 +244,6 @@ function read_version()
 end
 
 function load_secondary_libraries()
-	--- Load and initialise core modules
 	require "util.import"
 	require "util.xmppstream"
 	require "core.rostermanager"
@@ -305,13 +285,11 @@ end
 
 function prepare_to_start()
 	log("info", "Metronome is using the %s backend for connection handling", server.get_backend());
-	-- Signal to modules that we are ready to start
 	metronome.events.fire_event("server-starting");
 	metronome.start_time = os.time();
 end	
 
 function init_global_protection()
-	-- Catch global accesses
 	local locked_globals_mt = {
 		__index = function (t, k) log("warn", "%s", debug.traceback("Attempt to read a non-existent global '"..tostring(k).."'", 2)); end;
 		__newindex = function (t, k, v) error("Attempt to set a global: "..tostring(k).." = "..tostring(v), 2); end;
@@ -325,12 +303,10 @@ function init_global_protection()
 		setmetatable(_G, locked_globals_mt);
 	end
 
-	-- And lock now...
 	metronome.lock_globals();
 end
 
 function loop()
-	-- Error handler for errors that make it this far
 	local function catch_uncaught_error(err)
 		if type(err) == "string" and err:match("interrupted!$") then
 			return "quitting";
@@ -354,8 +330,6 @@ function cleanup()
 	log("info", "Shutdown status: Cleaning up");
 	metronome.events.fire_event("server-cleanup");
 	
-	-- Ok, we're quitting I know, but we
-	-- need to do some tidying before we go :)
 	server.setquitting(false);
 	
 	log("info", "Shutdown status: Closing all active sessions");
@@ -392,9 +366,6 @@ function cleanup()
 	server.setquitting(true);
 end
 
--- Are you ready? :)
--- These actions are in a strict order, as many depend on
--- previous steps to have already been performed
 read_config();
 init_logging();
 sanity_check();
@@ -418,4 +389,3 @@ log("info", "Shutting down...");
 cleanup();
 metronome.events.fire_event("server-stopped");
 log("info", "Shutdown complete");
-

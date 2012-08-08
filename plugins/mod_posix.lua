@@ -13,7 +13,7 @@ local stat = lfs.attributes;
 
 local metronome = _G.metronome;
 
-module:set_global(); -- we're a global module
+module:set_global();
 
 local umask = module:get_option("umask") or "027";
 pposix.umask(umask);

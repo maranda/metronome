@@ -58,8 +58,8 @@ function roster_push(username, host, jid)
 		else
 			stanza:tag("item", {jid = jid, subscription = "remove"});
 		end
-		stanza:up(); -- move out from item
-		stanza:up(); -- move out from stanza
+		stanza:up();
+		stanza:up();
 		-- stanza ready
 		for _, session in pairs(hosts[host].sessions[username].sessions) do
 			if session.interested then
@@ -79,7 +79,7 @@ function load_roster(username, host)
 		roster = user.roster;
 		if roster then return roster; end
 		log("debug", "load_roster: loading for new user: %s@%s", username, host);
-	else -- Attempt to load roster for non-loaded user
+	else
 		log("debug", "load_roster: loading for offline user: %s@%s", username, host);
 	end
 	local data, err = datamanager.load(username, host, "roster");
@@ -100,10 +100,6 @@ function save_roster(username, host, roster)
 	log("debug", "save_roster: saving roster for %s@%s", username, host);
 	if not roster then
 		roster = hosts[host] and hosts[host].sessions[username] and hosts[host].sessions[username].roster;
-		--if not roster then
-		--	--roster = load_roster(username, host);
-		--	return true; -- roster unchanged, no reason to save
-		--end
 	end
 	if roster then
 		local metadata = roster[false];
@@ -205,7 +201,7 @@ function set_contact_pending_in(username, host, jid, pending)
 	local roster = load_roster(username, host);
 	local item = roster[jid];
 	if item and (item.subscription == "from" or item.subscription == "both") then
-		return; -- false
+		return;
 	end
 	if not roster.pending then roster.pending = {}; end
 	roster.pending[jid] = true;
@@ -292,16 +288,5 @@ function process_outbound_subscription_request(username, host, jid)
 		return save_roster(username, host, roster);
 	end
 end
-
---[[function process_outbound_subscription_approval(username, host, jid)
-	local roster = load_roster(username, host);
-	local item = roster[jid];
-	if item and (item.subscription == "none" or item.subscription == "from" then
-		item.ask = "subscribe";
-		return save_roster(username, host, roster);
-	end
-end]]
-
-
 
 return _M;

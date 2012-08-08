@@ -25,18 +25,15 @@ function send_to_online(message, host)
 	return c;
 end
 
-
--- Old <message>-based jabberd-style announcement sending
 function handle_announcement(event)
 	local origin, stanza = event.origin, event.stanza;
 	local node, host, resource = jid.split(stanza.attr.to);
 	
 	if resource ~= "announce/online" then
-		return; -- Not an announcement
+		return;
 	end
 	
 	if not is_admin(stanza.attr.from) then
-		-- Not an admin? Not allowed!
 		module:log("warn", "Non-admin '%s' tried to send server announcement", stanza.attr.from);
 		return;
 	end

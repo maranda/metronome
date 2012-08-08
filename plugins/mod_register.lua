@@ -1,12 +1,3 @@
--- Prosody IM
--- Copyright (C) 2008-2010 Matthew Wild
--- Copyright (C) 2008-2010 Waqas Hussain
--- 
--- This project is MIT/X11 licensed. Please see the
--- COPYING file in the source package for more information.
---
-
-
 local hosts = _G.hosts;
 local st = require "util.stanza";
 local datamanager = require "util.datamanager";
@@ -248,7 +239,7 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 								session.send(error_reply);
 								return true;
 							end
-							session.send(st.reply(stanza)); -- user created!
+							session.send(st.reply(stanza));
 							module:log("info", "User account created: %s@%s", username, host);
 							module:fire_event("user-registered", {
 								username = username, host = host, source = "mod_register",

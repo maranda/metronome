@@ -143,10 +143,8 @@ local function session_close(session, reason)
 		local reason = (reason and (reason.text or reason.condition)) or reason;
 		session.log("info", "c2s stream for %s closed: %s", session.full_jid or ("<"..session.ip..">"), reason or "session closed");
 
-		-- Authenticated incoming stream may still be sending us stanzas, so wait for </stream:stream> from remote
 		local conn = session.conn;
 		if reason == nil and not session.notopen and session.type == "c2s" then
-			-- Grace time to process data from authenticated cleanly-closed stream
 			add_task(stream_close_timeout, function ()
 				if not session.destroyed then
 					session.log("warn", "Failed to receive a stream close response, closing connection anyway...");
@@ -168,7 +166,7 @@ function listener.onconnect(conn)
 	
 	session.log("info", "Client connected");
 	
-	-- Client is using legacy SSL (otherwise mod_tls sets this flag)
+	-- Legacy ssl
 	if conn:ssl() then
 		session.secure = true;
 	end
@@ -259,5 +257,3 @@ module:add_item("net-provider", {
 		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:client%1.*>";
 	};
 });
-
-

@@ -78,11 +78,9 @@ function destroy_session(session, err)
 	(session.log or log)("debug", "Destroying session for %s (%s@%s)%s", session.full_jid or "(unknown)", session.username or "(unknown)", session.host or "(unknown)", err and (": "..err) or "");
 	if session.destroyed then return; end
 	
-	-- Remove session/resource from user's session list
 	if session.full_jid then
 		local host_session = hosts[session.host];
 		
-		-- Allow plugins to prevent session destruction
 		if host_session.events.fire_event("pre-resource-unbind", {session=session, error=err}) then
 			return;
 		end
@@ -113,16 +111,12 @@ function make_authenticated(session, username)
 	return true;
 end
 
--- returns true, nil on success
--- returns nil, err_type, err, err_message on failure
 function bind_resource(session, resource)
 	if not session.username then return nil, "auth", "not-authorized", "Cannot bind resource before authentication"; end
 	if session.resource then return nil, "cancel", "already-bound", "Cannot bind multiple resources on a single connection"; end
-	-- We don't support binding multiple resources
 
 	resource = resourceprep(resource);
 	resource = resource ~= "" and resource or uuid_generate();
-	--FIXME: Randomly-generated resources must be unique per-user, and never conflict with existing
 	
 	if not hosts[session.host].sessions[session.username] then
 		local sessions = { sessions = {} };
@@ -141,7 +135,7 @@ function bind_resource(session, resource)
 				increment = true; -- TODO ping old resource
 			elseif policy == "kick_new" then
 				return nil, "cancel", "conflict", "Resource already exists";
-			else -- if policy == "kick_old" then
+			else
 				sessions[resource]:close {
 					condition = "conflict";
 					text = "Replaced by new connection";

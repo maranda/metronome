@@ -73,4 +73,3 @@ function new_default_provider(host)
 end
 
 module:add_item("auth-provider", new_default_provider(module.host));
-

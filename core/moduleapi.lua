@@ -15,19 +15,16 @@ local metronome = metronome;
 local hosts = metronome.hosts;
 local core_post_stanza = metronome.core_post_stanza;
 
--- Registry of shared module data
 local shared_data = setmetatable({}, { __mode = "v" });
 
 local NULL = {};
 
 local api = {};
 
--- Returns the name of the current module
 function api:get_name()
 	return self.name;
 end
 
--- Returns the host that the current module is serving
 function api:get_host()
 	return self.host;
 end
@@ -38,7 +35,6 @@ end
 
 function api:set_global()
 	self.host = "*";
-	-- Update the logger
 	local _log = logger.init("mod_"..self.name);
 	self.log = function (self, ...) return _log(...); end;
 	self._log = _log;
@@ -78,7 +74,6 @@ end
 
 function api:hook_tag(xmlns, name, handler, priority)
 	if not handler and type(name) == "function" then
-		-- If only 2 options then they specified no xmlns
 		xmlns, name, handler, priority = nil, xmlns, name, handler;
 	elseif not (handler and name) then
 		self:log("warn", "Error: Insufficient parameters to module:hook_stanza()");
@@ -86,7 +81,7 @@ function api:hook_tag(xmlns, name, handler, priority)
 	end
 	return self:hook("stanza/"..(xmlns and (xmlns..":") or "")..name, function (data) return handler(data.origin, data.stanza, data); end, priority);
 end
-api.hook_stanza = api.hook_tag; -- COMPAT w/pre-0.9
+api.hook_stanza = api.hook_tag;
 
 function api:require(lib)
 	local f, n = pluginloader.load_code(self.name, lib..".lib.lua", self.environment);
@@ -130,9 +125,6 @@ function api:depends(name)
 	return mod;
 end
 
--- Returns one or more shared tables at the specified virtual paths
--- Intentionally does not allow the table at a path to be _set_, it
--- is auto-created if it does not exist.
 function api:shared(...)
 	if not self.shared_data then self.shared_data = {}; end
 	local paths = { n = select("#", ...), ... };
@@ -140,7 +132,7 @@ function api:shared(...)
 	local default_path_components = { self.host, self.name };
 	for i = 1, paths.n do
 		local path = paths[i];
-		if path:sub(1,1) ~= "/" then -- Prepend default components
+		if path:sub(1,1) ~= "/" then
 			local n_components = select(2, path:gsub("/", "%1"));
 			path = (n_components<#default_path_components and "/" or "")..t_concat(default_path_components, "/", 1, #default_path_components-n_components).."/"..path;
 		end
@@ -232,10 +224,10 @@ function api:get_option_array(name, ...)
 	end
 	
 	if type(value) ~= "table" then
-		return array{ value }; -- Assume any non-list is a single-item list
+		return array{ value };
 	end
 	
-	return array():append(value); -- Clone
+	return array():append(value);
 end
 
 function api:get_option_set(name, ...)

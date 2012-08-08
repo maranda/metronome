@@ -23,7 +23,7 @@ module:hook("iq/self/jabber:iq:private:query", function(event)
 			else
 				origin.send(st.reply(stanza):add_child(stanza.tags[1]));
 			end
-		else -- set
+		else
 			if not data then data = {}; end;
 			if #tag == 0 then
 				data[key] = nil;

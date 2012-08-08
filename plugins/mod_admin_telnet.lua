@@ -54,7 +54,6 @@ function console:new_session(conn)
 			};
 	session.env = setmetatable({}, default_env_mt);
 	
-	-- Load up environment with helper objects
 	for name, t in pairs(def_env) do
 		if type(t) == "table" then
 			session.env[name] = setmetatable({ session = session }, { __index = t });
@@ -67,7 +66,6 @@ end
 local sessions = {};
 
 function console_listener.onconnect(conn)
-	-- Handle new connection
 	local session = console:new_session(conn);
 	sessions[conn] = session;
 	printbanner(session);
@@ -83,7 +81,6 @@ function console_listener.onincoming(conn, data)
 	end
 
 	for line in data:gmatch("[^\n]*[\n\004]") do
-		-- Handle data (loop allows us to break to add \0 after response)
 		repeat
 			local useglobalenv;
 
@@ -305,7 +302,6 @@ function def_env.module:load(name, hosts, config)
 	
 	hosts = get_hosts_set(hosts);
 	
-	-- Load the module for each host
 	local ok, err, count, mod = true, nil, 0, nil;
 	for host in hosts do
 		if (not mm.is_loaded(host, name)) then
@@ -334,7 +330,6 @@ function def_env.module:unload(name, hosts)
 
 	hosts = get_hosts_set(hosts, name);
 	
-	-- Unload the module for each host
 	local ok, err, count = true, nil, 0;
 	for host in hosts do
 		if mm.is_loaded(host, name) then
@@ -360,7 +355,6 @@ function def_env.module:reload(name, hosts)
 		else return a < b; end
 	end);
 
-	-- Reload the module for each host
 	local ok, err, count = true, nil, 0;
 	for _, host in ipairs(hosts) do
 		if mm.is_loaded(host, name) then
@@ -586,7 +580,6 @@ function def_env.s2s:show(match_jid)
 		for session in pairs(incoming_s2s) do
 			if session.to_host == host and ((not match_jid) or host:match(match_jid)
 				or (session.from_host and session.from_host:match(match_jid))
-				-- Pft! is what I say to list comprehensions
 				or (session.hosts and #array.collect(keys(session.hosts)):filter(subhost_filter)>0)) then
 				count_in = count_in + 1;
 				print(session_flags(session, {"   ", host, "<-", session.from_host or "(unknown)"}));
@@ -687,7 +680,6 @@ function def_env.s2s:showcert(domain)
 		end
 	end
 	local domain_certs = array.collect(values(cert_set));
-	-- Phew. We now have a array of unique certificates presented by domain.
 	local n_certs = #domain_certs;
 	
 	if n_certs == 0 then
@@ -749,7 +741,7 @@ function def_env.s2s:close(from, to)
 	end
 	
 	if hosts[from] and not hosts[to] then
-		-- Is an outgoing connection
+		-- Outgoing conn.
 		local session = hosts[from].s2sout[to];
 		if not session then
 			print("No outgoing connection from "..from.." to "..to)
@@ -759,7 +751,7 @@ function def_env.s2s:close(from, to)
 			print("Closed outgoing session from "..from.." to "..to);
 		end
 	elseif hosts[to] and not hosts[from] then
-		-- Is an incoming connection
+		-- Incoming conn.
 		for session in pairs(incoming_s2s) do
 			if session.to_host == to and session.from_host == from then
 				(session.close or s2smanager.destroy_session)(session);

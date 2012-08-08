@@ -9,7 +9,7 @@ local require_provisioning = module:get_option("cyrus_require_provisioning") or 
 local host_fqdn = module:get_option("cyrus_server_fqdn");
 
 metronome.unlock_globals(); --FIXME: Figure out why this is needed and
-						  -- why cyrussasl isn't caught by the sandbox
+			    -- why cyrussasl isn't caught by the sandbox
 local cyrus_new = require "util.sasl_cyrus".new;
 metronome.lock_globals();
 local new_sasl = function(realm)
@@ -21,7 +21,7 @@ local new_sasl = function(realm)
 	);
 end
 
-do -- diagnostic
+do
 	local list;
 	for mechanism in pairs(new_sasl(module.host):mechanisms()) do
 		list = (not(list) and mechanism) or (list..", "..mechanism);

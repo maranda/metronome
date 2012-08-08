@@ -51,7 +51,6 @@ module:hook("stanza/iq/jabber:iq:auth:query", function(event)
 			return session.send(st.error_reply(stanza, "modify", "bad-request"));
 		end
 		if usermanager.test_password(username, session.host, password) then
-			-- Authentication successful!
 			local success, err = sessionmanager.make_authenticated(session, username);
 			if success then
 				local err_type, err_msg;
@@ -60,7 +59,7 @@ module:hook("stanza/iq/jabber:iq:auth:query", function(event)
 					session.send(st.error_reply(stanza, err_type, err, err_msg));
 					session.username, session.type = nil, "c2s_unauthed"; -- FIXME should this be placed in sessionmanager?
 					return true;
-				elseif resource ~= session.resource then -- server changed resource, not supported by legacy auth
+				elseif resource ~= session.resource then
 					session.send(st.error_reply(stanza, "cancel", "conflict", "The requested resource could not be assigned to this session."));
 					session:close(); -- FIXME undo resource bind and auth instead of closing the session?
 					return true;

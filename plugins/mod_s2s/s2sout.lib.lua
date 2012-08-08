@@ -53,9 +53,7 @@ function s2sout.initiate_connection(host_session)
 	end
 	
 	if not host_session.sends2s then
-		-- A sends2s which buffers data (until the stream is opened)
-		-- note that data in this buffer will be sent before the stream is authed
-		-- and will not be ack'd in any way, successful or otherwise
+		-- A sends2s which buffers data (until the stream is opened, data is sent before stream is authed and can't be acked)
 		local buffer;
 		function host_session.sends2s(data)
 			if not buffer then
@@ -77,7 +75,7 @@ function s2sout.attempt_connection(host_session, err)
 		return false;
 	end
 	
-	if not err then -- This is our first attempt
+	if not err then -- First attempt
 		log("debug", "First attempt to connect to %s, starting with SRV lookup...", to_host);
 		host_session.connecting = true;
 		local handle;
@@ -111,7 +109,6 @@ function s2sout.attempt_connection(host_session, err)
 			local ok, err = s2sout.try_connect(host_session, connect_host, connect_port);
 			if not ok then
 				if not s2sout.attempt_connection(host_session, err) then
-					-- No more attempts will be made
 					s2s_destroy_session(host_session, err);
 				end
 			end

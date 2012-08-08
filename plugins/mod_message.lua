@@ -23,7 +23,7 @@ local function process_to_bare(bare, origin, stanza)
 			end
 		end  -- current policy is to discard headlines if no recipient is available
 	else -- chat or normal message
-		if user then -- some resources are connected
+		if user then
 			local recipients = user.top_resources;
 			if recipients then
 				local sent;
@@ -55,7 +55,6 @@ local function process_to_bare(bare, origin, stanza)
 end
 
 module:hook("message/full", function(data)
-	-- message to full JID recieved
 	local origin, stanza = data.origin, data.stanza;
 	
 	local session = full_sessions[stanza.attr.to];
@@ -67,7 +66,6 @@ module:hook("message/full", function(data)
 end);
 
 module:hook("message/bare", function(data)
-	-- message to bare JID recieved
 	local origin, stanza = data.origin, data.stanza;
 
 	return process_to_bare(stanza.attr.to or (origin.username..'@'..origin.host), origin, stanza);

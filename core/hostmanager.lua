@@ -68,10 +68,10 @@ function activate(host, host_config)
 		dialback_secret = configmanager.get(host, "core", "dialback_secret") or uuid_gen();
 		send = host_send;
 	};
-	if not host_config.core.component_module then -- host
+	if not host_config.core.component_module then
 		host_session.type = "local";
 		host_session.sessions = {};
-	else -- component
+	else
 		host_session.type = "component";
 	end
 	hosts[host] = host_session;

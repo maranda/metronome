@@ -37,10 +37,8 @@ end);
 module:hook_stanza(xmlns_stream, "features",
 		function (session, stanza)
 			if not session.compressed and (session.type == "c2s" or session.type == "s2sin" or session.type == "s2sout") then
-				-- does remote server support compression?
 				local comp_st = stanza:child_with_name("compression");
 				if comp_st then
-					-- do we support the mechanism
 					for a in comp_st:children() do
 						local algorithm = a[1]
 						if algorithm == "zlib" then
@@ -121,17 +119,13 @@ module:hook("stanza/http://jabber.org/protocol/compress:compressed", function(ev
 	
 	if session.type == "s2sout_unauthed" or session.type == "s2sout" then
 		session.log("debug", "Activating compression...")
-		-- create deflate and inflate streams
 		local deflate_stream = get_deflate_stream(session);
 		if not deflate_stream then return true; end
 		
 		local inflate_stream = get_inflate_stream(session);
 		if not inflate_stream then return true; end
 		
-		-- setup compression for session.w
 		setup_compression(session, deflate_stream);
-			
-		-- setup decompression for session.data
 		setup_decompression(session, inflate_stream);
 		session:reset_stream();
 		local default_stream_attr = {xmlns = "jabber:server", ["xmlns:stream"] = "http://etherx.jabber.org/streams",
@@ -147,7 +141,6 @@ module:hook("stanza/http://jabber.org/protocol/compress:compress", function(even
 	local session, stanza = event.origin, event.stanza;
 
 	if session.type == "c2s" or session.type == "s2sin" or session.type == "c2s_unauthed" or session.type == "s2sin_unauthed" then
-		-- fail if we are already compressed
 		if session.compressed then
 			local error_st = st.stanza("failure", {xmlns=xmlns_compression_protocol}):tag("setup-failed");
 			(session.sends2s or session.send)(error_st);
@@ -155,7 +148,6 @@ module:hook("stanza/http://jabber.org/protocol/compress:compress", function(even
 			return true;
 		end
 		
-		-- checking if the compression method is supported
 		local method = stanza:child_with_name("method");
 		method = method and (method[1] or "");
 		if method == "zlib" then

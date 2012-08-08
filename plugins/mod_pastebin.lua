@@ -1,4 +1,3 @@
-
 local st = require "util.stanza";
 module:depends("http");
 local uuid_new = require "util.uuid".generate;
@@ -115,7 +114,7 @@ if pastebin_private_messages then
 end
 
 function expire_pastes(time)
-	time = time or os_time(); -- COMPAT with 0.5
+	time = time or os_time();
 	if pastes[1] then
 		pastes[pastes[1]] = nil;
 		t_remove(pastes, 1);

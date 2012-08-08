@@ -1,4 +1,3 @@
-
 local t_insert, t_remove, t_concat = table.insert, table.remove, table.concat;
 local parser_new = require "net.http.parser".new;
 local events = require "util.events".new();

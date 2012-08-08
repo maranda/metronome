@@ -255,9 +255,6 @@ function stream_callbacks.streamopened(session, attr)
 		if session.secure and not session.cert_chain_status then check_cert_status(session); end
 
 		-- Send unauthed buffer
-		-- (stanzas which are fine to send before dialback)
-		-- Note that this is *not* the stanza queue (which
-		-- we can only send if auth succeeds) :)
 		local send_buffer = session.send_buffer;
 		if send_buffer and #send_buffer > 0 then
 			log("debug", "Sending s2s send_buffer now...");

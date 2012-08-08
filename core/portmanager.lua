@@ -26,10 +26,7 @@ end
 
 --- Private state
 
--- service_name -> { service_info, ... }
 local services = setmetatable({}, { __index = function (t, k) rawset(t, k, {}); return rawget(t, k); end });
-
--- service_name, interface (string), port (number)
 local active_services = multitable.new();
 
 --- Private helpers
@@ -37,7 +34,6 @@ local active_services = multitable.new();
 local function error_to_friendly_message(service_name, port, err)
 	local friendly_message = err;
 	if err:match(" in use") then
-		-- FIXME: Use service_name here
 		if port == 5222 or port == 5223 or port == 5269 then
 			friendly_message = "check that Metronome or another XMPP server is "
 				.."not already running and using this port";
@@ -81,18 +77,18 @@ function activate(service_name)
 	end
 
 	local bind_interfaces = config.get("*", config_prefix.."interfaces")
-		or config.get("*", config_prefix.."interface") -- COMPAT w/pre-0.9
+		or config.get("*", config_prefix.."interface")
 		or (service_info.private and default_local_interfaces)
 		or config.get("*", "interfaces")
-		or config.get("*", "interface") -- COMPAT w/pre-0.9
-		or listener.default_interface -- COMPAT w/pre0.9
+		or config.get("*", "interface")
+		or listener.default_interface
 		or default_interfaces
 	bind_interfaces = set.new(type(bind_interfaces)~="table" and {bind_interfaces} or bind_interfaces);
 	
 	local bind_ports = set.new(config.get("*", config_prefix.."ports")
 		or service_info.default_ports
 		or {service_info.default_port
-		    or listener.default_port -- COMPAT w/pre-0.9
+		    or listener.default_port
 		   });
 
 	local mode, ssl = listener.default_mode or "*a";
@@ -104,7 +100,6 @@ function activate(service_name)
 				log("error", "Multiple services configured to listen on the same port ([%s]:%d): %s, %s", interface, port, active_services:search(nil, interface, port)[1][1].service.name or "<unnamed>", service_name or "<unnamed>");
 			else
 				local err;
-				-- Create SSL context for this service/port
 				if service_info.encryption == "ssl" then
 					local ssl_config = config.get("*", config_prefix.."ssl");
 					ssl, err = certmanager.create_context(service_info.name.." port "..port, "server", ssl_config and (ssl_config[port]
@@ -114,7 +109,6 @@ function activate(service_name)
 					end
 				end
 				if not err then
-					-- Start listening on interface+port
 					local handler, err = server.addserver(interface, port, listener, mode, ssl);
 					if not handler then
 						log("error", "Failed to open server port %d on %s, %s", port, interface, error_to_friendly_message(service_name, port, err));
@@ -167,8 +161,8 @@ function unregister_service(service_name, service_info)
 		end
 	end
 	deactivate(nil, service_info);
-	if #service_info_list > 0 then -- Other services registered with this name
-		activate(service_name); -- Re-activate with the next available one
+	if #service_info_list > 0 then
+		activate(service_name);
 	end
 	fire_event("service-removed", { name = service_name, service = service_info });
 end

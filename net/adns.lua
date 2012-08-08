@@ -20,7 +20,7 @@ function lookup(handler, qname, qtype, qclass)
 				log("debug", "Records for %s not in cache, sending query (%s)...", qname, tostring(coroutine.running()));
 				local ok, err = dns.query(qname, qtype, qclass);
 				if ok then
-					coroutine.yield({ qclass or "IN", qtype or "A", qname, coroutine.running()}); -- Wait for reply
+					coroutine.yield({ qclass or "IN", qtype or "A", qname, coroutine.running()});
 					log("debug", "Reply for %s (%s)", qname, tostring(coroutine.running()));
 				end
 				if ok then
@@ -57,7 +57,7 @@ function new_async_socket(sock, resolver)
 				log("error", "Exhausted all %d configured DNS servers, next lookup will try %s again", #servers, servers[1]);
 			end
 		
-			resolver:servfail(conn); -- Let the magic commence
+			resolver:servfail(conn);
 		end
 	end
 	handler = server.wrapclient(sock, "dns", 53, listener);
@@ -69,7 +69,6 @@ function new_async_socket(sock, resolver)
 	handler.setsockname = function (_, ...) return sock:setsockname(...); end
 	handler.setpeername = function (_, ...) peername = (...); local ret = sock:setpeername(...); _:set_send(dummy_send); return ret; end
 	handler.connect = function (_, ...) return sock:connect(...) end
-	--handler.send = function (_, data) _:write(data);  return _.sendbuffer and _.sendbuffer(); end
 	handler.send = function (_, data)
 		local getpeername = sock.getpeername;
 		log("debug", "Sending DNS query to %s", (getpeername and getpeername(sock)) or "<unconnected>");

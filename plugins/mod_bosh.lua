@@ -63,10 +63,9 @@ local t_insert, t_remove, t_concat = table.insert, table.remove, table.concat;
 local os_time = os.time;
 
 local sessions = {};
-local inactive_sessions = {}; -- Sessions which have no open requests
-
--- Used to respond to idle sessions (those with waiting requests)
+local inactive_sessions = {};
 local waiting_requests = {};
+
 function on_destroy_request(request)
 	log("debug", "Request destroyed: %s", tostring(request));
 	waiting_requests[request] = nil;
@@ -80,7 +79,6 @@ function on_destroy_request(request)
 			end
 		end
 		
-		-- If this session now has no requests open, mark it as inactive
 		local max_inactive = session.bosh_max_inactive;
 		if max_inactive and #requests == 0 then
 			inactive_sessions[session] = os_time() + max_inactive;
@@ -106,21 +104,10 @@ function handle_POST(event)
 	local context = { request = request, response = response, notopen = true };
 	local stream = new_xmpp_stream(context, stream_callbacks);
 	response.context = context;
-	
-	-- stream:feed() calls the stream_callbacks, so all stanzas in
-	-- the body are processed in this next line before it returns.
-	-- In particular, the streamopened() stream callback is where
-	-- much of the session logic happens, because it's where we first
-	-- get to see the 'sid' of this request.
 	stream:feed(body);
-	
-	-- Stanzas (if any) in the request have now been processed, and
-	-- we take care of the high-level BOSH logic here, including
-	-- giving a response or putting the request "on hold".
+
 	local session = sessions[context.sid];
 	if session then
-		-- Session was marked as inactive, since we have
-		-- a request open now, unmark it
 		if inactive_sessions[session] and #session.requests > 0 then
 			inactive_sessions[session] = nil;
 		end
@@ -132,14 +119,12 @@ function handle_POST(event)
 			log("debug", "    %s", tostring(thing));
 		end
 		if #r > session.bosh_hold then
-			-- We are holding too many requests, send what's in the buffer,
 			log("debug", "We are holding too many requests, so...");
 			if #session.send_buffer > 0 then
 				log("debug", "...sending what is in the buffer")
 				session.send(t_concat(session.send_buffer));
 				session.send_buffer = {};
 			else
-				-- or an empty response
 				log("debug", "...sending an empty response");
 				session.send("");
 			end
@@ -151,7 +136,6 @@ function handle_POST(event)
 		end
 		
 		if not response.finished then
-			-- We're keeping this request open, to respond later
 			log("debug", "Have nothing to say, so leaving request unanswered for now");
 			if session.bosh_wait then
 				waiting_requests[response] = os_time() + session.bosh_wait;
@@ -182,7 +166,7 @@ local function bosh_close_stream(session, reason)
 
 	if reason then
 		close_reply.attr.condition = "remote-stream-error";
-		if type(reason) == "string" then -- assume stream error
+		if type(reason) == "string" then
 			close_reply:tag("stream:error")
 				:tag(reason, {xmlns = xmlns_xmpp_streams});
 		elseif type(reason) == "table" then
@@ -195,7 +179,7 @@ local function bosh_close_stream(session, reason)
 				if reason.extra then
 					close_reply:add_child(reason.extra);
 				end
-			elseif reason.name then -- a stanza
+			elseif reason.name then
 				close_reply = reason;
 			end
 		end
@@ -212,18 +196,15 @@ local function bosh_close_stream(session, reason)
 	sm_destroy_session(session);
 end
 
--- Handle the <body> tag in the request payload.
 function stream_callbacks.streamopened(context, attr)
 	local request, response = context.request, context.response;
 	local sid = attr.sid;
 	log("debug", "BOSH body open (sid: %s)", sid or "<none>");
 	if not sid then
-		-- New session request
 		context.notopen = nil; -- Signals that we accept this opening tag
 		
 		-- TODO: Sanity checks here (rid, to, known host, etc.)
 		if not hosts[attr.to] then
-			-- Unknown host
 			log("debug", "BOSH client tried to connect to unknown host: %s", tostring(attr.to));
 			local close_reply = st.stanza("body", { xmlns = xmlns_bosh, type = "terminate",
 				["xmlns:stream"] = xmlns_streams, condition = "host-unknown" });
@@ -231,7 +212,6 @@ function stream_callbacks.streamopened(context, attr)
 			return;
 		end
 		
-		-- New session
 		sid = new_uuid();
 		local session = {
 			type = "c2s_unauthed", conn = {}, sid = sid, rid = tonumber(attr.rid)-1, host = attr.to,
@@ -247,12 +227,10 @@ function stream_callbacks.streamopened(context, attr)
 		session.log("debug", "BOSH session created for request from %s", session.ip);
 		log("info", "New BOSH session, assigned it sid '%s'", sid);
 
-		-- Send creation response
 		local creating_session = true;
 
 		local r = session.requests;
 		function session.send(s)
-			-- We need to ensure that outgoing stanzas have the jabber:client xmlns
 			if s.attr and not s.attr.xmlns then
 				s = st.clone(s);
 				s.attr.xmlns = "jabber:client";
@@ -291,7 +269,6 @@ function stream_callbacks.streamopened(context, attr)
 	
 	local session = sessions[sid];
 	if not session then
-		-- Unknown sid
 		log("info", "Client tried to use sid '%s' which we don't know about", sid);
 		response.headers = default_headers;
 		response:send(tostring(st.stanza("body", { xmlns = xmlns_bosh, type = "terminate", condition = "item-not-found" })));
@@ -305,7 +282,6 @@ function stream_callbacks.streamopened(context, attr)
 		if diff > 1 then
 			session.log("warn", "rid too large (means a request was lost). Last rid: %d New rid: %s", session.rid, attr.rid);
 		elseif diff <= 0 then
-			-- Repeated, ignore
 			session.log("debug", "rid repeated (on request %s), ignoring: %s (diff %d)", request.id, session.rid, diff);
 			context.notopen = nil;
 			context.ignore = true;
@@ -317,15 +293,13 @@ function stream_callbacks.streamopened(context, attr)
 	end
 	
 	if attr.type == "terminate" then
-		-- Client wants to end this session, which we'll do
-		-- after processing any stanzas in this request
 		session.bosh_terminate = true;
 	end
 
-	context.notopen = nil; -- Signals that we accept this opening tag
+	context.notopen = nil;
 	t_insert(session.requests, response);
 	context.sid = sid;
-	session.bosh_processing = true; -- Used to suppress replies until processing of this request is done
+	session.bosh_processing = true; -- Used to suppress requests until processing is done
 
 	if session.notopen then
 		local features = st.stanza("stream:features");
@@ -369,7 +343,7 @@ function stream_callbacks.error(context, error)
 	end
 	
 	local session = sessions[context.sid];
-	if error == "stream-error" then -- Remote stream error, we close normally
+	if error == "stream-error" then
 		session:close();
 	else
 		session:close({ condition = "bad-format", text = "Error processing stream" });
@@ -379,13 +353,10 @@ end
 local dead_sessions = {};
 function on_timer()
 	-- log("debug", "Checking for requests soon to timeout...");
-	-- Identify requests timing out within the next few seconds
 	local now = os_time() + 3;
 	for request, reply_before in pairs(waiting_requests) do
 		if reply_before <= now then
 			log("debug", "%s was soon to timeout (at %d, now %d), sending empty response", tostring(request), reply_before, now);
-			-- Send empty response to let the
-			-- client know we're still here
 			if request.conn then
 				sessions[request.context.sid].send("");
 			end

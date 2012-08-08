@@ -78,7 +78,6 @@ function module.add_host(module)
 	end
 	module:hook("stanza/jabber:component:accept:handshake", handle_component_auth);
 
-	-- Handle stanzas addressed to this component
 	local function handle_stanza(event)
 		local stanza = event.stanza;
 		if send then
@@ -164,7 +163,6 @@ function stream_callbacks.streamopened(session, attr)
 	session.host = attr.to;
 	session.streamid = uuid_gen();
 	session.notopen = nil;
-	-- Return stream header
 	session.send("<?xml version='1.0'?>");
 	session.send(st.stanza("stream:stream", { xmlns=xmlns_component,
 			["xmlns:stream"]='http://etherx.jabber.org/streams', id=session.streamid, from=session.host }):top_tag());
@@ -176,7 +174,6 @@ function stream_callbacks.streamclosed(session)
 end
 
 function stream_callbacks.handlestanza(session, stanza)
-	-- Namespaces are icky.
 	if not stanza.attr.xmlns and stanza.name == "handshake" then
 		stanza.attr.xmlns = xmlns_component;
 	end

@@ -20,7 +20,6 @@ local listener = { default_port = 80, default_mode = "*a" };
 
 function listener.onconnect(conn)
 	local req = requests[conn];
-	-- Send the request
 	local request_line = { req.method or "GET", " ", req.path, " HTTP/1.1\r\n" };
 	if req.query then
 		t_insert(request_line, 4, "?"..req.query);
@@ -75,11 +74,11 @@ end
 
 function formencode(form)
 	local result = {};
-	if form[1] then -- Array of ordered { name, value }
+	if form[1] then
 		for _, field in ipairs(form) do
 			t_insert(result, _formencodepart(field.name).."=".._formencodepart(field.value));
 		end
-	else -- Unordered map of name -> value
+	else
 		for name, value in pairs(form) do
 			t_insert(result, _formencodepart(name).."=".._formencodepart(value));
 		end
@@ -165,13 +164,11 @@ function request(u, ex, callback)
 		end
 	end
 	
-	-- Attach to request object
 	req.method, req.headers, req.body = method, headers, body;
 	
 	local using_https = req.scheme == "https";
 	local port = tonumber(req.port) or (using_https and 443 or 80);
 	
-	-- Connect the socket, and wrap it with net.server
 	local conn = socket.tcp();
 	conn:settimeout(10);
 	local ok, err = conn:connect(req.host, port);
