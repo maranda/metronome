@@ -17,6 +17,7 @@
 --   <in/> / <out/>
 -- </session>
 
+local core_post_stanza = metronome.core_post_stanza;
 local st = require "util.stanza";
 local uuid_generate = require "util.uuid".generate;
 local is_admin = usermanager.is_admin;
