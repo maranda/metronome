@@ -107,6 +107,7 @@ function service:set_affiliation(node, actor, jid, affiliation)
 			return ok, err;
 		end
 	end
+	self:save_node(node);
 	return true;
 end
 
@@ -150,6 +151,7 @@ function service:add_subscription(node, actor, jid, options)
 		self.subscriptions[normal_jid] = { [jid] = { [node] = true } };
 	end
 	self.events.fire_event("subscription-added", { node = node, jid = jid, normalized_jid = normal_jid, options = options });
+	self:save_node(node);
 	return true;
 end
 
@@ -191,6 +193,7 @@ function service:remove_subscription(node, actor, jid)
 		end
 	end
 	self.events.fire_event("subscription-removed", { node = node, jid = jid, normalized_jid = normal_jid });
+	self:save_node(node);
 	return true;
 end
 
@@ -203,6 +206,7 @@ function service:remove_all_subscriptions(actor, jid)
 			self:remove_subscription(node, true, jid);
 		end
 	end
+	self:save_node(node);
 	return true;
 end
 
@@ -248,8 +252,11 @@ function service:create(node, actor)
 
 	local ok, err = self:set_affiliation(node, true, actor, "owner");
 	if not ok then
-		self.nodes[node] = nil;
+		self.nodes[node] = nil
+		return ok, err;
 	end
+	ok, err = self:save_node(node);
+	if ok then self:save(); end
 	return ok, err;
 end
 
@@ -263,6 +270,7 @@ function service:delete(node, actor)
 		return false, "item-not-found";
 	else
 		local subscribers = self.nodes[node].subscribers;
+		self:purge_node(node);
 		self.nodes[node] = nil;
 		self:broadcaster(node, subscribers, "deleted");
 		return true;
@@ -295,7 +303,8 @@ function service:publish(node, actor, id, item)
 		for i=1,#item_copy do item_copy[i] = nil end -- reset tags;
 		item_copy.attr.xmlns = nil;
 		self:broadcaster(node, node_obj.subscribers, item);
-	end		
+	end
+	self:save_node(node);	
 	return true;
 end
 
@@ -314,7 +323,8 @@ function service:retract(node, actor, id, retract)
 		-- Should deliver notifications be respected in this case?
 		self:broadcaster(node, node_obj.subscribers, retract);
 	end
-	return true
+	self:save_node(node);
+	return true;
 end
 
 function service:get_items(node, actor, id)
@@ -413,6 +423,81 @@ function service:set_node_capabilities(node, actor, capabilities)
 		return false, "item-not-found";
 	end
 	node_obj.capabilities = capabilities;
+	self:save_node(node);
+	return true;
+end
+
+function service:save()
+	if not self.config.store then return true; end
+
+	local function get_persistent_nodes(nodes)
+		local self_nodes = nodes;
+		for _, node in pairs(self_nodes) do
+			if node.config.persist_items then node = nil end
+		end
+		return self_nodes;
+	end
+
+	self.config.store:set(nil, {
+		nodes = array.collect(keys(get_persistent_nodes(self.nodes)));
+		affiliations = self.affiliations;
+		subscriptions = self.subscriptions;
+	});
+	return true;
+end
+
+function service:restore()
+	if not self.config.store then return true; end
+	local data = self.config.store:get(nil);
+	if not data then return; end
+	self.affiliations = data.affiliations;
+	for i, node in ipairs(data.nodes) do
+		self:restore_node(node);
+	end
+	return true;
+end
+
+function service:save_node(node)
+	if not self.config.store then return true; end
+	local node_obj = self.nodes[node];
+	if not node_obj.config.persist_items then return true; end
+	local saved_data = {};
+	for id, item in pairs(node_obj.data) do
+		saved_data[id] = st.preserialize(item);
+	end
+	self.config.store:set(node, {
+		subscribers = node_obj.subscribers;
+		affiliations = node_obj.affiliations;
+		config = node_obj.config;
+		data = saved_data;
+	});
+	return true;
+end
+
+function service:purge_node(node)
+	if not self.config.store then return true; end
+	local node_obj = self.nodes[node];
+	if not node_obj.config.persist_items then return true; end
+	self.config.store:set(node, nil);
+	return true;		
+end
+
+function service:restore_node(node)
+	if not self.config.store then return true; end
+	local data = self.config.store:get(node);
+	if not data then return; end
+	local restored_data = {};
+	local node_obj = {
+		name = node;
+		subscribers = data.subscribers;
+		affiliations = data.affiliations;
+		config = data.config;
+		data = restored_data;
+	};
+	for id, item in pairs(data.data) do
+		restored_data[id] = st.deserialize(item);
+	end
+	self.nodes[node] = node_obj;
 	return true;
 end
 

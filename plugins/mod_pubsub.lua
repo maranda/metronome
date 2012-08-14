@@ -298,7 +298,13 @@ function form_layout(self, name)
 			type = "boolean",
 			label = "Whether to deliver payloads with event notifications",
 			value = ((node.config.deliver_notifications == false and false) or (node.config.deliver_notifications == true and node.config.deliver_payload)) or true
-		}
+		},
+		{
+			name = "pubsub#persist_items",
+			type = "boolean",
+			label = "Whether to persist items to storage or not",
+			value = node.config.persist_items or false
+		}		
 	});
 end
 
@@ -444,6 +450,7 @@ function set_service(new_service)
 	service = new_service;
 	module.environment.service = service;
 	disco_info = build_disco_info(service);
+	service:restore();
 end
 
 function module.save()
@@ -535,6 +542,7 @@ set_service(pubsub.new({
 		title = "";
 		deliver_notifications = true;
 		deliver_payloads = true;
+		persist_items = false;
 	};
 	
 	autocreate_on_publish = autocreate_on_publish;
@@ -547,4 +555,7 @@ set_service(pubsub.new({
 	get_affiliation = get_affiliation;
 	
 	normalize_jid = jid_bare;
+
+	store = storagemanager.open(module.host, "pubsub");
 }));
+
