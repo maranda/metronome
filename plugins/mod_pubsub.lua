@@ -330,7 +330,7 @@ module:hook("iq/host/http://jabber.org/protocol/pubsub:pubsub", handle_pubsub_iq
 local disco_info;
 
 local feature_map = {
-	process_node_config_form = { "config-node" };
+	process_node_config_form = { "config-node", "persistent-items" };
 	create = { "create-nodes", autocreate_on_publish and "instant-nodes", "item-ids" };
 	delete = { "delete-nodes" };
 	retract = { "delete-items", "retract-items" };

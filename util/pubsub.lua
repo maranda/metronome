@@ -1,4 +1,5 @@
 local events = require "util.events";
+local keys = require "util.iterators".keys;
 
 module("pubsub", package.seeall);
 
@@ -431,9 +432,9 @@ function service:save()
 	if not self.config.store then return true; end
 
 	local function get_persistent_nodes(nodes)
-		local self_nodes = nodes;
-		for _, node in pairs(self_nodes) do
-			if node.config.persist_items then node = nil end
+		local self_nodes = {};
+		for name, node in pairs(nodes) do
+			if node.config.persist_items then self_nodes[name] = node; end
 		end
 		return self_nodes;
 	end
