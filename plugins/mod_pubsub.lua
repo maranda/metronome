@@ -9,6 +9,7 @@ local dataforms = require "util.dataforms";
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
 local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
+local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
 
 local autocreate_on_publish = module:get_option_boolean("autocreate_on_publish", false);
 local autocreate_on_subscribe = module:get_option_boolean("autocreate_on_subscribe", false);
@@ -17,13 +18,20 @@ if type(pubsub_disco_name) ~= "string" then pubsub_disco_name = "Metronome PubSu
 
 local service;
 
-local handlers = {};
+local handlers, handlers_owner = {}, {};
 
 function handle_pubsub_iq(event)
 	local origin, stanza = event.origin, event.stanza;
 	local pubsub = stanza.tags[1];
 	local action = pubsub.tags[1];
-	local handler = handlers[stanza.attr.type.."_"..action.name];
+	local handler;
+
+	if pubsub.attr.xmlns == xmlns_pubsub_owner then
+		handler = handlers_owner[stanza.attr.type.."_"..action.name];
+	else
+		handler = handlers[stanza.attr.type.."_"..action.name];
+	end
+
 	if handler then
 		handler(origin, stanza, action);
 		return true;
@@ -100,7 +108,7 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 	return origin.send(reply);
 end
 
-function handlers.set_configuration(origin, stanza, action)
+function handlers_owner.set_configuration(origin, stanza, action)
 	local node = action.attr.node;
 	local ok, ret = service:get_affiliation(stanza.attr.from, node)
 	
@@ -150,7 +158,7 @@ function handlers.set_create(origin, stanza, create)
 	return origin.send(reply);
 end
 
-function handlers.set_delete(origin, stanza, delete)
+function handlers_owner.set_delete(origin, stanza, delete)
 	local node = delete.attr.node;
 	local ok, ret, reply;
 	if node then
@@ -159,6 +167,7 @@ function handlers.set_delete(origin, stanza, delete)
 	else
 		reply = pubsub_error_reply(stanza, "bad-request");
 	end
+	return origin.send(reply);
 end
 
 function handlers.set_subscribe(origin, stanza, subscribe)
@@ -326,6 +335,7 @@ function process_config_form(self, name, form)
 end
 
 module:hook("iq/host/http://jabber.org/protocol/pubsub:pubsub", handle_pubsub_iq);
+module:hook("iq/host/http://jabber.org/protocol/pubsub#owner:pubsub", handle_pubsub_iq);
 
 local disco_info;
 
