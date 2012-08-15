@@ -24,6 +24,7 @@ function handle_pubsub_iq(event)
 	local origin, stanza = event.origin, event.stanza;
 	local pubsub = stanza.tags[1];
 	local action = pubsub.tags[1];
+	local config = (pubsub.tags[2] and pubsub.tags[2].name == "configure") and pubsub.tags[2];
 	local handler;
 
 	if pubsub.attr.xmlns == xmlns_pubsub_owner then
@@ -33,7 +34,7 @@ function handle_pubsub_iq(event)
 	end
 
 	if handler then
-		handler(origin, stanza, action);
+		if not config then handler(origin, stanza, action); else handler(origin, stanza, action, config); end
 		return true;
 	end
 end
@@ -132,11 +133,22 @@ function handlers_owner.set_configuration(origin, stanza, action)
 	return origin.send(reply);
 end
 
-function handlers.set_create(origin, stanza, create)
+function handlers.set_create(origin, stanza, create, config)
 	local node = create.attr.node;
 	local ok, ret, reply;
+
+	-- Compat with Jappix, until st. better is done.
+	if config then
+		local fields, open_publish = config:get_child("x", "jabber:x:data"), nil;
+		for _, field in ipairs(fields.tags) do
+			if field.attr.var == "pubsub#publish_model" and field:get_child_with_name("value") == "open" then
+				open_publish = true; break;
+			end
+		end
+	end			
+
 	if node then
-		ok, ret = service:create(node, stanza.attr.from);
+		ok, ret = service:create(node, stanza.attr.from, open_publish);
 		if ok then
 			reply = st.reply(stanza);
 		else
@@ -145,7 +157,7 @@ function handlers.set_create(origin, stanza, create)
 	else
 		repeat
 			node = uuid_generate();
-			ok, ret = service:create(node, stanza.attr.from);
+			ok, ret = service:create(node, stanza.attr.from, open_publish);
 		until ok or ret ~= "conflict";
 		if ok then
 			reply = st.reply(stanza)

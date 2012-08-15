@@ -61,6 +61,9 @@ function service:may(node, actor, action)
 			return can;
 		end
 	end
+
+	-- Jappix node open publish, temp. compat
+	if node_obj.config.open_publish and action == "publish" then return true; end
 	
 	return false;
 end
@@ -230,7 +233,7 @@ function service:get_subscription(node, actor, jid)
 	return true, node_obj.subscribers[jid];
 end
 
-function service:create(node, actor)
+function service:create(node, actor, config)
 	-- Access checking
 	if not self:may(node, actor, "create") then
 		return false, "forbidden";
@@ -247,6 +250,9 @@ function service:create(node, actor)
 		data = {};
 		affiliations = {};
 	};
+
+	-- Jappix temp. compat.
+	if config == true then self.nodes[node].config.open_publish = true; end
 
 	-- normalize jid
 	if type(actor) ~= "boolean" then actor = self.config.normalize_jid(actor); end
