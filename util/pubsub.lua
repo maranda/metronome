@@ -39,6 +39,9 @@ function service:may(node, actor, action)
 	local service_aff = self.affiliations[actor]
 	                 or self:get_affiliation(actor, node, action)
 	                 or "none";
+
+	-- Jappix node open publish, temp. compat
+	if node_obj and node_obj.config.open_publish and action == "publish" then return true; end
 	
 	-- Check if node allows/forbids it
 	local node_capabilities = node_obj and node_obj.capabilities;
@@ -61,9 +64,6 @@ function service:may(node, actor, action)
 			return can;
 		end
 	end
-
-	-- Jappix node open publish, temp. compat
-	if node_obj.config.open_publish and action == "publish" then return true; end
 	
 	return false;
 end

@@ -138,10 +138,11 @@ function handlers.set_create(origin, stanza, create, config)
 	local ok, ret, reply;
 
 	-- Compat with Jappix, until st. better is done.
+	local open_publish;
 	if config then
-		local fields, open_publish = config:get_child("x", "jabber:x:data"), nil;
+		local fields = config:get_child("x", "jabber:x:data");
 		for _, field in ipairs(fields.tags) do
-			if field.attr.var == "pubsub#publish_model" and field:get_child_with_name("value") == "open" then
+			if field.attr.var == "pubsub#publish_model" and field:get_child_text("value") == "open" then
 				open_publish = true; break;
 			end
 		end
