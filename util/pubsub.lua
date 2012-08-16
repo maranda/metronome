@@ -251,8 +251,12 @@ function service:create(node, actor, config)
 		affiliations = {};
 	};
 
-	-- Jappix temp. compat.
-	if config == true then self.nodes[node].config.open_publish = true; end
+	-- This is just a mockup for on creation config, FIXME.
+	if config then
+		for entry, value in pairs(config) do
+			self.nodes[node].config[entry] = value;
+		end
+	end
 
 	-- normalize jid
 	if type(actor) ~= "boolean" then actor = self.config.normalize_jid(actor); end

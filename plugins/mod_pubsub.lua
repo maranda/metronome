@@ -137,19 +137,27 @@ function handlers.set_create(origin, stanza, create, config)
 	local node = create.attr.node;
 	local ok, ret, reply;
 
-	-- Compat with Jappix, until st. better is done.
-	local open_publish;
+	local node_config;
 	if config then
+		node_config = {};
 		local fields = config:get_child("x", "jabber:x:data");
 		for _, field in ipairs(fields.tags) do
-			if field.attr.var == "pubsub#publish_model" and field:get_child_text("value") == "open" then
-				open_publish = true; break;
+			if field.attr.var == "pubsub#title" and field:get_child_text("value") then
+				node_config["title"] = field:get_child_text("value");
+			elseif field.attr.var == "pubsub#deliver_notifications" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
+				node_config["deliver_notifications"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
+			elseif field.attr.var == "pubsub#deliver_payloads" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
+				node_config["deliver_payloads"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
+			-- Not accepting persist_items directive for now.
+			-- Jappix compat, below
+			elseif field.attr.var == "pubsub#publish_model" and field:get_child_text("value") == "open" then
+				node_config["open_publish"] = true;
 			end
 		end
 	end			
 
 	if node then
-		ok, ret = service:create(node, stanza.attr.from, open_publish);
+		ok, ret = service:create(node, stanza.attr.from, node_config);
 		if ok then
 			reply = st.reply(stanza);
 		else
@@ -158,7 +166,7 @@ function handlers.set_create(origin, stanza, create, config)
 	else
 		repeat
 			node = uuid_generate();
-			ok, ret = service:create(node, stanza.attr.from, open_publish);
+			ok, ret = service:create(node, stanza.attr.from, node_config);
 		until ok or ret ~= "conflict";
 		if ok then
 			reply = st.reply(stanza)
