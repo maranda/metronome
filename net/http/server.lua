@@ -18,6 +18,7 @@ local sessions = {};
 local listener = {};
 local hosts = {};
 local default_host;
+local default_to_parent_hosts = {};
 
 local function is_wildcard_event(event)
 	return event:sub(-2, -1) == "/*";
@@ -174,7 +175,9 @@ function handle_request(conn, request, finish_cb)
 	if not request.path then
 		err_code, err = 400, "Invalid path";
 	elseif not hosts[host] then
-		if hosts[default_host] then
+		if hosts[default_to_parent_hosts[host]] then
+			host = default_to_parent_hosts[host];
+		elseif hosts[default_host] then
 			host = default_host;
 		elseif host then
 			err_code, err = 404, "Unknown host: "..host;
@@ -264,6 +267,13 @@ function _M.remove_host(host)
 end
 function _M.set_default_host(host)
 	default_host = host;
+end
+function _M.set_default_to_parent_hosts(hosts)
+	local _hosts = {};
+	for host in pairs(hosts._items) do
+		_hosts[host] = host:match("%.(.*)");
+	end
+	default_to_parent_hosts = _hosts;
 end
 
 _M.listener = listener;
