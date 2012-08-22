@@ -8,7 +8,7 @@ local url_build = require "socket.url".build;
 local server = require "net.http.server";
 
 server.set_default_host(module:get_option_string("http_default_host"));
-server.set_alias_hosts(module:get_option_array("http_alias_hosts", {}));
+server.set_alias_hosts(module:get_option_table("http_alias_hosts", {}));
 
 local function normalize_path(path)
 	if path:sub(-1,-1) == "/" then path = path:sub(1, -2); end

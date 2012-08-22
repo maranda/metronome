@@ -240,6 +240,21 @@ function api:get_option_set(name, ...)
 	return set.new(value);
 end
 
+function api:get_option_table(name, ...)
+	local value = self:get_option(name, ...);
+
+	if value == nil then
+		return nil;
+	end
+
+	if type(value) ~= "table" then
+		self:log("error", "Config option '%s' not understood, expecting a table", name);
+		return nil;
+	else
+		return value;
+	end
+end
+
 function api:add_item(key, value)
 	self.items = self.items or {};
 	self.items[key] = self.items[key] or {};
