@@ -907,31 +907,47 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 		and stanza.tags[1].name == "x" and stanza.tags[1].attr.xmlns == "http://jabber.org/protocol/muc#user" then
 		local x = stanza.tags[1];
 		local payload = (#x.tags == 1 and x.tags[1]);
-		if payload and payload.name == "invite" and payload.attr.to then
+		if payload and (payload.name == "invite" or payload.name == "decline") and payload.attr.to then
 			local _from, _to = stanza.attr.from, stanza.attr.to;
-			local _invitee = jid_prep(payload.attr.to);
-			if _invitee then
+			local _recipient = jid_prep(payload.attr.to);
+			if _recipient then
 				local _reason = payload.tags[1] and payload.tags[1].name == 'reason' and #payload.tags[1].tags == 0 and payload.tags[1][1];
-				local invite = st.message({from = _to, to = _invitee, id = stanza.attr.id})
-					:tag('x', {xmlns='http://jabber.org/protocol/muc#user'})
-						:tag('invite', {from=_from})
-							:tag('reason'):text(_reason or ""):up()
+				local invite, decline;
+				if payload.name == "invite" then
+					invite = st.message({from = _to, to = _recipient, id = stanza.attr.id})
+						:tag('x', {xmlns='http://jabber.org/protocol/muc#user'})
+							:tag('invite', {from=_from})
+								:tag('reason'):text(_reason or ""):up()
+							:up();
+							if self:get_password() then
+								invite:tag("password"):text(self:get_password()):up();
+							end
+						invite:up()
+						:tag('x', {xmlns="jabber:x:conference", jid=_to}) -- COMPAT: Some older clients expect this
+							:text(_reason or "")
+						:up()
+						:tag('body') -- Add a plain message for clients which don't support invites
+							:text(_from..' invited you to the room '.._to..(_reason and (' ('.._reason..')') or ""))
 						:up();
-						if self:get_password() then
-							invite:tag("password"):text(self:get_password()):up();
-						end
-					invite:up()
-					:tag('x', {xmlns="jabber:x:conference", jid=_to}) -- COMPAT: Some older clients expect this
-						:text(_reason or "")
-					:up()
-					:tag('body') -- Add a plain message for clients which don't support invites
-						:text(_from..' invited you to the room '.._to..(_reason and (' ('.._reason..')') or ""))
-					:up();
-				if self:is_members_only() and not self:get_affiliation(_invitee) then
-					log("debug", "%s invited %s into members only room %s, granting membership", _from, _invitee, _to);
-					self:set_affiliation(_from, _invitee, "member", nil, "Invited by " .. self._jid_nick[_from])
+					if self:is_members_only() and not self:get_affiliation(_invitee) then
+						log("debug", "%s invited %s into members only room %s, granting membership", _from, _recipient, _to);
+						self:set_affiliation(_from, _recipient, "member", nil, "Invited by " .. self._jid_nick[_from]);
+					end
+				else
+					decline = st.message({from = _to, to = _recipient, id = stanza.attr.id})
+						:tag('x', {xmlns='http://jabber.org/protocol/muc#user'})
+							:tag('decline', {from=_from})
+								:tag('reason'):text(_reason or ""):up()
+							:up();
+						decline:up()
+						:tag('x', {xmlns="jabber:x:conference", jid=_to}) -- COMPAT: Some older clients expect this
+							:text(_reason or "")
+						:up()
+						:tag('body') -- Add a plain message for clients which don't support invites
+							:text(_from..' declined your invite to the room '.._to..(_reason and (' ('.._reason..')') or ""))
+						:up();
 				end
-				self:_route_stanza(invite);
+				self:_route_stanza(invite or decline);
 			else
 				origin.send(st.error_reply(stanza, "cancel", "jid-malformed"));
 			end
