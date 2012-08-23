@@ -324,7 +324,7 @@ function commands.deluser(arg)
 	end
 	local user, host = arg[1]:match("([^@]+)@(.+)");
 	if not user and host then
-		show_message [[Failed to understand JID, please supply the JID you want to set the password for]]
+		show_message [[Failed to understand JID, please supply the JID you want to delete]]
 		show_usage [[passwd user@host]]
 		return 1;
 	end
@@ -339,13 +339,8 @@ function commands.deluser(arg)
 		show_warning("The user will not be able to log in until this is changed.");
 		hosts[host] = make_host(host);
 	end
-
-	if not metronomectl.user_exists { user = user, host = host } then
-		show_message [[That user does not exist on this server]]
-		return 1;
-	end
 	
-	local ok, msg = metronomectl.passwd { user = user, host = host };
+	local ok, msg = metronomectl.deluser { user = user, host = host };
 	
 	if ok then return 0; end
 	

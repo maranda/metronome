@@ -119,7 +119,7 @@ function show_prompt(prompt)
 end
 
 -- Server control
-function adduser(params)
+function controluser(params, action)
 	local user, host, password = nodeprep(params.user), nameprep(params.host), params.password;
 	if not user then
 		return false, "invalid-username";
@@ -137,40 +137,38 @@ function adduser(params)
 	end
 	storagemanager.initialize_host(host);
 	
-	local ok, errmsg = usermanager.create_user(user, password, host);
+	local ok, errmsg;
+	if action == "create" then
+		if not usermanager.user_exists(user, host) then
+			ok, errmsg = usermanager.create_user(user, password, host);
+		else
+			ok, errmsg = false, "user-already-exists";
+		end
+	elseif action == "delete" then
+		if usermanager.user_exists(user, host) then
+			ok, errmsg = usermanager.delete_user(user, host, "metronomectl");
+		else
+			ok, errmsg = false, "no-such-user";
+		end
+	elseif action == "passwd" then
+		if usermanager.user_exists(user, host) then
+			ok, errmsg = usermanager.set_password(user, password, host);
+		else
+			ok, errmsg = false, "no-such-user";
+		end
+	end
+
 	if not ok then
 		return false, errmsg;
 	end
 	return true;
 end
 
-function user_exists(params)
-	local user, host, password = nodeprep(params.user), nameprep(params.host), params.password;
-	local provider = metronome.hosts[host].users;
-	if not(provider) or provider.name == "null" then
-		usermanager.initialize_host(host);
-	end
-	storagemanager.initialize_host(host);
-	
-	return usermanager.user_exists(user, host);
-end
+function passwd(params)	return _M.controluser(params, "passwd"); end
 
-function passwd(params)
-	if not _M.user_exists(params) then
-		return false, "no-such-user";
-	end
-	
-	return _M.adduser(params);
-end
+function adduser(params) return _M.controluser(params, "create"); end
 
-function deluser(params)
-	if not _M.user_exists(params) then
-		return false, "no-such-user";
-	end
-	params.password = nil;
-	
-	return _M.adduser(params);
-end
+function deluser(params) return _M.controluser(params, "delete"); end
 
 function getpid()
 	local pidfile = config.get("*", "core", "pidfile");
