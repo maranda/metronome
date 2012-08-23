@@ -262,11 +262,6 @@ function commands.adduser(arg)
 		hosts[host] = make_host(host);
 	end
 	
-	if metronomectl.user_exists{ user = user, host = host } then
-		show_message [[That user already exists]];
-		return 1;
-	end
-	
 	local password = read_password();
 	if not password then return 1; end
 	
@@ -299,11 +294,6 @@ function commands.passwd(arg)
 		show_warning("The host '%s' is not listed in the configuration file (or is not enabled).", host)
 		show_warning("The user will not be able to log in until this is changed.");
 		hosts[host] = make_host(host);
-	end
-	
-	if not metronomectl.user_exists { user = user, host = host } then
-		show_message [[That user does not exist, use metronomectl adduser to create a new user]]
-		return 1;
 	end
 	
 	local password = read_password();
