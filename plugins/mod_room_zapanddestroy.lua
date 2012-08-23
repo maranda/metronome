@@ -1,6 +1,3 @@
---- "Zappy" Room destruction plugin for Prosody IM XMPP server,
---- Copyright 2011 Marco Cirillo (LW.Org)
-
 --- Adds a little fantasy to the API's room:destroy.
 --- let's have some fun when it comes to lynching lamers.
 

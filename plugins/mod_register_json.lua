@@ -1,9 +1,3 @@
--- Expose a simple servlet to handle user registrations from web pages
--- via JSON.
---
--- A Good chunk of the code is from mod_data_access.lua by Kim Alvefur
--- aka Zash.
-
 local jid_prep = require "util.jid".prep
 local jid_split = require "util.jid".split
 local usermanager = usermanager

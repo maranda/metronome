@@ -1,6 +1,3 @@
--- (C) 2011, Marco Cirillo (LW.Org)
--- Block or restrict by blacklist remote access to local components or hosts.
-
 module:set_global()
 
 local guard_blockall = module:get_option_set("host_guard_blockall", {})

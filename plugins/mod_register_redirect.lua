@@ -1,10 +1,3 @@
--- (C) 2010-2011 Marco Cirillo (LW.Org)
--- (C) 2011 Kim Alvefur
---
--- Registration Redirect module for Prosody
--- 
--- Redirects IP addresses not in the whitelist to a web page or another method to complete the registration.
-
 local st = require "util.stanza"
 local cman = configmanager
 

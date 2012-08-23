@@ -1,9 +1,3 @@
--- Copyright (C) 2010 Florian Zeitz
---
--- This file is MIT/X11 licensed. Please see the
--- COPYING file in the source package for more information.
---
-
 -- <session xmlns="http://lightwitch.org/metronome-prosody/streams/c2s" jid="alice@example.com/brussels">
 --   <encrypted/>
 --   <compressed/>

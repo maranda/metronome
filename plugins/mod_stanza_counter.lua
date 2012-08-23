@@ -1,6 +1,3 @@
--- (C) 2011, Marco Cirillo (LW.Org)
--- General Stanzas' Counter.
-
 local jid_bare = require "util.jid".bare
 
 -- Setup, Init functions.

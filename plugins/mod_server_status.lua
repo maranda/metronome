@@ -1,6 +1,3 @@
--- (C) 2011, Marco Cirillo (LW.Org)
--- Display server stats in readable XML or JSON format
-
 module:depends("http")
 
 local base_path = module:get_option_string("server_status_basepath", "/server-status/")
