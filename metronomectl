@@ -190,6 +190,7 @@ local error_messages = setmetatable({
 		["no-posix"] = "The mod_posix module is not enabled in the Metronome config file";
 		["no-such-method"] = "This module has no commands";
 		["not-running"] = "Metronome is not running";
+		["user-already-exists"] = "User already exists";
 		}, { __index = function (t,k) return "Error: "..(tostring(k):gsub("%-", " "):gsub("^.", string.upper)); end });
 
 hosts = metronome.hosts;
@@ -269,7 +270,7 @@ function commands.adduser(arg)
 	
 	if ok then return 0; end
 	
-	show_message(msg)
+	show_message(error_messages[msg])
 	return 1;
 end
 
