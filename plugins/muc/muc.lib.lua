@@ -1,5 +1,5 @@
 local select = select;
-local pairs, ipairs = pairs, ipairs;
+local pairs, ipairs, next = pairs, ipairs, next;
 
 local datetime = require "util.datetime";
 
@@ -903,8 +903,8 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 		elseif type ~= "error" and type ~= "result" then
 			origin.send(st.error_reply(stanza, "cancel", "service-unavailable"));
 		end
-	elseif stanza.name == "message" and not stanza.attr.type and #stanza.tags == 1 and self._jid_nick[stanza.attr.from]
-		and stanza.tags[1].name == "x" and stanza.tags[1].attr.xmlns == "http://jabber.org/protocol/muc#user" then
+	elseif stanza.name == "message" and not stanza.attr.type and #stanza.tags == 1 and 
+	       stanza.tags[1].name == "x" and stanza.tags[1].attr.xmlns == "http://jabber.org/protocol/muc#user" then
 		local x = stanza.tags[1];
 		local payload = (#x.tags == 1 and x.tags[1]);
 		if payload and (payload.name == "invite" or payload.name == "decline") and payload.attr.to then
@@ -913,7 +913,8 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 			if _recipient then
 				local _reason = payload.tags[1] and payload.tags[1].name == 'reason' and #payload.tags[1].tags == 0 and payload.tags[1][1];
 				local invite, decline;
-				if payload.name == "invite" then
+				local _bare_from, _inviter, _declineto = jid_bare(_from), self._jid_nick[_from], self._jid_nick[_recipient];
+				if payload.name == "invite" and _inviter then
 					invite = st.message({from = _to, to = _recipient, id = stanza.attr.id})
 						:tag('x', {xmlns='http://jabber.org/protocol/muc#user'})
 							:tag('invite', {from=_from})
@@ -929,14 +930,21 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 						:tag('body') -- Add a plain message for clients which don't support invites
 							:text(_from..' invited you to the room '.._to..(_reason and (' ('.._reason..')') or ""))
 						:up();
-					if self:is_members_only() and not self:get_affiliation(_invitee) then
+					if self:is_members_only() and not self:get_affiliation(_recipient) then
 						log("debug", "%s invited %s into members only room %s, granting membership", _from, _recipient, _to);
 						self:set_affiliation(_from, _recipient, "member", nil, "Invited by " .. self._jid_nick[_from]);
 					end
-				else
+					if self._occupants[_inviter] then
+						if not self._occupants[_inviter].invited_users then self._occupants[_inviter].invited_users = {}; end
+						self._occupants[_inviter].invited_users[_recipient] = true;
+					end 
+				elseif payload.name == "decline" and 
+				       self._occupants[_declineto] and 
+				       self._occupants[_declineto].invited_users and 
+				       self._occupants[_declineto].invited_users[_bare_from] then
 					decline = st.message({from = _to, to = _recipient, id = stanza.attr.id})
 						:tag('x', {xmlns='http://jabber.org/protocol/muc#user'})
-							:tag('decline', {from=_from})
+							:tag('decline', {from=_bare_from})
 								:tag('reason'):text(_reason or ""):up()
 							:up();
 						decline:up()
@@ -944,8 +952,12 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 							:text(_reason or "")
 						:up()
 						:tag('body') -- Add a plain message for clients which don't support formal declines
-							:text(_from..' declined your invite to the room '.._to..(_reason and (' ('.._reason..')') or ""))
+							:text(_bare_from..' declined your invite to the room '.._to..(_reason and (' ('.._reason..')') or ""))
 						:up();
+					self._occupants[_declineto].invited_users[_bare_from] = nil;
+					if not next(self._occupants[_declineto].invited_users) then self._occupants[_declineto].invited_users = nil; end
+				else
+					return;
 				end
 				self:_route_stanza(invite or decline);
 			else
