@@ -913,7 +913,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 			if _recipient then
 				local _reason = payload.tags[1] and payload.tags[1].name == 'reason' and #payload.tags[1].tags == 0 and payload.tags[1][1];
 				local invite, decline;
-				local _bare_from, _inviter, _declineto = jid_bare(_from), self._jid_nick[_from], self._jid_nick[_recipient];
+				local _from_bare, _inviter, _declineto = jid_bare(_from), self._jid_nick[_from], self._jid_nick[_recipient];
 				if payload.name == "invite" and _inviter then
 					invite = st.message({from = _to, to = _recipient, id = stanza.attr.id})
 						:tag('x', {xmlns='http://jabber.org/protocol/muc#user'})
@@ -941,10 +941,10 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 				elseif payload.name == "decline" and 
 				       self._occupants[_declineto] and 
 				       self._occupants[_declineto].invited_users and 
-				       self._occupants[_declineto].invited_users[_bare_from] then
+				       (self._occupants[_declineto].invited_users[_from] or self._occupants[_declineto].invited_users[_from_bare]) then
 					decline = st.message({from = _to, to = _recipient, id = stanza.attr.id})
 						:tag('x', {xmlns='http://jabber.org/protocol/muc#user'})
-							:tag('decline', {from=_bare_from})
+							:tag('decline', {from=_from})
 								:tag('reason'):text(_reason or ""):up()
 							:up();
 						decline:up()
@@ -952,9 +952,9 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 							:text(_reason or "")
 						:up()
 						:tag('body') -- Add a plain message for clients which don't support formal declines
-							:text(_bare_from..' declined your invite to the room '.._to..(_reason and (' ('.._reason..')') or ""))
+							:text(_from..' declined your invite to the room '.._to..(_reason and (' ('.._reason..')') or ""))
 						:up();
-					self._occupants[_declineto].invited_users[_bare_from] = nil;
+					self._occupants[_declineto].invited_users[_from] = nil; self._occupants[_declineto].invited_users[_from_bare] = nil;
 					if not next(self._occupants[_declineto].invited_users) then self._occupants[_declineto].invited_users = nil; end
 				else
 					return;
