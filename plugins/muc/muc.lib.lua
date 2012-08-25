@@ -501,13 +501,9 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						if not is_merge then
 							self:broadcast_except_nick(pr, to);
 						end
+						if self._data.whois == 'anyone' then pr:tag("status", {code='100'}):up(); end
 						pr:tag("status", {code='110'}):up();
-						if self:is_logging_enabled() then
-							pr:tag("status", {code='170'}):up();
-						end
-						if self._data.whois == 'anyone' then
-							pr:tag("status", {code='100'}):up();
-						end
+						if self:is_logging_enabled() then pr:tag("status", {code='170'}):up(); end
 						pr.attr.to = from;
 						self:_route_stanza(pr);
 						self:send_history(from, stanza);
@@ -614,7 +610,7 @@ function room_mt:get_form_layout()
 		{
 			name = 'muc#roomconfig_enablelogging',
 			type = 'boolean',
-			label = 'Enable room public logs?',
+			label = 'Enable room logging?',
 			value = self:is_logging_enabled()
 		},
 		{
