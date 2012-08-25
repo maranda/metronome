@@ -2,6 +2,7 @@ if module:get_host_type() ~= "component" then
 	error("MUC should be loaded as a component.", 0);
 end
 
+local mm = modulemanager;
 local muc_host = module:get_host();
 local muc_name = module:get_option("name");
 if type(muc_name) ~= "string" then muc_name = "Metronomical Chatrooms"; end
@@ -273,3 +274,6 @@ function shutdown_component()
 end
 module.unload = shutdown_component;
 module:hook_global("server-stopping", shutdown_component);
+
+-- load muc_log
+if not mm.is_loaded(muc_host, "muc_log") then mm.load(muc_host, "muc_log"); end

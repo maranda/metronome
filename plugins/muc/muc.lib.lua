@@ -318,6 +318,16 @@ end
 function room_mt:is_hidden()
 	return self._data.hidden;
 end
+function room_mt:set_logging_enabled(logging)
+	logging = logging and true or nil;
+	if self._data.logging ~= logging then
+		self._data.logging = logging;
+		if self.save then self:save(true); end
+	end
+end
+function room_mt:is_logging_enabled()
+	return self._data.logging;
+end
 function room_mt:set_changesubject(changesubject)
 	changesubject = changesubject and true or nil;
 	if self._data.changesubject ~= changesubject then
@@ -492,6 +502,9 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 							self:broadcast_except_nick(pr, to);
 						end
 						pr:tag("status", {code='110'}):up();
+						if self:is_logging_enabled() then
+							pr:tag("status", {code='170'}):up();
+						end
 						if self._data.whois == 'anyone' then
 							pr:tag("status", {code='100'}):up();
 						end
@@ -599,6 +612,12 @@ function room_mt:get_form_layout()
 			value = not self:is_hidden()
 		},
 		{
+			name = 'muc#roomconfig_enablelogging',
+			type = 'boolean',
+			label = 'Enable room public logs?',
+			value = self:is_logging_enabled()
+		},
+		{
 			name = 'muc#roomconfig_changesubject',
 			type = 'boolean',
 			label = 'Allow Occupants to Change Subject?',
@@ -681,11 +700,16 @@ function room_mt:process_form(origin, stanza)
 	module:log("debug", "membersonly=%s", tostring(membersonly));
 
 	local public = fields['muc#roomconfig_publicroom'];
-	dirty = dirty or (self:is_hidden() ~= (not public and true or nil))
+	dirty = dirty or (self:is_hidden() ~= (not public and true or nil));
+	module:log('debug', 'publicroom=%s', public and "true" or "false");
+
+	local logging = fields['muc#roomconfig_enablelogging'];
+	dirty = dirty or (self:is_logging_enabled() ~= (not logging and true or nil));
+	module:log('debug', 'enablelogging=%s', logging and "true" or "false");
 
 	local changesubject = fields['muc#roomconfig_changesubject'];
-	dirty = dirty or (self:get_changesubject() ~= (not changesubject and true or nil))
-	module:log('debug', 'changesubject=%s', changesubject and "true" or "false")
+	dirty = dirty or (self:get_changesubject() ~= (not changesubject and true or nil));
+	module:log('debug', 'changesubject=%s', changesubject and "true" or "false");
 
 	local historylength = tonumber(fields['muc#roomconfig_historylength']);
 	dirty = dirty or (historylength and (self:get_historylength() ~= historylength));
@@ -694,12 +718,15 @@ function room_mt:process_form(origin, stanza)
 
 	local whois = fields['muc#roomconfig_whois'];
 	if not valid_whois[whois] then
-	    origin.send(st.error_reply(stanza, 'cancel', 'bad-request', "Invalid value for 'whois'"));
-	    return;
+		return origin.send(st.error_reply(stanza, 'cancel', 'bad-request', "Invalid value for 'whois'"));
 	end
 	local whois_changed = self._data.whois ~= whois
 	self._data.whois = whois
 	module:log('debug', 'whois=%s', whois)
+
+	if not public and logging then
+		return origin.send(st.error_reply(stanza, 'cancel', 'forbidden', "You can enable logging only into public rooms!"));
+	end
 
 	local password = fields['muc#roomconfig_roomsecret'];
 	if self:get_password() ~= password then
@@ -709,6 +736,7 @@ function room_mt:process_form(origin, stanza)
 	self:set_members_only(membersonly);
 	self:set_persistent(persistent);
 	self:set_hidden(not public);
+	self:set_logging_enabled(logging);
 	self:set_changesubject(changesubject);
 	self:set_historylength(historylength);
 
@@ -725,6 +753,11 @@ function room_mt:process_form(origin, stanza)
 		if whois_changed then
 			local code = (whois == 'moderators') and "173" or "172";
 			msg.tags[1]:tag('status', {code = code}):up();
+		end
+		if logging then
+			msg.tags[1]:tag('status', {code = '170'}):up();
+		else
+			msg.tags[1]:tag('status', {code = '171'}):up();
 		end
 
 		self:broadcast_message(msg, false)
