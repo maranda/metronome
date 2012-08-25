@@ -1,0 +1,17 @@
+<div id="title">
+	<div id="date">###DATE###</div>
+	<div id="roomjid">###JID###</div>
+	<div id="links">(join via <a class="component" href="xmpp:###JID###?join">client</a>)</div>
+</div>
+<div id="calendar">
+	<div id="navigation">
+		###PREVIOUS_LINK### <a class="nav" href="../">^</a>###NEXT_LINK###
+	</div>
+	###CALENDAR###
+</div>
+<div id="topic">###TITLE_STUFF###</div>
+<br />
+<input id="toggleJoinLeave" type="checkbox" onclick="showHide('muc_joinLeave_container')" ###JOIN_CHECKED###/><label for="toggleJoinLeave">show/hide joins and leaves</label>
+<input id="toggleStatus" type="checkbox" onclick="showHide('muc_statusChange_container')" ###STATUS_CHECKED###/><label for="toggleStatus">show/hide status changes</label>
+<input id="toggleUTC" type="checkbox" onclick="changeTimeDisplay()" /><label for="toggleUTC">show time in local time, rather than in UTC</label>
+<div id="main">###DAY_STUFF###</div>

@@ -1,0 +1,113 @@
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" >
+<head>
+	<title>muc_log</title>
+</head>
+<script type="text/javascript"><!--
+var utc = true;
+var timezoneOffset = (parseInt((new Date()).getTimezoneOffset()) * 60) * (-1);
+function changeTimeDisplay() {
+    var eles = document.getElementsByName("time");
+    utc = !utc;
+    for (var i = 0; i < eles.length; i++) {
+        var tmp = eles[i].id.split(":");
+        var d;
+        if(tmp.length == 3) {
+            if(!utc)
+                tmp[2] = Number(tmp[2]) + timezoneOffset;
+            d = new Date(0, 0, 0, Number(tmp[0]), Number(tmp[1]), Number(tmp[2]));
+        }
+        else {
+            if(!utc)
+                tmp[0] = Number(tmp[0]) + timezoneOffset;
+            d = new Date(0, 0, 0, 0, 0, Number(tmp[0]));
+        }
+        
+        eles[i].innerHTML = (d.getHours() <= 9 ? "0" + d.getHours() : d.getHours()) + ":";
+        eles[i].innerHTML += (d.getMinutes() <= 9 ? "0" + d.getMinutes() : d.getMinutes()) + ":";
+        eles[i].innerHTML += (d.getSeconds() <= 9 ? "0" + d.getSeconds() : d.getSeconds());
+    }
+}
+
+function showHide(name) {
+	var eles = document.getElementsByClassName(name);
+	for (var i = 0; i < eles.length; i++) {
+		eles[i].style.display = eles[i].style.display != "none" ? "none" : "";
+	}
+}
+
+/* IE compat: */
+onload=function(){
+	if (document.getElementsByClassName == undefined) {
+		document.getElementsByClassName = function(className)
+		{
+			var hasClassName = new RegExp("(?:^|\\s)" + className + "(?:$|\\s)");
+			var allElements = document.getElementsByTagName("*");
+			var results = [];
+
+			var element;
+			for (var i = 0; (element = allElements[i]) != null; i++) {
+				var elementClass = element.className;
+				if (elementClass && elementClass.indexOf(className) != -1 && hasClassName.test(elementClass))
+					results.push(element);
+			}
+
+			return results;
+		}
+	}
+}
+--></script>
+<style type="text/css">
+#title {
+	border-bottom: #f29b00 solid 3pt; padding-bottom: 3px; width: 100%;
+	color: #000000; font-size: 24px; font-weight: bold; font-family: sans-serif; letter-spacing: 3px; text-decoration: none; margin-bottom: 3pt;
+}
+#date {
+	float: right;
+}
+#links {
+	font-size: 9px; font-family: Verdana; letter-spacing: 1px;
+}
+#topic {
+	color: #000000; font-size: 18px; font-family: sans-serif;
+}
+#calendar {float: right; margin-left: 10pt;}
+#navigation {text-align: center}
+#roomList {padding-left: 5px; padding-right: 5px; border: 1px solid black;}
+
+#main {overflow: auto; border: 2px solid gray; padding: 3px; margin-top: 1em}
+
+a {color: #6197df; text-decoration: none;}
+
+a.nav {color: #6197df; font-family: monospace; letter-spacing: 7px; font-size: 24px; text-decoration: none;}
+a.log {color: #6197df; text-decoration: none;}
+a.log_today {color: #f29b00; text-decoration: none;}
+
+.day { font: 12px Verdana; height: 17px; color: #BBBBBB}
+.weekday { font: 10px Verdana; height: 17px; color: #FFFFFF; background-color: #000000; margin-top: 50px;
+	padding-left: 5px; padding-right: 5px; padding-top: 3px; text-align: center;}
+.timestuff {color: #AAAAAA; text-decoration: none;}
+.muc_join {color: #009900; font-style: italic;}
+.muc_leave {color: #009900; font-style: italic;}
+.muc_statusChange {color: #009900; font-style: italic;}
+.muc_title {color: #BBBBBB; font-size: 32px;}
+.muc_titleChange {color: #009900; font-style: italic;}
+.muc_kick {color: #009900; font-style: italic;}
+.muc_bann {color: #009900; font-style: italic;}
+.muc_msg_nick {color: #0000AA;}
+.muc_msg_me {color: #0000AA;}
+.month_title {font: 10pt Verdana;}
+.year_title {font: bold 16px Verdana;}
+.footer {margin-top: 20pt; text-align: center;}
+
+label {margin-right: 2em}
+thead {font: 25pt bold; text-align: center}
+tbody {border: solid black 1px;}
+img {border: 0px}
+body {margin-left: 20pt; margin-right: 20pt;}
+</style>
+<body>
+###BODY_STUFF###
+<div class="footer"><img src="http://www.lightwitch.org/varlogos/eviltwin.png"/></div>
+</body>
+</html>
