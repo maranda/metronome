@@ -277,6 +277,9 @@ function _M.set_alias_hosts(hosts)
 	end
 	alias_hosts = _hosts;
 end
+function _M.fire_server_event(event, ...) 
+	return events.fire_event(event, ...); 
+end
 
 _M.listener = listener;
 _M.codes = codes;
