@@ -232,7 +232,7 @@ hosts[module:get_host()].muc = { rooms = rooms };
 local saved = false;
 module.save = function()
 	saved = true;
-	return {rooms = rooms};
+	return { rooms = rooms, admin_toggles = muclib.admin_toggles };
 end
 module.restore = function(data)
 	for jid, oldroom in pairs(data.rooms or {}) do
@@ -246,6 +246,7 @@ module.restore = function(data)
 		rooms[jid] = room;
 	end
 	hosts[module:get_host()].muc = { rooms = rooms };
+	muclib.admin_toggles = data.admin_toggles or {};
 end
 
 function shutdown_room(room, stanza)
