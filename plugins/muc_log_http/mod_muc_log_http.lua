@@ -96,7 +96,7 @@ local function generateRoomListSiteContent(component)
 	if metronome.hosts[component] and metronome.hosts[component].muc ~= nil then
 		for jid, room in pairs(metronome.hosts[component].muc.rooms) do
 			local node = splitJid(jid);
-			if not room._data.hidden and node then
+			if not room._data.hidden and room._data.logging and node then
 				rooms = rooms .. html.rooms.bit:gsub("###ROOM###", node):gsub("###COMPONENT###", component);
 			end
 		end
@@ -257,7 +257,7 @@ local function generateDayListSiteContentByRoom(bareRoomJid)
 		local found = 0;
 		for jid, room in pairs(metronome.hosts[host].muc.rooms) do
 			local node = splitJid(jid)
-			if not room._data.hidden and node then
+			if not room._data.hidden and room._data.logging and node then
 				if found == 0 then
 					previousRoom = node
 				elseif found == 1 then
@@ -273,8 +273,8 @@ local function generateDayListSiteContentByRoom(bareRoomJid)
 		end
 
 		room = metronome.hosts[host].muc.rooms[bareRoomJid];
-		if room._data.hidden then
-			room = nil
+		if room._data.hidden or not room._data.logging then
+			room = nil;
 		end
 	end
 	if attributes ~= nil and room ~= nil then

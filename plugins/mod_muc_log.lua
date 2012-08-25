@@ -19,9 +19,11 @@ local function checkDatastorePathExists(node, host, today, create)
 
 	-- check existance
 	local attributes, err = lfs.attributes(path);
-	if attributes == nil or attributes.mode ~= "directory" then
+	if (attributes == nil or attributes.mode ~= "directory") and not create then
 		module:log("warn", "muc_log folder isn't a folder: %s", path);
 		return false;
+	elseif attributes == nil and create then
+		lfs.mkdir(path);
 	end
 	
 	attributes, err = lfs.attributes(path .. "/" .. today);
@@ -56,6 +58,9 @@ function logIfNeeded(e)
 				local alreadyJoined = false;
 				
 				if room._data.hidden then -- do not log any data of private rooms
+					return;
+				end
+				if not room._data.logging then -- do not log where logging is not enabled
 					return;
 				end
 				
