@@ -49,7 +49,7 @@ local function search_get_handler(event)
 	local reply = st.reply(stanza)
 	reply:query("jabber:iq:search"):add_child(search_form_layout():form())
 	
-	return origin.send(reply)
+	origin.send(reply) ; return true
 end
 
 local function search_process_handler(event)
@@ -119,10 +119,11 @@ local function search_process_handler(event)
 					:tag("field", { var = "email" }):tag("value"):text(data.email):up():up():up();
 		end
 
-		return origin.send(reply)
+		origin.send(reply)
 	else
-		return origin.send(st.reply(stanza):query("jabber:iq:search"))
-	end				
+		origin.send(st.reply(stanza):query("jabber:iq:search"))
+	end
+	return true
 end
 
 local function disco_handler(event)
@@ -134,7 +135,7 @@ local function disco_handler(event)
 		:tag("feature", { var = "http://jabber.org/protocol/disco#info" }):up()
 		:tag("feature", { var = "jabber:iq:search" }):up();
 
-	return origin.send(disco_reply)
+	origin.send(disco_reply) ; return true
 end
 
 module:hook("iq-get/host/jabber:iq:search:query", search_get_handler)

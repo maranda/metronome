@@ -29,11 +29,11 @@ function reg_redirect(event)
 					module:log("error", "This module supports only http/https, mailto or xmpp as URL formats.")
 					module:log("error", "If you want to use personalized instructions without an Out-Of-Band method,")
 					module:log("error", "specify: register_oob = false; -- in your configuration along your banner string (register_text).")
-					return origin.send(st.error_reply(stanza, "wait", "internal-server-error")) -- bouncing request.
+					origin.send(st.error_reply(stanza, "wait", "internal-server-error")) ; return true -- bouncing request.
 				end
 			else
 				module:log("error", "Please check your configuration, the URL you specified is invalid")
-				return origin.send(st.error_reply(stanza, "wait", "internal-server-error")) -- bouncing request.
+				origin.send(st.error_reply(stanza, "wait", "internal-server-error")) ; return true -- bouncing request.
 			end
 		else
 			if admins_l then
@@ -46,14 +46,14 @@ function reg_redirect(event)
 				else
 					module:log("error", "Please be sure to, _at the very least_, configure one server administrator either global or hostwise...")
 					module:log("error", "if you want to use this module, or read it's configuration wiki at: http://code.google.com/p/prosody-modules/wiki/mod_register_redirect")
-					return origin.send(st.error_reply(stanza, "wait", "internal-server-error")) -- bouncing request.
+					origin.send(st.error_reply(stanza, "wait", "internal-server-error")) ; return true -- bouncing request.
 				end
 			end
 		end
 	elseif inst_text and url and oob then
 		if not url:match("^%w+[:].*$") then
 			module:log("error", "Please check your configuration, the URL specified is not valid.")
-			return origin.send(st.error_reply(stanza, "wait", "internal-server-error")) -- bouncing request.
+			origin.send(st.error_reply(stanza, "wait", "internal-server-error")) ; return true -- bouncing request.
 		end
 	end
 
@@ -77,10 +77,11 @@ function reg_redirect(event)
 	end
 	
 	if stanza.attr.type == "get" then
-		return origin.send(reply)
+		origin.send(reply)
 	else
-		return origin.send(st.error_reply(stanza, "cancel", "not-authorized"))
+		origin.send(st.error_reply(stanza, "cancel", "not-authorized"))
 	end
+	return true;
 end
 
 module:hook("stanza/iq/jabber:iq:register:query", reg_redirect, 10)
