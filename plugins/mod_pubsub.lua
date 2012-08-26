@@ -69,7 +69,7 @@ function handlers.get_configuration(origin, stanza, action)
 	else
 		reply = pubsub_error_reply(stanza, "forbidden");
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers.get_items(origin, stanza, items)
@@ -79,7 +79,7 @@ function handlers.get_items(origin, stanza, items)
 	
 	local ok, results = service:get_items(node, stanza.attr.from, id);
 	if not ok then
-		origin.send(pubsub_error_reply(stanza, results)); return true;
+		return origin.send(pubsub_error_reply(stanza, results));
 	end
 	
 	local data = st.stanza("items", { node = node });
@@ -94,14 +94,14 @@ function handlers.get_items(origin, stanza, items)
 	else
 		reply = pubsub_error_reply(stanza, "item-not-found");
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers.get_subscriptions(origin, stanza, subscriptions)
 	local node = subscriptions.attr.node;
 	local ok, ret = service:get_subscriptions(node, stanza.attr.from, stanza.attr.from);
 	if not ok then
-		origin.send(pubsub_error_reply(stanza, ret)); return true;
+		return origin.send(pubsub_error_reply(stanza, ret));
 	end
 	local reply = st.reply(stanza)
 		:tag("pubsub", { xmlns = xmlns_pubsub })
@@ -109,7 +109,7 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 	for _, sub in ipairs(ret) do
 		reply:tag("subscription", { node = sub.node, jid = sub.jid, subscription = 'subscribed' }):up();
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers_owner.set_configuration(origin, stanza, action)
@@ -133,7 +133,7 @@ function handlers_owner.set_configuration(origin, stanza, action)
 	else
 		reply = pubsub_error_reply(stanza, "forbidden");
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers.set_create(origin, stanza, create, config)
@@ -179,7 +179,7 @@ function handlers.set_create(origin, stanza, create, config)
 			reply = pubsub_error_reply(stanza, ret);
 		end
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers_owner.set_delete(origin, stanza, delete)
@@ -191,7 +191,7 @@ function handlers_owner.set_delete(origin, stanza, delete)
 	else
 		reply = pubsub_error_reply(stanza, "bad-request");
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers.set_subscribe(origin, stanza, subscribe)
@@ -239,7 +239,7 @@ function handlers.set_unsubscribe(origin, stanza, unsubscribe)
 	else
 		reply = pubsub_error_reply(stanza, ret);
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers.set_publish(origin, stanza, publish)
@@ -256,7 +256,7 @@ function handlers.set_publish(origin, stanza, publish)
 	else
 		reply = pubsub_error_reply(stanza, ret);
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers.set_retract(origin, stanza, retract)
@@ -274,7 +274,7 @@ function handlers.set_retract(origin, stanza, retract)
 	else
 		reply = pubsub_error_reply(stanza, ret);
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function broadcast(self, node, jids, item)
@@ -404,7 +404,7 @@ module:hook("iq-get/host/http://jabber.org/protocol/disco#info:query", function 
 	local origin, stanza = event.origin, event.stanza;
 	local node = stanza.tags[1].attr.node;
 	if not node then
-		origin.send(st.reply(stanza):add_child(disco_info));
+		return origin.send(st.reply(stanza):add_child(disco_info));
 	else
 		local ok, ret = service:get_nodes(stanza.attr.from);
 		if ok and not ret[node] then
@@ -416,9 +416,8 @@ module:hook("iq-get/host/http://jabber.org/protocol/disco#info:query", function 
 		local reply = st.reply(stanza)
 			:tag("query", { xmlns = "http://jabber.org/protocol/disco#info", node = node })
 				:tag("identity", { category = "pubsub", type = "leaf" });
-		origin.send(reply);
+		return origin.send(reply);
 	end
-	return true;
 end);
 
 local function handle_disco_items_on_node(event)
@@ -427,7 +426,7 @@ local function handle_disco_items_on_node(event)
 	local node = query.attr.node;
 	local ok, ret = service:get_items(node, stanza.attr.from);
 	if not ok then
-		origin.send(pubsub_error_reply(stanza, ret)); return true;
+		return origin.send(pubsub_error_reply(stanza, ret));
 	end
 	
 	local reply = st.reply(stanza)
@@ -437,7 +436,7 @@ local function handle_disco_items_on_node(event)
 		reply:tag("item", { jid = module.host, name = id }):up();
 	end
 	
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 
@@ -447,16 +446,15 @@ module:hook("iq-get/host/http://jabber.org/protocol/disco#items:query", function
 	end
 	local ok, ret = service:get_nodes(event.stanza.attr.from);
 	if not ok then
-		event.origin.send(pubsub_error_reply(stanza, ret));
+		return event.origin.send(pubsub_error_reply(stanza, ret));
 	else
 		local reply = st.reply(event.stanza)
 			:tag("query", { xmlns = "http://jabber.org/protocol/disco#items" });
 		for node, node_obj in pairs(ret) do
 			reply:tag("item", { jid = module.host, node = node, name = node_obj.config.name }):up();
 		end
-		event.origin.send(reply);
+		return event.origin.send(reply);
 	end
-	return true;
 end);
 
 local admin_aff = module:get_option_string("default_admin_affiliation", "owner");

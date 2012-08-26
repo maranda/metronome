@@ -78,7 +78,7 @@ function handlers.get_items(origin, stanza, items)
 	
 	local ok, results = services[user]:get_items(node, stanza.attr.from, id);
 	if not ok then
-		origin.send(pubsub_error_reply(stanza, results)); return true;
+		return origin.send(pubsub_error_reply(stanza, results));
 	end
 	
 	local data = st.stanza("items", { node = node });
@@ -92,7 +92,7 @@ function handlers.get_items(origin, stanza, items)
 	else
 		reply = pubsub_error_reply(stanza, "item-not-found");
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers.get_subscriptions(origin, stanza, subscriptions)
@@ -100,7 +100,7 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
 	local ok, ret = services[user]:get_subscriptions(node, stanza.attr.from, stanza.attr.from);
 	if not ok then
-		origin.send(pubsub_error_reply(stanza, ret)); return true;
+		return origin.send(pubsub_error_reply(stanza, ret));
 	end
 	local reply = st.reply(stanza)
 		:tag("pubsub", { xmlns = xmlns_pubsub })
@@ -108,7 +108,7 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 	for _, sub in ipairs(ret) do
 		reply:tag("subscription", { node = sub.node, jid = sub.jid, subscription = 'subscribed' }):up();
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers.set_create(origin, stanza, create)
@@ -135,7 +135,7 @@ function handlers.set_create(origin, stanza, create)
 			reply = pubsub_error_reply(stanza, ret);
 		end
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers.set_subscribe(origin, stanza, subscribe)
@@ -185,7 +185,7 @@ function handlers.set_unsubscribe(origin, stanza, unsubscribe)
 	else
 		reply = pubsub_error_reply(stanza, ret);
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers.set_publish(origin, stanza, publish)
@@ -215,7 +215,7 @@ function handlers.set_publish(origin, stanza, publish)
 		reply = pubsub_error_reply(stanza, ret);
 	end
 	
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function handlers.set_retract(origin, stanza, retract)
@@ -234,7 +234,7 @@ function handlers.set_retract(origin, stanza, retract)
 	else
 		reply = pubsub_error_reply(stanza, ret);
 	end
-	origin.send(reply); return true;
+	return origin.send(reply);
 end
 
 function broadcast(self, node, jids, item)
@@ -587,4 +587,3 @@ function module.restore(data)
 		services[id].config = pep_new;
 	end
 end
-
