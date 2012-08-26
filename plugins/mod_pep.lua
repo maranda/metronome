@@ -50,8 +50,7 @@ function handle_pubsub_iq(event)
 	if origin.username and origin.host and services[user].name == origin.username.."@"..origin.host then services[user].session = origin; end
 
 	if handler then
-		handler(origin, stanza, action);
-		return true;
+		return handler(origin, stanza, action);
 	end
 end
 
@@ -79,7 +78,7 @@ function handlers.get_items(origin, stanza, items)
 	
 	local ok, results = services[user]:get_items(node, stanza.attr.from, id);
 	if not ok then
-		return origin.send(pubsub_error_reply(stanza, results));
+		origin.send(pubsub_error_reply(stanza, results)); return true;
 	end
 	
 	local data = st.stanza("items", { node = node });
@@ -93,7 +92,7 @@ function handlers.get_items(origin, stanza, items)
 	else
 		reply = pubsub_error_reply(stanza, "item-not-found");
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers.get_subscriptions(origin, stanza, subscriptions)
@@ -101,7 +100,7 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
 	local ok, ret = services[user]:get_subscriptions(node, stanza.attr.from, stanza.attr.from);
 	if not ok then
-		return origin.send(pubsub_error_reply(stanza, ret));
+		origin.send(pubsub_error_reply(stanza, ret)); return true;
 	end
 	local reply = st.reply(stanza)
 		:tag("pubsub", { xmlns = xmlns_pubsub })
@@ -109,7 +108,7 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 	for _, sub in ipairs(ret) do
 		reply:tag("subscription", { node = sub.node, jid = sub.jid, subscription = 'subscribed' }):up();
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers.set_create(origin, stanza, create)
@@ -136,7 +135,7 @@ function handlers.set_create(origin, stanza, create)
 			reply = pubsub_error_reply(stanza, ret);
 		end
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers.set_subscribe(origin, stanza, subscribe)
@@ -173,6 +172,7 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 			end
 		end
 	end
+	return true;
 end
 
 function handlers.set_unsubscribe(origin, stanza, unsubscribe)
@@ -185,7 +185,7 @@ function handlers.set_unsubscribe(origin, stanza, unsubscribe)
 	else
 		reply = pubsub_error_reply(stanza, ret);
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers.set_publish(origin, stanza, publish)
@@ -215,7 +215,7 @@ function handlers.set_publish(origin, stanza, publish)
 		reply = pubsub_error_reply(stanza, ret);
 	end
 	
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers.set_retract(origin, stanza, retract)
@@ -234,7 +234,7 @@ function handlers.set_retract(origin, stanza, retract)
 	else
 		reply = pubsub_error_reply(stanza, ret);
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function broadcast(self, node, jids, item)

@@ -34,8 +34,11 @@ function handle_pubsub_iq(event)
 	end
 
 	if handler then
-		if not config then handler(origin, stanza, action); else handler(origin, stanza, action, config); end
-		return true;
+		if not config then 
+			return handler(origin, stanza, action); 
+		else 
+			return handler(origin, stanza, action, config); 
+		end
 	end
 end
 
@@ -66,7 +69,7 @@ function handlers.get_configuration(origin, stanza, action)
 	else
 		reply = pubsub_error_reply(stanza, "forbidden");
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers.get_items(origin, stanza, items)
@@ -76,7 +79,7 @@ function handlers.get_items(origin, stanza, items)
 	
 	local ok, results = service:get_items(node, stanza.attr.from, id);
 	if not ok then
-		return origin.send(pubsub_error_reply(stanza, results));
+		origin.send(pubsub_error_reply(stanza, results)); return true;
 	end
 	
 	local data = st.stanza("items", { node = node });
@@ -91,14 +94,14 @@ function handlers.get_items(origin, stanza, items)
 	else
 		reply = pubsub_error_reply(stanza, "item-not-found");
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers.get_subscriptions(origin, stanza, subscriptions)
 	local node = subscriptions.attr.node;
 	local ok, ret = service:get_subscriptions(node, stanza.attr.from, stanza.attr.from);
 	if not ok then
-		return origin.send(pubsub_error_reply(stanza, ret));
+		origin.send(pubsub_error_reply(stanza, ret)); return true;
 	end
 	local reply = st.reply(stanza)
 		:tag("pubsub", { xmlns = xmlns_pubsub })
@@ -106,7 +109,7 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 	for _, sub in ipairs(ret) do
 		reply:tag("subscription", { node = sub.node, jid = sub.jid, subscription = 'subscribed' }):up();
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers_owner.set_configuration(origin, stanza, action)
@@ -130,7 +133,7 @@ function handlers_owner.set_configuration(origin, stanza, action)
 	else
 		reply = pubsub_error_reply(stanza, "forbidden");
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers.set_create(origin, stanza, create, config)
@@ -176,7 +179,7 @@ function handlers.set_create(origin, stanza, create, config)
 			reply = pubsub_error_reply(stanza, ret);
 		end
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers_owner.set_delete(origin, stanza, delete)
@@ -188,7 +191,7 @@ function handlers_owner.set_delete(origin, stanza, delete)
 	else
 		reply = pubsub_error_reply(stanza, "bad-request");
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers.set_subscribe(origin, stanza, subscribe)
@@ -224,6 +227,7 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 			end
 		end
 	end
+	return true;
 end
 
 function handlers.set_unsubscribe(origin, stanza, unsubscribe)
@@ -235,7 +239,7 @@ function handlers.set_unsubscribe(origin, stanza, unsubscribe)
 	else
 		reply = pubsub_error_reply(stanza, ret);
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers.set_publish(origin, stanza, publish)
@@ -252,7 +256,7 @@ function handlers.set_publish(origin, stanza, publish)
 	else
 		reply = pubsub_error_reply(stanza, ret);
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function handlers.set_retract(origin, stanza, retract)
@@ -270,7 +274,7 @@ function handlers.set_retract(origin, stanza, retract)
 	else
 		reply = pubsub_error_reply(stanza, ret);
 	end
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 function broadcast(self, node, jids, item)
@@ -400,20 +404,21 @@ module:hook("iq-get/host/http://jabber.org/protocol/disco#info:query", function 
 	local origin, stanza = event.origin, event.stanza;
 	local node = stanza.tags[1].attr.node;
 	if not node then
-		return origin.send(st.reply(stanza):add_child(disco_info));
+		origin.send(st.reply(stanza):add_child(disco_info));
 	else
 		local ok, ret = service:get_nodes(stanza.attr.from);
 		if ok and not ret[node] then
 			ok, ret = false, "item-not-found";
 		end
 		if not ok then
-			return origin.send(pubsub_error_reply(stanza, ret));
+			origin.send(pubsub_error_reply(stanza, ret)); return true;
 		end
 		local reply = st.reply(stanza)
 			:tag("query", { xmlns = "http://jabber.org/protocol/disco#info", node = node })
 				:tag("identity", { category = "pubsub", type = "leaf" });
-		return origin.send(reply);
+		origin.send(reply);
 	end
+	return true;
 end);
 
 local function handle_disco_items_on_node(event)
@@ -422,7 +427,7 @@ local function handle_disco_items_on_node(event)
 	local node = query.attr.node;
 	local ok, ret = service:get_items(node, stanza.attr.from);
 	if not ok then
-		return origin.send(pubsub_error_reply(stanza, ret));
+		origin.send(pubsub_error_reply(stanza, ret)); return true;
 	end
 	
 	local reply = st.reply(stanza)
@@ -432,7 +437,7 @@ local function handle_disco_items_on_node(event)
 		reply:tag("item", { jid = module.host, name = id }):up();
 	end
 	
-	return origin.send(reply);
+	origin.send(reply); return true;
 end
 
 
