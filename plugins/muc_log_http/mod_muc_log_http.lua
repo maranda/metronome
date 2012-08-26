@@ -668,8 +668,8 @@ function handle_request(event)
 				return response:send(handle_error(code, err));
 			end
 			response.status_code = 301;
-			response.headers = { ["Location"] = request.url.path:match("^/muc_log/+[^/]*").."/20"..y.."-"..m.."-"..d.."/" };
-			response:send();
+			response.headers = { ["Location"] = request.url.path:match("^/"..urlBase.."/+[^/]*").."/20"..y.."-"..m.."-"..d.."/" };
+			return response:send();
 		end
 
 		local body = createDoc(parseDay(node.."@"..my_host, room._data.subject or "", day));
