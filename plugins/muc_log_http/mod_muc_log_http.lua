@@ -637,17 +637,24 @@ function handle_request(event)
 	if day  == "" then day  = nil; end
 
 	node = urldecode(node);
-	local code, err;
+	local code, err, room;
 
 	if not html.doc then 
 		code, err = 500, "Muc Theme is not loaded.";
 		return response:send(handle_error(code, err));
 	end
 
-	if node and not hosts[my_host].modules.muc.rooms[node.."@"..my_host] then
+	
+	if node then room = hosts[my_host].modules.muc.rooms[node.."@"..my_host]; end
+	if node and not room then
 		code, err = 404, "Room doesn't exist.";
 		return response:send(handle_error(code, err));
 	end
+	if room and (room._data.hidden or not room._data.logging) then
+		code, err = 404, "There're no logs for this room.";
+		return response:send(handle_error(code, err));
+	end
+
 
 	if not node then -- room list for component
 		return response:send(createDoc(generateRoomListSiteContent(my_host))); 
@@ -664,8 +671,8 @@ function handle_request(event)
 			response.headers = { ["Location"] = request.url.path:match("^/muc_log/+[^/]*").."/20"..y.."-"..m.."-"..d.."/" };
 			response:send();
 		end
-		local room = hosts[my_host].modules.muc.rooms[node.."@"..my_host];
-		body = createDoc(parseDay(node.."@"..my_host, room._data.subject or "", day));
+
+		local body = createDoc(parseDay(node.."@"..my_host, room._data.subject or "", day));
 		if body == "" then
 			code, err = 404, "Day entry doesn't exist.";
 			return response:send(handle_error(code, err));
