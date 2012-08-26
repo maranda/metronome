@@ -119,6 +119,7 @@ function room_mt:broadcast_message(stanza, historic)
 	end
 	stanza.attr.to = to;
 	if historic then -- add to history
+		if not stanza:get_child("body") then return; end -- empty state notification?
 		local history = self._data['history'];
 		if not history then history = {}; self._data['history'] = history; end
 		stanza = st.clone(stanza);
