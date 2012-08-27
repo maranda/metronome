@@ -314,4 +314,6 @@ function purge(username, host)
 	return deleted > 0, deleted;
 end
 
+_M.path_decode = decode;
+_M.path_encode = encode;
 return _M;
