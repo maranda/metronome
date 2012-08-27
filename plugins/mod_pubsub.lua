@@ -47,6 +47,7 @@ local pubsub_errors = {
 	["invalid-jid"] = { "modify", "bad-request", nil, "invalid-jid" };
 	["item-not-found"] = { "cancel", "item-not-found" };
 	["not-subscribed"] = { "modify", "unexpected-request", nil, "not-subscribed" };
+	["feature-not-implemented"] = { "cancel", "feature-not-implemented" };
 	["forbidden"] = { "cancel", "forbidden" };
 	["bad-request"] = { "cancel", "bad-request" };
 };
@@ -59,17 +60,19 @@ function pubsub_error_reply(stanza, error)
 	return reply;
 end
 
-function handlers.get_configuration(origin, stanza, action)
+function handlers_owner.get_configure(origin, stanza, action)
 	local node = action.attr.node;
-	local ok, ret = service:get_affiliation(stanza.attr.from, node)
-	
-	local reply;
-	if ret == "owner" then
-		reply = service:send_node_config_form(node);
-	else
-		reply = pubsub_error_reply(stanza, "forbidden");
+	if not node then
+		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
 	end
-	return origin.send(reply);
+
+	local ok, ret = service:get_affiliation(stanza.attr.from, node);
+
+	if ret == "owner" then
+		return service:send_node_config_form(node, origin, stanza);
+	else
+		return origin.send(pubsub_error_reply(stanza, "forbidden"));
+	end
 end
 
 function handlers.get_items(origin, stanza, items)
@@ -112,8 +115,12 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 	return origin.send(reply);
 end
 
-function handlers_owner.set_configuration(origin, stanza, action)
+function handlers_owner.set_configure(origin, stanza, action)
 	local node = action.attr.node;
+	if not node then
+		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
+	end
+
 	local ok, ret = service:get_affiliation(stanza.attr.from, node)
 	
 	local reply;
@@ -307,7 +314,7 @@ function form_layout(self, name)
 	local c_name = "Node configuration for "..name;
 	local node = self.nodes[name];
 
-	return dataform.new({
+	return dataforms.new({
 		title = c_name,
 		instructions = c_name,
 		{
@@ -342,8 +349,12 @@ function form_layout(self, name)
 	});
 end
 
-function send_config_form(self, name)
-	return self:node_config_form_layout(name):data();
+function send_config_form(self, name, origin, stanza)
+	return origin.send(st.reply(stanza)
+		:tag("pubsub", { xmlns = "http://jabber.org/protocol/pubsub#owner" })
+			:tag("configure", { node = name })
+				:add_child(self:node_config_form_layout(name):form()):up()
+	);
 end
 
 function process_config_form(self, name, form)
@@ -464,6 +475,11 @@ local function get_affiliation(self, jid, name, action)
 	local bare_jid = jid_bare(jid);
 	local service_host = module.host;
 	if use_parents_creds then service_host = service_host:match("^[%w+]*%.(.*)"); end
+	local is_server_admin;
+
+	if bare_jid == module.host or usermanager.is_admin(bare_jid, service_host) or pubsub_admins:contains(bare_jid) then
+		is_server_admin = admin_aff;
+	end
 
 	-- check first if this is a node config check
 	if name and action == nil then
@@ -471,12 +487,8 @@ local function get_affiliation(self, jid, name, action)
 		if not node then 
 			return false, "item-not-found";
 		else
-			return true, node.affiliations[bare_jid] or "none";
+			return true, is_server_admin or node.affiliations[bare_jid] or "none";
 		end
-	end
-
-	if bare_jid == module.host or usermanager.is_admin(bare_jid, service_host) or pubsub_admins:contains(bare_jid) then
-		return admin_aff;
 	end
 end
 

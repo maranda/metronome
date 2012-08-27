@@ -72,8 +72,8 @@ function service:broadcaster(node, subscribers, item)
 	return self.config.broadcaster(self, node, subscribers, item);
 end
 
-function service:send_node_config_form(name, actor)
-	return self.config.send_node_config_form(self, name, actor);
+function service:send_node_config_form(name, origin, stanza, actor)
+	return self.config.send_node_config_form(self, name, origin, stanza, actor);
 end
 
 function service:node_config_form_layout(name)
