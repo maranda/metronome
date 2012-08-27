@@ -31,10 +31,8 @@ local lfs = require "lfs";
 local html = {};
 local theme;
 
--- encoding function ported from dm
-local urlcodes = setmetatable({}, { __index = function (t, k) t[k] = strchar(tonumber("0x"..k)); return t[k]; end });
-local p_decode = function (s) return s and (s:gsub("+", " "):gsub("%%([a-fA-F0-9][a-fA-F0-9])", urlcodes)); end
-local p_encode = function (s) return s and (s:gsub("%W", function (c) return str_format("%%%02x", c:byte()); end)); end
+-- encoding function
+local p_encode = datamanager.path_encode;
 
 local function checkDatastorePathExists(node, host, today, create)
 	create = create or false;
