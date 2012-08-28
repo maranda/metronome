@@ -224,8 +224,8 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 	return true;
 end
 
-function handlers_owner.set_purge(origin, stanza, delete)
-	local node = delete.attr.node;
+function handlers_owner.set_purge(origin, stanza, purge)
+	local node = purge.attr.node;
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
 	local ok, ret, reply;
 	if node then

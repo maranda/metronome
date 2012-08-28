@@ -204,7 +204,7 @@ function handlers_owner.set_delete(origin, stanza, delete)
 end
 
 function handlers_owner.set_purge(origin, stanza, purge)
-	local node = delete.attr.node;
+	local node = purge.attr.node;
 	local ok, ret, reply;
 	if node then
 		ok, ret = service:purge(node, stanza.attr.from);
