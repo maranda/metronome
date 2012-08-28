@@ -323,6 +323,23 @@ function service:publish(node, actor, id, item)
 	return true;
 end
 
+function service:purge(node, actor)
+	-- Check for access
+	if not self:may(node, actor, "purge") then
+		return false, "forbidden";
+	end
+	
+	if not self.nodes[node] then
+		return false, "item-not-found";
+	else
+		self.nodes[node].data = {};
+		self.nodes[node].data_id = {};
+		self:save_node(node);
+		self:broadcaster(node, subscribers, "purged");
+		return true;
+	end
+end
+
 function service:retract(node, actor, id, retract)
 	-- Access checking
 	if not self:may(node, actor, "retract") then
