@@ -539,6 +539,7 @@ set_service(pubsub.new({
 			configure = false;
 			delete = false;
 			publish = false;
+			purge = false;
 			retract = false;
 			get_nodes = true;
 			
@@ -563,6 +564,7 @@ set_service(pubsub.new({
 			configure = false;
 			delete = false;
 			publish = true;
+			purge = false;
 			retract = true;
 			get_nodes = true;
 			
@@ -587,6 +589,7 @@ set_service(pubsub.new({
 			configure = true;
 			delete = true;
 			publish = true;
+			purge = true;
 			retract = true;
 			get_nodes = true;
 			
