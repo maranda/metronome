@@ -5,6 +5,7 @@ local st = require "util.stanza";
 local jid_bare = require "util.jid".bare;
 local uuid_generate = require "util.uuid".generate;
 local dataforms = require "util.dataforms";
+local array = require "util.array";
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
@@ -79,16 +80,16 @@ function handlers.get_items(origin, stanza, items)
 	local node = items.attr.node;
 	local item = items:get_child("item");
 	local id = item and item.attr.id;
+	local max = item and item.attr.max_items;
 	
-	local ok, results = service:get_items(node, stanza.attr.from, id);
+	local ok, results, max_tosend = service:get_items(node, stanza.attr.from, id, max);
 	if not ok then
 		return origin.send(pubsub_error_reply(stanza, results));
 	end
 	
 	local data = st.stanza("items", { node = node });
-	for _, entry in pairs(results) do
-		data:add_child(entry);
-	end
+	for _, id in ipairs(array(max_tosend):reverse()) do data:add_child(results[id]); end
+
 	local reply;
 	if data then
 		reply = st.reply(stanza)
@@ -158,13 +159,14 @@ function handlers.set_create(origin, stanza, create, config)
 				node_config["deliver_notifications"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
 			elseif field.attr.var == "pubsub#deliver_payloads" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
 				node_config["deliver_payloads"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
-			-- Not accepting persist_items directive for now.
-			-- Jappix compat, below
+			elseif field.attr.var == "pubsub#persist_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
+				node_config["persist_items"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
+			-- Jappix compat below.
 			elseif field.attr.var == "pubsub#publish_model" and field:get_child_text("value") == "open" then
 				node_config["open_publish"] = true;
 			end
 		end
-	end			
+	end
 
 	if node then
 		ok, ret = service:create(node, stanza.attr.from, node_config);
@@ -226,11 +228,11 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 	origin.send(reply);
 	if ok then
 		-- Send all current items
-		local ok, items = service:get_items(node, stanza.attr.from);
+		local ok, items, orderly = service:get_items(node, stanza.attr.from);
 		if items then
 			local jids = { [jid] = options or true };
-			for id, item in pairs(items) do
-				service:broadcaster(node, jids, item);
+			for _, id in ipairs(array(orderly):reverse()) do
+				service:broadcaster(node, jids, items[id]);
 			end
 		end
 	end
@@ -435,7 +437,7 @@ local function handle_disco_items_on_node(event)
 	local stanza, origin = event.stanza, event.origin;
 	local query = stanza.tags[1];
 	local node = query.attr.node;
-	local ok, ret = service:get_items(node, stanza.attr.from);
+	local ok, ret, orderly = service:get_items(node, stanza.attr.from);
 	if not ok then
 		return origin.send(pubsub_error_reply(stanza, ret));
 	end
@@ -443,7 +445,7 @@ local function handle_disco_items_on_node(event)
 	local reply = st.reply(stanza)
 		:tag("query", { xmlns = "http://jabber.org/protocol/disco#items", node = node });
 	
-	for id, item in pairs(ret) do
+	for _, id in ipairs(array(orderly):reverse()) do
 		reply:tag("item", { jid = module.host, name = id }):up();
 	end
 	
