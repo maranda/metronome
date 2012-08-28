@@ -1,5 +1,7 @@
 local events = require "util.events";
 local keys = require "util.iterators".keys;
+local st = require "util.stanza";
+local table = table;
 
 module("pubsub", package.seeall);
 
@@ -248,6 +250,7 @@ function service:create(node, actor, config)
 		subscribers = {};
 		config = self.config.node_default_config or {};
 		data = {};
+		data_id = {};
 		affiliations = {};
 	};
 
@@ -306,6 +309,7 @@ function service:publish(node, actor, id, item)
 		node_obj = self.nodes[node];
 	end
 	node_obj.data[id] = item;
+	table.insert(node_obj.data_id, id);
 	if (node_obj.config.deliver_notifications or node_obj.config.deliver_notifications == nil) and
 	   (node_obj.config.deliver_payloads or node_obj.config.deliver_payloads == nil) then
 		self:broadcaster(node, node_obj.subscribers, item);
@@ -330,6 +334,10 @@ function service:retract(node, actor, id, retract)
 		return false, "item-not-found";
 	end
 	node_obj.data[id] = nil;
+	for index, value in ipairs(node_obj.data_id) do
+		if value == id then table.remove(node_obj.data_id, index); end
+	end
+
 	if retract and (node_obj.config.deliver_notifications or node_obj.config.deliver_notifications == nil) then
 		-- Should deliver notifications be respected in this case?
 		self:broadcaster(node, node_obj.subscribers, retract);
@@ -338,7 +346,7 @@ function service:retract(node, actor, id, retract)
 	return true;
 end
 
-function service:get_items(node, actor, id)
+function service:get_items(node, actor, id, max)
 	-- Access checking
 	if not self:may(node, actor, "get_items") then
 		return false, "forbidden";
@@ -348,18 +356,35 @@ function service:get_items(node, actor, id)
 	if not node_obj then
 		return false, "item-not-found";
 	end
+
+	if id and max then
+		return false, "bad-request";
+	end
+
+	local function calculate_last_items(data_id, max)
+		local from_item = #data_id - max;
+		local _data_id = {};
+		for index, id in ipairs(data_id) do
+			if index <= from_item then table.insert(_data_id, id); end
+		end
+		return _data_id;
+	end
+
+	local _data_id;
 	if id then -- Restrict results to a single specific item
 		return true, { [id] = node_obj.data[id] };
 	else
 		if node_obj.config.deliver_payloads or node_obj.config.deliver_payloads == nil then
-			return true, node_obj.data;
+			if max then _data_id = calculate_last_items(node_obj.data_id, max); end	
+			return true, node_obj.data, _data_id or node_obj.data_id;
 		else
 			local data_copy = node_obj.data;
 			for id, stanza in pairs(data_copy) do -- reset objects tags
 				for i=1,#stanza do stanza[i] = nil end
 				stanza.attr.xmlns = nil;
 			end
-			return true, data_copy;
+			if max then _data_id = calculate_last_items(node_obj.data_id, max); end
+			return true, data_copy, _data_id or node_obj.data_id;
 		end
 	end
 end
@@ -481,6 +506,7 @@ function service:save_node(node)
 		affiliations = node_obj.affiliations;
 		config = node_obj.config;
 		data = saved_data;
+		data_id = node_obj.data_id;
 	});
 	return true;
 end
@@ -504,6 +530,7 @@ function service:restore_node(node)
 		affiliations = data.affiliations;
 		config = data.config;
 		data = restored_data;
+		data_id = data.data_id;
 	};
 	for id, item in pairs(data.data) do
 		restored_data[id] = st.deserialize(item);
