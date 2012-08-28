@@ -179,7 +179,7 @@ function handlers_owner.set_delete(origin, stanza, delete)
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
 	local ok, ret, reply;
 	if node then
-		ok, ret = service[user]:delete(node, stanza.attr.from);
+		ok, ret = services[user]:delete(node, stanza.attr.from);
 		if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
 	else
 		reply = pubsub_error_reply(stanza, "bad-request");
@@ -229,7 +229,7 @@ function handlers_owner.set_purge(origin, stanza, purge)
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
 	local ok, ret, reply;
 	if node then
-		ok, ret = service[user]:purge(node, stanza.attr.from);
+		ok, ret = services[user]:purge(node, stanza.attr.from);
 		if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
 	else
 		reply = pubsub_error_reply(stanza, "bad-request");
@@ -300,8 +300,6 @@ function handlers.set_retract(origin, stanza, retract)
 end
 
 function broadcast(self, node, jids, item)
-	item = st.clone(item);
-	item.attr.xmlns = nil; -- Clear the pubsub namespace
 	local message;
 	if type(item) == "string" and item == "deleted" then
 		message = st.message({ from = self.name, type = "headline" })
@@ -312,6 +310,8 @@ function broadcast(self, node, jids, item)
 			:tag("event", { xmlns = xmlns_pubsub_event })
 				:tag("purged", { node = node });
 	else
+		item = st.clone(item);
+		item.attr.xmlns = nil; -- Clear pubsub ns
 		message = st.message({ from = self.name, type = "headline" })
 			:tag("event", { xmlns = xmlns_pubsub_event })
 				:tag("items", { node = node })
@@ -336,6 +336,7 @@ function broadcast(self, node, jids, item)
 end
 
 module:hook("iq/bare/http://jabber.org/protocol/pubsub:pubsub", handle_pubsub_iq);
+module:hook("iq/bare/http://jabber.org/protocol/pubsub#owner:pubsub", handle_pubsub_iq);
 
 local disco_info;
 
@@ -572,6 +573,7 @@ function set_service(new_service, jid)
 	services[jid]["recipients"] = {};
 	module.environment.services[jid] = services[jid];
 	disco_info = build_disco_info(services[jid]);
+	services[jid]:restore();
 end
 
 local function normalize_dummy(jid)
@@ -585,17 +587,8 @@ function pep_new(node)
 	local p_attributes = lfs.attributes(path);
 	local pp_attributes = lfs.attributes(pre_path);
 
-	if pp_attributes == nil then
-		lfs.mkdir(pre_path);
-	elseif pp_attributes ~= "directory" then
-		module:log("error", "failed to create main pep datastore, another file already exists in it's place");
-	end
-
-	if attributes == nil then
-		lfs.mkdir(path);
-	elseif attributes ~= "directory" then
-		module:log("error", "failed to create store directory! for %s, another file already exists.", node);
-	end
+	if pp_attributes == nil then lfs.mkdir(pre_path); end
+	if attributes == nil then lfs.mkdir(path); end
 
 	local new_service = {
 			capabilities = {

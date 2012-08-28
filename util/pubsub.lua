@@ -286,6 +286,7 @@ function service:delete(node, actor)
 		local subscribers = self.nodes[node].subscribers;
 		self:purge_node(node);
 		self.nodes[node] = nil;
+		self:save()
 		self:broadcaster(node, subscribers, "deleted");
 		return true;
 	end
@@ -332,6 +333,7 @@ function service:purge(node, actor)
 	if not self.nodes[node] then
 		return false, "item-not-found";
 	else
+		local subscribers = self.nodes[node].subscribers;
 		self.nodes[node].data = {};
 		self.nodes[node].data_id = {};
 		self:save_node(node);
@@ -389,7 +391,7 @@ function service:get_items(node, actor, id, max)
 
 	local _data_id;
 	if id then -- Restrict results to a single specific item
-		return true, { [id] = node_obj.data[id] };
+		return true, { [id] = node_obj.data[id] }, { [1] = id };
 	else
 		if node_obj.config.deliver_payloads or node_obj.config.deliver_payloads == nil then
 			if max then _data_id = calculate_last_items(node_obj.data_id, max); end	
