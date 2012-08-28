@@ -492,6 +492,12 @@ local function get_affiliation(self, jid, name, action)
 			return true, is_server_admin or node.affiliations[bare_jid] or "none";
 		end
 	end
+
+	if is_server_admin then
+		return is_server_admin;
+	else
+		return "none";
+	end
 end
 
 function set_service(new_service)
