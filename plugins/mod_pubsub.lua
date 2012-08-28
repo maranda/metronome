@@ -203,6 +203,18 @@ function handlers_owner.set_delete(origin, stanza, delete)
 	return origin.send(reply);
 end
 
+function handlers_owner.set_purge(origin, stanza, purge)
+	local node = delete.attr.node;
+	local ok, ret, reply;
+	if node then
+		ok, ret = service:purge(node, stanza.attr.from);
+		if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
+	else
+		reply = pubsub_error_reply(stanza, "bad-request");
+	end
+	return origin.send(reply);
+end
+
 function handlers.set_subscribe(origin, stanza, subscribe)
 	local node, jid = subscribe.attr.node, subscribe.attr.jid;
 	local options_tag, options = stanza.tags[1]:get_child("options"), nil;
@@ -296,11 +308,15 @@ function broadcast(self, node, jids, item)
 	end
 
 	if type(item) == "string" and item == "deleted" then
-		-- should notification delivery be respected in this case?
 		local deleted = st.message({ from = module.host, type = headline })
 			:tag("event", { xmlns = xmlns_pubsub_event })
 				:tag("delete", { node = node });
 		traverser(jids, deleted);
+	elseif type(item) == "string" and item == "purged" then
+		local purged = st.message({ from = module.host, type = headline })
+			:tag("event", { xmlns = xmlns_pubsub_event })
+				:tag("purge", { node = node });
+		traverser(jids, purged);
 	else
 		item = st.clone(item);
 		item.attr.xmlns = nil; -- Clear the pubsub namespace
@@ -383,6 +399,7 @@ local feature_map = {
 	delete = { "delete-nodes" };
 	retract = { "delete-items", "retract-items" };
 	publish = { "publish" };
+	purge = { "purge-nodes" };
 	get_items = { "retrieve-items" };
 	add_subscription = { "subscribe" };
 	get_subscriptions = { "retrieve-subscriptions" };
