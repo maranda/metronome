@@ -32,6 +32,7 @@ module:add_feature("http://jabber.org/protocol/pubsub#delete-nodes");
 module:add_feature("http://jabber.org/protocol/pubsub#filtered-notifications");
 module:add_feature("http://jabber.org/protocol/pubsub#persistent-items");
 module:add_feature("http://jabber.org/protocol/pubsub#publish");
+module:add_feature("http://jabber.org/protocol/pubsub#purge-nodes");
 module:add_feature("http://jabber.org/protocol/pubsub#retrieve-items");
 module:add_feature("http://jabber.org/protocol/pubsub#subscribe");
 
@@ -223,6 +224,19 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 	return true;
 end
 
+function handlers_owner.set_purge(origin, stanza, delete)
+	local node = delete.attr.node;
+	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local ok, ret, reply;
+	if node then
+		ok, ret = service[user]:purge(node, stanza.attr.from);
+		if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
+	else
+		reply = pubsub_error_reply(stanza, "bad-request");
+	end
+	return origin.send(reply);
+end
+
 function handlers.set_unsubscribe(origin, stanza, unsubscribe)
 	local node, jid = unsubscribe.attr.node, unsubscribe.attr.jid;
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
@@ -288,10 +302,21 @@ end
 function broadcast(self, node, jids, item)
 	item = st.clone(item);
 	item.attr.xmlns = nil; -- Clear the pubsub namespace
-	local message = st.message({ from = self.name, type = "headline" })
-		:tag("event", { xmlns = xmlns_pubsub_event })
-			:tag("items", { node = node })
-				:add_child(item);
+	local message;
+	if type(item) == "string" and item == "deleted" then
+		message = st.message({ from = self.name, type = "headline" })
+			:tag("event", { xmlns = xmlns_pubsub_event })
+				:tag("deleted", { node = node });
+	elseif type(item) == "string" and item == "purged" then
+		message = st.message({ from = self.name, type = "headline" })
+			:tag("event", { xmlns = xmlns_pubsub_event })
+				:tag("purged", { node = node });
+	else
+		message = st.message({ from = self.name, type = "headline" })
+			:tag("event", { xmlns = xmlns_pubsub_event })
+				:tag("items", { node = node })
+					:add_child(item);
+	end
 
 	local function send_ifrexist(jid)
 		local function notify(s,f)
@@ -352,6 +377,7 @@ local function build_disco_info(service)
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#filtered-notifications" })
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#persistent-items" })
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#publish" })
+		:tag("feature", { var = "http://jabber.org/protocol/pubsub#purge-nodes" })
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#retrieve-items" })
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#subscribe" }):up();
 	add_disco_features_from_service(disco_info, service);
@@ -370,6 +396,7 @@ module:hook("account-disco-info", function(event)
 	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#filtered-notifications'}):up();
 	stanza:tag("feature", {var='http://jabber.org/protocol/pubsub#persistent-items'}):up();
 	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#publish'}):up();
+	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#purge-nodes'}):up();
 	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#retrieve-items'}):up();
 	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#subscribe'}):up();
 end);
@@ -574,7 +601,9 @@ function pep_new(node)
 			capabilities = {
 				none = {
 					create = false;
+					delete = false;
 					publish = false;
+					purge = false;
 					retract = false;
 					get_nodes = true;
 
@@ -596,7 +625,9 @@ function pep_new(node)
 				};
 				publisher = {
 					create = false;
+					delete = false;
 					publish = true;
+					purge = false;
 					retract = true;
 					get_nodes = true;
 
@@ -618,7 +649,9 @@ function pep_new(node)
 				};
 				owner = {
 					create = true;
+					delete = true;
 					publish = true;
+					purge = true;
 					retract = true;
 					get_nodes = true;
 
