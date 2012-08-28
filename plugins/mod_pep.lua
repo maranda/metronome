@@ -8,21 +8,29 @@ local jid_split = require "util.jid".split
 local uuid_generate = require "util.uuid".generate;
 local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed;
 local calculate_hash = require "util.caps".calculate_hash;
+local array = require "util.array";
+local getpath = datamanager.getpath;
+local lfs = require "lfs";
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
 local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
+local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
 
 services = {};
 local handlers = {};
+local handlers_owner = {};
 local NULL = {};
 
 module:add_identity("pubsub", "pep", "Metronome");
 module:add_feature("http://jabber.org/protocol/pubsub#access-presence");
 module:add_feature("http://jabber.org/protocol/pubsub#auto-create");
+module:add_feature("http://jabber.org/protocol/pubsub#create-and-configure");
 module:add_feature("http://jabber.org/protocol/pubsub#create-nodes");
 module:add_feature("http://jabber.org/protocol/pubsub#delete-items");
+module:add_feature("http://jabber.org/protocol/pubsub#delete-nodes");
 module:add_feature("http://jabber.org/protocol/pubsub#filtered-notifications");
+module:add_feature("http://jabber.org/protocol/pubsub#persistent-items");
 module:add_feature("http://jabber.org/protocol/pubsub#publish");
 module:add_feature("http://jabber.org/protocol/pubsub#retrieve-items");
 module:add_feature("http://jabber.org/protocol/pubsub#subscribe");
@@ -39,18 +47,30 @@ function handle_pubsub_iq(event)
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
 	local username, host = jid_split(user);
 	if hosts[host].sessions[username] and not services[user] then -- create service.
-		set_service(pubsub.new(pep_new), user);
+		set_service(pubsub.new(pep_new(username)), user);
 	end
 	
 	local pubsub = stanza.tags[1];
 	local action = pubsub.tags[1];
 	local handler = handlers[stanza.attr.type.."_"..action.name];
+	local config = (pubsub.tags[2] and pubsub.tags[2].name == "configure") and pubsub.tags[2];
+	local handler;
+
+	if pubsub.attr.xmlns == xmlns_pubsub_owner then
+		handler = handlers_owner[stanza.attr.type.."_"..action.name];
+	else
+		handler = handlers[stanza.attr.type.."_"..action.name];
+	end	
 
 	-- Update session to the one of the owner.
 	if origin.username and origin.host and services[user].name == origin.username.."@"..origin.host then services[user].session = origin; end
 
 	if handler then
-		return handler(origin, stanza, action);
+		if not config then 
+			return handler(origin, stanza, action); 
+		else 
+			return handler(origin, stanza, action, config); 
+		end
 	end
 end
 
@@ -74,17 +94,17 @@ function handlers.get_items(origin, stanza, items)
 	local node = items.attr.node;
 	local item = items:get_child("item");
 	local id = item and item.attr.id;
+	local max = item and item.attr.max_items;
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
 	
-	local ok, results = services[user]:get_items(node, stanza.attr.from, id);
+	local ok, results, max_tosend = services[user]:get_items(node, stanza.attr.from, id, max);
 	if not ok then
 		return origin.send(pubsub_error_reply(stanza, results));
 	end
 	
 	local data = st.stanza("items", { node = node });
-	for _, entry in pairs(results) do
-		data:add_child(entry);
-	end
+	for _, id in ipairs(array(max_tosend):reverse()) do data:add_child(results[id]); end
+
 	if data then
 		reply = st.reply(stanza)
 			:tag("pubsub", { xmlns = xmlns_pubsub })
@@ -111,12 +131,27 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 	return origin.send(reply);
 end
 
-function handlers.set_create(origin, stanza, create)
+function handlers.set_create(origin, stanza, create, config)
 	local node = create.attr.node;
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
 	local ok, ret, reply;
+
+	local node_config;
+	if config then
+		node_config = {};
+		local fields = config:get_child("x", "jabber:x:data");
+		for _, field in ipairs(fields.tags) do
+			if field.attr.var == "pubsub#persist_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
+				node_config["persist_items"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
+			-- Jappix compat below.
+			elseif field.attr.var == "pubsub#publish_model" and field:get_child_text("value") == "open" then
+				node_config["open_publish"] = true;
+			end
+		end
+	end
+
 	if node then
-		ok, ret = services[user]:create(node, stanza.attr.from);
+		ok, ret = services[user]:create(node, stanza.attr.from, node_config);
 		if ok then
 			reply = st.reply(stanza);
 		else
@@ -134,6 +169,19 @@ function handlers.set_create(origin, stanza, create)
 		else
 			reply = pubsub_error_reply(stanza, ret);
 		end
+	end
+	return origin.send(reply);
+end
+
+function handlers_owner.set_delete(origin, stanza, delete)
+	local node = delete.attr.node;
+	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local ok, ret, reply;
+	if node then
+		ok, ret = service[user]:delete(node, stanza.attr.from);
+		if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
+	else
+		reply = pubsub_error_reply(stanza, "bad-request");
 	end
 	return origin.send(reply);
 end
@@ -164,11 +212,11 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 	origin.send(reply);
 	if ok then
 		-- Send all current items
-		local ok, items = services[user]:get_items(node, stanza.attr.from);
+		local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
 		if items then
 			local jids = { [jid] = options or true };
-			for id, item in pairs(items) do
-				services[user].config.broadcaster(services[user], node, jids, item);
+			for _, id in pairs(array(orderly):reverse()) do
+				services[user]:broadcaster(node, jids, items[id]);
 			end
 		end
 	end
@@ -297,9 +345,12 @@ local function build_disco_info(service)
 		:tag("identity", { category = "pubsub", type = "pep" })
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#access-presence" })
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#auto-create" })
+		:tag("feature", { var = "http://jabber.org/protocol/pubsub#create-and-configure" })
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#create-nodes" })
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#delete-items" })
+		:tag("feature", { var = "http://jabber.org/protocol/pubsub#delete-nodes" })		
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#filtered-notifications" })
+		:tag("feature", { var = "http://jabber.org/protocol/pubsub#persistent-items" })
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#publish" })
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#retrieve-items" })
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub#subscribe" }):up();
@@ -312,9 +363,12 @@ module:hook("account-disco-info", function(event)
 	stanza:tag('identity', {category='pubsub', type='pep'}):up();
 	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#access-presence'}):up();
 	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#auto-create'}):up();
+	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#create-and-configure'}):up();
 	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#create-nodes'}):up();
 	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#delete-items'}):up();
+	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#delete-nodes'}):up();
 	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#filtered-notifications'}):up();
+	stanza:tag("feature", {var='http://jabber.org/protocol/pubsub#persistent-items'}):up();
 	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#publish'}):up();
 	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#retrieve-items'}):up();
 	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#subscribe'}):up();
@@ -376,10 +430,10 @@ module:hook("presence/bare", function(event)
 					for node, object in pairs(nodes) do
 						object.subscribers[recipient] = true;
 						if services[user].recipients[recipient][node] then
-							local ok, items = services[user]:get_items(node, stanza.attr.from);
+							local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
 							if items then
-								for id, item in pairs(items) do
-									services[user]:broadcaster(node, recipient, item);
+								for _, id in ipairs(array(orderly):reverse()) do
+									services[user]:broadcaster(node, recipient, items[id]);
 								end
 							end
 						end
@@ -452,10 +506,10 @@ module:hook("iq-result/bare/disco", function(event)
 						for node, object in pairs(nodes) do
 							if services[user].recipients[contact][node] then
 								object.subscribers[contact] = true;
-								local ok, items = services[user]:get_items(node, stanza.attr.from);
+								local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
 								if items then
-									for id, item in pairs(items) do
-										services[user]:broadcaster(node, contact, item);
+									for _, id in ipairs(array(orderly):reverse()) do
+										services[user]:broadcaster(node, contact, items[id]);
 									end
 								end
 							end
@@ -465,10 +519,10 @@ module:hook("iq-result/bare/disco", function(event)
 			end
 			services[user].recipients[contact] = notify;
 			for node in pairs(nodes) do
-				local ok, items = services[user]:get_items(node, stanza.attr.from);
+				local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
 				if items then
-					for id, item in pairs(items) do
-						services[user]:broadcaster(node, contact, item);
+					for _, id in ipairs(array(orderly):reverse()) do
+						services[user]:broadcaster(node, contact, items[id]);
 					end
 				end
 			end
@@ -497,85 +551,112 @@ local function normalize_dummy(jid)
 	return jid;
 end
 
-pep_new = {
-		capabilities = {
-			none = {
-				create = false;
-				publish = false;
-				retract = false;
-				get_nodes = true;
+function pep_new(node)
+	-- this needs a fix.
+	local path = getpath(node, module:get_host(), "pep"):match("^(.*)%.[^%.]*$")
+	local pre_path = path:match("^(.*)/[^/]*$")
+	local p_attributes = lfs.attributes(path);
+	local pp_attributes = lfs.attributes(pre_path);
 
-				subscribe = true;
-				unsubscribe = true;
-				get_subscription = true;
-				get_subscriptions = true;
-				get_items = true;
+	if pp_attributes == nil then
+		lfs.mkdir(pre_path);
+	elseif pp_attributes ~= "directory" then
+		module:log("error", "failed to create main pep datastore, another file already exists in it's place");
+	end
 
-				subscribe_other = false;
-				unsubscribe_other = false;
-				get_subscription_other = false;
-				get_subscriptions_other = false;
+	if attributes == nil then
+		lfs.mkdir(path);
+	elseif attributes ~= "directory" then
+		module:log("error", "failed to create store directory! for %s, another file already exists.", node);
+	end
 
-				be_subscribed = true;
-				be_unsubscribed = true;
+	local new_service = {
+			capabilities = {
+				none = {
+					create = false;
+					publish = false;
+					retract = false;
+					get_nodes = true;
 
-				set_affiliation = false;
+					subscribe = true;
+					unsubscribe = true;
+					get_subscription = true;
+					get_subscriptions = true;
+					get_items = true;
+
+					subscribe_other = false;
+					unsubscribe_other = false;
+					get_subscription_other = false;
+					get_subscriptions_other = false;
+
+					be_subscribed = true;
+					be_unsubscribed = true;
+
+					set_affiliation = false;
+				};
+				publisher = {
+					create = false;
+					publish = true;
+					retract = true;
+					get_nodes = true;
+
+					subscribe = true;
+					unsubscribe = true;
+					get_subscription = true;
+					get_subscriptions = true;
+					get_items = true;
+
+					subscribe_other = false;
+					unsubscribe_other = false;
+					get_subscription_other = false;
+					get_subscriptions_other = false;
+
+					be_subscribed = true;
+					be_unsubscribed = true;
+
+					set_affiliation = false;
+				};
+				owner = {
+					create = true;
+					publish = true;
+					retract = true;
+					get_nodes = true;
+
+					subscribe = true;
+					unsubscribe = true;
+					get_subscription = true;
+					get_subscriptions = true;
+					get_items = true;
+
+					subscribe_other = true;
+					unsubscribe_other = true;
+					get_subscription_other = true;
+					get_subscriptions_other = true;
+
+					be_subscribed = true;
+					be_unsubscribed = true;
+
+					set_affiliation = true;
+				};
 			};
-			publisher = {
-				create = false;
-				publish = true;
-				retract = true;
-				get_nodes = true;
 
-				subscribe = true;
-				unsubscribe = true;
-				get_subscription = true;
-				get_subscriptions = true;
-				get_items = true;
-
-				subscribe_other = false;
-				unsubscribe_other = false;
-				get_subscription_other = false;
-				get_subscriptions_other = false;
-
-				be_subscribed = true;
-				be_unsubscribed = true;
-
-				set_affiliation = false;
+			node_default_config = {
+				persist_items = false;
 			};
-			owner = {
-				create = true;
-				publish = true;
-				retract = true;
-				get_nodes = true;
 
-				subscribe = true;
-				unsubscribe = true;
-				get_subscription = true;
-				get_subscriptions = true;
-				get_items = true;
+			autocreate_on_publish = true;
+			autocreate_on_subscribe = true;
 
+			broadcaster = broadcast;
+			get_affiliation = get_affiliation;
 
-				subscribe_other = true;
-				unsubscribe_other = true;
-				get_subscription_other = true;
-				get_subscriptions_other = true;
+			normalize_jid = normalize_dummy;
 
-				be_subscribed = true;
-				be_unsubscribed = true;
-
-				set_affiliation = true;
-			};
+			store = storagemanager.open(module.host, "pep/"..node);
 		};
 
-		autocreate_on_publish = true;
-		autocreate_on_subscribe = true;
-
-		broadcaster = broadcast;
-		get_affiliation = get_affiliation;
-
-		normalize_jid = normalize_dummy;
-	}
+	return new_service;
+end
 
 function module.save()
 	return { services = services };
@@ -584,6 +665,7 @@ end
 function module.restore(data)
 	services = data.services or {};
 	for id in pairs(services) do
-		services[id].config = pep_new;
+		username = jid_split(id);
+		services[id].config = pep_new(user);
 	end
 end
