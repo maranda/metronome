@@ -190,7 +190,6 @@ local error_messages = setmetatable({
 		["no-posix"] = "The mod_posix module is not enabled in the Metronome config file";
 		["no-such-method"] = "This module has no commands";
 		["not-running"] = "Metronome is not running";
-		["user-already-exists"] = "User already exists";
 		}, { __index = function (t,k) return "Error: "..(tostring(k):gsub("%-", " "):gsub("^.", string.upper)); end });
 
 hosts = metronome.hosts;
@@ -262,15 +261,20 @@ function commands.adduser(arg)
 		show_warning("The user will not be able to log in until this is changed.");
 		hosts[host] = make_host(host);
 	end
+
+	if metronomectl.controluser({ user = user, host = host }, "check") then 
+		show_message [[User already exists]];
+		return 1;
+	end
 	
 	local password = read_password();
 	if not password then return 1; end
 	
-	local ok, msg = metronomectl.adduser { user = user, host = host, password = password };
+	local ok, msg = metronomectl.controluser { user = user, host = host, password = password }, "create";
 	
 	if ok then return 0; end
 	
-	show_message(error_messages[msg])
+	show_message("Server Error: "..msg)
 	return 1;
 end
 
@@ -296,15 +300,20 @@ function commands.passwd(arg)
 		show_warning("The user will not be able to log in until this is changed.");
 		hosts[host] = make_host(host);
 	end
+
+        if not metronomectl.controluser({ user = user, host = host }, "check") then
+                show_message [[User doesn't exist]];
+                return 1;
+        end
 	
 	local password = read_password();
 	if not password then return 1; end
-	
-	local ok, msg = metronomectl.passwd { user = user, host = host, password = password };
+
+	local ok, msg = metronomectl.controluser { user = user, host = host, password = password }, "passwd";
 	
 	if ok then return 0; end
 	
-	show_message(error_messages[msg])
+	show_message("Server Error: "..msg)
 	return 1;
 end
 
@@ -330,12 +339,18 @@ function commands.deluser(arg)
 		show_warning("The user will not be able to log in until this is changed.");
 		hosts[host] = make_host(host);
 	end
-	
-	local ok, msg = metronomectl.deluser { user = user, host = host };
+
+	local ok, err;
+        if not metronomectl.controluser({ user = user, host = host }, "check") then
+                show_message [[User doesn't exist]];
+                return 1;
+        else
+		ok, msg = metronomectl.controluser { user = user, host = host }, "delete";
+	end
 	
 	if ok then return 0; end
 	
-	show_message(error_messages[msg])
+	show_message("Server Error: "..msg)
 	return 1;
 end
 
@@ -540,58 +555,6 @@ function commands.reload(arg)
 	end
 
 	show_message(error_messages[ret]);
-	return 1;
-end
--- ejabberdctl compatibility
-
-function commands.register(arg)
-	local user, host, password = unpack(arg);
-	if (not (user and host)) or arg[1] == "--help" then
-		if user ~= "--help" then
-			if not user then
-				show_message [[No username specified]]
-			elseif not host then
-				show_message [[Please specify which host you want to register the user on]];
-			end
-		end
-		show_usage("register USER HOST [PASSWORD]", "Register a user on the server, with the given password");
-		return 1;
-	end
-	if not password then
-		password = read_password();
-		if not password then
-			show_message [[Unable to register user with no password]];
-			return 1;
-		end
-	end
-	
-	local ok, msg = metronomectl.adduser { user = user, host = host, password = password };
-	
-	if ok then return 0; end
-	
-	show_message(error_messages[msg])
-	return 1;
-end
-
-function commands.unregister(arg)
-	local user, host = unpack(arg);
-	if (not (user and host)) or arg[1] == "--help" then
-		if user ~= "--help" then
-			if not user then
-				show_message [[No username specified]]
-			elseif not host then
-				show_message [[Please specify which host you want to unregister the user from]];
-			end
-		end
-		show_usage("unregister USER HOST [PASSWORD]", "Permanently remove a user account from the server");
-		return 1;
-	end
-
-	local ok, msg = metronomectl.deluser { user = user, host = host };
-	
-	if ok then return 0; end
-	
-	show_message(error_messages[msg])
 	return 1;
 end
 

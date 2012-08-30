@@ -138,24 +138,14 @@ function controluser(params, action)
 	storagemanager.initialize_host(host);
 	
 	local ok, errmsg;
-	if action == "create" then
-		if not usermanager.user_exists(user, host) then
-			ok, errmsg = usermanager.create_user(user, password, host);
-		else
-			ok, errmsg = false, "user-already-exists";
-		end
+	if action == "check" then
+		ok, errmsg = usermanager.user_exists(user, host);
+	elseif action == "create" then
+		ok, errmsg = usermanager.create_user(user, password, host);
 	elseif action == "delete" then
-		if usermanager.user_exists(user, host) then
-			ok, errmsg = usermanager.delete_user(user, host, "metronomectl");
-		else
-			ok, errmsg = false, "no-such-user";
-		end
+		ok, errmsg = usermanager.delete_user(user, host, "metronomectl");
 	elseif action == "passwd" then
-		if usermanager.user_exists(user, host) then
-			ok, errmsg = usermanager.set_password(user, password, host);
-		else
-			ok, errmsg = false, "no-such-user";
-		end
+		ok, errmsg = usermanager.set_password(user, password, host);
 	end
 
 	if not ok then
@@ -163,12 +153,6 @@ function controluser(params, action)
 	end
 	return true;
 end
-
-function passwd(params)	return _M.controluser(params, "passwd"); end
-
-function adduser(params) return _M.controluser(params, "create"); end
-
-function deluser(params) return _M.controluser(params, "delete"); end
 
 function getpid()
 	local pidfile = config.get("*", "core", "pidfile");
