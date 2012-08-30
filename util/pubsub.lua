@@ -382,6 +382,7 @@ function service:get_items(node, actor, id, max)
 
 	local function calculate_last_items(data_id, max)
 		local from_item = #data_id - max;
+		from_item = from_item <= 0 and 1;
 		local _data_id = {};
 		for index, id in ipairs(data_id) do
 			if index <= from_item then table.insert(_data_id, id); end
@@ -391,7 +392,11 @@ function service:get_items(node, actor, id, max)
 
 	local _data_id;
 	if id then -- Restrict results to a single specific item
-		return true, { [id] = node_obj.data[id] }, { [1] = id };
+		if node_obj.data[id] then
+			return true, { [id] = node_obj.data[id] }, { [1] = id };
+		else
+			return false, "item-not-found";
+		end
 	else
 		if node_obj.config.deliver_payloads or node_obj.config.deliver_payloads == nil then
 			if max then _data_id = calculate_last_items(node_obj.data_id, max); end	
