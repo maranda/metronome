@@ -262,9 +262,9 @@ function handlers.set_publish(origin, stanza, publish)
 	   node == "http://jabber.org/protocol/tune" and services[user].nodes[node] or
 	   node == "urn:xmpp:avatar:data" and services[user].nodes[node] or 
 	   node == "urn:xmpp:avatar:metadata" and services[user].nodes[node]then
-		services[user].nodes[node].data = {} end -- Clear activity/mood/tune/avatar nodes, wonder if this is the right thing to do?
-							 -- Clients don't do it and mess up. *Spec To Be Checked*
-
+		services[user].nodes[node].data = {};		-- Clear activity/mood/tune/avatar nodes, wonder if this is the right thing to do?
+		services[user].nodes[node].data_id = {};	-- Clients don't do it and mess up. *Spec To Be Checked*
+	end
 	local ok, ret = services[user]:publish(node, stanza.attr.from, id, item);
 	local reply;
 	
