@@ -318,12 +318,15 @@ function broadcast(self, node, jids, item)
 				:tag("purge", { node = node });
 		traverser(jids, purged);
 	else
-		item = st.clone(item);
-		item.attr.xmlns = nil; -- Clear the pubsub namespace
 		local message = st.message({ from = module.host, type = "headline" })
 			:tag("event", { xmlns = xmlns_pubsub_event })
-				:tag("items", { node = node })
-					:add_child(item);
+				:tag("items", { node = node });
+
+		if item then
+			item = st.clone(item);
+			item.attr.xmlns = nil; -- Clear pubsub ns
+			message:get_child("event", xmlns_pubsub_event):get_child("items"):add_child(item);
+		end
 		traverser(jids, message);
 	end
 end

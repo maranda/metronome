@@ -392,11 +392,7 @@ function service:get_items(node, actor, id, max)
 
 	local _data_id;
 	if id then -- Restrict results to a single specific item
-		if node_obj.data[id] then
-			return true, { [id] = node_obj.data[id] }, { [1] = id };
-		else
-			return false, "item-not-found";
-		end
+		return true, { [id] = node_obj.data[id] }, { [1] = id };
 	else
 		if node_obj.config.deliver_payloads or node_obj.config.deliver_payloads == nil then
 			if max then _data_id = calculate_last_items(node_obj.data_id, max); end	

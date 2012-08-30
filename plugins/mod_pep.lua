@@ -310,13 +310,15 @@ function broadcast(self, node, jids, item)
 			:tag("event", { xmlns = xmlns_pubsub_event })
 				:tag("purged", { node = node });
 	else
-		if not item then return; end -- temp. fix
-		item = st.clone(item);
-		item.attr.xmlns = nil; -- Clear pubsub ns
 		message = st.message({ from = self.name, type = "headline" })
 			:tag("event", { xmlns = xmlns_pubsub_event })
-				:tag("items", { node = node })
-					:add_child(item);
+				:tag("items", { node = node });
+		
+		if item then
+			item = st.clone(item);
+			item.attr.xmlns = nil; -- Clear pubsub ns
+			message:get_child("event", xmlns_pubsub_event):get_child("items"):add_child(item);
+		end
 	end
 
 	local function send_ifrexist(jid)
@@ -462,7 +464,7 @@ module:hook("presence/bare", function(event)
 							local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
 							if items then
 								for _, id in ipairs(array(orderly):reverse()) do
-									if items[id] then services[user]:broadcaster(node, recipient, items[id]); end
+									services[user]:broadcaster(node, recipient, items[id]);
 								end
 							end
 						end
