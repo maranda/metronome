@@ -48,7 +48,7 @@ function handle_pubsub_iq(event)
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
 	local username, host = jid_split(user);
 	if hosts[host].sessions[username] and not services[user] then -- create service.
-		set_service(pubsub.new(pep_new(username)), user);
+		set_service(pubsub.new(pep_new(username)), user, true);
 	end
 	
 	local pubsub = stanza.tags[1];
@@ -569,14 +569,14 @@ local function get_affiliation(self, jid)
 	end
 end
 
-function set_service(new_service, jid)
+function set_service(new_service, jid, restore)
 	services[jid] = new_service;
 	services[jid]["hash_map"] = {};
 	services[jid]["name"] = jid;
 	services[jid]["recipients"] = {};
 	module.environment.services[jid] = services[jid];
 	disco_info = build_disco_info(services[jid]);
-	services[jid]:restore();
+	if restore then services[jid]:restore(); end
 end
 
 local function normalize_dummy(jid)
@@ -585,8 +585,8 @@ end
 
 function pep_new(node)
 	-- this needs a fix.
-	local path = getpath(node, module:get_host(), "pep"):match("^(.*)%.[^%.]*$")
-	local pre_path = path:match("^(.*)/[^/]*$")
+	local path = getpath(node, module:get_host(), "pep"):match("^(.*)%.[^%.]*$");
+	local pre_path = path:match("^(.*)/[^/]*$");
 	local p_attributes = lfs.attributes(path);
 	local pp_attributes = lfs.attributes(pre_path);
 
@@ -695,6 +695,9 @@ function module.restore(data)
 	services = data.services or {};
 	for id in pairs(services) do
 		username = jid_split(id);
-		services[id].config = pep_new(user);
+		services[id] = set_service(pubsub.new(pep_new(username)), id);
+		services[id].hash_map = data.services[id].hash_map or {};
+		services[id].nodes = data.services[id].nodes or {};
+		services[id].recipients = data.services[id].recipients or {};		
 	end
 end
