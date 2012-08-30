@@ -12,7 +12,11 @@ local xmlns_stream = "http://etherx.jabber.org/streams";
 local dialback_requests = setmetatable({}, { __mode = 'v' });
 
 function generate_dialback(id, to, from)
-	return sha256_hash(id..to..from..hosts[from].dialback_secret, true);
+	if hosts[from] then
+		return sha256_hash(id..to..from..hosts[from].dialback_secret, true);
+	else
+		return false;
+	end
 end
 
 function initiate_dialback(session)
