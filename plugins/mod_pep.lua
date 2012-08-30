@@ -310,6 +310,7 @@ function broadcast(self, node, jids, item)
 			:tag("event", { xmlns = xmlns_pubsub_event })
 				:tag("purged", { node = node });
 	else
+		if not item then return; end -- temp. fix
 		item = st.clone(item);
 		item.attr.xmlns = nil; -- Clear pubsub ns
 		message = st.message({ from = self.name, type = "headline" })
@@ -461,7 +462,7 @@ module:hook("presence/bare", function(event)
 							local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
 							if items then
 								for _, id in ipairs(array(orderly):reverse()) do
-									services[user]:broadcaster(node, recipient, items[id]);
+									if items[id] then services[user]:broadcaster(node, recipient, items[id]); end
 								end
 							end
 						end
