@@ -564,7 +564,7 @@ end);
 local admin_aff = "owner";
 local function get_affiliation(self, jid)
 	local bare_jid = jid_bare(jid);
-	if bare_jid == jid_bare(jid) then
+	if bare_jid == self.name then
 		return admin_aff;
 	end
 end
