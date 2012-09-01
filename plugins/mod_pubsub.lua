@@ -88,7 +88,7 @@ function handlers.get_items(origin, stanza, items)
 	end
 	
 	local data = st.stanza("items", { node = node });
-	for _, id in ipairs(array(max_tosend):reverse()) do data:add_child(results[id]); end
+	for _, id in ipairs(array():append(max_tosend):reverse()) do data:add_child(results[id]); end
 
 	local reply;
 	if data then
@@ -243,7 +243,7 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 		local ok, items, orderly = service:get_items(node, stanza.attr.from);
 		if items then
 			local jids = { [jid] = options or true };
-			for _, id in ipairs(array(orderly):reverse()) do
+			for _, id in ipairs(array():append(orderly):reverse()) do
 				service:broadcaster(node, jids, items[id]);
 			end
 		end
@@ -465,7 +465,7 @@ local function handle_disco_items_on_node(event)
 	local reply = st.reply(stanza)
 		:tag("query", { xmlns = "http://jabber.org/protocol/disco#items", node = node });
 	
-	for _, id in ipairs(array(orderly):reverse()) do
+	for _, id in ipairs(array():append(orderly):reverse()) do
 		reply:tag("item", { jid = module.host, name = id }):up();
 	end
 	

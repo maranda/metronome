@@ -104,7 +104,7 @@ function handlers.get_items(origin, stanza, items)
 	end
 	
 	local data = st.stanza("items", { node = node });
-	for _, id in ipairs(array(max_tosend):reverse()) do data:add_child(results[id]); end
+	for _, id in ipairs(array():append(max_tosend):reverse()) do data:add_child(results[id]); end
 
 	if data then
 		reply = st.reply(stanza)
@@ -216,7 +216,7 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 		local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
 		if items then
 			local jids = { [jid] = options or true };
-			for _, id in pairs(array(orderly):reverse()) do
+			for _, id in pairs(array():append(orderly):reverse()) do
 				services[user]:broadcaster(node, jids, items[id]);
 			end
 		end
@@ -463,7 +463,7 @@ module:hook("presence/bare", function(event)
 						if services[user].recipients[recipient][node] then
 							local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
 							if items then
-								for _, id in ipairs(array(orderly):reverse()) do
+								for _, id in ipairs(array():append(orderly):reverse()) do
 									services[user]:broadcaster(node, recipient, items[id]);
 								end
 							end
@@ -539,7 +539,7 @@ module:hook("iq-result/bare/disco", function(event)
 								object.subscribers[contact] = true;
 								local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
 								if items then
-									for _, id in ipairs(array(orderly):reverse()) do
+									for _, id in ipairs(array():append(orderly):reverse()) do
 										services[user]:broadcaster(node, contact, items[id]);
 									end
 								end
@@ -552,7 +552,7 @@ module:hook("iq-result/bare/disco", function(event)
 			for node in pairs(nodes) do
 				local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
 				if items then
-					for _, id in ipairs(array(orderly):reverse()) do
+					for _, id in ipairs(array():append(orderly):reverse()) do
 						services[user]:broadcaster(node, contact, items[id]);
 					end
 				end
