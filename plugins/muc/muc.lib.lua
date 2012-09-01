@@ -319,16 +319,6 @@ end
 function room_mt:is_hidden()
 	return self._data.hidden;
 end
-function room_mt:set_logging_enabled(logging)
-	logging = logging and true or nil;
-	if self._data.logging ~= logging then
-		self._data.logging = logging;
-		if self.save then self:save(true); end
-	end
-end
-function room_mt:is_logging_enabled()
-	return self._data.logging;
-end
 function room_mt:set_changesubject(changesubject)
 	changesubject = changesubject and true or nil;
 	if self._data.changesubject ~= changesubject then
@@ -349,7 +339,21 @@ function room_mt:set_historylength(length)
 	end
 	self._data.history_length = length;
 end
-
+room_mt.cc_registry = {};
+function room_mt:register_cc(xmlns, params)
+	self.cc_registry[xmlns] = {
+		name = params.name;
+		field = params.field;
+		is_method = params.is_method;
+		set_method = params.set_method;
+		check_method = params.check_method;
+		ac_method = params.ac_method;
+		ojp_method = params.ojp_method;
+	};
+end
+function room_mt:deregister_cc(xmlns)
+	self.cc_registry[xmlns] = nil;
+end
 
 local function construct_stanza_id(room, stanza)
 	local from_jid, to_nick = stanza.attr.from, stanza.attr.to;
@@ -504,7 +508,9 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						end
 						if self._data.whois == 'anyone' then pr:tag("status", {code='100'}):up(); end
 						pr:tag("status", {code='110'}):up();
-						if self:is_logging_enabled() then pr:tag("status", {code='170'}):up(); end
+						for xmlns, cc in pairs(self.cc_registry) do
+							if cc.ojp_method then pr = cc.ojp_method(self, pr); end
+						end
 						pr.attr.to = from;
 						self:_route_stanza(pr);
 						self:send_history(from, stanza);
@@ -576,7 +582,7 @@ end
 
 function room_mt:get_form_layout()
 	local title = "Configuration for "..self.jid;
-	return dataform.new({
+	local layout = {
 		title = title,
 		instructions = title,
 		{
@@ -607,12 +613,6 @@ function room_mt:get_form_layout()
 			type = 'boolean',
 			label = 'Make Room Publicly Searchable?',
 			value = not self:is_hidden()
-		},
-		{
-			name = 'muc#roomconfig_enablelogging',
-			type = 'boolean',
-			label = 'Enable room logging?',
-			value = self:is_logging_enabled()
 		},
 		{
 			name = 'muc#roomconfig_changesubject',
@@ -653,7 +653,13 @@ function room_mt:get_form_layout()
 			label = 'Maximum Number of History Messages Returned by Room',
 			value = tostring(self:get_historylength())
 		}
-	});
+	};
+
+	for xmlns, cc in pairs(self.cc_registry) do
+		t_insert(layout, cc.field(self));
+	end
+
+	return dataform.new(layout);
 end
 
 local valid_whois = {
@@ -700,29 +706,47 @@ function room_mt:process_form(origin, stanza)
 	dirty = dirty or (self:is_hidden() ~= (not public and true or nil));
 	module:log('debug', 'publicroom=%s', public and "true" or "false");
 
-	local logging = fields['muc#roomconfig_enablelogging'];
-	dirty = dirty or (self:is_logging_enabled() ~= (not logging and true or nil));
-	module:log('debug', 'enablelogging=%s', logging and "true" or "false");
-
 	local changesubject = fields['muc#roomconfig_changesubject'];
 	dirty = dirty or (self:get_changesubject() ~= (not changesubject and true or nil));
 	module:log('debug', 'changesubject=%s', changesubject and "true" or "false");
 
 	local historylength = tonumber(fields['muc#roomconfig_historylength']);
 	dirty = dirty or (historylength and (self:get_historylength() ~= historylength));
-	module:log('debug', 'historylength=%s', historylength)
+	module:log('debug', 'historylength=%s', historylength);
 
+	local custom_config = {};
+	for name in pairs(fields) do
+		if self.cc_registry[name] then
+			custom_config[self.cc_registry[name].name] = fields[name];
+			dirty = dirty or (custom_config[self.cc_registry[name].name] and (self.cc_registry[name].is_method(self) ~= custom_config[self.cc_registry[name].name]));
+			module:log('debug', '%s=%s (custom field)', self.cc_registry[name].name, custom_config[self.cc_registry[name].name] and "true" or "false");
+		end
+	end
+	local default_config = { 
+		name = name,
+		description = description,
+		persistent = persistent,
+		moderated = moderated,
+		membersonly = membersonly,
+		public = public,
+		changesubject = changesubject,
+		historylength = historylength
+	};
 
 	local whois = fields['muc#roomconfig_whois'];
 	if not valid_whois[whois] then
 		return origin.send(st.error_reply(stanza, 'cancel', 'bad-request', "Invalid value for 'whois'"));
 	end
-	local whois_changed = self._data.whois ~= whois
-	self._data.whois = whois
-	module:log('debug', 'whois=%s', whois)
+	local whois_changed = self._data.whois ~= whois;
+	self._data.whois = whois;
+	module:log('debug', 'whois=%s', whois);
 
-	if not public and logging then
-		return origin.send(st.error_reply(stanza, 'cancel', 'forbidden', "You can enable logging only into public rooms!"));
+	for name in pairs(fields) do
+		if self.cc_registry[name] and
+		   self.cc_registry[name].check_method then
+			local invalid = self.cc_registry[name].check_method(self, default_config, custom_config, stanza);
+			if invalid then return origin.send(invalid); end
+		end
 	end
 
 	local password = fields['muc#roomconfig_roomsecret'];
@@ -733,9 +757,10 @@ function room_mt:process_form(origin, stanza)
 	self:set_members_only(membersonly);
 	self:set_persistent(persistent);
 	self:set_hidden(not public);
-	self:set_logging_enabled(logging);
 	self:set_changesubject(changesubject);
 	self:set_historylength(historylength);
+
+	for xmlns, cc in pairs(self.cc_registry) do cc.set_method(self, custom_config[cc.name]); end
 
 	if self.save then self:save(true); end
 	origin.send(st.reply(stanza));
@@ -751,13 +776,14 @@ function room_mt:process_form(origin, stanza)
 			local code = (whois == 'moderators') and "173" or "172";
 			msg.tags[1]:tag('status', {code = code}):up();
 		end
-		if logging then
-			msg.tags[1]:tag('status', {code = '170'}):up();
-		else
-			msg.tags[1]:tag('status', {code = '171'}):up();
+
+		for xmlns, cc in pairs(self.cc_registry) do
+			if cc.ac_method then 
+				msg = cc.ac_method(self, custom_config[cc.name], msg); 
+			end
 		end
 
-		self:broadcast_message(msg, false)
+		self:broadcast_message(msg, false);
 	end
 end
 

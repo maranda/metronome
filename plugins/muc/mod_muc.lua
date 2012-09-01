@@ -2,7 +2,6 @@ if module:get_host_type() ~= "component" then
 	error("MUC should be loaded as a component.", 0);
 end
 
-local mm = modulemanager;
 local muc_host = module:get_host();
 local muc_name = module:get_option("name");
 if type(muc_name) ~= "string" then muc_name = "Metronomical Chatrooms"; end
@@ -211,7 +210,24 @@ local function clean_affiliations(event)
 	end
 end
 
+local function handle_custom_config(event)
+	local name = event.xmlns;
+	local params = event.params;
+	local action = event.action;
+	local mod_name = event.caller;
+
+	if action == "register" then
+		muclib.room_mt:register_cc(name, params);
+	else
+		muclib.room_mt:deregister_cc(name);
+	end
+
+	module:log("debug", "Module %s %s %s custom config handler.", mod_name, action == "register" and "registered" or "deregistered", name);	
+end
+
 module:hook_global("user-deleted", clean_affiliations);
+module:hook("muc-config-handler", handle_custom_config);
+
 module:hook("iq/bare", stanza_handler, -1);
 module:hook("message/bare", stanza_handler, -1);
 module:hook("presence/bare", stanza_handler, -1);
@@ -274,6 +290,3 @@ function shutdown_component()
 end
 module.unload = shutdown_component;
 module:hook_global("server-stopping", shutdown_component);
-
--- load muc_log
-if not mm.is_loaded(muc_host, "muc_log") then mm.load(muc_host, "muc_log"); end
