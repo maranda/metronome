@@ -9,6 +9,7 @@ local data_load, data_store, data_getpath = datamanager.load, datamanager.store,
 local datastore = "muc_log";
 local mod_host = module:get_host();
 local config = nil;
+local error_reply = require "util.stanza".error_reply;
 
 local lfs = require "lfs";
 
@@ -128,5 +129,67 @@ end
 module:hook("message/bare", logIfNeeded, 500);
 module:hook("iq/bare", logIfNeeded, 500);
 module:hook("presence/full", logIfNeeded, 500);
+
+-- Define config methods
+
+local function config_field_method(self)
+	local ns = "muc#roomconfig_enablelogging";
+	local field = {
+		name = ns,
+		type = "boolean",
+		label = "Enable room logging?",
+		value = self.cc_registry[ns].is_method(self);
+	};
+
+	return field;
+end
+local function config_is_method(self) return self._data.logging; end
+local function config_set_method(self, logging)
+	logging = logging and true or nil;
+	if self._data.logging ~= logging then
+		self._data.logging = logging;
+		if self.save then self:save(true); end
+	end
+end
+local function config_check_method(self, default, custom, stanza)
+	local reply;
+	if not default.public and custom.logging then
+		reply = error_reply(stanza, 'cancel', 'forbidden', "You can enable logging only into public rooms!");
+	end
+	return reply;
+end
+local function config_ac_method(self, logging, msg_st)
+	if logging then
+		msg_st.tags[1]:tag('status', {code = '170'}):up();
+	else
+		msg_st.tags[1]:tag('status', {code = '171'}):up();
+	end
+	return msg_st;
+end
+local function config_ojp_method(self, pr_st)
+	if config_is_method(self) then pr_st:tag("status", {code='170'}):up(); end
+	return pr_st;
+end
+
+function module.load()
+	module:fire_event("muc-config-handler", {
+		xmlns = "muc#roomconfig_enablelogging",
+		params = {
+			name = "logging",
+			field = config_field_method,
+			is_method = config_is_method,
+			set_method = config_set_method,
+			check_method = config_check_method,
+			ac_method = config_ac_method,
+			ojp_method = config_ojp_method
+		},
+		action = "register",
+		caller = "muc_log"
+	});
+end
+
+function module.unload()
+	module:fire_event("muc-config-handler", { xmlns = "muc#roomconfig_enablelogging", caller = "muc_log" });
+end			
 
 module:log("debug", "module mod_muc_log loaded!");
