@@ -78,6 +78,7 @@ local function reload()
 	guard_ball_wl = module:get_option_set("host_guard_blockall_exceptions", {})
 	guard_protect = module:get_option_set("host_guard_selective", {})
 	guard_block_bl = module:get_option_set("host_guard_blacklist", {})
+	guard_hexlist = module:get_option_set("host_guard_hexlist", {})	
 
 	init_hosts(true)
 end
