@@ -5,7 +5,6 @@ local st = require "util.stanza";
 local jid_bare = require "util.jid".bare;
 local uuid_generate = require "util.uuid".generate;
 local dataforms = require "util.dataforms";
-local array = require "util.array";
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
@@ -88,7 +87,7 @@ function handlers.get_items(origin, stanza, items)
 	end
 	
 	local data = st.stanza("items", { node = node });
-	for _, id in ipairs(array():append(max_tosend):reverse()) do data:add_child(results[id]); end
+	for _, id in ipairs(max_tosend) do data:add_child(results[id]); end
 
 	local reply;
 	if data then
@@ -243,7 +242,7 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 		local ok, items, orderly = service:get_items(node, stanza.attr.from);
 		if items then
 			local jids = { [jid] = options or true };
-			for _, id in ipairs(array():append(orderly):reverse()) do
+			for _, id in ipairs(orderly) do
 				service:broadcaster(node, jids, items[id]);
 			end
 		end
@@ -465,7 +464,7 @@ local function handle_disco_items_on_node(event)
 	local reply = st.reply(stanza)
 		:tag("query", { xmlns = "http://jabber.org/protocol/disco#items", node = node });
 	
-	for _, id in ipairs(array():append(orderly):reverse()) do
+	for _, id in ipairs(orderly) do
 		reply:tag("item", { jid = module.host, name = id }):up();
 	end
 	
