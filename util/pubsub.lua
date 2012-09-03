@@ -382,7 +382,8 @@ function service:get_items(node, actor, id, max)
 
 	local function calculate_last_items(data_id, max)
 		local from_item = #data_id - max;
-		from_item = (from_item <= 0 and 1) or from_item;
+		from_item = (from_item <= 0 and nil) or from_item;
+		if not from_item then return data_id; end
 		local _data_id = {};
 		for index, id in ipairs(data_id) do
 			if index > from_item then table.insert(_data_id, id); end
