@@ -93,7 +93,8 @@ function delete_user(username, host, source)
 	if not ok then return nil, err; end
 
 	metronome.events.fire_event("user-deleted", { username = username, host = host, session = session, source = source });
-	return storagemanager.get_driver(host):purge(username);
+	storagemanager.get_driver(host):purge(username);
+	return true;
 end
 
 function get_sasl_handler(host, session)

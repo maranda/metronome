@@ -137,7 +137,7 @@ function delete_user_command_handler(self, data, state)
 		local succeeded = {};
 		for _, aJID in ipairs(fields.accountjids) do
 			local username, host, resource = jid.split(aJID);
-			if (host == data.to) and  usermanager_user_exists(username, host) and disconnect_user(aJID) and usermanager_delete_user(username, host) then
+			if (host == data.to) and usermanager_user_exists(username, host) and usermanager_delete_user(username, host) then
 				module:log("debug", "User %s has been deleted", aJID);
 				succeeded[#succeeded+1] = aJID;
 			else
