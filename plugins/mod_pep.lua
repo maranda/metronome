@@ -590,7 +590,7 @@ function pep_new(node)
 	local pp_attributes = lfs.attributes(pre_path);
 
 	if pp_attributes == nil then lfs.mkdir(pre_path); end
-	if attributes == nil then lfs.mkdir(path); end
+	if p_attributes == nil then lfs.mkdir(path); end
 
 	local new_service = {
 			capabilities = {
