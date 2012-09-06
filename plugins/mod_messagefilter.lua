@@ -11,7 +11,7 @@ local function message_filter(data)
 	local body = stanza:child_with_name("body");
 	local fromnode, fromhost = jid.split(stanza.attr.from);
 
-	local error_reply = st.message{ type = "error", from = stanza.attr.to.."/ServerFilter" }
+	local error_reply = st.message{ type = "error", from = stanza.attr.to }
 					:tag("error", {type = "modify"})
 						:tag("not-acceptable", {xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas"})
 							:tag("text", {xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas"}):text(bounce_message):up();
