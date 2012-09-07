@@ -732,6 +732,6 @@ function module.restore(data)
 		services[id] = set_service(pubsub.new(pep_new(username)), id);
 		services[id].hash_map = service.hash_map or {};
 		services[id].nodes = service.nodes or {};
-		services[id].recipients = service.recipients or {};		
+		services[id].recipients = service.recipients or {};
 	end
 end
