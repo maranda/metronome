@@ -42,12 +42,23 @@ local function subscription_presence(user_bare, recipient)
 	return is_contact_subscribed(username, host, recipient_bare);
 end
 
+local function disco_info_query(user, from)
+	-- COMPAT from ~= stanza.attr.to because OneTeam can't deal with missing from attribute
+	core_post_stanza(hosts[module.host], 
+		st.stanza("iq", {from=user, to=from, id="disco", type="get"})
+			:query("http://jabber.org/protocol/disco#info")
+	);
+	module:log("debug", "Sending disco info query to: %s", from);
+end
+
 function handle_pubsub_iq(event)
 	local origin, stanza = event.origin, event.stanza;
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local full_jid = origin.full_jid;
 	local username, host = jid_split(user);
-	if hosts[host].sessions[username] and not services[user] then -- create service.
+	if host == module.host and hosts[host].sessions[username] and not services[user] and full_jid then -- create service.
 		set_service(pubsub.new(pep_new(username)), user, true);
+		disco_info_query(user, full_jid); -- discover the creating resource immediatly.
 	end
 	
 	local pubsub = stanza.tags[1];
@@ -470,13 +481,9 @@ local function pep_send_back(recipient, user, hash)
 	end	
 end
 
-local function disco_info_query(user, from)
-	-- COMPAT from ~= stanza.attr.to because OneTeam can't deal with missing from attribute
-	core_post_stanza(hosts[module.host], 
-		st.stanza("iq", {from=user, to=from, id="disco", type="get"})
-			:query("http://jabber.org/protocol/disco#info")
-	);
-	module:log("debug", "Sending disco info query to: %s", from);
+local function probe_jid(user, from)
+	core_post_stanza(hosts[module.host], st.presence({from=user, to=from, id="peptrigger", type="probe"}));
+	module:log("debug", "Sending trigger probe to: %s", from);
 end
 
 module:hook("presence/bare", function(event)
@@ -572,7 +579,7 @@ module:hook("iq-result/bare/disco", function(event)
 				module:log("debug", "Discovering interested roster contacts...");
 				for jid, item in pairs(session.roster) do -- for all interested contacts
 					if item.subscription == "both" or item.subscription == "from" then
-						disco_info_query(user, jid);
+						probe_jid(user, jid);
 					end
 				end
 			end
