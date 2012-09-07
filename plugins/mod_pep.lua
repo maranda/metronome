@@ -470,6 +470,15 @@ local function pep_send_back(recipient, user, hash)
 	end	
 end
 
+local function disco_info_query(user, from)
+	-- COMPAT from ~= stanza.attr.to because OneTeam can't deal with missing from attribute
+	core_post_stanza(hosts[module.host], 
+		st.stanza("iq", {from=user, to=from, id="disco", type="get"})
+			:query("http://jabber.org/protocol/disco#info")
+	);
+	module:log("debug", "Sending disco info query to: %s", from);
+end
+
 module:hook("presence/bare", function(event)
 	-- inbound presence to bare JID recieved           
 	local origin, stanza = event.origin, event.stanza;
@@ -507,12 +516,7 @@ module:hook("presence/bare", function(event)
 					services[user].recipients[recipient] = hash;
 					local from_bare = origin.type == "c2s" and origin.username.."@"..origin.host;
 					if self or origin.type ~= "c2s" or (from_bare and origin.full_jid and services[from_bare] and services[from_bare].recipients and services[from_bare].recipients[origin.full_jid]) ~= hash then
-						-- COMPAT from ~= stanza.attr.to because OneTeam can't deal with missing from attribute
-						origin.send(
-							st.stanza("iq", {from=user, to=stanza.attr.from, id="disco", type="get"})
-								:query("http://jabber.org/protocol/disco#info")
-						);
-						module:log("debug", "Sending disco info query to: "..stanza.attr.from);
+						disco_info_query(user, stanza.attr.from);
 					end
 				end
 			end
@@ -565,20 +569,10 @@ module:hook("iq-result/bare/disco", function(event)
 			end
 			services[user].hash_map[ver] = notify; -- update hash map
 			if self then
+				module:log("debug", "Discovering interested roster contacts...");
 				for jid, item in pairs(session.roster) do -- for all interested contacts
 					if item.subscription == "both" or item.subscription == "from" then
-						services[user].recipients[contact] = notify;
-						for node, object in pairs(nodes) do
-							if services[user].recipients[contact][node] then
-								object.subscribers[contact] = true;
-								local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
-								if items then
-									for _, id in ipairs(orderly) do
-										services[user]:broadcaster(node, contact, items[id]);
-									end
-								end
-							end
-						end
+						disco_info_query(user, jid);
 					end
 				end
 			end
