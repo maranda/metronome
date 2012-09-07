@@ -727,11 +727,11 @@ end
 
 function module.restore(data)
 	local _services = data.services or {};
-	for id in pairs(_services) do
+	for id, service in pairs(_services) do
 		username = jid_split(id);
 		services[id] = set_service(pubsub.new(pep_new(username)), id);
-		services[id].hash_map = _services[id] and _services[id].hash_map or {};
-		services[id].nodes = _services[id] and _services[id].nodes or {};
-		services[id].recipients = _services[id] and _services[id].recipients or {};		
+		services[id].hash_map = service.hash_map or {};
+		services[id].nodes = service.nodes or {};
+		services[id].recipients = service.recipients or {};		
 	end
 end
