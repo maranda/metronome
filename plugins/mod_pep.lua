@@ -447,7 +447,7 @@ local function get_caps_hash_from_presence(stanza, current)
 	return current; -- no caps, could mean caps optimization, so return current
 end
 
-local function pep_send_back(recipient, user, hash)
+local function pep_send_back(recipient, user)
 	local rec_srv = services[jid_bare(recipient)];
 	local user_srv_recipients = services[user] and services[user].recipients;
 	if not rec_srv or not user_srv_recipients then return; end
@@ -456,8 +456,8 @@ local function pep_send_back(recipient, user, hash)
 	local interested = {};
 	for jid, map in pairs(user_srv_recipients) do
 		if jid_bare(jid) == user then
-			if rec_srv.hash_map[hash] then
-				interested[jid] = rec_srv.hash_map[hash];
+			if rec_srv.recipients[jid] and type(rec_srv.recipients[jid]) == "table" then
+				interested[jid] = rec_srv.recipients[jid];
 			else
 				interested[jid] = map; -- dummy with ours...
 			end
@@ -507,7 +507,7 @@ module:hook("presence/bare", function(event)
 			else
 				if services[user].hash_map[hash] then
 					services[user].recipients[recipient] = services[user].hash_map[hash];
-					pep_send_back(recipient, user, hash);
+					pep_send_back(recipient, user);
 					for node, object in pairs(nodes) do
 						object.subscribers[recipient] = true;
 						if services[user].recipients[recipient][node] then
@@ -612,6 +612,7 @@ function set_service(new_service, jid, restore)
 	module.environment.services[jid] = services[jid];
 	disco_info = build_disco_info(services[jid]);
 	if restore then services[jid]:restore(); end
+	return services[jid];
 end
 
 local function normalize_dummy(jid)
