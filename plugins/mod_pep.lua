@@ -436,10 +436,45 @@ local function get_caps_hash_from_presence(stanza, current)
 	return current; -- no caps, could mean caps optimization, so return current
 end
 
+local function pep_send_back(recipient, user, hash)
+	local rec_srv = services[jid_bare(recipient)];
+	local user_srv_recipients = services[user] and services[user].recipients;
+	if not rec_srv or not user_srv_recipients then return; end
+
+	local nodes = rec_srv.nodes;
+	local interested = {};
+	for jid, map in pairs(user_srv_recipients) do
+		if jid_bare(jid) == user then
+			if rec_srv.hash_map[hash] then
+				interested[jid] = rec_srv.hash_map[hash];
+			else
+				interested[jid] = map; -- dummy with ours...
+			end
+		end
+	end
+	
+	-- Mutually subscribe and send items of interest
+	for jid, map in pairs(interested) do
+		rec_srv.recipients[jid] = map;
+		for node, obj in pairs(nodes) do
+			obj.subscribers[jid] = true;
+			if rec_srv.recipients[jid][node] then
+				local ok, items, orderly = rec_srv:get_items(node, true);
+				if items then
+					for _, id in ipairs(orderly) do
+						rec_srv:broadcaster(node, jid, items[id]);
+					end
+				end
+			end
+		end			
+	end	
+end
+
 module:hook("presence/bare", function(event)
 	-- inbound presence to bare JID recieved           
 	local origin, stanza = event.origin, event.stanza;
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local full_jid = origin.full_jid;
 	local t = stanza.attr.type;
 	local self = not stanza.attr.to;
 	
@@ -457,6 +492,7 @@ module:hook("presence/bare", function(event)
 			else
 				if services[user].hash_map[hash] then
 					services[user].recipients[recipient] = services[user].hash_map[hash];
+					pep_send_back(recipient, user, hash);
 					for node, object in pairs(nodes) do
 						object.subscribers[recipient] = true;
 						if services[user].recipients[recipient][node] then
@@ -691,12 +727,12 @@ function module.save()
 end
 
 function module.restore(data)
-	services = data.services or {};
-	for id in pairs(services) do
+	local _services = data.services or {};
+	for id in pairs(_services) do
 		username = jid_split(id);
 		services[id] = set_service(pubsub.new(pep_new(username)), id);
-		services[id].hash_map = data.services[id].hash_map or {};
-		services[id].nodes = data.services[id].nodes or {};
-		services[id].recipients = data.services[id].recipients or {};		
+		services[id].hash_map = _services[id] and _services[id].hash_map or {};
+		services[id].nodes = _services[id] and _services[id].nodes or {};
+		services[id].recipients = _services[id] and _services[id].recipients or {};		
 	end
 end
