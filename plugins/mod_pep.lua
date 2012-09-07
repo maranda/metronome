@@ -474,7 +474,6 @@ module:hook("presence/bare", function(event)
 	-- inbound presence to bare JID recieved           
 	local origin, stanza = event.origin, event.stanza;
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
-	local full_jid = origin.full_jid;
 	local t = stanza.attr.type;
 	local self = not stanza.attr.to;
 	
