@@ -268,12 +268,13 @@ function handlers.set_publish(origin, stanza, publish)
 	local recs_count = 0;
 	local id = (item and item.attr.id) or uuid_generate();
 	if node == "http://jabber.org/protocol/activity" and services[user].nodes[node] or
+	   node == "http://jabber.org/protocol/geoloc" and services[user].nodes[node] or
 	   node == "http://jabber.org/protocol/mood" and services[user].nodes[node] or
 	   node == "http://jabber.org/protocol/tune" and services[user].nodes[node] or
 	   node == "urn:xmpp:avatar:data" and services[user].nodes[node] or 
 	   node == "urn:xmpp:avatar:metadata" and services[user].nodes[node]then
-		services[user].nodes[node].data = {};		-- Clear activity/mood/tune/avatar nodes, wonder if this is the right thing to do?
-		services[user].nodes[node].data_id = {};	-- Clients don't do it and mess up. *Spec To Be Checked*
+		services[user].nodes[node].data = {};		-- Clear activity/mood/tune/avatar nodes, this is not exactly correct
+		services[user].nodes[node].data_id = {};	-- Spec wise I think.
 	end
 	local ok, ret = services[user]:publish(node, stanza.attr.from, id, item);
 	local reply;
@@ -703,10 +704,6 @@ function pep_new(node)
 
 					set_affiliation = true;
 				};
-			};
-
-			node_default_config = {
-				persist_items = false;
 			};
 
 			autocreate_on_publish = true;

@@ -618,7 +618,6 @@ set_service(pubsub.new({
 		title = "";
 		deliver_notifications = true;
 		deliver_payloads = true;
-		persist_items = false;
 	};
 	
 	autocreate_on_publish = autocreate_on_publish;

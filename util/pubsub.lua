@@ -244,11 +244,17 @@ function service:create(node, actor, config)
 	if self.nodes[node] then
 		return false, "conflict";
 	end
+
+	local _node_default_config;
+	if self.config.node_default_config then
+		_node_default_config = {};
+		for option, value in pairs(self.config.node_default_config) do	_node_default_config[option] = value; end
+	end
 	
 	self.nodes[node] = {
 		name = node;
 		subscribers = {};
-		config = self.config.node_default_config or {};
+		config = _node_default_config or {};
 		data = {};
 		data_id = {};
 		affiliations = {};
