@@ -44,7 +44,7 @@ local function rr_hook (event)
 end
 
 local function handle_activation (host, u)
-	if hosts[host] and hosts[host].events and not hosts[host].modules["auth_anonymous"] then
+	if hosts[host] and hosts[host].events and (hosts[host].modules and not hosts[host].modules["auth_anonymous"]) then
 		hosts[host].events.add_handler("s2sin-established", s2s_hook, 500)
 		hosts[host].events.add_handler("route/remote", rr_hook, 500)
 		hosts[host].events.add_handler("stanza/jabber:server:dialback:result", s2s_hook, 500)
@@ -57,7 +57,7 @@ local function handle_activation (host, u)
 end
 
 local function handle_deactivation (host, u, i)
-	if hosts[host] and hosts[host].events and not hosts[host].modules["auth_anonymous"] then
+	if hosts[host] and hosts[host].events and (hosts[host].modules and not hosts[host].modules["auth_anonymous"]) then
 		hosts[host].events.remove_handler("s2sin-established", s2s_hook)
 		hosts[host].events.remove_handler("route/remote", rr_hook)
 		hosts[host].events.remove_handler("stanza/jabber:server:dialback:result", s2s_hook)
