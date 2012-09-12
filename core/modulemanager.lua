@@ -100,12 +100,7 @@ local function do_load_module(host, module_name)
 		return nil, "unknown-host";
 	end
 	
-	if not modulemap[host] then
-		modulemap[host] = {};
-		if host ~= "*" then
-			hosts[host].modules = modulemap[host];
-		end
-	end
+	if not modulemap[host] then modulemap[host] = hosts[host].modules; end
 	
 	if modulemap[host][module_name] then
 		log("warn", "%s is already loaded for %s, so not loading again", module_name, host);
