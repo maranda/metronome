@@ -16,10 +16,12 @@ local base_path = module:get_option_string("reg_servlet_base", "/register_accoun
 local throttle_time = module:get_option_number("reg_servlet_ttime", nil)
 local whitelist = module:get_option_set("reg_servlet_wl", {})
 local blacklist = module:get_option_set("reg_servlet_bl", {})
+local http_event = require "net.http.server".fire_server_event;
 local recent_ips = {}
 
 -- Begin
 
+local function handle(code, message) return http_event("http-error", { code = code, message = message }) end
 local function http_response(event, code, message, headers)
 	local response = event.response
 
@@ -27,9 +29,7 @@ local function http_response(event, code, message, headers)
 		for header, data in pairs(headers) do response.headers[header] = data end
 	end
 
-	response.headers.content_type = "application/json"
-	response.status_code = code
-	response:send(message)
+	response:send(handle(code, message))
 end
 
 local function handle_req(event)
