@@ -363,10 +363,7 @@ function service:retract(node, actor, id, retract)
 		if value == id then table.remove(node_obj.data_id, index); end
 	end
 
-	if retract and (node_obj.config.deliver_notifications or node_obj.config.deliver_notifications == nil) then
-		-- Should deliver notifications be respected in this case?
-		self:broadcaster(node, node_obj.subscribers, retract);
-	end
+	if retract then	self:broadcaster(node, node_obj.subscribers, retract); end
 	self:save_node(node);
 	return true;
 end
