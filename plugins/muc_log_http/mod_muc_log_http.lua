@@ -625,17 +625,17 @@ local function handle_error(code, err) return http_event("http-error", { code = 
 function handle_request(event)
 	local response = event.response;
 	local request = event.request;
+	local code, err, room;
 
 	local node, day, more = request.url.path:match("^/"..urlBase.."/+([^/]*)/*([^/]*)/*(.*)$");
 	if more ~= "" then
-		response.status_code = 404;
-		response:send();
+		code, err = 404, "Unknown URL.";
+		return response:send(handle_error(code, err));
 	end
 	if node == "" then node = nil; end
 	if day  == "" then day  = nil; end
 
 	node = urldecode(node);
-	local code, err, room;
 
 	if not html.doc then 
 		code, err = 500, "Muc Theme is not loaded.";
