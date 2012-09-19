@@ -899,6 +899,7 @@ local um = require"core.usermanager";
 def_env.user = {};
 function def_env.user:create(jid, password)
 	local username, host = jid_split(jid);
+	if um.user_exists(username, host) then return nil, "User exists"; end
 	local ok, err = um.create_user(username, password, host);
 	if ok then
 		return true, "User created";
@@ -909,6 +910,7 @@ end
 
 function def_env.user:delete(jid)
 	local username, host = jid_split(jid);
+	if not um.user_exists(username, host) then return nil, "User doesn't exist"; end
 	local ok, err = um.delete_user(username, host);
 	if ok then
 		return true, "User deleted";
@@ -919,9 +921,10 @@ end
 
 function def_env.user:passwd(jid, password)
 	local username, host = jid_split(jid);
+	if not um.user_exists(username, host) then return nil, "User doesn't exist"; end
 	local ok, err = um.set_password(username, password, host);
 	if ok then
-		return true, "User created";
+		return true, "User's password changed";
 	else
 		return nil, "Could not change password for user: "..err;
 	end
