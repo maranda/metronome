@@ -93,17 +93,32 @@ function open(host, store, typ)
 	return ret, err;
 end
 
+function purge(user, host)
+	local storage = config.get(host, "core", "storage");
+	local driver_name;
+	if type(storage) == "table" then
+		local purged = {};
+		for store, driver in pairs(storage) do
+			if not purged[driver] then purged[driver] = get_driver(host, store):purge(user); end
+		end
+	end
+	get_driver(host):purge(user);
+	olddm.purge(user, host);
+	
+	return true;
+end
+
 function datamanager.load(username, host, datastore)
 	return open(host, datastore):get(username);
 end
 function datamanager.store(username, host, datastore, data)
 	return open(host, datastore):set(username, data);
 end
-function datamanager.list_stores(username, host)
-	return get_driver(host):list_stores(username);
+function datamanager.stores(username, host, type)
+	return get_driver(host):stores(username, type);
 end
 function datamanager.purge(username, host)
-	return get_driver(host):purge(username);
+	return purge(username, host);
 end
 
 return _M;
