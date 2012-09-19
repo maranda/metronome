@@ -216,7 +216,7 @@ function commands.help(session, data)
 	elseif section == "user" then
 		print [[user:create(jid, password) - Create the specified user account]]
 		print [[user:password(jid, password) - Set the password for the specified user account]]
-		print [[user:delete(jid, password) - Permanently remove the specified user account]]
+		print [[user:delete(jid) - Permanently remove the specified user account]]
 	elseif section == "server" then
 		print [[server:version() - Show the server's version number]]
 		print [[server:uptime() - Show how long the server has been running]]
