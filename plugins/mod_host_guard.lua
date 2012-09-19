@@ -1,5 +1,8 @@
 module:set_global()
 
+local hosts = hosts
+local incoming_s2s = metronome.incoming_s2s
+
 local guard_blockall = module:get_option_set("host_guard_blockall", {})
 local guard_ball_wl = module:get_option_set("host_guard_blockall_exceptions", {})
 local guard_protect = module:get_option_set("host_guard_selective", {})
@@ -8,6 +11,7 @@ local guard_hexlist = module:get_option_set("host_guard_hexlist", {})
 
 local config = configmanager
 local error_reply = require "util.stanza".error_reply
+local tostring = tostring
 
 local function s2s_hook (event)
 	local origin, stanza = event.session or event.origin, event.stanza or false
@@ -66,10 +70,31 @@ local function handle_deactivation (host, u, i)
 	end
 end
 
+local function close_filtered()
+	for _, host in pairs(hosts) do
+		for name, session in pairs(host.s2sout) do
+			if guard_hexlist:contains(session.to_host) or (guard_blockall:contains(session.host) and not guard_ball_wl:contains(session.to_host)) or
+			   (guard_block_bl:contains(session.to_host) and guard_protect:contains(session.host)) then
+				module:log("info", "closing down s2s outgoing stream to filtered entity %s", tostring(session.to_host))
+				session:close()
+			end
+		end
+	end
+	for session in pairs(incoming_s2s) do
+		if session.to_host and session.from_host and guard_hexlist:contains(session.from_host) or 
+		   (guard_blockall:contains(session.to_host) and not guard_ball_wl:contains(session.from_host) or
+		   guard_block_bl:contains(session.from_host) and guard_protect:contains(session.to_host)) then
+			module:log("info", "closing down s2s incoming stream from filtered entity %s", tostring(session.from_host))
+			session:close()
+		end
+	end
+end
+
 local function init_hosts(u, i)
 	for n in pairs(hosts) do
 		handle_deactivation(n, u, i) ; handle_activation(n, u) 
 	end
+	close_filtered()
 end
 
 local function reload()
