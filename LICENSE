@@ -1,0 +1,45 @@
+<=========================================================================================
+<
+< Metronome IM Server
+< - Licensing and Information.
+<
+<=========================================================================================
+
+This software codebase is a fork of prosody trunk (to be 0.9) merged with LW.Org's custom
+patches initiating from August 7th 2012 (see first commit).
+
+The merged patches regarded muc, pubsub API, pep, usermanager, minor internal changes to
+suit the forking, as can be seen in the first commit diff.
+
+The original forked codebase (Prosody IM, http://prosody.im), is copyright of their 
+respective authors and licensed under the MIT/X11 license where not expressively stated 
+otherwise. As allowed by the license beginning from the control versioned first commit, 
+the Metronome IM Server is re-licensed as follows:
+
+With the exclusion of non-modified parts (see above "merged patches"). Every modification,
+change or addition is copyrighted from LW.Org (Lightwitch Web Organization, 
+http://lightwitch.org) and Marco Cirillo.
+
+Redistribution,
+Use,
+Copying,
+Relicensing and or Selling/Reselling,
+
+of this codebase or any portion of it, is forbidden without the express authorization by
+LW.Org's authors/owners (currently Marco Cirillo). Whereas portions of the forked codebase
+aren't MIT/X11 licensed a *.license file is added (such file could point to multiple 
+related files also) and will contain the licensing/disclaimer informations for those parts 
+/ files.
+
+//*** Disclaimer
+
+The following software is provided _AS IS_, without any warranty express or implied, 
+including but not limited to merchantability, particular purpose fitness and/or
+infringement.
+
+In no event the copyright holders or authors of this software shall be liable of any
+claim, damages or other liability, wheter in action of contract, tort or otherwise,
+arising from, out of or in connection with the present software or the use, or other 
+dealings related to or in the software.
+
+***//

@@ -1,10 +1,3 @@
--- 
--- server.lua by blastbeat of the luadch project
--- Re-used here under the MIT/X Consortium License
--- 
--- Modifications (C) 2008-2010 Matthew Wild, Waqas Hussain
---
-
 -- // wrapping luadch stuff // --
 
 local use = function( what )

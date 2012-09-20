@@ -1,13 +1,3 @@
-/* Prosody IM
--- Copyright (C) 2008-2010 Matthew Wild
--- Copyright (C) 2008-2010 Waqas Hussain
--- Copyright (C) 2009 Tobias Markmann
---
--- This project is MIT/X11 licensed. Please see the
--- COPYING file in the source package for more information.
---
-*/
-
 /*
 * pposix.c
 * POSIX support functions for Lua
