@@ -37,6 +37,7 @@ local metronome = {
 	platform = "posix";
 	lock_globals = function () end;
 	unlock_globals = function () end;
+	installed = CFG_SOURCEDIR ~= nil;
 };
 _G.metronome = metronome;
 
@@ -103,6 +104,8 @@ if custom_plugin_paths then
 end
 metronome.paths = { source = CFG_SOURCEDIR, config = CFG_CONFIGDIR, 
 	          plugins = CFG_PLUGINDIR or "plugins", data = data_path };
+
+if metronome.installed then require "lfs".chdir(data_path); end
 
 require "core.loggingmanager"
 

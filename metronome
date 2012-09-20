@@ -197,6 +197,8 @@ function init_global_state()
 	if CFG_SOURCEDIR and (metronome.platform == "windows" or CFG_SOURCEDIR:match("^/")) then
 		metronome.installed = true;
 	end
+
+	if metronome.installed then require "lfs".chdir(data_path); end
 	
 	function metronome.reload_config()
 		log("info", "Reloading configuration file");
