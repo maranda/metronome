@@ -202,6 +202,7 @@ local function make_host(hostname)
 	return {
 		type = "local",
 		events = metronome.events,
+		modules = {},
 		users = require "core.usermanager".new_null_provider(hostname)
 	};
 end
