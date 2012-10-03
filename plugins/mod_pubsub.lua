@@ -1,4 +1,5 @@
 local hosts = hosts;
+local tonumber, type = tonumber, type;
 
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
@@ -158,6 +159,8 @@ function handlers.set_create(origin, stanza, create, config)
 				node_config["deliver_notifications"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
 			elseif field.attr.var == "pubsub#deliver_payloads" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
 				node_config["deliver_payloads"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
+			elseif field.attr.var == "pubsub#max_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
+				node_config["max_items"] = tonumber(field:get_child_text("value"));
 			elseif field.attr.var == "pubsub#persist_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
 				node_config["persist_items"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
 			-- Jappix compat below.
@@ -359,6 +362,12 @@ function form_layout(self, name)
 			type = "boolean",
 			label = "Whether to deliver payloads with event notifications",
 			value = ((node.config.deliver_notifications == false and false) or (node.config.deliver_notifications == true and node.config.deliver_payload)) or true
+		},
+		{
+			name = "pubsub#max_items",
+			type = "boolean",
+			label = "Max number of items to persist",
+			value = node.config.max_items or 20
 		},
 		{
 			name = "pubsub#persist_items",

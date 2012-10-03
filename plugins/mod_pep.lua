@@ -1,5 +1,6 @@
 local hosts = hosts;
 local core_post_stanza = metronome.core_post_stanza;
+local tonumber, type = tonumber, type;
 
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
@@ -152,7 +153,9 @@ function handlers.set_create(origin, stanza, create, config)
 		node_config = {};
 		local fields = config:get_child("x", "jabber:x:data");
 		for _, field in ipairs(fields.tags) do
-			if field.attr.var == "pubsub#persist_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
+			if field.attr.var == "pubsub#max_items" then
+				node_config["max_items"] = tonumber(field:get_child_text("value")) or 20;
+			elseif field.attr.var == "pubsub#persist_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
 				node_config["persist_items"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
 			-- Jappix compat below.
 			elseif field.attr.var == "pubsub#publish_model" and field:get_child_text("value") == "open" then
@@ -704,6 +707,10 @@ function pep_new(node)
 
 					set_affiliation = true;
 				};
+			};
+
+			node_default_config = {
+				max_items = 20;
 			};
 
 			autocreate_on_publish = true;
