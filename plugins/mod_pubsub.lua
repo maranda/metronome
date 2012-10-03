@@ -367,7 +367,7 @@ function form_layout(self, name)
 			name = "pubsub#max_items",
 			type = "boolean",
 			label = "Max number of items to persist",
-			value = node.config.max_items or 20
+			value = node.config.max_items or 0
 		},
 		{
 			name = "pubsub#persist_items",
