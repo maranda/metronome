@@ -615,7 +615,13 @@ function set_service(new_service, jid, restore)
 	services[jid]["recipients"] = {};
 	module.environment.services[jid] = services[jid];
 	disco_info = build_disco_info(services[jid]);
-	if restore then services[jid]:restore(); end
+	if restore then 
+		services[jid]:restore(); 
+		for name, node in pairs(services[jid].nodes) do 
+			node.subscribers = {};
+			services[jid]:save_node(name);
+		end
+	end
 	return services[jid];
 end
 
