@@ -2,7 +2,7 @@ local datamanager = require "util.datamanager"
 local dataforms_new = require "util.dataforms".new
 local jid_split = require "util.jid".split
 local jid_bare = require "util.jid".bare
-local restrict_to_host = module:get_option_set("restrict_to_hosts")
+local restrict_to_hosts = module:get_option_set("restrict_to_hosts")
 local ud_disco_name = module:get_option_string("ud_disco_name", "Metronome User Directory")
 local st = require "util.stanza"
 
@@ -159,7 +159,7 @@ local function optin_command_handler(self, data, state)
 	if state then
 		if data.action == "cancel" then return { status = "canceled" } end
 		local fields = optin_layout:data(data.form)
-		if restrict_to_host then
+		if restrict_to_hosts then
 			local node, host = jid_split(data.from)
 			if not restrict_to_hosts:contains(host) then return { status = completed, error = { message = "Signup to this directory is restricted." } } end
 		end
