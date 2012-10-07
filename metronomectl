@@ -120,6 +120,12 @@ if ok and pposix then
 	if pposix._VERSION ~= want_pposix_version then print(string.format("Unknown version (%s) of binary pposix module, expected %s", tostring(pposix._VERSION), want_pposix_version)); return; end
 	current_uid = pposix.getuid();
 	if current_uid == 0 then
+		local s_fd_limit = config.get("*", "core", "metronome_max_files_soft") or 3072;
+		local h_fd_limit = config.get("*", "core", "metronome_max_files_hard") or 3072;
+		if not pposix.setrlimit("NOFILE", s_fd_limit, h_fd_limit) then
+			print("Warning: Couldn't set the max open files limit.");
+		end
+
 		local desired_user = config.get("*", "core", "metronome_user") or "metronome";
 		local desired_group = config.get("*", "core", "metronome_group") or desired_user;
 		local ok, err = pposix.setgid(desired_group);
