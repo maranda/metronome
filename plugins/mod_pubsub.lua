@@ -3,7 +3,7 @@ local tonumber, type = tonumber, type;
 
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
-local jid_bare = require "util.jid".bare;
+local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
 local uuid_generate = require "util.uuid".generate;
 local dataforms = require "util.dataforms";
 
@@ -511,6 +511,11 @@ local function get_affiliation(self, jid, name, action)
 		is_server_admin = admin_aff;
 	end
 
+	if action == "create" and (not is_server_admin or self.affiliations[bare_jid]) then
+		local _, host = jid_split(jid);
+		if host == module.host:match("^[%w+]*%.(.*)") then return "local_user"; end
+	end 
+
 	-- check first if this is a node config check
 	if name and action == nil then
 		local node = self.nodes[name]
@@ -620,6 +625,32 @@ set_service(pubsub.new({
 			be_unsubscribed = true;
 			
 			set_affiliation = true;
+		};
+		-- Allow local users to create nodes.
+		local_user = {
+			create = true;
+			configure = false;
+			delete = false;
+			publish = false;
+			purge = false;
+			retract = false;
+			get_nodes = true;
+			
+			subscribe = true;
+			unsubscribe = true;
+			get_subscription = true;
+			get_subscriptions = true;
+			get_items = true;
+			
+			subscribe_other = false;
+			unsubscribe_other = false;
+			get_subscription_other = false;
+			get_subscriptions_other = false;
+			
+			be_subscribed = true;
+			be_unsubscribed = true;
+			
+			set_affiliation = false;
 		};
 	};
 
