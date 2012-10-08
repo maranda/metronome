@@ -34,6 +34,9 @@ function service:jids_equal(jid1, jid2)
 end
 
 function service:may(node, actor, action)
+	-- Employ normalization
+	if type(actor) ~= "boolean" then actor = self.config.normalize_jid(actor); end
+
 	if actor == true then return true; end
 	
 	local node_obj = self.nodes[node];
@@ -100,6 +103,7 @@ function service:set_affiliation(node, actor, jid, affiliation)
 	if not node_obj then
 		return false, "item-not-found";
 	end
+	jid = (type(jid) ~= "boolean" and self.config.normalize_jid(jid)) or jid;
 	node_obj.affiliations[jid] = affiliation;
 	local _, jid_sub = self:get_subscription(node, true, jid);
 	if not jid_sub and not self:may(node, jid, "be_unsubscribed") then
@@ -266,9 +270,6 @@ function service:create(node, actor, config)
 			self.nodes[node].config[entry] = value;
 		end
 	end
-
-	-- normalize jid
-	if type(actor) ~= "boolean" then actor = self.config.normalize_jid(actor); end
 
 	local ok, err = self:set_affiliation(node, true, actor, "owner");
 	if not ok then
