@@ -24,6 +24,7 @@ local BOSH_DEFAULT_POLLING = module:get_option_number("bosh_max_polling", 5);
 local BOSH_DEFAULT_REQUESTS = module:get_option_number("bosh_max_requests", 2);
 
 local consider_bosh_secure = module:get_option_boolean("consider_bosh_secure");
+local force_secure = module:get_option_boolean("force_https_bosh");
 
 local default_headers = { ["Content-Type"] = "text/xml; charset=utf-8" };
 
@@ -87,7 +88,10 @@ function on_destroy_request(request)
 	end
 end
 
-function handle_OPTIONS(request)
+function handle_OPTIONS(event)
+	local request = event.request;
+	if force_secure and not request.secure then return nil; end
+
 	local headers = {};
 	for k,v in pairs(default_headers) do headers[k] = v; end
 	headers["Content-Type"] = nil;
@@ -95,9 +99,14 @@ function handle_OPTIONS(request)
 end
 
 function handle_POST(event)
-	log("debug", "Handling new request %s: %s\n----------", tostring(event.request), tostring(event.request.body));
-
 	local request, response = event.request, event.response;
+	if force_secure and not request.secure then
+		log("debug", "Discarding unsecure request %s: %s\n----------", tostring(request), tostring(request.body));
+		return nil;
+	end
+
+	log("debug", "Handling new request %s: %s\n----------", tostring(request), tostring(request.body));
+
 	response.on_destroy = on_destroy_request;
 	local body = request.body;
 
@@ -385,14 +394,12 @@ end
 module:add_timer(1, on_timer);
 
 
-local GET_response = {
-	headers = {
-		content_type = "text/html";
-	};
-	body = [[<html><body>
-	<p>It works! Now point your BOSH client to this URL to connect to the XMPP Server.</p>
-	</body></html>]];
-};
+local function GET_response(event)
+	local response, request = event.response, event.request;
+	response.headers = { content_type = "text/html" };
+	response.body = "<html><body><p>It works! Now point your BOSH client to this URL to connect to the XMPP Server.</p></body></html>";
+	return response:send();
+end
 
 function module.add_host(module)
 	module:depends("http");
