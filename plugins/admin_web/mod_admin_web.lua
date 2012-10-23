@@ -25,6 +25,8 @@ module:set_global();
 
 service = {};
 
+local require_secure = module:get_option_boolean("admin_web_require_secure", false);
+
 local http_base = module.path:gsub("/[^/]+$","") .. "/www_files/";
 
 local xmlns_adminsub = "http://lightwitch.org/metronome-prosody/adminsub";
@@ -100,6 +102,9 @@ function del_host(session, type, host)
 end
 
 function serve_file(event, path)
+	local is_secure = event.request.secure;
+	if require_secure and not is_secure then return nil; end
+
 	local full_path = http_base .. path;
 
 	if stat(full_path, "mode") == "directory" then
