@@ -16,7 +16,7 @@ local base_path = module:get_option_string("reg_servlet_base", "/register_accoun
 local throttle_time = module:get_option_number("reg_servlet_ttime", nil)
 local whitelist = module:get_option_set("reg_servlet_wl", {})
 local blacklist = module:get_option_set("reg_servlet_bl", {})
-local http_event = require "net.http.server".fire_server_event;
+local http_event = require "net.http.server".fire_server_event
 local recent_ips = {}
 
 -- Begin
@@ -35,6 +35,7 @@ end
 local function handle_req(event)
 	local request = event.request
 	local body = request.body
+	if secure and not request.secure then return nil end
 
 	if request.method ~= "POST" then
 		return http_response(event, 405, "Bad method...", {["Allow"] = "POST"})
