@@ -395,7 +395,9 @@ module:add_timer(1, on_timer);
 
 
 local function GET_response(event)
-	local response, request = event.response, event.request;
+	local request, response = event.request, event.response;
+	if force_secure and not request.secure then return nil; end
+
 	response.headers = { content_type = "text/html" };
 	response.body = "<html><body><p>It works! Now point your BOSH client to this URL to connect to the XMPP Server.</p></body></html>";
 	return response:send();
