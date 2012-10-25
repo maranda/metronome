@@ -55,7 +55,8 @@ end
 
 function handle_request(event, pasteid)
 	if not pasteid or not pastes[pasteid] then
-		return "Invalid paste id, perhaps it expired?";
+		event.response.headers = default_headers;
+		return event.response:send("Invalid paste id, perhaps it expired?");
 	end
 	
 	--module:log("debug", "Received request, replying: %s", pastes[pasteid].text);
