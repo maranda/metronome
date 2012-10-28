@@ -9,6 +9,7 @@ local query = st.stanza("query", {xmlns = "jabber:iq:version"})
 	:tag("version"):text(metronome.version):up();
 
 local random_osv_cmd = module:get_option_string("refresh_random_osv_cmd");
+local log_requests = module:get_option_boolean("log_version_requests", true);
 
 if not module:get_option_boolean("hide_os_type") and not random_osv_cmd then
 	if os.getenv("WINDIR") then
@@ -43,6 +44,7 @@ module:hook("iq/host/jabber:iq:version:query", function(event)
 			random_string:close();
 			_query = st.clone(query):tag("os"):text(version):up();
 		end
+		if log_requests then module:log("info", "%s requested the version of the server software, sending response...", stanza.attr.from); end
 		event.origin.send(st.reply(stanza):add_child(_query or query));
 		return true;
 	end
