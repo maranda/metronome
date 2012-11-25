@@ -10,6 +10,9 @@ local core_process_stanza = metronome.core_process_stanza;
 local st = require "util.stanza";
 local logger = require "util.logger";
 local log = logger.init("mod_bosh");
+local math_min = math.min;
+
+local initialize_filters = require "util.filters".initialize;
 
 local xmlns_streams = "http://etherx.jabber.org/streams";
 local xmlns_xmpp_streams = "urn:ietf:params:xml:ns:xmpp-streams";
@@ -22,6 +25,7 @@ local BOSH_DEFAULT_HOLD = module:get_option_number("bosh_default_hold", 1);
 local BOSH_DEFAULT_INACTIVITY = module:get_option_number("bosh_max_inactivity", 60);
 local BOSH_DEFAULT_POLLING = module:get_option_number("bosh_max_polling", 5);
 local BOSH_DEFAULT_REQUESTS = module:get_option_number("bosh_max_requests", 2);
+local BOSH_MAX_WAIT = module:get_option_number("bosh_max_wait", 120);
 
 local consider_bosh_secure = module:get_option_boolean("consider_bosh_secure");
 local force_secure = module:get_option_boolean("force_https_bosh");
@@ -63,8 +67,7 @@ end
 local t_insert, t_remove, t_concat = table.insert, table.remove, table.concat;
 local os_time = os.time;
 
-local sessions = {};
-local inactive_sessions = {};
+local sessions, inactive_sessions = module:shared("sessions", "inactive_sessions");
 local waiting_requests = {};
 
 function on_destroy_request(request)
@@ -224,7 +227,7 @@ function stream_callbacks.streamopened(context, attr)
 		sid = new_uuid();
 		local session = {
 			type = "c2s_unauthed", conn = {}, sid = sid, rid = tonumber(attr.rid)-1, host = attr.to,
-			bosh_version = attr.ver, bosh_wait = attr.wait, streamid = sid,
+			bosh_version = attr.ver, bosh_wait = math_min(attr.wait, BOSH_MAX_WAIT), streamid = sid,
 			bosh_hold = BOSH_DEFAULT_HOLD, bosh_max_inactive = BOSH_DEFAULT_INACTIVITY,
 			requests = { }, send_buffer = {}, reset_stream = bosh_reset_stream,
 			close = bosh_close_stream, dispatch_stanza = core_process_stanza, notopen = true,
@@ -232,6 +235,8 @@ function stream_callbacks.streamopened(context, attr)
 			ip = get_ip_from_request(request);
 		};
 		sessions[sid] = session;
+
+		local filter = initialize_filters(session);
 		
 		session.log("debug", "BOSH session created for request from %s", session.ip);
 		log("info", "New BOSH session, assigned it sid '%s'", sid);
@@ -244,6 +249,7 @@ function stream_callbacks.streamopened(context, attr)
 				s = st.clone(s);
 				s.attr.xmlns = "jabber:client";
 			end
+			s = filter("stanzas/out", s);
 			--log("debug", "Sending BOSH data: %s", tostring(s));
 			t_insert(session.send_buffer, tostring(s));
 
@@ -257,7 +263,7 @@ function stream_callbacks.streamopened(context, attr)
 					sid = sid;
 				};
 				if creating_session then
-					body_attr.wait = attr.wait;
+					body_attr.wait = tostring(session.bosh_wait);
 					body_attr.inactivity = tostring(BOSH_DEFAULT_INACTIVITY);
 					body_attr.polling = tostring(BOSH_DEFAULT_POLLING);
 					body_attr.requests = tostring(BOSH_DEFAULT_REQUESTS);
@@ -327,6 +333,7 @@ function stream_callbacks.handlestanza(context, stanza)
 		if stanza.attr.xmlns == xmlns_bosh then
 			stanza.attr.xmlns = nil;
 		end
+		stanza = session.filter("stanzas/in", stanza);
 		core_process_stanza(session, stanza);
 	end
 end
