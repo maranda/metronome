@@ -26,7 +26,7 @@ local BOSH_DEFAULT_REQUESTS = module:get_option_number("bosh_max_requests", 2);
 local consider_bosh_secure = module:get_option_boolean("consider_bosh_secure");
 local force_secure = module:get_option_boolean("force_https_bosh");
 
-local default_headers = { ["Content-Type"] = "text/xml; charset=utf-8" };
+local default_headers = { ["Content-Type"] = "text/xml; charset=utf-8", ["Connection"] = "keep-alive" };
 
 local cross_domain = module:get_option("cross_domain_bosh", false);
 if cross_domain then
