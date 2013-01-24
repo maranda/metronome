@@ -531,13 +531,13 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 			end
 		end
 	elseif not current_nick then -- not in room
-		if type == "error" or type == "result" and stanza.name == "iq" then
+		if (type == "error" or type == "result") and stanza.name == "iq" then
 			local id = stanza.attr.id;
 			stanza.attr.from, stanza.attr.to, stanza.attr.id = deconstruct_stanza_id(self, stanza);
 			if stanza.attr.id then self:_route_stanza(stanza); end
 			stanza.attr.from, stanza.attr.to, stanza.attr.id = from, to, id;
 		else
-			origin.send(st.error_reply(stanza, "cancel", "not-acceptable"));
+			if type ~= "error" then origin.send(st.error_reply(stanza, "cancel", "not-acceptable")); end
 		end
 	elseif stanza.name == "message" and type == "groupchat" then -- groupchat messages not allowed in PM
 		origin.send(st.error_reply(stanza, "modify", "bad-request"));
