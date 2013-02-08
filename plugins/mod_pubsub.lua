@@ -427,7 +427,7 @@ local function add_disco_features_from_service(disco, service)
 		end
 	end
 	for affiliation in pairs(service.config.capabilities) do
-		if affiliation ~= "none" and affiliation ~= "owner" then
+		if affiliation ~= "none" and affiliation ~= "owner" and affiliation ~= "local_user" then
 			disco:tag("feature", { var = xmlns_pubsub.."#"..affiliation.."-affiliation" }):up();
 		end
 	end
