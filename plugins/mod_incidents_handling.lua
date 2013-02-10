@@ -107,7 +107,7 @@ function _inc_mt:new_object(fields, formtype)
 
 	local new_object = {}
 	if not fail then
-		new_object["time"] = Os_time()
+		new_object["time"] = os_time()
 		new_object["status"] = (formtype == "request" and "open") or nil
 		new_object["data"] = {
 			id = { text = id_gen(), name = my_host },
