@@ -613,6 +613,8 @@ local function get_affiliation(self, jid)
 	local bare_jid = jid_bare(jid);
 	if bare_jid == self.name then
 		return admin_aff;
+	else
+		return "none";
 	end
 end
 
