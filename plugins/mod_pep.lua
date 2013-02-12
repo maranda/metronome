@@ -11,6 +11,7 @@ local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed
 local calculate_hash = require "util.caps".calculate_hash;
 local getpath = datamanager.getpath;
 local lfs = require "lfs";
+local um_user_exists = usermanager.user_exists;
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
@@ -57,9 +58,16 @@ function handle_pubsub_iq(event)
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
 	local full_jid = origin.full_jid;
 	local username, host = jid_split(user);
-	if host == module.host and hosts[host].sessions[username] and not services[user] and full_jid then -- create service.
-		set_service(pubsub.new(pep_new(username)), user, true);
-		disco_info_query(user, full_jid); -- discover the creating resource immediatly.
+	if not services[user] and um_user_exists(username, host) then -- create service on demand.
+
+		-- check if the creating user is the owner or someone requesting its pep service,
+		-- required for certain crawling bots, e.g. Jappix Me
+		if hosts[host].sessions[username] and (full_jid and jid_bare(full_jid) == username) then
+			set_service(pubsub.new(pep_new(username)), user, true);
+			disco_info_query(user, full_jid); -- discover the creating resource immediatly.
+		else
+			set_service(pubsub.new(pep_new(username)), user, true);
+		end
 	end
 	
 	local pubsub = stanza.tags[1];
