@@ -143,16 +143,16 @@ local function get_incident_layout(i_type)
 		{ name = "started", type = "text-single", label = "Incident Start Time" },
 		{ name = "ended", type = "text-single", label = "Incident Ended Time" },
 		{ name = "reported", type = "hidden", value = ft_str() },
-		{ type = "fixed", value = "Contacts entries format is: <address> <role> [type (email or jid, def. is jid)] - separated by new lines" },
-		{ name = "contacts", type = "text-multi", label = "Contacts" },
-		{ type = "fixed", value = "Related incidents entries format is: <CSIRT's FQDN> <Incident ID> - separated by new lines" },
-		{ name = "related", type = "text-multi", label = "Related Incidents" },
-		{ type = "fixed", value = "Impact assessment format is: <severity> <completion> <type>" },
-		{ name = "impact", type = "text-single", label = "Impact Assessment" },
-		{ type = "fixed", value = "Attack sources format is: <address> <category> <count> <count-type>" },
-		{ name = "sources", type = "text-multi", label = "Attack Sources" },
-		{ type = "fixed", value = "Attack target format is: <address> <category> <noderole>" },
-		{ name = "targets", type = "text-multi", label = "Attack Sources" }
+		{ name = "contacts", type = "text-multi", label = "Contacts",
+		  desc = "Contacts entries format is: <address> <role> [type (email or jid, def. is jid)] - separated by new lines" },
+		{ name = "related", type = "text-multi", label = "Related Incidents", 
+		  desc = "Related incidents entries format is: <CSIRT's FQDN> <Incident ID> - separated by new lines" },
+		{ name = "impact", type = "text-single", label = "Impact Assessment", 
+		  desc = "Impact assessment format is: <severity> <completion> <type>" },
+		{ name = "sources", type = "text-multi", label = "Attack Sources", 
+		  desc = "Attack sources format is: <address> <category> <count> <count-type>" },
+		{ name = "targets", type = "text-multi", label = "Attack Sources", 
+		  desc = "Attack target format is: <address> <category> <noderole>" }
 	}
 
 	if i_type == "request" then
