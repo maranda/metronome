@@ -29,6 +29,14 @@ function form_t.form(layout, data, formtype)
 		-- Add field tag
 		form:tag("field", { type = field_type, var = field.name, label = field.label });
 
+		if field.desc and type(field.desc) == "string" then
+			form:tag("desc"):text(field.desc):up();
+		end
+		
+		if field.required then
+			form:tag("required"):up();
+		end
+		
 		local value = (data and data[field.name]) or field.value;
 		
 		if value then
@@ -84,10 +92,6 @@ function form_t.form(layout, data, formtype)
 					end
 				end
 			end
-		end
-		
-		if field.required then
-			form:tag("required"):up();
 		end
 		
 		-- Jump back up to list of fields
