@@ -429,7 +429,7 @@ end);
 
 module:hook("account-disco-items", function(event)
 	local stanza = event.stanza;
-	local bare = stanza.attr.to;
+	local bare = jid_bare(stanza.attr.to);
 	local user_data = services[bare].nodes;
 
 	if user_data then
