@@ -21,6 +21,7 @@ local set, array = require "util.set", require "util.array";
 local cert_verify_identity = require "util.x509".verify_identity;
 local envload = require "util.envload".envload;
 local envloadfile = require "util.envload".envloadfile;
+local dns = require "net.dns";
 
 local commands = module:shared("commands")
 local def_env = module:shared("env");
@@ -222,7 +223,8 @@ function commands.help(session, data)
 		print [[server:uptime() - Show how long the server has been running]]
 		print [[server:shutdown(reason) - Shut down the server, with an optional reason to be broadcast to all connections]]
 	elseif section == "config" then
-		print [[config:reload() - Reload the server configuration. Modules may need to be reloaded for changes to take effect.]]
+		print [[config:dns_reload() - Reload system resolvers configuration data]]
+		print [[config:reload() - Reload the server configuration. Modules may need to be reloaded for changes to take effect]]
 	elseif section == "console" then
 		print [[Hey! Welcome to Metronome's admin console.]]
 		print [[First thing, if you're ever wondering how to get out, simply type 'quit'.]]
@@ -405,6 +407,13 @@ function def_env.module:list(hosts)
 end
 
 def_env.config = {};
+function def_env.config:dns_reload()
+	dns._resolver.server = {};
+	dns._resolver:adddefaultnameservers();
+
+	return true, "Resolvers configuration reloaded.";
+end
+
 function def_env.config:load(filename, format)
 	local config_load = require "core.configmanager".load;
 	local ok, err = config_load(filename, format);
