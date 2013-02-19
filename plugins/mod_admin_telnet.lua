@@ -22,11 +22,17 @@ local cert_verify_identity = require "util.x509".verify_identity;
 local envload = require "util.envload".envload;
 local envloadfile = require "util.envload".envloadfile;
 local dns = require "net.dns";
+local st = require "util.stanza";
+local cm = configmanager;
+local mm = modulemanager;
+local um = usermanager;
 
 local commands = module:shared("commands")
 local def_env = module:shared("env");
 local default_env_mt = { __index = def_env };
 local core_post_stanza = metronome.core_post_stanza;
+
+local strict_host_checks = module:get_option_boolean("admin_telnet_strict_host_checks", true)
 
 local function redirect_output(_G, session)
 	local env = setmetatable({ print = session.print }, { __index = function (t, k) return rawget(_G, k); end });
@@ -247,13 +253,6 @@ end
 
 def_env.server = {};
 
-function def_env.server:insane_reload()
-	metronome.unlock_globals();
-	dofile "metronome"
-	metronome = _G.metronome;
-	return true, "Server reloaded";
-end
-
 function def_env.server:version()
 	return true, tostring(metronome.version or "unknown");
 end
@@ -289,7 +288,6 @@ local function get_hosts_set(hosts, module)
 	elseif type(hosts) == "string" then
 		return set.new { hosts };
 	elseif hosts == nil then
-		local mm = require "modulemanager";
 		local hosts_set = set.new(array.collect(keys(metronome.hosts)))
 			/ function (host) return (metronome.hosts[host].type == "local" or module and mm.is_loaded(host, module)) and host or nil; end;
 		if module and mm.get_module("*", module) then
@@ -300,8 +298,6 @@ local function get_hosts_set(hosts, module)
 end
 
 function def_env.module:load(name, hosts, config)
-	local mm = require "modulemanager";
-	
 	hosts = get_hosts_set(hosts);
 	
 	local ok, err, count, mod = true, nil, 0, nil;
@@ -328,8 +324,6 @@ function def_env.module:load(name, hosts, config)
 end
 
 function def_env.module:unload(name, hosts)
-	local mm = require "modulemanager";
-
 	hosts = get_hosts_set(hosts, name);
 	
 	local ok, err, count = true, nil, 0;
@@ -349,8 +343,6 @@ function def_env.module:unload(name, hosts)
 end
 
 function def_env.module:reload(name, hosts)
-	local mm = require "modulemanager";
-
 	hosts = array.collect(get_hosts_set(hosts, name)):sort(function (a, b)
 		if a == "*" then return true
 		elseif b == "*" then return false
@@ -415,8 +407,7 @@ function def_env.config:dns_reload()
 end
 
 function def_env.config:load(filename, format)
-	local config_load = require "core.configmanager".load;
-	local ok, err = config_load(filename, format);
+	local ok, err = cm.load(filename, format);
 	if not ok then
 		return false, err or "Unknown error loading config";
 	end
@@ -424,8 +415,7 @@ function def_env.config:load(filename, format)
 end
 
 function def_env.config:get(host, section, key)
-	local config_get = require "core.configmanager".get
-	return true, tostring(config_get(host, section, key));
+	return true, tostring(cm.get(host, section, key));
 end
 
 function def_env.config:reload()
@@ -817,10 +807,22 @@ function def_env.s2s:closeall(host)
 end
 
 def_env.host = {}; def_env.hosts = def_env.host;
+function def_env.host:activate(hostname, reload)
+	-- auto-reload config as long as not stated otherwise
+	if reload or reload == nil then
+		local ok, err = metronome.reload_config();
+		if err then 
+			return false, "Config reload failure eventually, call host:activate("..hostname..", false) -- ERROR:"..tostring(err);
+		end
+	end
 
-function def_env.host:activate(hostname, config)
-	return hostmanager.activate(hostname, config);
+	if not cm.is_host_defined(host) and strict_host_checks then
+		return false, "Hosts needs to be defined explicitly into the configuration before being activated (to avoid this set << admin_telnet_strict_host_checks = false >> in the global configuration)";
+	end
+
+	return hostmanager.activate(hostname);
 end
+
 function def_env.host:deactivate(hostname, reason)
 	return hostmanager.deactivate(hostname, reason);
 end
@@ -903,8 +905,6 @@ function def_env.muc:room(room_jid)
 	return setmetatable({ room = room_obj }, console_room_mt);
 end
 
-local um = require"core.usermanager";
-
 def_env.user = {};
 function def_env.user:create(jid, password)
 	local username, host = jid_split(jid);
@@ -941,7 +941,6 @@ end
 
 def_env.xmpp = {};
 
-local st = require "util.stanza";
 function def_env.xmpp:ping(localhost, remotehost)
 	if hosts[localhost] then
 		core_post_stanza(hosts[localhost],
