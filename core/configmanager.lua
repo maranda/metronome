@@ -41,6 +41,15 @@ function get(host, section, key)
 	end
 	return nil;
 end
+
+function is_host_defined(host)
+	if host == "*" then 
+		return false;
+	else
+		if rawget(config, host) then return true; else return false; end
+	end
+end
+
 function _M.rawget(host, section, key)
 	local hostconfig = rawget(config, host);
 	if hostconfig then
