@@ -23,8 +23,8 @@ module "hostmanager"
 
 local hosts_loaded_once;
 
-local function load_enabled_hosts(config)
-	local defined_hosts = config or configmanager.getconfig();
+local function load_enabled_hosts()
+	local defined_hosts = configmanager.getconfig();
 	local activated_any_host;
 	
 	for host, host_config in pairs(defined_hosts) do
@@ -57,10 +57,9 @@ local function host_send(stanza)
 	core_route_stanza(nil, stanza);
 end
 
-function activate(host, host_config)
+function activate(host)
 	if hosts[host] then return nil, "The host "..host.." is already activated"; end
-	host_config = host_config or configmanager.getconfig()[host];
-	if not host_config then return nil, "Couldn't find the host "..tostring(host).." defined in the current config"; end
+	host_config = configmanager.getconfig()[host];
 	local host_session = {
 		host = host;
 		s2sout = {};
