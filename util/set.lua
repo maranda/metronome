@@ -1,5 +1,5 @@
-local ipairs, pairs, setmetatable, next, tostring =
-      ipairs, pairs, setmetatable, next, tostring;
+local ipairs, pairs, setmetatable, next, tostring, type =
+      ipairs, pairs, setmetatable, next, tostring, type;
 local t_concat = table.concat;
 
 module "set"
@@ -76,8 +76,16 @@ function new(list)
 	
 	function set:add_list(list)
 		if list then
-			for _, item in ipairs(list) do
-				items[item] = true;
+			if type(list) == "string" then 
+				list = { list };
+			elseif type(list) == "function" then
+				list = list();
+			end
+
+			if type(list) == "table" then			
+				for _, item in ipairs(list) do
+					items[item] = true;
+				end
 			end
 		end
 	end
