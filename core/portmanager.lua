@@ -83,7 +83,7 @@ function activate(service_name)
 		or config.get("*", "interface")
 		or listener.default_interface
 		or default_interfaces
-	bind_interfaces = set.new(type(bind_interfaces)~="table" and {bind_interfaces} or bind_interfaces);
+	bind_interfaces = set.new(bind_interfaces);
 	
 	local bind_ports = set.new(config.get("*", config_prefix.."ports")
 		or service_info.default_ports
