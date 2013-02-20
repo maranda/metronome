@@ -18,7 +18,7 @@ end);
 local adhoc_new = module:require "adhoc".new;
 
 function uptime_text()
-	local t = os.time()-metronome.start_time;
+	local t = os.time()-start_time;
 	local seconds = t%60;
 	t = (t - seconds)/60;
 	local minutes = t%60;
@@ -28,7 +28,7 @@ function uptime_text()
 	local days = t;
 	return string.format("This server has been running for %d day%s, %d hour%s and %d minute%s (since %s)",
 		days, (days ~= 1 and "s") or "", hours, (hours ~= 1 and "s") or "",
-		minutes, (minutes ~= 1 and "s") or "", os.date("%c", metronome.start_time));
+		minutes, (minutes ~= 1 and "s") or "", os.date("%c", start_time));
 end
 
 function uptime_command_handler (self, data, state)
