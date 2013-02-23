@@ -57,7 +57,7 @@ local function build_server_disco_info()
 	_cached_server_caps_feature = st.stanza("c", {
 		xmlns = "http://jabber.org/protocol/caps";
 		hash = "sha-1";
-		node = "http://lightwitch.org/metronome-prosody";
+		node = "http://lightwitch.org/metronome";
 		ver = _cached_server_caps_hash;
 	});
 end
@@ -89,7 +89,7 @@ module:hook("iq/host/http://jabber.org/protocol/disco#info:query", function(even
 	local origin, stanza = event.origin, event.stanza;
 	if stanza.attr.type ~= "get" then return; end
 	local node = stanza.tags[1].attr.node;
-	if node and node ~= "" and node ~= "http://lightwitch.org/metronome-prosody#"..get_server_caps_hash() then return; end -- TODO fire event?
+	if node and node ~= "" and node ~= "http://lightwitch.org/metronome#"..get_server_caps_hash() then return; end -- TODO fire event?
 	local reply_query = get_server_disco_info();
 	reply_query.node = node;
 	local reply = st.reply(stanza):add_child(reply_query);
