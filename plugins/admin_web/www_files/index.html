@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Metronome Webadmin</title>
+<link rel="stylesheet" type="text/css" href="css/bootstrap-1.4.0.min.css" />
+<link rel="stylesheet" type="text/css" href="css/style.css" />
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" />
+<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+<script type="text/javascript" src="js/strophe.min.js"></script>
+<script type="text/javascript" src="js/adhoc.js"></script>
+<script type="text/javascript" src="js/main.js"></script>
+</head>
+
+<body>
+<div id='top'>
+  <div id='header'>
+    <img src="images/metronome.png" alt="Once a Prosody... :|"/>
+  </div>
+  <div id='menu'>
+    <ul>
+      <li><a id='adhocMenu' href="#adhoc">General</a></li>
+      <li><a id='serverMenu' href="#s2sList">Servers</a></li>
+      <li><a id='clientMenu' href="#c2sList">Clients</a></li>
+      <li><span id="selector">Host:&nbsp;<select id="host"></select></span></li>
+      <li><a href="#" id='logout'>Logout</a></li>
+    </ul>
+  </div>
+</div>
+
+<div id='login'>
+  <form id='cred' name='cred' class='form-stacked'>
+    <fieldset>
+      <div class='clearfix'>
+	<label for='jid'>JID:</label>
+	<div class='input'>
+	  <input type='text' id='jid' />
+	</div>
+      </div>
+      <div class='clearfix'>
+	<label for='pass'>Password:</label>
+	<div class='input'>
+	  <input type='password' id='pass' />
+	</div>
+      </div>
+      <div class='clearfix'>
+	<div class='input'>
+	  <input type='submit' id='connect' value='Login' class='btn' />
+	</div>
+      </div>
+    </fieldset>
+  </form>
+</div>
+
+<div id='main'>
+  <div id="adhoc">
+    <div class="row">
+      <div id="adhocCommands" class="span4"></div>
+      <div id="adhocDisplay" class="span12"></div>
+    </div>
+  </div>
+  <div id="s2sList" class="container">
+   <div class="row">
+    <div class="span8">
+      <h2>Incoming S2S connections:</h2>
+      <ul id="s2sin"></ul>
+    </div>
+    <div class="span8">
+      <h2>Outgoing S2S connections:</h2>
+      <ul id="s2sout"></ul>
+    </div>
+   </div>
+  </div>
+  <div id="c2sList" class="container">
+   <div class="row">
+    <div class="span16">
+      <h2>Client connections:</h2>
+      <ul id="c2s"></ul>
+    </div>
+   </div>
+  </div>
+</div>
+
+<div id='log_container'>
+  <a id='log_toggle' href='#'>Status Log :</a>
+  <div id='log'></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,100 @@
+body {
+  margin: 0
+}
+
+a {
+  color: #0000FF
+}
+
+ul {
+  margin: 0
+}
+
+.btn {
+  margin-right: 0.3em
+}
+
+.btn:last {
+  margin-right: 0
+}
+
+#log_container {
+  clear: both;
+  display: none
+}
+
+#adhocCommands {
+  border-right: solid 1px
+}
+
+#adhocCommands li {
+  list-style: inside
+}
+
+#login {
+  float: left;
+  margin: 1em 2em 0 1em;
+  padding-right: 1em;
+  border: solid 1px;
+  background: #eef0f2;
+  color: #000000
+}
+
+#main {
+  display: none;
+  margin: 1em
+}
+
+#main p {
+  margin: 0
+}
+
+#top {
+  clear: both;
+  width: 100%;
+  padding: 0;
+}
+
+#header {
+  height: 172px;
+  background: url(../images/haze_orange.png) repeat-x
+}
+
+#menu {
+  display: none;
+  color: #454748;
+  font-size: 1.1em;
+  background: #eef0f2;
+  width: 100%;
+}
+
+#menu ul {
+  display: inline;
+  list-style-type: none;
+  margin: 0;
+  padding: 0.5em 0
+}
+
+#menu li {
+  display: inline;
+  padding: 0 0.5em
+}
+
+#menu a {
+  color: #454748;
+  text-decoration: none
+}
+
+#menu li a:hover {
+  color: #6197DF;
+  text-decoration: underline
+}
+
+#s2sList h2, #c2sList h2 {
+  color: #4b8ade;
+  margin: 0
+}
+
+#host {
+  margin: 0.25em;
+}
