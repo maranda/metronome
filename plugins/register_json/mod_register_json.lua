@@ -25,6 +25,7 @@ local urldecode = http.urldecode
 
 local recent_ips = {}
 local pending = {}
+local pending_node = {}
 
 local files_base = module.path:gsub("/[^/]+$","") .. "/template/";
 
@@ -77,6 +78,11 @@ local function handle_req(event)
 				module:log("debug", "%s supplied an username containing invalid characters: %s", user, username)
 				return http_response(event, 406, "Supplied username contains invalid characters, see RFC 6122.")
 			else
+				if pending_node[username] then
+					module:log("warn", "%s attempted to submit a registration request but another request for that user is pending")
+					return http_response(event, 401, "Another user registration by that username is pending.")
+				end
+
 				if not usermanager.user_exists(username, req_body["host"]) then
 					-- if username fails to register successive requests shouldn't be throttled until one is successful.
 					if throttle_time and not whitelist:contains(req_body["ip"]) then
@@ -93,8 +99,10 @@ local function handle_req(event)
 					end
 
 					local uuid = uuid_gen()
-					pending[uuid] = { node = req_body["username"], host = req_body["host"], password = req_body["password"], ip = req_body["ip"] }
-					timer.add_task(300, function() pending[uuid] = nil end)
+					pending[uuid] = { node = username, host = req_body["host"], password = req_body["password"], ip = req_body["ip"] }
+					pending_node[username] = uuid
+
+					timer.add_task(300, function() pending[uuid] = nil ; pending_node[username] = nil end)
 					return uuid
 				else
 					module:log("debug", "%s registration data submission for %s failed (user already exists)", user, username)
@@ -156,13 +164,15 @@ local function handle_verify(event, path)
 				local username, host, password, ip = 
 				      pending[uuid].node, pending[uuid].host, pending[uuid].password, pending[uuid].ip
 
-				local ok, error = usermanager.create_user(username, host, password)
+				local ok, error = usermanager.create_user(username, password, host)
 				if ok then 
 					hosts[host].events.fire_event(
 						"user-registered", 
 						{ username = username, host = host, source = "mod_register_json", session = { ip = ip } }
 					)
 					module:log("debug", "Registration for %s@%s is successfully verified and registered", username, host)
+					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
+					pending[uuid] = nil ; pending_node[username] = nil
 					return r_template(event, "success")				
 				else
 					module:log("error", "User creation failed: "..error)
