@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Metronome User Registration Verification</title>
+<link rel="stylesheet" type="text/css" href="css/style.css" />
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" />
+</head>
+
+<body>
+<div id='top'>
+  <div id='header'>
+    <img src="images/metronome.png" alt="Once a Prosody... :|"/>
+  </div>
+</div>
+
+<div id='main'>
+  <p>Please input below the identification string you received by e-mail, to complete your
+  <br />xmpp account registration.</p>
+  <form action='%REG-URL' method='post' accept-charset='UTF-8' id='uuid'>
+    <div><label for='set-uuid'>UUID:</label></div>
+    <div><input type='text' name='uuid' id='set-uuid' value="" /></div>
+    <div><input type='submit' id='connect' value='Complete Registration' class='btn' /></div>
+  </form>
+</div>
+
+</body>
+</html>
