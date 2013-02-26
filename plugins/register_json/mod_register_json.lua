@@ -38,6 +38,7 @@ local function http_response(event, code, message, headers)
 		for header, data in pairs(headers) do response.headers[header] = data end
 	end
 
+	response.status_code = code
 	response:send(handle(code, message))
 end
 
