@@ -6,6 +6,7 @@ local st = require "util.stanza";
 local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
 local uuid_generate = require "util.uuid".generate;
 local dataforms = require "util.dataforms";
+local array = require "util.array";
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
@@ -88,7 +89,8 @@ function handlers.get_items(origin, stanza, items)
 	end
 	
 	local data = st.stanza("items", { node = node });
-	for _, id in ipairs(max_tosend) do data:add_child(results[id]); end
+	max_tosend = array(max_tosend);
+	for _, id in ipairs(max_tosend:reverse()) do data:add_child(results[id]); end
 
 	local reply;
 	if data then

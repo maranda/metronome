@@ -11,6 +11,7 @@ local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed
 local calculate_hash = require "util.caps".calculate_hash;
 local getpath = datamanager.getpath;
 local lfs = require "lfs";
+local array = require "util.array";
 local um_user_exists = usermanager.user_exists;
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
@@ -123,7 +124,8 @@ function handlers.get_items(origin, stanza, items)
 	end
 	
 	local data = st.stanza("items", { node = node });
-	for _, id in ipairs(max_tosend) do data:add_child(results[id]); end
+	max_tosend = array(max_tosend);
+	for _, id in ipairs(max_tosend:reverse()) do data:add_child(results[id]); end
 
 	if data then
 		reply = st.reply(stanza)
