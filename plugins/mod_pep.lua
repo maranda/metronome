@@ -124,8 +124,9 @@ function handlers.get_items(origin, stanza, items)
 	end
 	
 	local data = st.stanza("items", { node = node });
-	max_tosend = array(max_tosend);
-	for _, id in ipairs(max_tosend:reverse()) do data:add_child(results[id]); end
+	local max_tosend_clone = {};
+	for k, id in ipairs(max_tosend) do max_tosend_clone[k] = id; end
+	for _, id in ipairs(array(max_tosend_clone):reverse()) do data:add_child(results[id]); end
 
 	if data then
 		reply = st.reply(stanza)
