@@ -123,7 +123,11 @@ function handlers.get_items(origin, stanza, items)
 	end
 	
 	local data = st.stanza("items", { node = node });
-	for _, id in ripairs(max_tosend) do data:add_child(results[id]); end
+	if not max or max == 0 then
+		for _, id in ripairs(max_tosend) do data:add_child(results[id]); end
+	else
+		for _, id in ipairs(max_tosend) do data:add_child(results[id]); end		
+	end
 
 	if data then
 		reply = st.reply(stanza)
