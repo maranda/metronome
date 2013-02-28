@@ -400,14 +400,10 @@ function service:get_items(node, actor, id, max)
 		return false, "bad-request";
 	end
 
-	local function calculate_last_items(data_id, max)
-		local from_item = #data_id - max;
-		from_item = (from_item <= 0 and nil) or from_item;
-		if not from_item then return data_id; end
+	local function calculate_items_tosend(data_id, max)
 		local _data_id = {};
-		for index, id in ipairs(data_id) do
-			if index > from_item then table.insert(_data_id, id); end
-		end
+		if max > #data_id then max = #data_id end
+		for i = 1, max do table.insert(_data_id, data_id[i]) end
 		return _data_id;
 	end
 
@@ -416,7 +412,7 @@ function service:get_items(node, actor, id, max)
 		return true, { [id] = node_obj.data[id] }, { [1] = id };
 	else
 		if node_obj.config.deliver_payloads or node_obj.config.deliver_payloads == nil then
-			if max then _data_id = calculate_last_items(node_obj.data_id, max); end	
+			if max then _data_id = calculate_items_tosend(node_obj.data_id, max); end	
 			return true, node_obj.data, _data_id or node_obj.data_id;
 		else
 			local data_copy = node_obj.data;
@@ -424,7 +420,7 @@ function service:get_items(node, actor, id, max)
 				for i=1,#stanza do stanza[i] = nil end
 				stanza.attr.xmlns = nil;
 			end
-			if max then _data_id = calculate_last_items(node_obj.data_id, max); end
+			if max then _data_id = calculate_items_tosend(node_obj.data_id, max); end
 			return true, data_copy, _data_id or node_obj.data_id;
 		end
 	end
