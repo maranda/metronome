@@ -1,6 +1,6 @@
 local hosts = hosts;
 local core_post_stanza = metronome.core_post_stanza;
-local tonumber, type = tonumber, type;
+local ripairs, tonumber, type = ripairs, tonumber, type;
 
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
@@ -11,7 +11,6 @@ local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed
 local calculate_hash = require "util.caps".calculate_hash;
 local getpath = datamanager.getpath;
 local lfs = require "lfs";
-local array = require "util.array";
 local um_user_exists = usermanager.user_exists;
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
@@ -124,9 +123,7 @@ function handlers.get_items(origin, stanza, items)
 	end
 	
 	local data = st.stanza("items", { node = node });
-	local max_tosend_clone = {};
-	for k, id in ipairs(max_tosend) do max_tosend_clone[k] = id; end
-	for _, id in ipairs(array(max_tosend_clone):reverse()) do data:add_child(results[id]); end
+	for _, id in ripairs(max_tosend) do data:add_child(results[id]); end
 
 	if data then
 		reply = st.reply(stanza)

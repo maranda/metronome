@@ -1,12 +1,11 @@
 local hosts = hosts;
-local tonumber, type = tonumber, type;
+local ripairs, tonumber, type = ripairs, tonumber, type;
 
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
 local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
 local uuid_generate = require "util.uuid".generate;
 local dataforms = require "util.dataforms";
-local array = require "util.array";
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
@@ -89,9 +88,7 @@ function handlers.get_items(origin, stanza, items)
 	end
 	
 	local data = st.stanza("items", { node = node });
-	local max_tosend_clone = {};
-	for k, id in ipairs(max_tosend) do max_tosend_clone[k] = id; end
-	for _, id in ipairs(array(max_tosend_clone):reverse()) do data:add_child(results[id]); end
+	for _, id in ripairs(max_tosend) do data:add_child(results[id]); end
 
 	local reply;
 	if data then
