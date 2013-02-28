@@ -403,7 +403,8 @@ function service:get_items(node, actor, id, max)
 	local function calculate_items_tosend(data_id, max)
 		local _data_id = {};
 		if max > #data_id then max = #data_id end
-		for i = 1, max do table.insert(_data_id, data_id[i]) end
+		if max == 0 then return data_id end
+		for i = 1, max do table.insert(_data_id, data_id[#data_id - (i - 1)]) end
 		return _data_id;
 	end
 
