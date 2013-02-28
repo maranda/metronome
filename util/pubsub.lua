@@ -396,7 +396,7 @@ function service:get_items(node, actor, id, max)
 		return false, "item-not-found";
 	end
 
-	if id and max then
+	if (id and max) or (max and max < 0) then
 		return false, "bad-request";
 	end
 
