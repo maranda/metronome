@@ -245,6 +245,16 @@ function read_version()
 	end
 end
 
+function ripairs(t)
+	local function reverse(t,index)
+		index = index-1;
+		local value = t[index];
+		if value == nil then return value end
+		return index, value;
+	end
+	return reverse, t, #t+1
+end
+
 function load_secondary_libraries()
 	require "util.import"
 	require "util.xmppstream"
