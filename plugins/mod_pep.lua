@@ -112,9 +112,9 @@ end
 
 function handlers.get_items(origin, stanza, items)
 	local node = items.attr.node;
+	local max = items and items.attr.max_items and tonumber(items.attr.max_items);
 	local item = items:get_child("item");
 	local id = item and item.attr.id;
-	local max = item and item.attr.max_items;
 	local user = stanza.attr.to or (origin.username..'@'..origin.host);
 	
 	local ok, results, max_tosend = services[user]:get_items(node, stanza.attr.from, id, max);
