@@ -141,6 +141,7 @@ function _inc_mt:new_object(fields, formtype)
 		}
 		
 		self[new_object.data.id.text] = new_object
+		self:clean() ; self:save()
 		return new_object.data.id.text
 	else return false end
 end
