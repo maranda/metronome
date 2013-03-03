@@ -76,7 +76,7 @@ local function handle_req(event)
 			-- And nodeprep the username
 			local username = nodeprep(req_body["username"])
 			if not username then
-				module:log("debug", "%s supplied an username containing invalid characters: %s", user, username)
+				module:log("debug", "An username containing invalid characters was supplied: %s", username)
 				return http_response(event, 406, "Supplied username contains invalid characters, see RFC 6122.")
 			else
 				if pending_node[username] then
