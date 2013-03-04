@@ -663,7 +663,7 @@ function pep_new(node)
 					retract = false;
 					get_nodes = true;
 
-					subscribe = true;
+					subscribe = false;
 					unsubscribe = true;
 					get_subscription = true;
 					get_subscriptions = true;
