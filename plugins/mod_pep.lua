@@ -525,8 +525,8 @@ module:hook("presence/bare", function(event)
 					services[user].recipients[recipient] = services[user].hash_map[hash];
 					pep_send_back(recipient, user);
 					for node, object in pairs(nodes) do
-						object.subscribers[recipient] = true;
 						if services[user].recipients[recipient][node] then
+							object.subscribers[recipient] = true;
 							local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
 							if items then
 								for _, id in ipairs(orderly) do
