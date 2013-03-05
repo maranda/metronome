@@ -211,7 +211,7 @@ local function list_incidents_command_handler(self, data, state)
 			if data.action == "cancel" then 
 				return { status = "canceled" }
 			elseif data.action == "prev" then
-				return { status = "executing", actions = { "next", "cancel", default = "next" }, form = list_incidents_layout }, {}
+				return { status = "executing", actions = { "next", default = "next" }, form = list_incidents_layout }, {}
 			end
 
 			local single_incident_layout = state.form_layout
@@ -232,13 +232,13 @@ local function list_incidents_command_handler(self, data, state)
 
 			if fields.ids then
 				local single_incident_layout = ih_lib.render_single(incidents[fields.ids])
-				return { status = "executing", actions = { "prev", "cancel", "complete", default = "complete" }, form = single_incident_layout }, { step = 1, form_layout = single_incident_layout, id = fields.ids }
+				return { status = "executing", actions = { "prev", "complete", default = "complete" }, form = single_incident_layout }, { step = 1, form_layout = single_incident_layout, id = fields.ids }
 			else
 				return { status = "completed", error = { message = "You need to select the report ID to continue." } }
 			end
 		end
 	else
-		return { status = "executing", actions = { "next", "cancel", default = "next" }, form = list_incidents_layout }, {}
+		return { status = "executing", actions = { "next", default = "next" }, form = list_incidents_layout }, {}
 	end
 end
 
