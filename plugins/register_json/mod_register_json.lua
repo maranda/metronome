@@ -172,7 +172,7 @@ local function handle_verify(event, path)
 						"user-registered", 
 						{ username = username, host = host, source = "mod_register_json", session = { ip = ip } }
 					)
-					module:log("info", "Registration for %s@%s is successfully verified and registered", username, host)
+					module:log("info", "Account %s@%s is successfully verified and activated", username, host)
 					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
 					pending[uuid] = nil ; pending_node[username] = nil
 					return r_template(event, "success")				
