@@ -104,6 +104,7 @@ local function handle_req(event)
 					pending_node[username] = uuid
 
 					timer.add_task(300, function() pending[uuid] = nil ; pending_node[username] = nil end)
+					module:log("info", "%s (%s) submitted a registration request and is awaiting final verification", username, uuid)
 					return uuid
 				else
 					module:log("debug", "%s registration data submission for %s failed (user already exists)", user, username)
@@ -171,7 +172,7 @@ local function handle_verify(event, path)
 						"user-registered", 
 						{ username = username, host = host, source = "mod_register_json", session = { ip = ip } }
 					)
-					module:log("debug", "Registration for %s@%s is successfully verified and registered", username, host)
+					module:log("info", "Registration for %s@%s is successfully verified and registered", username, host)
 					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
 					pending[uuid] = nil ; pending_node[username] = nil
 					return r_template(event, "success")				
