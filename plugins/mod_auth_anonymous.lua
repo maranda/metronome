@@ -4,7 +4,7 @@ local hmac_sha1 = require "util.hmac".sha1;
 local b64_encode = require "util.encodings".base64.encode;
 local os_time = os.time;
 
-local multi_resource = module:get_option_boolean("allow_anonymous_multiresourcing", false);
+local multi_resourcing = module:get_option_boolean("allow_anonymous_multiresourcing", false);
 local sha1_gentoken = module:get_option_string("anonymous_jid_gentoken", b64_encode(os_time()));
 local my_host = hosts[module.host];
 
@@ -35,7 +35,7 @@ function new_default_provider(host)
 		local anonymous_authentication_profile = {
 			anonymous = function(sasl, session, realm)
 				local username = hmac_sha1(session.ip, sha1_gentoken, true);
-				if not allow_anonymous_multiresourcing and my_host.sessions[username] then
+				if not multi_resourcing and my_host.sessions[username] then
 					return nil, "You're allowed to have only one anonymous session at any given time, good bye.";
 				end
 				return username;
