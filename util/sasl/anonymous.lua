@@ -1,7 +1,5 @@
 local s_match = string.match;
-
 local log = require "util.logger".init("sasl");
-local generate_uuid = require "util.uuid".generate;
 
 module "sasl.anonymous"
 
@@ -12,18 +10,18 @@ module "sasl.anonymous"
 Supported Authentication Backends
 
 anonymous:
-	function(username, realm)
-		return true; --for normal usage just return true; if you don't like the supplied username you can return false.
+	function(session, realm)
+		return username, error;
 	end
+	
 ]]
 
 local function anonymous(self, message)
-	local username;
-	repeat
-		username = generate_uuid();
-	until self.profile.anonymous(self, username, self.realm);
+	local username, err;
+	username, err = self.profile.anonymous(self, self.profile.session, realm);
+	if err then return "failure", err; end
 	self.username = username;
-	return "success"
+	return "success";
 end
 
 function init(registerMechanism)

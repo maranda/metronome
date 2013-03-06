@@ -1,5 +1,12 @@
 local new_sasl = require "util.sasl".new;
 local datamanager = require "util.datamanager";
+local hmac_sha1 = require "util.hmac".sha1;
+local b64_encode = require "util.encodings".base64.encode;
+local os_time = os.time;
+
+local multi_resource = module:get_option_boolean("allow_anonymous_multiresourcing", false);
+local sha1_gentoken = module:get_option_string("anonymous_jid_gentoken", b64_encode(os_time));
+local my_host = module:get_host();
 
 function new_default_provider(host)
 	local provider = { name = "anonymous" };
@@ -24,11 +31,16 @@ function new_default_provider(host)
 		return nil, "Account creation/modification not supported.";
 	end
 
-	function provider.get_sasl_handler()
+	function provider.get_sasl_handler(session)
 		local anonymous_authentication_profile = {
-			anonymous = function(sasl, username, realm)
-				return true;
-			end
+			anonymous = function(sasl, session, realm)
+				local username = hmac_sha1(session.ip, sha1_gentoken, true);
+				if not allow_anonymous_multiresourcing and my_host.sessions[username] then
+					return nil, "You're allowed to have only one anonymous session at any given time, good bye.";
+				end
+				return username;
+			end,
+			session = session
 		};
 		return new_sasl(module.host, anonymous_authentication_profile);
 	end
