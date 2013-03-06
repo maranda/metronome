@@ -816,7 +816,7 @@ function def_env.host:activate(hostname, reload)
 		end
 	end
 
-	if not cm.is_host_defined(host) and strict_host_checks then
+	if not cm.is_host_defined(hostname) and strict_host_checks then
 		return false, "Hosts needs to be defined explicitly into the configuration before being activated (to avoid this set << admin_telnet_strict_host_checks = false >> in the global configuration)";
 	end
 
