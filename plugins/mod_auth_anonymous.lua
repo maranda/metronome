@@ -5,8 +5,8 @@ local b64_encode = require "util.encodings".base64.encode;
 local os_time = os.time;
 
 local multi_resource = module:get_option_boolean("allow_anonymous_multiresourcing", false);
-local sha1_gentoken = module:get_option_string("anonymous_jid_gentoken", b64_encode(os_time));
-local my_host = module:get_host();
+local sha1_gentoken = module:get_option_string("anonymous_jid_gentoken", b64_encode(os_time()));
+local my_host = hosts[module.host];
 
 function new_default_provider(host)
 	local provider = { name = "anonymous" };
