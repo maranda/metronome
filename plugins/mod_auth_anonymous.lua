@@ -55,16 +55,16 @@ local function dm_callback(username, host, datastore, data)
 	return username, host, datastore, data;
 end
 
+local function reject_s2s(event)
+	event.origin:close({condition = "not-allowed", text = "Remote communication to this entity is forbidden"});
+end
+
 if not module:get_option_boolean("allow_anonymous_s2s", false) then
 	module:hook("route/remote", function (event)
 		return false; -- Block outgoing s2s from anonymous users
 	end, 300);
-	module:hook("s2sin-established", function (event)
-		event.origin:close({condition = "not-allowed", text = "Remote communication to this entity is forbidden"});
-	end, 300);
-	module:hook("stanza/jabber:server:dialback:result", function (event)
-		event.origin:close({condition = "not-allowed", text = "Remote communication to this entity is forbidden"});
-	end, 300);
+	module:hook("s2sin-established", reject_s2s, 300);
+	module:hook("stanza/jabber:server:dialback:result", reject_s2s, 300);
 end
 
 function module.load()
