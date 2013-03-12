@@ -54,12 +54,7 @@ function new_default_provider(host)
 	function provider.get_sasl_handler()
 		local getpass_authentication_profile = {
 			plain = function(sasl, username, realm)
-				local prepped_username = nodeprep(username);
-				if not prepped_username then
-					log("debug", "NODEprep failed on username: %s", username);
-					return "", nil;
-				end
-				local password = usermanager.get_password(prepped_username, realm);
+				local password = usermanager.get_password(username, realm);
 				if not password then
 					return "", nil;
 				end
