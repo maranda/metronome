@@ -6,7 +6,7 @@ local tostring = tostring;
 local xmlns_compression_feature = "http://jabber.org/features/compress"
 local xmlns_compression_protocol = "http://jabber.org/protocol/compress"
 local xmlns_stream = "http://etherx.jabber.org/streams";
-local compression_stream_feature = st.stanza("compression", {xmlns=xmlns_compression_feature}):tag("method"):text("zlib"):up();
+local compression_stream_feature = st.stanza("compression", {xmlns = xmlns_compression_feature}):tag("method"):text("zlib"):up();
 local add_filter = require "util.filters".add_filter;
 
 local compression_level = module:get_option_number("compression_level", 7);
@@ -42,7 +42,7 @@ module:hook_stanza(xmlns_stream, "features",
 					for a in comp_st:children() do
 						local algorithm = a[1]
 						if algorithm == "zlib" then
-							session.sends2s(st.stanza("compress", {xmlns=xmlns_compression_protocol}):tag("method"):text("zlib"))
+							session.sends2s(st.stanza("compress", {xmlns = xmlns_compression_protocol}):tag("method"):text("zlib"))
 							session.log("debug", "Enabled compression using zlib.")
 							return true;
 						end
@@ -58,7 +58,7 @@ module:hook_stanza(xmlns_stream, "features",
 local function get_deflate_stream(session)
 	local status, deflate_stream = pcall(zlib.deflate, compression_level);
 	if status == false then
-		local error_st = st.stanza("failure", {xmlns=xmlns_compression_protocol}):tag("setup-failed");
+		local error_st = st.stanza("failure", {xmlns = xmlns_compression_protocol}):tag("setup-failed");
 		(session.sends2s or session.send)(error_st);
 		session.log("error", "Failed to create zlib.deflate filter.");
 		module:log("error", "%s", tostring(deflate_stream));
@@ -71,7 +71,7 @@ end
 local function get_inflate_stream(session)
 	local status, inflate_stream = pcall(zlib.inflate);
 	if status == false then
-		local error_st = st.stanza("failure", {xmlns=xmlns_compression_protocol}):tag("setup-failed");
+		local error_st = st.stanza("failure", {xmlns = xmlns_compression_protocol}):tag("setup-failed");
 		(session.sends2s or session.send)(error_st);
 		session.log("error", "Failed to create zlib.inflate filter.");
 		module:log("error", "%s", tostring(inflate_stream));
@@ -83,13 +83,13 @@ end
 -- setup compression for a stream
 local function setup_compression(session, deflate_stream)
 	add_filter(session, "bytes/out", function(t)
-		local status, compressed, eof = pcall(deflate_stream, tostring(t), 'sync');
+		local status, compressed, eof = pcall(deflate_stream, tostring(t), "sync");
 		if status == false then
 			module:log("warn", "%s", tostring(compressed));
 			session:close({
 				condition = "undefined-condition";
 				text = compressed;
-				extra = st.stanza("failure", {xmlns="http://jabber.org/protocol/compress"}):tag("processing-failed");
+				extra = st.stanza("failure", {xmlns = "http://jabber.org/protocol/compress"}):tag("processing-failed");
 			});
 			return;
 		end
@@ -106,7 +106,7 @@ local function setup_decompression(session, inflate_stream)
 			session:close({
 				condition = "undefined-condition";
 				text = decompressed;
-				extra = st.stanza("failure", {xmlns="http://jabber.org/protocol/compress"}):tag("processing-failed");
+				extra = st.stanza("failure", {xmlns = "http://jabber.org/protocol/compress"}):tag("processing-failed");
 			});
 			return;
 		end
@@ -129,7 +129,8 @@ module:hook("stanza/http://jabber.org/protocol/compress:compressed", function(ev
 		setup_decompression(session, inflate_stream);
 		session:reset_stream();
 		local default_stream_attr = {xmlns = "jabber:server", ["xmlns:stream"] = "http://etherx.jabber.org/streams",
-									["xmlns:db"] = 'jabber:server:dialback', version = "1.0", to = session.to_host, from = session.from_host};
+					    ["xmlns:db"] = hosts[module.host].modules.dialback and "jabber:server:dialback" or nil,
+					    version = "1.0", to = session.to_host, from = session.from_host};
 		session.sends2s("<?xml version='1.0'?>");
 		session.sends2s(st.stanza("stream:stream", default_stream_attr):top_tag());
 		session.compressed = true;
@@ -142,7 +143,7 @@ module:hook("stanza/http://jabber.org/protocol/compress:compress", function(even
 
 	if session.type == "c2s" or session.type == "s2sin" or session.type == "c2s_unauthed" or session.type == "s2sin_unauthed" then
 		if session.compressed then
-			local error_st = st.stanza("failure", {xmlns=xmlns_compression_protocol}):tag("setup-failed");
+			local error_st = st.stanza("failure", {xmlns = xmlns_compression_protocol}):tag("setup-failed");
 			(session.sends2s or session.send)(error_st);
 			session.log("debug", "Client tried to establish another compression layer.");
 			return true;
@@ -160,7 +161,7 @@ module:hook("stanza/http://jabber.org/protocol/compress:compress", function(even
 			local inflate_stream = get_inflate_stream(session);
 			if not inflate_stream then return true; end
 			
-			(session.sends2s or session.send)(st.stanza("compressed", {xmlns=xmlns_compression_protocol}));
+			(session.sends2s or session.send)(st.stanza("compressed", {xmlns = xmlns_compression_protocol}));
 			session:reset_stream();
 			
 			-- setup compression for session.w
@@ -172,10 +173,10 @@ module:hook("stanza/http://jabber.org/protocol/compress:compress", function(even
 			session.compressed = true;
 		elseif method then
 			session.log("debug", "%s compression selected, but we don't support it.", tostring(method));
-			local error_st = st.stanza("failure", {xmlns=xmlns_compression_protocol}):tag("unsupported-method");
+			local error_st = st.stanza("failure", {xmlns = xmlns_compression_protocol}):tag("unsupported-method");
 			(session.sends2s or session.send)(error_st);
 		else
-			(session.sends2s or session.send)(st.stanza("failure", {xmlns=xmlns_compression_protocol}):tag("setup-failed"));
+			(session.sends2s or session.send)(st.stanza("failure", {xmlns = xmlns_compression_protocol}):tag("setup-failed"));
 		end
 		return true;
 	end

@@ -233,8 +233,9 @@ function stream_callbacks.streamopened(session, attr)
 		if session.secure and not session.cert_chain_status then check_cert_status(session); end
 
 		send("<?xml version='1.0'?>");
-		send(st.stanza("stream:stream", { xmlns='jabber:server', ["xmlns:db"]='jabber:server:dialback',
-				["xmlns:stream"]='http://etherx.jabber.org/streams', id=session.streamid, from=to, to=from, version=(session.version > 0 and "1.0" or nil) }):top_tag());
+		send(st.stanza("stream:stream", { xmlns ="jabber:server", 
+				["xmlns:db"] = hosts[to].modules.dialback and "jabber:server:dialback" or nil,
+				["xmlns:stream"] ="http://etherx.jabber.org/streams", id = session.streamid, from = to, to = from, version = (session.version > 0 and "1.0" or nil) }):top_tag());
 		if session.version >= 1.0 then
 			local features = st.stanza("stream:features");
 			
@@ -322,7 +323,7 @@ end
 local listener = {};
 
 --- Session methods
-local stream_xmlns_attr = {xmlns='urn:ietf:params:xml:ns:xmpp-streams'};
+local stream_xmlns_attr = {xmlns = "urn:ietf:params:xml:ns:xmpp-streams"};
 local default_stream_attr = { ["xmlns:stream"] = "http://etherx.jabber.org/streams", xmlns = stream_callbacks.default_ns, version = "1.0", id = "" };
 local function session_close(session, reason, remote_reason)
 	local log = session.log or log;
@@ -334,7 +335,7 @@ local function session_close(session, reason, remote_reason)
 		if reason then -- nil == no err, initiated by us, false == initiated by remote
 			if type(reason) == "string" then -- assume stream error
 				log("debug", "Disconnecting %s[%s], <stream:error> is: %s", session.host or "(unknown host)", session.type, reason);
-				session.sends2s(st.stanza("stream:error"):tag(reason, {xmlns = 'urn:ietf:params:xml:ns:xmpp-streams' }));
+				session.sends2s(st.stanza("stream:error"):tag(reason, {xmlns = "urn:ietf:params:xml:ns:xmpp-streams" }));
 			elseif type(reason) == "table" then
 				if reason.condition then
 					local stanza = st.stanza("stream:error"):tag(reason.condition, stream_xmlns_attr):up();

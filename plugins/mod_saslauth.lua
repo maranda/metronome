@@ -14,8 +14,8 @@ local allow_unencrypted_plain_auth = module:get_option_boolean("allow_unencrypte
 
 local log = module._log;
 
-local xmlns_sasl ='urn:ietf:params:xml:ns:xmpp-sasl';
-local xmlns_bind ='urn:ietf:params:xml:ns:xmpp-bind';
+local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
+local xmlns_bind = "urn:ietf:params:xml:ns:xmpp-bind";
 
 local function reload()
 	module:log("info", "server configuration is being reloaded, refreshing options.");
@@ -87,7 +87,8 @@ module:hook_stanza(xmlns_sasl, "success", function (session, stanza)
 	session:reset_stream();
 
 	local default_stream_attr = {xmlns = "jabber:server", ["xmlns:stream"] = "http://etherx.jabber.org/streams",
-	                            ["xmlns:db"] = 'jabber:server:dialback', version = "1.0", to = session.to_host, from = session.from_host};
+				    ["xmlns:db"] = hosts[module.host].modules.dialback and "jabber:server:dialback" or nil,
+				    version = "1.0", to = session.to_host, from = session.from_host};
 	session.sends2s("<?xml version='1.0'?>");
 	session.sends2s(st.stanza("stream:stream", default_stream_attr):top_tag());
 
@@ -234,9 +235,9 @@ module:hook("stanza/urn:ietf:params:xml:ns:xmpp-sasl:abort", function(event)
 	return true;
 end);
 
-local mechanisms_attr = { xmlns='urn:ietf:params:xml:ns:xmpp-sasl' };
-local bind_attr = { xmlns='urn:ietf:params:xml:ns:xmpp-bind' };
-local xmpp_session_attr = { xmlns='urn:ietf:params:xml:ns:xmpp-session' };
+local mechanisms_attr = { xmlns = "urn:ietf:params:xml:ns:xmpp-sasl" };
+local bind_attr = { xmlns = "urn:ietf:params:xml:ns:xmpp-bind" };
+local xmpp_session_attr = { xmlns = "urn:ietf:params:xml:ns:xmpp-session" };
 module:hook("stream-features", function(event)
 	local origin, features = event.origin, event.features;
 	if not origin.username then
