@@ -428,7 +428,7 @@ function list_modules_handler(self, data, state)
 	local result = dataforms_new {
 		title = "List of loaded modules";
 
-		{ name = "FORM_TYPE", type = "hidden", value = "http://lightwitch.org/metronome-prosody/protocol/modules#list" };
+		{ name = "FORM_TYPE", type = "hidden", value = "http://lightwitch.org/metronome/protocol/modules#list" };
 		{ name = "modules", type = "text-multi", label = "The following modules are loaded:" };
 	};
 
@@ -442,7 +442,7 @@ function load_module_handler(self, data, state)
 		title = "Load module";
 		instructions = "Specify the module to be loaded";
 
-		{ name = "FORM_TYPE", type = "hidden", value = "http://lightwitch.org/metronome-prosody/protocol/modules#load" };
+		{ name = "FORM_TYPE", type = "hidden", value = "http://lightwitch.org/metronome/protocol/modules#load" };
 		{ name = "module", type = "text-single", required = true, label = "Module to be loaded:"};
 	};
 	if state then
@@ -473,7 +473,7 @@ function reload_modules_handler(self, data, state)
 		title = "Reload modules";
 		instructions = "Select the modules to be reloaded";
 
-		{ name = "FORM_TYPE", type = "hidden", value = "http://lightwitch.org/metronome-prosody/protocol/modules#reload" };
+		{ name = "FORM_TYPE", type = "hidden", value = "http://lightwitch.org/metronome/protocol/modules#reload" };
 		{ name = "modules", type = "list-multi", required = true, label = "Modules to be reloaded:"};
 	};
 	if state then
@@ -571,7 +571,7 @@ function unload_modules_handler(self, data, state)
 		title = "Unload modules";
 		instructions = "Select the modules to be unloaded";
 
-		{ name = "FORM_TYPE", type = "hidden", value = "http://lightwitch.org/metronome-prosody/protocol/modules#unload" };
+		{ name = "FORM_TYPE", type = "hidden", value = "http://lightwitch.org/metronome/protocol/modules#unload" };
 		{ name = "modules", type = "list-multi", required = true, label = "Modules to be unloaded:"};
 	};
 	if state then
@@ -602,18 +602,18 @@ end
 
 local add_user_desc = adhoc_new("Add User", "http://jabber.org/protocol/admin#add-user", add_user_command_handler, "admin");
 local change_user_password_desc = adhoc_new("Change User Password", "http://jabber.org/protocol/admin#change-user-password", change_user_password_command_handler, "admin");
-local config_reload_desc = adhoc_new("Reload configuration", "http://lightwitch.org/metronome-prosody/protocol/config#reload", config_reload_handler, "global_admin");
+local config_reload_desc = adhoc_new("Reload configuration", "http://lightwitch.org/metronome/protocol/config#reload", config_reload_handler, "global_admin");
 local delete_user_desc = adhoc_new("Delete User", "http://jabber.org/protocol/admin#delete-user", delete_user_command_handler, "admin");
 local end_user_session_desc = adhoc_new("End User Session", "http://jabber.org/protocol/admin#end-user-session", end_user_session_handler, "admin");
 local get_user_password_desc = adhoc_new("Get User Password", "http://jabber.org/protocol/admin#get-user-password", get_user_password_handler, "admin");
 local get_user_roster_desc = adhoc_new("Get User Roster","http://jabber.org/protocol/admin#get-user-roster", get_user_roster_handler, "admin");
 local get_user_stats_desc = adhoc_new("Get User Statistics","http://jabber.org/protocol/admin#user-stats", get_user_stats_handler, "admin");
 local get_online_users_desc = adhoc_new("Get List of Online Users", "http://jabber.org/protocol/admin#get-online-users", get_online_users_command_handler, "admin");
-local list_modules_desc = adhoc_new("List loaded modules", "http://lightwitch.org/metronome-prosody/protocol/modules#list", list_modules_handler, "admin");
-local load_module_desc = adhoc_new("Load module", "http://lightwitch.org/metronome-prosody/protocol/modules#load", load_module_handler, "admin");
-local reload_modules_desc = adhoc_new("Reload modules", "http://lightwitch.org/metronome-prosody/protocol/modules#reload", reload_modules_handler, "admin");
+local list_modules_desc = adhoc_new("List loaded modules", "http://lightwitch.org/metronome/protocol/modules#list", list_modules_handler, "admin");
+local load_module_desc = adhoc_new("Load module", "http://lightwitch.org/metronome/protocol/modules#load", load_module_handler, "admin");
+local reload_modules_desc = adhoc_new("Reload modules", "http://lightwitch.org/metronome/protocol/modules#reload", reload_modules_handler, "admin");
 local shut_down_service_desc = adhoc_new("Shut Down Service", "http://jabber.org/protocol/admin#shutdown", shut_down_service_handler, "global_admin");
-local unload_modules_desc = adhoc_new("Unload modules", "http://lightwitch.org/metronome-prosody/protocol/modules#unload", unload_modules_handler, "admin");
+local unload_modules_desc = adhoc_new("Unload modules", "http://lightwitch.org/metronome/protocol/modules#unload", unload_modules_handler, "admin");
 
 module:provides("adhoc", add_user_desc);
 module:provides("adhoc", change_user_password_desc);
