@@ -9,7 +9,7 @@ module:add_feature("urn:xmpp:time");
 local function time_handler(event)
 	local origin, stanza = event.origin, event.stanza;
 	if stanza.attr.type == "get" then
-		origin.send(st.reply(stanza):tag("time", {xmlns="urn:xmpp:time"})
+		origin.send(st.reply(stanza):tag("time", {xmlns = "urn:xmpp:time"})
 			:tag("tzo"):text("+00:00"):up() -- TODO get the timezone in a platform independent fashion
 			:tag("utc"):text(datetime()));
 		return true;
@@ -26,7 +26,7 @@ module:add_feature("jabber:iq:time");
 local function legacy_time_handler(event)
 	local origin, stanza = event.origin, event.stanza;
 	if stanza.attr.type == "get" then
-		origin.send(st.reply(stanza):tag("query", {xmlns="jabber:iq:time"})
+		origin.send(st.reply(stanza):tag("query", {xmlns = "jabber:iq:time"})
 			:tag("utc"):text(legacy()));
 		return true;
 	end

@@ -9,7 +9,7 @@ local nameprep = require "util.encodings".stringprep.nameprep;
 
 local xmlns_stream = "http://etherx.jabber.org/streams";
 
-local dialback_requests = setmetatable({}, { __mode = 'v' });
+local dialback_requests = setmetatable({}, { __mode = "v" });
 
 function generate_dialback(id, to, from)
 	if hosts[from] then
@@ -166,5 +166,5 @@ module:hook("s2s-authenticate-legacy", function (event)
 end, 100);
 
 module:hook("s2s-stream-features", function (data)
-	data.features:tag("dialback", { xmlns='urn:xmpp:features:dialback' }):up();
+	data.features:tag("dialback", { xmlns = "urn:xmpp:features:dialback" }):up();
 end);

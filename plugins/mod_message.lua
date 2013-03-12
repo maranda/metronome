@@ -41,7 +41,7 @@ local function process_to_bare(bare, origin, stanza)
 		if user_exists(node, host) then
 			-- TODO apply the default privacy list
 
-			ok = module:fire_event('message/offline/handle', {
+			ok = module:fire_event("message/offline/handle", {
 			    origin = origin,
 			    stanza = stanza,
 			});
@@ -68,7 +68,7 @@ end);
 module:hook("message/bare", function(data)
 	local origin, stanza = data.origin, data.stanza;
 
-	return process_to_bare(stanza.attr.to or (origin.username..'@'..origin.host), origin, stanza);
+	return process_to_bare(stanza.attr.to or (origin.username.."@"..origin.host), origin, stanza);
 end);
 
 module:add_feature("msgoffline");

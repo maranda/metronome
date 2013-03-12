@@ -109,7 +109,7 @@ function handle_normal_presence(origin, stanza)
 
 		if priority >= 0 then
                         local event = { origin = origin }
-                        module:fire_event('message/offline/broadcast', event);
+                        module:fire_event("message/offline/broadcast", event);
 		end
 	end
 	if stanza.attr.type == "unavailable" then

@@ -61,7 +61,7 @@ registration_query:add_child(registration_form:form());
 
 module:add_feature("jabber:iq:register");
 
-local register_stream_feature = st.stanza("register", {xmlns="http://jabber.org/features/iq-register"}):up();
+local register_stream_feature = st.stanza("register", {xmlns = "http://jabber.org/features/iq-register"}):up();
 module:hook("stream-features", function(event)
         local session, features = event.origin, event.features;
 

@@ -154,20 +154,20 @@ end
 local function config_check_method(self, default, custom, stanza)
 	local reply;
 	if not default.public and custom.logging then
-		reply = error_reply(stanza, 'cancel', 'forbidden', "You can enable logging only into public rooms!");
+		reply = error_reply(stanza, "cancel", "forbidden", "You can enable logging only into public rooms!");
 	end
 	return reply;
 end
 local function config_ac_method(self, logging, msg_st)
 	if logging then
-		msg_st.tags[1]:tag('status', {code = '170'}):up();
+		msg_st.tags[1]:tag("status", {code = "170"}):up();
 	else
-		msg_st.tags[1]:tag('status', {code = '171'}):up();
+		msg_st.tags[1]:tag("status", {code = "171"}):up();
 	end
 	return msg_st;
 end
 local function config_ojp_method(self, pr_st)
-	if config_is_method(self) then pr_st:tag("status", {code='170'}):up(); end
+	if config_is_method(self) then pr_st:tag("status", {code = "170"}):up(); end
 	return pr_st;
 end
 

@@ -27,9 +27,9 @@ module:hook("iq/bare/jabber:iq:last:query", function(event)
 				seconds = tostring(os.difftime(os.time(), map[username].t));
 				text = map[username].s;
 			end
-			origin.send(st.reply(stanza):tag('query', {xmlns='jabber:iq:last', seconds=seconds}):text(text));
+			origin.send(st.reply(stanza):tag("query", {xmlns = "jabber:iq:last", seconds = seconds}):text(text));
 		else
-			origin.send(st.error_reply(stanza, 'auth', 'forbidden'));
+			origin.send(st.error_reply(stanza, "auth", "forbidden"));
 		end
 		return true;
 	end

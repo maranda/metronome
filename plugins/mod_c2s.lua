@@ -26,7 +26,7 @@ local stream_callbacks = { default_ns = "jabber:client", handlestanza = core_pro
 local listener = {};
 
 --- Stream events handlers
-local stream_xmlns_attr = {xmlns='urn:ietf:params:xml:ns:xmpp-streams'};
+local stream_xmlns_attr = {xmlns = "urn:ietf:params:xml:ns:xmpp-streams"};
 local default_stream_attr = { ["xmlns:stream"] = "http://etherx.jabber.org/streams", xmlns = stream_callbacks.default_ns, version = "1.0", id = "" };
 
 function stream_callbacks.streamopened(session, attr)
@@ -48,8 +48,8 @@ function stream_callbacks.streamopened(session, attr)
 	end
 
 	send("<?xml version='1.0'?>"..st.stanza("stream:stream", {
-		xmlns = 'jabber:client', ["xmlns:stream"] = 'http://etherx.jabber.org/streams';
-		id = session.streamid, from = session.host, version = '1.0', ["xml:lang"] = 'en' }):top_tag());
+		xmlns = "jabber:client", ["xmlns:stream"] = "http://etherx.jabber.org/streams";
+		id = session.streamid, from = session.host, version = "1.0", ["xml:lang"] = "en" }):top_tag());
 
 	(session.log or log)("debug", "Sent reply <stream:stream> to client");
 	session.notopen = nil;
@@ -118,7 +118,7 @@ local function session_close(session, reason)
 		if reason then -- nil == no err, initiated by us, false == initiated by client
 			if type(reason) == "string" then -- assume stream error
 				log("debug", "Disconnecting client, <stream:error> is: %s", reason);
-				session.send(st.stanza("stream:error"):tag(reason, {xmlns = 'urn:ietf:params:xml:ns:xmpp-streams' }));
+				session.send(st.stanza("stream:error"):tag(reason, {xmlns = "urn:ietf:params:xml:ns:xmpp-streams" }));
 			elseif type(reason) == "table" then
 				if reason.condition then
 					local stanza = st.stanza("stream:error"):tag(reason.condition, stream_xmlns_attr):up();

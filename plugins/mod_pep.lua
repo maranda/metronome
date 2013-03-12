@@ -45,7 +45,7 @@ local function subscription_presence(user_bare, recipient)
 end
 
 local function disco_info_query(user, from)
-	-- COMPAT from ~= stanza.attr.to because OneTeam can't deal with missing from attribute
+	-- COMPAT from ~= stanza.attr.to because OneTeam can"t deal with missing from attribute
 	core_post_stanza(hosts[module.host], 
 		st.stanza("iq", {from=user, to=from, id="disco", type="get"})
 			:query("http://jabber.org/protocol/disco#info")
@@ -55,7 +55,7 @@ end
 
 function handle_pubsub_iq(event)
 	local origin, stanza = event.origin, event.stanza;
-	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local full_jid = origin.full_jid;
 	local username, host = jid_split(user);
 	if not services[user] and um_user_exists(username, host) then -- create service on demand.
@@ -115,7 +115,7 @@ function handlers.get_items(origin, stanza, items)
 	local max = items and items.attr.max_items and tonumber(items.attr.max_items);
 	local item = items:get_child("item");
 	local id = item and item.attr.id;
-	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	
 	local ok, results, max_tosend = services[user]:get_items(node, stanza.attr.from, id, max);
 	if not ok then
@@ -141,7 +141,7 @@ end
 
 function handlers.get_subscriptions(origin, stanza, subscriptions)
 	local node = subscriptions.attr.node;
-	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local ok, ret = services[user]:get_subscriptions(node, stanza.attr.from, stanza.attr.from);
 	if not ok then
 		return origin.send(pubsub_error_reply(stanza, ret));
@@ -150,14 +150,14 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 		:tag("pubsub", { xmlns = xmlns_pubsub })
 			:tag("subscriptions");
 	for _, sub in ipairs(ret) do
-		reply:tag("subscription", { node = sub.node, jid = sub.jid, subscription = 'subscribed' }):up();
+		reply:tag("subscription", { node = sub.node, jid = sub.jid, subscription = "subscribed" }):up();
 	end
 	return origin.send(reply);
 end
 
 function handlers.set_create(origin, stanza, create, config)
 	local node = create.attr.node;
-	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local ok, ret, reply;
 
 	local node_config;
@@ -201,7 +201,7 @@ end
 
 function handlers_owner.set_delete(origin, stanza, delete)
 	local node = delete.attr.node;
-	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local ok, ret, reply;
 	if node then
 		ok, ret = services[user]:delete(node, stanza.attr.from);
@@ -214,7 +214,7 @@ end
 
 function handlers.set_subscribe(origin, stanza, subscribe)
 	local node, jid = subscribe.attr.node, subscribe.attr.jid;
-	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local options_tag, options = stanza.tags[1]:get_child("options"), nil;
 	if options_tag then
 		options = options_form:data(options_tag.tags[1]);
@@ -251,7 +251,7 @@ end
 
 function handlers_owner.set_purge(origin, stanza, purge)
 	local node = purge.attr.node;
-	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local ok, ret, reply;
 	if node then
 		ok, ret = services[user]:purge(node, stanza.attr.from);
@@ -264,7 +264,7 @@ end
 
 function handlers.set_unsubscribe(origin, stanza, unsubscribe)
 	local node, jid = unsubscribe.attr.node, unsubscribe.attr.jid;
-	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local ok, ret = services[user]:remove_subscription(node, stanza.attr.from, jid);
 	local reply;
 	if ok then
@@ -277,7 +277,7 @@ end
 
 function handlers.set_publish(origin, stanza, publish)
 	local node = publish.attr.node;
-	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local item = publish:get_child("item");
 	local recs = {};
 	local recs_count = 0;
@@ -308,7 +308,7 @@ end
 
 function handlers.set_retract(origin, stanza, retract)
 	local node, notify = retract.attr.node, retract.attr.notify;
-	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	notify = (notify == "1") or (notify == "true");
 	local item = retract:get_child("item");
 	local id = item and item.attr.id
@@ -416,19 +416,19 @@ end
 
 module:hook("account-disco-info", function(event)
 	local stanza = event.stanza;
-	stanza:tag('identity', {category='pubsub', type='pep'}):up();
-	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#access-presence'}):up();
-	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#auto-create'}):up();
-	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#create-and-configure'}):up();
-	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#create-nodes'}):up();
-	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#delete-items'}):up();
-	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#delete-nodes'}):up();
-	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#filtered-notifications'}):up();
-	stanza:tag("feature", {var='http://jabber.org/protocol/pubsub#persistent-items'}):up();
-	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#publish'}):up();
-	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#purge-nodes'}):up();
-	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#retrieve-items'}):up();
-	stanza:tag('feature', {var='http://jabber.org/protocol/pubsub#subscribe'}):up();
+	stanza:tag("identity", {category = "pubsub", type = "pep"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#access-presence"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#auto-create"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#create-and-configure"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#create-nodes"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#delete-items"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#delete-nodes"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#filtered-notifications"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#persistent-items"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#publish"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#purge-nodes"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#retrieve-items"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#subscribe"}):up();
 end);
 
 module:hook("account-disco-items", function(event)
@@ -438,7 +438,7 @@ module:hook("account-disco-items", function(event)
 
 	if user_data then
 		for node, _ in pairs(user_data) do
-			stanza:tag('item', {jid=bare, node=node}):up();
+			stanza:tag("item", {jid = bare, node = node}):up();
 		end
 	end
 end);
@@ -450,7 +450,7 @@ local function get_caps_hash_from_presence(stanza, current)
 			if child.name == "c" and child.attr.xmlns == "http://jabber.org/protocol/caps" then
 				local attr = child.attr;
 				if attr.hash then -- new caps
-					if attr.hash == 'sha-1' and attr.node and attr.ver then return attr.ver, attr.node.."#"..attr.ver; end
+					if attr.hash == "sha-1" and attr.node and attr.ver then return attr.ver, attr.node.."#"..attr.ver; end
 				else -- legacy caps
 					if attr.node and attr.ver then return attr.node.."#"..attr.ver.."#"..(attr.ext or ""), attr.node.."#"..attr.ver; end
 				end
@@ -505,7 +505,7 @@ end
 module:hook("presence/bare", function(event)
 	-- inbound presence to bare JID recieved           
 	local origin, stanza = event.origin, event.stanza;
-	local user = stanza.attr.to or (origin.username..'@'..origin.host);
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local t = stanza.attr.type;
 	local self = not stanza.attr.to;
 	
@@ -572,7 +572,7 @@ module:hook("iq-result/bare/disco", function(event)
 		if disco and disco.name == "query" and disco.attr.xmlns == "http://jabber.org/protocol/disco#info" then
 			-- Process disco response
 			local self = not stanza.attr.to;
-			local user = stanza.attr.to or (session.username..'@'..session.host);
+			local user = stanza.attr.to or (session.username.."@"..session.host);
 			if not services[user] then return nil; end -- User's pep service doesn't exist
 			module:log("debug", "Processing disco response from %s", stanza.attr.from);
 			local nodes = services[user].nodes;

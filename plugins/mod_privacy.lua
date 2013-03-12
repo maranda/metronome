@@ -168,7 +168,7 @@ end
 
 function getList(privacy_lists, origin, stanza, name)
 	local reply = st.reply(stanza);
-	reply:tag("query", {xmlns="jabber:iq:privacy"});
+	reply:tag("query", {xmlns = "jabber:iq:privacy"});
 
 	if name == nil then
 		if privacy_lists.lists then

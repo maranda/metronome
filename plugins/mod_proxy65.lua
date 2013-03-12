@@ -98,8 +98,8 @@ function module.add_host(module)
 	module:hook("iq-get/host/http://jabber.org/protocol/disco#info:query", function(event)
 		local origin, stanza = event.origin, event.stanza;
 		origin.send(st.reply(stanza):query("http://jabber.org/protocol/disco#info")
-			:tag("identity", {category='proxy', type='bytestreams', name=name}):up()
-			:tag("feature", {var="http://jabber.org/protocol/bytestreams"}) );
+			:tag("identity", {category = "proxy", type = "bytestreams", name = name}):up()
+			:tag("feature", {var = "http://jabber.org/protocol/bytestreams"}) );
 		return true;
 	end, -1);
 	
@@ -126,8 +126,8 @@ function module.add_host(module)
 		end
 	
 		local sid = stanza.tags[1].attr.sid;
-		origin.send(st.reply(stanza):tag("query", {xmlns="http://jabber.org/protocol/bytestreams", sid=sid})
-			:tag("streamhost", {jid=host, host=proxy_address, port=proxy_port}));
+		origin.send(st.reply(stanza):tag("query", {xmlns = "http://jabber.org/protocol/bytestreams", sid = sid})
+			:tag("streamhost", {jid = host, host = proxy_address, port = proxy_port}));
 		return true;
 	end);
 	

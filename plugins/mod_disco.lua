@@ -128,7 +128,7 @@ module:hook("iq/bare/http://jabber.org/protocol/disco#info:query", function(even
 	if node and node ~= "" then return; end -- TODO fire event?
 	local username = jid_split(stanza.attr.to) or origin.username;
 	if not stanza.attr.to or is_contact_subscribed(username, module.host, jid_bare(stanza.attr.from)) then
-		local reply = st.reply(stanza):tag('query', {xmlns='http://jabber.org/protocol/disco#info'});
+		local reply = st.reply(stanza):tag("query", {xmlns = "http://jabber.org/protocol/disco#info"});
 		if not reply.attr.from then reply.attr.from = origin.username.."@"..origin.host; end -- COMPAT To satisfy Psi when querying own account
 		module:fire_event("account-disco-info", { origin = origin, stanza = reply });
 		origin.send(reply);
@@ -142,7 +142,7 @@ module:hook("iq/bare/http://jabber.org/protocol/disco#items:query", function(eve
 	if node and node ~= "" then return; end -- TODO fire event?
 	local username = jid_split(stanza.attr.to) or origin.username;
 	if not stanza.attr.to or is_contact_subscribed(username, module.host, jid_bare(stanza.attr.from)) then
-		local reply = st.reply(stanza):tag('query', {xmlns='http://jabber.org/protocol/disco#items'});
+		local reply = st.reply(stanza):tag("query", {xmlns = "http://jabber.org/protocol/disco#items"});
 		if not reply.attr.from then reply.attr.from = origin.username.."@"..origin.host; end -- COMPAT To satisfy Psi when querying own account
 		module:fire_event("account-disco-items", { origin = origin, stanza = reply });
 		origin.send(reply);

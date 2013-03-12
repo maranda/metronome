@@ -115,7 +115,7 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 		:tag("pubsub", { xmlns = xmlns_pubsub })
 			:tag("subscriptions");
 	for _, sub in ipairs(ret) do
-		reply:tag("subscription", { node = sub.node, jid = sub.jid, subscription = 'subscribed' }):up();
+		reply:tag("subscription", { node = sub.node, jid = sub.jid, subscription = "subscribed" }):up();
 	end
 	return origin.send(reply);
 end

@@ -117,7 +117,7 @@ end
 
 --- Network and stream part ---
 
-local xmlns_component = 'jabber:component:accept';
+local xmlns_component = "jabber:component:accept";
 
 local listener = {};
 
@@ -164,8 +164,8 @@ function stream_callbacks.streamopened(session, attr)
 	session.streamid = uuid_gen();
 	session.notopen = nil;
 	session.send("<?xml version='1.0'?>");
-	session.send(st.stanza("stream:stream", { xmlns=xmlns_component,
-			["xmlns:stream"]='http://etherx.jabber.org/streams', id=session.streamid, from=session.host }):top_tag());
+	session.send(st.stanza("stream:stream", { xmlns = xmlns_component,
+			["xmlns:stream"] = "http://etherx.jabber.org/streams", id = session.streamid, from = session.host }):top_tag());
 end
 
 function stream_callbacks.streamclosed(session)
@@ -206,7 +206,7 @@ function stream_callbacks.handlestanza(session, stanza)
 end
 
 --- Closing a component connection
-local stream_xmlns_attr = {xmlns='urn:ietf:params:xml:ns:xmpp-streams'};
+local stream_xmlns_attr = {xmlns = "urn:ietf:params:xml:ns:xmpp-streams"};
 local default_stream_attr = { ["xmlns:stream"] = "http://etherx.jabber.org/streams", xmlns = stream_callbacks.default_ns, version = "1.0", id = "" };
 local function session_close(session, reason)
 	if session.destroyed then return; end
@@ -218,7 +218,7 @@ local function session_close(session, reason)
 		if reason then
 			if type(reason) == "string" then -- assume stream error
 				module:log("info", "Disconnecting component, <stream:error> is: %s", reason);
-				session.send(st.stanza("stream:error"):tag(reason, {xmlns = 'urn:ietf:params:xml:ns:xmpp-streams' }));
+				session.send(st.stanza("stream:error"):tag(reason, {xmlns = "urn:ietf:params:xml:ns:xmpp-streams" }));
 			elseif type(reason) == "table" then
 				if reason.condition then
 					local stanza = st.stanza("stream:error"):tag(reason.condition, stream_xmlns_attr):up();

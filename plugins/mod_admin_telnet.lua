@@ -945,7 +945,7 @@ function def_env.xmpp:ping(localhost, remotehost)
 	if hosts[localhost] then
 		core_post_stanza(hosts[localhost],
 			st.iq{ from=localhost, to=remotehost, type="get", id="ping" }
-				:tag("ping", {xmlns="urn:xmpp:ping"}));
+				:tag("ping", {xmlns = "urn:xmpp:ping"}));
 		return true, "Sent ping";
 	else
 		return nil, "No such host";
