@@ -5,11 +5,11 @@ local muc_host = module:get_host();
 local timer = require "util.timer";
 local default_quotes = {
 	{
-		{ "/me clouds fill the sky above %s a storm begins to form... and an elder of the council appears.", "As", 4 },
+		{ "/me as clouds fill the sky above %s a storm begins to form... and an elder of the council appears.", "*", 4 },
 		{ "So what do we have here?", "Archmage Valis Tyralgarde", 6 },
 		{ "Some imbecile scoundrels who think they can come here and desecrate grounds which belong to the council!? I will make you pay dearly for this insolence, be prepared.", "Archmage Valis Tyralgarde", 7 },
 		{ "/me weaves ancestral magic into be and begins casting Ard Athar...", "Archmage Valis Tyralgarde", 8 },
-		{ "/me the Archmage finishes chanting the arcane incantation, a massive lightning surge strikes %s instantaneously incinerating all its inoccupants.", "When", 11 }
+		{ "/me when the Archmage finishes chanting the arcane incantation, a massive lightning surge strikes %s instantaneously incinerating all its inoccupants.", "*", 11 }
 	}
 }
 local default_screams = { "ArghHHHHhhhhh!", "NooooooOOOOooooooOo!", "EwwwwwwwwwwWWWWWWW AghhhhHH!", "AAAAAAAAAAHHHHHhhhhhhhh!" };	
