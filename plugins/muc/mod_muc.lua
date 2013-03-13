@@ -22,6 +22,7 @@ local uuid_gen = require "util.uuid".generate;
 local datamanager = require "util.datamanager";
 local um_is_admin = require "core.usermanager".is_admin;
 local hosts = hosts;
+local pairs, select = pairs, select;
 
 rooms = {};
 local rooms = rooms;
@@ -130,16 +131,16 @@ host_room.route_stanza = room_route_stanza;
 host_room.save = room_save;
 
 local function get_disco_info(stanza)
-	return st.iq({type='result', id=stanza.attr.id, from=muc_host, to=stanza.attr.from}):query("http://jabber.org/protocol/disco#info")
-		:tag("identity", {category='conference', type='text', name=muc_name}):up()
-		:tag("feature", {var="http://jabber.org/protocol/commands"}):up()
-		:tag("feature", {var="http://jabber.org/protocol/muc"}):up(); -- TODO cache disco reply
+	return st.iq({type = "result", id = stanza.attr.id, from = muc_host, to = stanza.attr.from}):query("http://jabber.org/protocol/disco#info")
+		:tag("identity", {category = "conference", type = "text", name = muc_name}):up()
+		:tag("feature", {var = "http://jabber.org/protocol/commands"}):up()
+		:tag("feature", {var = "http://jabber.org/protocol/muc"}):up(); -- TODO cache disco reply
 end
 local function get_disco_items(stanza)
-	local reply = st.iq({type='result', id=stanza.attr.id, from=muc_host, to=stanza.attr.from}):query("http://jabber.org/protocol/disco#items");
+	local reply = st.iq({type = "result", id = stanza.attr.id, from = muc_host, to = stanza.attr.from}):query("http://jabber.org/protocol/disco#items");
 	for jid, room in pairs(rooms) do
 		if not room:is_hidden() then
-			reply:tag("item", {jid=jid, name=room:get_name()}):up();
+			reply:tag("item", {jid = jid, name = room:get_name()}):up();
 		end
 	end
 	return reply; -- TODO cache disco reply
@@ -176,9 +177,10 @@ function stanza_handler(event)
 			origin.send(st.error_reply(stanza, "cancel", "item-not-found"));
 			return true;
 		end
-		if not(restrict_room_creation) or
-		  (restrict_room_creation == "admin" and is_admin(stanza.attr.from)) or
-		  (restrict_room_creation == "local" and select(2, jid_split(stanza.attr.from)) == module.host:gsub("^[^%.]+%.", "")) then
+		local from_host = select(2, jid_split(stanza.attr.from));
+		if not ((hosts[from_host] and hosts[from_host].modules.auth_anonymous and true) or false) and
+		   (not restrict_room_creation or (restrict_room_creation == "admin" and is_admin(stanza.attr.from)) or
+		   (restrict_room_creation == "local" and from_host == module.host:gsub("^[^%.]+%.", ""))) then
 			room = muc_new_room(bare, {
 				max_history_length = max_history_messages;
 			});
@@ -281,7 +283,7 @@ function shutdown_component()
 	if not saved then
 		local stanza = st.presence({type = "unavailable"})
 			:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
-				:tag("item", { affiliation='none', role='none' }):up();
+				:tag("item", {affiliation = "none", role = "none"}):up();
 		for roomjid, room in pairs(rooms) do
 			shutdown_room(room, stanza);
 		end
