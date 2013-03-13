@@ -9,6 +9,7 @@ local jid_split = require "util.jid".split;
 local uuid_generate = require "util.uuid".generate;
 local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed;
 local calculate_hash = require "util.caps".calculate_hash;
+local set_new = require "util.set".new;
 local getpath = datamanager.getpath;
 local lfs = require "lfs";
 local um_user_exists = usermanager.user_exists;
@@ -93,6 +94,20 @@ function handle_pubsub_iq(event)
 		end
 	end
 end
+
+local singleton_nodes = set_new{ 
+	"http://jabber.org/protocol/activity",
+	"http://jabber.org/protocol/geoloc",
+	"http://jabber.org/protocol/mood",
+	"http://jabber.org/protocol/tune",
+	"urn:xmpp:avatar:data",
+	"urn:xmpp:avatar:metadata",
+	"urn:xmpp:chatting:0",
+	"urn:xmpp:browsing:0",
+	"urn:xmpp:gaming:0",
+	"urn:xmpp:viewing:0"
+}
+singleton_nodes:add_list(module:get_option("pep_custom_singleton_nodes"));
 
 local pubsub_errors = {
 	["conflict"] = { "cancel", "conflict" };
@@ -282,13 +297,8 @@ function handlers.set_publish(origin, stanza, publish)
 	local recs = {};
 	local recs_count = 0;
 	local id = (item and item.attr.id) or uuid_generate();
-	if node == "http://jabber.org/protocol/activity" and services[user].nodes[node] or
-	   node == "http://jabber.org/protocol/geoloc" and services[user].nodes[node] or
-	   node == "http://jabber.org/protocol/mood" and services[user].nodes[node] or
-	   node == "http://jabber.org/protocol/tune" and services[user].nodes[node] or
-	   node == "urn:xmpp:avatar:data" and services[user].nodes[node] or 
-	   node == "urn:xmpp:avatar:metadata" and services[user].nodes[node]then
-		services[user].nodes[node].data = {};		-- Clear activity/mood/tune/avatar nodes, this is not exactly correct
+	if singleton_nodes:contains(node) and services[user].nodes[node] then
+		services[user].nodes[node].data = {};		-- Clear singleton nodes, this is not exactly correct
 		services[user].nodes[node].data_id = {};	-- Spec wise I think.
 	end
 	local ok, ret = services[user]:publish(node, stanza.attr.from, id, item);
