@@ -12,7 +12,7 @@ local new_data = {};
 module "timer"
 
 function add_task(delay, callback)
-	local current_time = get_tie();
+	local current_time = get_time();
 	delay = delay + current_time;
 	if delay >= current_time then
 		t_insert(new_data, {delay, callback});
