@@ -1,3 +1,5 @@
+module:set_global(); -- this is a necessary interoperability measure.
+
 local hosts = _G.hosts;
 local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
 
