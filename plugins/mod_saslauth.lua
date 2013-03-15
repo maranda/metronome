@@ -1,5 +1,5 @@
 local st = require "util.stanza";
-local is_module_loaded = modulemanager.is_module_loaded;
+local is_module_loaded = modulemanager.is_loaded;
 local sm_bind_resource = require "core.sessionmanager".bind_resource;
 local sm_make_authenticated = require "core.sessionmanager".make_authenticated;
 local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
