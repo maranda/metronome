@@ -2,7 +2,7 @@ local st = require "util.stanza";
 local zlib = require "zlib";
 local pcall = pcall;
 local tostring = tostring;
-local get_module = modulemanager.get_module;
+local is_module_loaded = modulemanager.is_loaded;
 
 local xmlns_compression_feature = "http://jabber.org/features/compress"
 local xmlns_compression_protocol = "http://jabber.org/protocol/compress"
@@ -130,7 +130,7 @@ module:hook("stanza/http://jabber.org/protocol/compress:compressed", function(ev
 		setup_decompression(session, inflate_stream);
 		session:reset_stream();
 		local default_stream_attr = {xmlns = "jabber:server", ["xmlns:stream"] = "http://etherx.jabber.org/streams",
-					    ["xmlns:db"] = get_module("*", "dialback") and "jabber:server:dialback" or nil,
+					    ["xmlns:db"] = is_module_loaded("*", "dialback") and "jabber:server:dialback" or nil,
 					    version = "1.0", to = session.to_host, from = session.from_host};
 		session.sends2s("<?xml version='1.0'?>");
 		session.sends2s(st.stanza("stream:stream", default_stream_attr):top_tag());
