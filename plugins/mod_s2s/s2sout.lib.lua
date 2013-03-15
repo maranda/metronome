@@ -1,4 +1,5 @@
 local portmanager = require "core.portmanager";
+local get_module = modulemanager.get_module;
 local wrapclient = require "net.server".wrapclient;
 local initialize_filters = require "util.filters".initialize;
 local idna_to_ascii = require "util.encodings".idna.to_ascii;
@@ -36,9 +37,9 @@ end
 
 local function session_open_stream(session, from, to)
 	session.sends2s(st.stanza("stream:stream", {
-		xmlns='jabber:server', ["xmlns:db"]='jabber:server:dialback',
-		["xmlns:stream"]='http://etherx.jabber.org/streams',
-		from=from, to=to, version='1.0', ["xml:lang"]='en'}):top_tag());
+		xmlns = "jabber:server", ["xmlns:db"] = get_module("*", "dialback") and "jabber:server:dialback" or nil,
+		["xmlns:stream"] = "http://etherx.jabber.org/streams",
+		from = from, to = to, version = "1.0", ["xml:lang"] = "en"}):top_tag());
 end
 
 function s2sout.initiate_connection(host_session)

@@ -13,6 +13,7 @@ local st = require "util.stanza";
 local initialize_filters = require "util.filters".initialize;
 local nameprep = require "util.encodings".stringprep.nameprep;
 local new_xmpp_stream = require "util.xmppstream".new;
+local get_module = modulemanager.get_module;
 local s2s_new_incoming = require "core.s2smanager".new_incoming;
 local s2s_new_outgoing = require "core.s2smanager".new_outgoing;
 local s2s_destroy_session = require "core.s2smanager".destroy_session;
@@ -235,7 +236,7 @@ function stream_callbacks.streamopened(session, attr)
 		send("<?xml version='1.0'?>");
 		send(st.stanza("stream:stream", { xmlns ="jabber:server",
 				-- COMPAT: with all the choppy servers out there...
-				["xmlns:db"] = (not to and "jabber:server:dialback") or (hosts[to].modules.dialback and "jabber:server:dialback" or nil),
+				["xmlns:db"] = get_module("*", "dialback") and "jabber:server:dialback" or nil,
 				["xmlns:stream"] ="http://etherx.jabber.org/streams", id = session.streamid, from = to, to = from, version = (session.version > 0 and "1.0" or nil) }):top_tag());
 		if session.version >= 1.0 then
 			local features = st.stanza("stream:features");
