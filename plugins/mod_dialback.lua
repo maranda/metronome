@@ -1,10 +1,10 @@
 module:set_global(); -- this is a necessary interoperability measure.
+local load_module, is_loaded = modulemanager.load, modulemanager.is_loaded;
 
 local hosts = _G.hosts;
 local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
 
 local log = module._log;
-
 local st = require "util.stanza";
 local sha256_hash = require "util.hashes".sha256;
 local nameprep = require "util.encodings".stringprep.nameprep;
@@ -31,7 +31,9 @@ function verify_dialback(id, to, from, key)
 	return key == generate_dialback(id, to, from);
 end
 
-module:hook("stanza/jabber:server:dialback:verify", function(event)
+-- // Hooks
+
+local function preverify_hook(event)
 	local origin, stanza = event.origin, event.stanza;
 	
 	if origin.type == "s2sin_unauthed" or origin.type == "s2sin" then
@@ -55,9 +57,9 @@ module:hook("stanza/jabber:server:dialback:verify", function(event)
 		origin.sends2s(st.stanza("db:verify", { from = attr.to, to = attr.from, id = attr.id, type = type }):text(stanza[1]));
 		return true;
 	end
-end);
+end
 
-module:hook("stanza/jabber:server:dialback:result", function(event)
+local function preresult_hook(event)
 	local origin, stanza = event.origin, event.stanza;
 	
 	if origin.type == "s2sin_unauthed" or origin.type == "s2sin" then
@@ -92,9 +94,9 @@ module:hook("stanza/jabber:server:dialback:result", function(event)
 		});
 		return true;
 	end
-end);
+end
 
-module:hook("stanza/jabber:server:dialback:verify", function(event)
+local function verify_hook(event)
 	local origin, stanza = event.origin, event.stanza;
 	
 	if origin.type == "s2sout_unauthed" or origin.type == "s2sout" then
@@ -120,9 +122,9 @@ module:hook("stanza/jabber:server:dialback:verify", function(event)
 		end
 		return true;
 	end
-end);
+end
 
-module:hook("stanza/jabber:server:dialback:result", function(event)
+local function result_hook(event)
 	local origin, stanza = event.origin, event.stanza;
 	
 	if origin.type == "s2sout_unauthed" or origin.type == "s2sout" then
@@ -143,30 +145,51 @@ module:hook("stanza/jabber:server:dialback:result", function(event)
 		end
 		return true;
 	end
-end);
+end
 
-module:hook_stanza("urn:ietf:params:xml:ns:xmpp-sasl", "failure", function (origin, stanza)
+local function sasl_failure_hook(origin, stanza)
 	if origin.external_auth == "failed" then
 		module:log("debug", "SASL EXTERNAL failed, falling back to dialback");
 		initiate_dialback(origin);
 		return true;
 	end
-end, 100);
+end
 
-module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
+local function stream_features_hook(origin, stanza)
 	if not origin.external_auth or origin.external_auth == "failed" then
 		module:log("debug", "Initiating dialback...");
 		initiate_dialback(origin);
 		return true;
 	end
-end, 100);
+end
 
-module:hook("s2s-authenticate-legacy", function (event)
+local function s2s_auth_legacy_hook(event)
 	module:log("debug", "Initiating dialback...");
 	initiate_dialback(event.origin);
 	return true;
-end, 100);
+end
 
-module:hook("s2s-stream-features", function (data)
+local function s2s_features_hook(data) 
 	data.features:tag("dialback", { xmlns = "urn:xmpp:features:dialback" }):up();
-end);
+end
+
+-- // Methods
+
+function module.add_host(module)
+	module:hook("stanza/jabber:server:dialback:verify", preverify_hook);
+	module:hook("stanza/jabber:server:dialback:result", preresult_hook);
+	module:hook("stanza/jabber:server:dialback:verify", verify_hook);
+	module:hook("stanza/jabber:server:dialback:result", result_hook);
+	module:hook_stanza("urn:ietf:params:xml:ns:xmpp-sasl", "failure", sasl_failure_hook, 100);
+	module:hook_stanza(xmlns_stream, "features", stream_features_hook, 100);
+	module:hook("s2s-authenticate-legacy", s2s_auth_legacy_hook, 100);
+	module:hook("s2s-stream-features", s2s_features_hook);
+end
+
+function module.loaded()
+	-- ensure module is loaded on every host / component
+	local hosts = hosts;
+	for host in pairs(hosts) do
+		if not is_loaded(host, "dialback") then load_module(host, "dialback") end
+	end
+end
