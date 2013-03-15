@@ -25,6 +25,9 @@ local s2sout = module:require("s2sout");
 
 local connect_timeout = module:get_option_number("s2s_timeout", 90);
 local stream_close_timeout = module:get_option_number("s2s_close_timeout", 5);
+local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
+
+if not s2s_strict_mode then module:depends("dialback"); end
 
 local sessions = module:shared("sessions");
 
@@ -99,6 +102,24 @@ function route_to_existing_session(event)
 	end
 end
 
+local function session_open_stream(session, from, to)
+	local from = from or session.from_host;
+	local to = to or session.to_host;
+	local direction = session.direction;
+	local db = (not s2s_strict_mode and true) or is_module_loaded((direction == "outgoing" and from) or to, "dialback");
+	local attr = {
+		xmlns = "jabber:server", 
+		["xmlns:db"] = db and "jabber:server:dialback" or nil,
+		["xmlns:stream"] = "http://etherx.jabber.org/streams",
+		id = session.streamid,
+		from = from, to = to,
+		version = session.version and (session.version > 0 and "1.0" or nil), 
+	};
+
+	session.sends2s("<?xml version='1.0'?>");
+	session.sends2s(st.stanza("stream:stream", attr):top_tag());
+end
+
 -- Create a new outgoing session for a stanza
 function route_to_new_session(event)
 	local from_host, to_host, stanza = event.from_host, event.to_host, event.stanza;
@@ -107,6 +128,7 @@ function route_to_new_session(event)
 
 	-- Store in buffer
 	host_session.bounce_sendq = bounce_sendq;
+	host_session.open_stream = session_open_stream;
 	host_session.sendq = { {tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza)} };
 	log("debug", "stanza [%s] queued until connection complete", tostring(stanza.name));
 	s2sout.initiate_connection(host_session);
@@ -233,11 +255,13 @@ function stream_callbacks.streamopened(session, attr)
 
 		if session.secure and not session.cert_chain_status then check_cert_status(session); end
 
-		send("<?xml version='1.0'?>");
-		send(st.stanza("stream:stream", { xmlns ="jabber:server",
-				-- COMPAT: with all the choppy servers out there...
-				["xmlns:db"] = is_module_loaded("*", "dialback") and "jabber:server:dialback" or nil,
-				["xmlns:stream"] ="http://etherx.jabber.org/streams", id = session.streamid, from = to, to = from, version = (session.version > 0 and "1.0" or nil) }):top_tag());
+		if (not to or not from) and s2s_strict_mode then
+			session:close({ condition = "improper-addressing" });
+			return;
+		end
+		session.open_stream = session_open_stream;
+		session:open_stream();
+
 		if session.version >= 1.0 then
 			local features = st.stanza("stream:features");
 			

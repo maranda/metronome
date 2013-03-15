@@ -1,5 +1,4 @@
 local portmanager = require "core.portmanager";
-local is_module_loaded = modulemanager.is_loaded;
 local wrapclient = require "net.server".wrapclient;
 local initialize_filters = require "util.filters".initialize;
 local idna_to_ascii = require "util.encodings".idna.to_ascii;
@@ -35,16 +34,9 @@ local function compare_srv_priorities(a,b)
 	return a.priority < b.priority or (a.priority == b.priority and a.weight > b.weight);
 end
 
-local function session_open_stream(session, from, to)
-	session.sends2s(st.stanza("stream:stream", {
-		xmlns = "jabber:server", ["xmlns:db"] = is_module_loaded("*", "dialback") and "jabber:server:dialback" or nil,
-		["xmlns:stream"] = "http://etherx.jabber.org/streams",
-		from = from, to = to, version = "1.0", ["xml:lang"] = "en"}):top_tag());
-end
-
 function s2sout.initiate_connection(host_session)
 	initialize_filters(host_session);
-	host_session.open_stream = session_open_stream;
+	host_session.version = 1;
 	
 	-- Kick the connection attempting machine into life
 	if not s2sout.attempt_connection(host_session) then
