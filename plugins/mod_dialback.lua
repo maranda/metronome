@@ -186,7 +186,7 @@ function module.add_host(module)
 	module:hook("s2s-stream-features", s2s_features_hook);
 end
 
-function module.loaded()
+function module.load()
 	-- ensure module is loaded on every host / component
 	local hosts = hosts;
 	for host in pairs(hosts) do
