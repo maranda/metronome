@@ -185,11 +185,3 @@ function module.add_host(module)
 	module:hook("s2s-authenticate-legacy", s2s_auth_legacy_hook, 100);
 	module:hook("s2s-stream-features", s2s_features_hook);
 end
-
-function module.load()
-	-- ensure module is loaded on every host / component
-	local hosts = hosts;
-	for host in pairs(hosts) do
-		if not is_loaded(host, "dialback") then load_module(host, "dialback") end
-	end
-end
