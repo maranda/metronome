@@ -22,7 +22,7 @@ pcall = function(f, ...)
 end
 
 local autoload_modules = {"presence", "message", "iq", "offline", "c2s", "s2s"};
-local component_inheritable_modules = {"tls", "dialback", "iq", "s2s"};
+local component_inheritable_modules = {"tls", "iq", "s2s"};
 
 local _G = _G;
 
