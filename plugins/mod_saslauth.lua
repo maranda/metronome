@@ -1,4 +1,5 @@
 local st = require "util.stanza";
+local get_module = modulemanager.get_module;
 local sm_bind_resource = require "core.sessionmanager".bind_resource;
 local sm_make_authenticated = require "core.sessionmanager".make_authenticated;
 local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
@@ -87,7 +88,7 @@ module:hook_stanza(xmlns_sasl, "success", function (session, stanza)
 	session:reset_stream();
 
 	local default_stream_attr = {xmlns = "jabber:server", ["xmlns:stream"] = "http://etherx.jabber.org/streams",
-				    ["xmlns:db"] = hosts[module.host].modules.dialback and "jabber:server:dialback" or nil,
+				    ["xmlns:db"] = get_module("*", "dialback") and "jabber:server:dialback" or nil,
 				    version = "1.0", to = session.to_host, from = session.from_host};
 	session.sends2s("<?xml version='1.0'?>");
 	session.sends2s(st.stanza("stream:stream", default_stream_attr):top_tag());
