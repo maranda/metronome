@@ -14,6 +14,7 @@ local initialize_filters = require "util.filters".initialize;
 local nameprep = require "util.encodings".stringprep.nameprep;
 local new_xmpp_stream = require "util.xmppstream".new;
 local is_module_loaded = modulemanager.is_loaded;
+local load_module = modulemanager.load;
 local s2s_new_incoming = require "core.s2smanager".new_incoming;
 local s2s_new_outgoing = require "core.s2smanager".new_outgoing;
 local s2s_destroy_session = require "core.s2smanager".destroy_session;
@@ -26,8 +27,6 @@ local s2sout = module:require("s2sout");
 local connect_timeout = module:get_option_number("s2s_timeout", 90);
 local stream_close_timeout = module:get_option_number("s2s_close_timeout", 5);
 local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
-
-if not s2s_strict_mode then module:depends("dialback"); end
 
 local sessions = module:shared("sessions");
 
@@ -144,6 +143,14 @@ function module.add_host(module)
 	if module:get_option_boolean("disallow_s2s", false) then
 		module:log("warn", "The 'disallow_s2s' config option is deprecated.");
 		return nil, "This host has disallow_s2s set";
+	end
+	if not s2s_strict_mode then
+		module:depends("dialback");
+	else
+		local modules_disabled = module:get_option_set("modules_disabled", {});
+		if not is_module_loaded(module.host, "dialback") and not modules_disabled:contains("dialback") then
+			load_module(module.host, "dialback") 
+		end
 	end
 	module:hook("route/remote", route_to_existing_session, 200);
 	module:hook("route/remote", route_to_new_session, 100);
