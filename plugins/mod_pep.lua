@@ -10,8 +10,7 @@ local uuid_generate = require "util.uuid".generate;
 local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed;
 local calculate_hash = require "util.caps".calculate_hash;
 local set_new = require "util.set".new;
-local getpath = datamanager.getpath;
-local lfs = require "lfs";
+local encode_node = datamanager.path_encode;
 local um_user_exists = usermanager.user_exists;
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
@@ -654,14 +653,7 @@ local function normalize_dummy(jid)
 end
 
 function pep_new(node)
-	-- this needs a fix.
-	local path = getpath(node, module:get_host(), "pep"):match("^(.*)%.[^%.]*$");
-	local pre_path = path:match("^(.*)/[^/]*$");
-	local p_attributes = lfs.attributes(path);
-	local pp_attributes = lfs.attributes(pre_path);
-
-	if pp_attributes == nil then lfs.mkdir(pre_path); end
-	if p_attributes == nil then lfs.mkdir(path); end
+	local encoded_node = encode_node(node);
 
 	local new_service = {
 			capabilities = {
@@ -751,7 +743,7 @@ function pep_new(node)
 
 			normalize_jid = normalize_dummy;
 
-			store = storagemanager.open(module.host, "pep/"..node);
+			store = storagemanager.open(module.host, "pep/"..encoded_node);
 		};
 
 	return new_service;
