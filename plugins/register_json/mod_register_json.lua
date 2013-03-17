@@ -107,7 +107,7 @@ local function handle_req(event)
 					module:log("info", "%s (%s) submitted a registration request and is awaiting final verification", username, uuid)
 					return uuid
 				else
-					module:log("debug", "%s registration data submission for %s failed (user already exists)", user, username)
+					module:log("debug", "%s registration data submission failed (user already exists)", username)
 					return http_response(event, 409, "User already exists.")
 				end
 			end
