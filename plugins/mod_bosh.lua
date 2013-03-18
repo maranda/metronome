@@ -29,6 +29,7 @@ local BOSH_MAX_WAIT = module:get_option_number("bosh_max_wait", 120);
 
 local consider_bosh_secure = module:get_option_boolean("consider_bosh_secure");
 local force_secure = module:get_option_boolean("force_https_bosh");
+local no_raw_req_logging = module:get_option_boolean("bosh_no_raw_requests_logging", true);
 
 local default_headers = { ["Content-Type"] = "text/xml; charset=utf-8", ["Connection"] = "keep-alive" };
 
@@ -104,11 +105,11 @@ end
 function handle_POST(event)
 	local request, response = event.request, event.response;
 	if force_secure and not request.secure then
-		log("debug", "Discarding unsecure request %s: %s\n----------", tostring(request), tostring(request.body));
+		log("debug", "Discarding unsecure request %s: %s\n----------", tostring(request), tostring(no_raw_req_logging and "<filtered>" or request.body));
 		return nil;
 	end
 
-	log("debug", "Handling new request %s: %s\n----------", tostring(request), tostring(request.body));
+	log("debug", "Handling new request %s: %s\n----------", tostring(request), tostring(no_raw_req_logging and "<filtered>" or request.body));
 
 	response.on_destroy = on_destroy_request;
 	local body = request.body;
