@@ -3,6 +3,7 @@ local st = require "util.stanza";
 local datetime = require "util.datetime";
 local ipairs = ipairs;
 local jid_split = require "util.jid".split;
+local limit = module:get_option_number("offline_store_limit", 40);
 
 module:add_feature("msgoffline");
 
@@ -11,16 +12,21 @@ module:hook("message/offline/handle", function(event)
 	local to = stanza.attr.to;
 	local node, host;
 	if to then
-		node, host = jid_split(to)
+		node, host = jid_split(to);
 	else
 		node, host = origin.username, origin.host;
 	end
 	
-	stanza.attr.stamp, stanza.attr.stamp_legacy = datetime.datetime(), datetime.legacy();
-	local result = datamanager.list_append(node, host, "offline", st.preserialize(stanza));
-	stanza.attr.stamp, stanza.attr.stamp_legacy = nil, nil;
-	
-	return result;
+	local archive = datamanager.list_load(node, host, "offline");
+	if archive and #archive >= limit then
+		origin.send(st.error_reply(stanza, "cancel", "service-unavailable", "User's offline message queue is full!"));
+		return true;
+	else
+		stanza.attr.stamp, stanza.attr.stamp_legacy = datetime.datetime(), datetime.legacy();
+		local result = datamanager.list_append(node, host, "offline", st.preserialize(stanza));
+		stanza.attr.stamp, stanza.attr.stamp_legacy = nil, nil;
+		return result;
+	end
 end);
 
 module:hook("message/offline/broadcast", function(event)
