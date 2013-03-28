@@ -359,7 +359,7 @@ function checkIfNeedToBeBlocked(e, session)
 		if apply then
 			if block then
 				module:log("debug", "stanza blocked: %s, to: %s, from: %s", tostring(stanza.name), tostring(to), tostring(from));
-				if stanza.name == "message" then
+				if stanza.name == "message" and stanza.attr.type ~= "groupchat" then
 					origin.send(st.error_reply(stanza, "cancel", "service-unavailable"));
 				elseif stanza.name == "iq" and (stanza.attr.type == "get" or stanza.attr.type == "set") then
 					origin.send(st.error_reply(stanza, "cancel", "service-unavailable"));
