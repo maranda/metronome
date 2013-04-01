@@ -51,13 +51,13 @@ function api:add_extension(data)
 	self:add_item("extension", data);
 end
 function api:has_feature(xmlns, host)
-	for _, feature in ipairs(self:get_items("feature", host)) then
+	for _, feature in ipairs(self:get_items("feature", host)) do
 		if feature == xmlns then return true; end
 	end
 	return false;
 end
 function api:has_identity(category, type, name, host)
-	for _, id in ipairs(self:get_items("identity", host)) then
+	for _, id in ipairs(self:get_items("identity", host)) do
 		if id.category == category and id.type == type and id.name == name then
 			return true; 
 		end
