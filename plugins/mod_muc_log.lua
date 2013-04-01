@@ -1,21 +1,25 @@
 -- Imported from prosody-modules, mod_muc_log
 
 local metronome = metronome;
-local tostring = _G.tostring;
+local select, tostring = select, _G.tostring;
 local splitJid = require "util.jid".split;
 local config_get = require "core.configmanager".get;
 local datamanager = require "util.datamanager";
 local data_load, data_store, data_getpath = datamanager.load, datamanager.store, datamanager.getpath;
 local datastore = "muc_log";
+local error_reply = require "util.stanza".error_reply;
+local storagemanager = storagemanager;
+
 local mod_host = module:get_host();
 local config = nil;
-local error_reply = require "util.stanza".error_reply;
 
 local lfs = require "lfs";
 
 local function checkDatastorePathExists(node, host, today, create)
 	create = create or false;
+	local sql = select(2, storagemanager.get_driver(mod_host, "muc_log")) == "sql" and true;
 	local path = data_getpath(node, host, datastore, "dat", true);
+	if sql then return true; end -- No need to verify log directory existances in this case.
 	path = path:gsub("/[^/]*$", "");
 
 	-- check existance
