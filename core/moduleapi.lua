@@ -287,7 +287,7 @@ function api:remove_item(key, value)
 end
 
 function api:get_items(key, host)
-	local result = modulemanager.get_items(host or self.host, key) or {};
+	local result = modulemanager.get_items(key, host or self.host) or {};
 	return result;
 end
 
