@@ -20,21 +20,15 @@ local function checkDatastorePathExists(node, host, today, create)
 
 	-- check existance
 	local attributes, err = lfs.attributes(path);
-	if (attributes == nil or attributes.mode ~= "directory") and not create then
-		module:log("warn", "muc_log folder isn't a folder: %s", path);
+	if (attributes == nil and not create) or attributes.mode ~= "directory" then
+		module:log("warn", "muc_log folder doesn't exist or isn't a folder: %s", path);
 		return false;
 	elseif attributes == nil and create then
 		lfs.mkdir(path);
 	end
 	
 	attributes, err = lfs.attributes(path .. "/" .. today);
-	if attributes == nil then
-		if create then
-			return lfs.mkdir(path .. "/" .. today);
-		else
-			return false;
-		end
-	elseif attributes.mode == "directory" then
+	if attributes.mode == "directory" then
 		return true;
 	end
 	return false;
