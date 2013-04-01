@@ -11,7 +11,7 @@ local metronome = metronome;
 
 local pcall, xpcall = pcall, xpcall;
 local setmetatable, rawget = setmetatable, rawget;
-local pairs, type, tostring, t_insert = pairs, type, tostring, table.insert;
+local ipairs, pairs, type, tostring, t_insert = ipairs, pairs, type, tostring, table.insert;
 
 local debug_traceback = debug.traceback;
 local unpack, select = unpack, select;
