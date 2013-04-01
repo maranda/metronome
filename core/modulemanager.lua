@@ -11,7 +11,7 @@ local metronome = metronome;
 
 local pcall, xpcall = pcall, xpcall;
 local setmetatable, rawget = setmetatable, rawget;
-local pairs, type, tostring = pairs, type, tostring;
+local pairs, type, tostring, t_insert = pairs, type, tostring, table.insert;
 
 local debug_traceback = debug.traceback;
 local unpack, select = unpack, select;
@@ -249,6 +249,23 @@ end
 
 function get_module(host, name)
 	return modulemap[host] and modulemap[host][name];
+end
+
+function get_items(key, host)
+	local result = {};
+	local modules = modulemap[host];
+	if not key or not host or not modules then return nil; end
+
+	for _, module in pairs(modules) do
+		local mod = module.module;
+		if mod.items and mod.items[key] then
+			for _, value in ipairs(mod.items[key]) do
+				t_insert(result, value);
+			end
+		end
+	end
+
+	return result;
 end
 
 function get_modules(host)
