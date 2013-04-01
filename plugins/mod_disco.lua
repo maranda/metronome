@@ -33,20 +33,20 @@ local _cached_server_disco_info, _cached_server_caps_feature, _cached_server_cap
 local function build_server_disco_info()
 	local query = st.stanza("query", { xmlns = "http://jabber.org/protocol/disco#info" });
 	local done = {};
-	for _,identity in ipairs(module:get_host_items("identity")) do
+	for _, identity in ipairs(module:get_items("identity")) do
 		local identity_s = identity.category.."\0"..identity.type;
 		if not done[identity_s] then
 			query:tag("identity", identity):up();
 			done[identity_s] = true;
 		end
 	end
-	for _,feature in ipairs(module:get_host_items("feature")) do
+	for _, feature in ipairs(module:get_items("feature")) do
 		if not done[feature] then
 			query:tag("feature", {var=feature}):up();
 			done[feature] = true;
 		end
 	end
-	for _,extension in ipairs(module:get_host_items("extension")) do
+	for _, extension in ipairs(module:get_items("extension")) do
 		if not done[extension] then
 			query:add_child(extension);
 			done[extension] = true;
