@@ -50,6 +50,20 @@ end
 function api:add_extension(data)
 	self:add_item("extension", data);
 end
+function api:has_feature(xmlns, host)
+	for _, feature in ipairs(self:get_items("feature", host)) then
+		if feature == xmlns then return true; end
+	end
+	return false;
+end
+function api:has_identity(category, type, name, host)
+	for _, id in ipairs(self:get_items("identity", host)) then
+		if id.category == category and id.type == type and id.name == name then
+			return true; 
+		end
+	end
+	return false;
+end
 
 function api:fire_event(...)
 	return (hosts[self.host] or metronome).events.fire_event(...);
@@ -272,24 +286,8 @@ function api:remove_item(key, value)
 	end
 end
 
-function api:get_host_items(key)
-	local result = {};
-	for mod_name, module in pairs(modulemanager.get_modules(self.host)) do
-		module = module.module;
-		if module.items then
-			for _, item in ipairs(module.items[key] or NULL) do
-				t_insert(result, item);
-			end
-		end
-	end
-	for mod_name, module in pairs(modulemanager.get_modules("*")) do
-		module = module.module;
-		if module.items then
-			for _, item in ipairs(module.items[key] or NULL) do
-				t_insert(result, item);
-			end
-		end
-	end
+function api:get_items(key, host)
+	local result = modulemanager.get_items(host or self.host, key) or {};
 	return result;
 end
 
@@ -297,7 +295,7 @@ function api:handle_items(type, added_cb, removed_cb, existing)
 	self:hook("item-added/"..type, added_cb);
 	self:hook("item-removed/"..type, removed_cb);
 	if existing ~= false then
-		for _, item in ipairs(self:get_host_items(type)) do
+		for _, item in ipairs(self:get_items(type)) do
 			added_cb({ item = item });
 		end
 	end
