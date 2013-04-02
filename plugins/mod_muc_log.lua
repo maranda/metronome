@@ -32,7 +32,8 @@ local function checkDatastorePathExists(node, host, today, create)
 	end
 	
 	attributes, err = lfs.attributes(path .. "/" .. today);
-	if attributes.mode == "directory" then
+	if attributes == nil then
+		lfs.mkdir(path .. "/" .. today);
 		return true;
 	end
 	return false;
