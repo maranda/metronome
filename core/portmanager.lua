@@ -8,7 +8,7 @@ local set = require "util.set";
 
 local table = table;
 local setmetatable, rawset, rawget = setmetatable, rawset, rawget;
-local type, tonumber, ipairs = type, tonumber, ipairs;
+local type, pairs, tonumber, ipairs = type, pairs, tonumber, ipairs;
 
 local metronome = metronome;
 local fire_event = metronome.events.fire_event;
