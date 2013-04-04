@@ -158,14 +158,14 @@ end
 
 --- Helper to check that a session peer's certificate is valid
 local function check_cert_status(session)
-	local conn = session.conn:socket()
-	local cert
+	local conn = session.conn:socket();
+	local cert;
 	if conn.getpeercertificate then
-		cert = conn:getpeercertificate()
+		cert = conn:getpeercertificate();
 	end
 
 	if cert then
-		local chain_valid, errors = conn:getpeerverification()
+		local chain_valid, errors = conn:getpeerverification();
 		-- Is there any interest in printing out all/the number of errors here?
 		if not chain_valid then
 			(session.log or log)("debug", "certificate chain validation result: invalid");
