@@ -61,6 +61,16 @@ metronome.events.add_handler("item-removed/net-provider", function (event)
 	unregister_service(item.name, item);
 end);
 
+local function duplicate_ssl_config(ssl_config)
+	local ssl_config = type(ssl_config) == "table" and ssl_config or {};
+
+	local _config = {};
+	for k, v in pairs(ssl_config) do
+		_config[k] = v;
+	end
+	return _config;
+end
+
 --- Public API
 
 function activate(service_name)
@@ -101,7 +111,12 @@ function activate(service_name)
 			else
 				local err;
 				if service_info.encryption == "ssl" then
-					local ssl_config = config.get("*", config_prefix.."ssl") or config.get("*", "ssl");
+					local ssl_config = duplicate_ssl_config((config.get("*", config_prefix.."ssl") and config.get("*", config_prefix.."ssl")[interface]) 
+								or (config.get("*", config_prefix.."ssl") and config.get("*", config_prefix.."ssl")[port])
+								or config.get("*", config_prefix.."ssl")
+								or (config.get("*", "ssl") and config.get("*", "ssl")[interface])
+								or (config.get("*", "ssl") and config.get("*", "ssl")[port])
+								or config.get("*", "ssl"));
 					-- add default entries for, or override ssl configuration
 					if ssl_config and service_info.ssl_config then
 						for key, value in pairs(service_info.ssl_config) do
@@ -113,8 +128,7 @@ function activate(service_name)
 						end
 					end
 
-					ssl, err = certmanager.create_context(service_info.name.." port "..port, "server", ssl_config and (ssl_config[port]
-						or (ssl_config.certificate and ssl_config)));
+					ssl, err = certmanager.create_context(service_info.name.." port "..port, "server", ssl_config);
 					if not ssl then
 						log("error", "Error binding encrypted port for %s: %s", service_info.name, error_to_friendly_message(service_name, port, err) or "unknown error");
 					end
