@@ -101,7 +101,18 @@ function activate(service_name)
 			else
 				local err;
 				if service_info.encryption == "ssl" then
-					local ssl_config = config.get("*", config_prefix.."ssl");
+					local ssl_config = config.get("*", config_prefix.."ssl") or config.get("*", "ssl");
+					-- add default entries for, or override ssl configuration
+					if ssl_config and service_info.ssl_config then
+						for key, value in pairs(service_info.ssl_config) do
+							if not service_info.ssl_config_override and not ssl_config[key] then
+								ssl_config[key] = value;
+							elseif service_info.ssl_config_override then
+								ssl_config[key] = value;
+							end
+						end
+					end
+
 					ssl, err = certmanager.create_context(service_info.name.." port "..port, "server", ssl_config and (ssl_config[port]
 						or (ssl_config.certificate and ssl_config)));
 					if not ssl then
