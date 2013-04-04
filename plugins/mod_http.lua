@@ -130,6 +130,7 @@ module:add_item("net-provider", {
 	listener = server.listener;
 	default_port = 5281;
 	encryption = "ssl";
+	ssl_config = { verify = "none" };
 	multiplex = {
 		pattern = "^[A-Z]";
 	};
