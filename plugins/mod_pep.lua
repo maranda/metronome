@@ -617,9 +617,10 @@ module:hook("iq-result/bare/disco", function(event)
 					end
 				end
 			end
+			return true; -- end cb processing.
 		end
 	end
-end);
+end, -1);
 
 local admin_aff = "owner";
 local function get_affiliation(self, jid)
