@@ -9,7 +9,8 @@ local tostring = tostring;
 local hosts = hosts;
 local bare_sessions = bare_sessions;
 
-local datamanager = require "util.datamanager"
+local datamanager = require "util.datamanager";
+local um_user_exists = require "core.usermanager".user_exists;
 local st = require "util.stanza";
 
 module "rostermanager"
@@ -97,6 +98,11 @@ function load_roster(username, host)
 end
 
 function save_roster(username, host, roster)
+	if not um_user_exists(username, host) then
+		log("debug", "not saving roster for %s@%s: the user doesn't exist", username, host);
+		return nil;
+	end
+
 	log("debug", "save_roster: saving roster for %s@%s", username, host);
 	if not roster then
 		roster = hosts[host] and hosts[host].sessions[username] and hosts[host].sessions[username].roster;
