@@ -1,7 +1,7 @@
 -- Imported from prosody-modules, mod_muc_log
 
 local metronome = metronome;
-local select, tostring = select, _G.tostring;
+local tostring = tostring;
 local splitJid = require "util.jid".split;
 local cm = require "core.configmanager";
 local datamanager = require "util.datamanager";
@@ -25,6 +25,8 @@ local function inject_storage_config()
 	else
 		cm.getconfig()[mod_host].core.storage = { muc_log = "internal" };
 	end
+
+	storagemanager.get_driver(mod_host, "muc_log"); -- init
 end
 
 -- Module Definitions
@@ -165,6 +167,8 @@ local function reload()
 end
 
 function module.load()
+	inject_storage_config();
+
 	module:fire_event("muc-config-handler", {
 		xmlns = "muc#roomconfig_enablelogging",
 		params = {
