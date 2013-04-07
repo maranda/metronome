@@ -176,16 +176,6 @@ function store(username, host, datastore, data)
 		return true; -- Don't save this data at all
 	end
 
-function store(username, host, datastore, data)
-	if not data then
-		data = {};
-	end
-
-	username, host, datastore, data = callback(username, host, datastore, data);
-	if username == false then
-		return true; -- Don't save this data at all
-	end
-
 	-- save the datastore
 	local d = "return " .. serialize(data) .. ";\n";
 	local mkdir_cache_cleared;
@@ -208,8 +198,6 @@ function store(username, host, datastore, data)
 		-- platform independent way of checking for non-exisitng files
 	until ok;
 	return true;
-end
-
 end
 
 function list_append(username, host, datastore, data)
