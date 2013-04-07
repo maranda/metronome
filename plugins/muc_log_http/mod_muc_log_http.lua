@@ -14,7 +14,6 @@ local config_get = require "core.configmanager".get;
 local urlencode = require "net.http".urlencode;
 local urldecode = require "net.http".urldecode;
 local http_event = require "net.http.server".fire_server_event;
-local datamanager = require "util.datamanager";
 local data_load, data_getpath = datamanager.load, datamanager.getpath;
 local datastore = "muc_log";
 local urlBase = "muc_log";
@@ -625,13 +624,12 @@ local function handle_error(code, err) return http_event("http-error", { code = 
 function handle_request(event)
 	local response = event.response;
 	local request = event.request;
-	local code, err, room;
+	local room;
 
 	local node, day, more = request.url.path:match("^/"..urlBase.."/+([^/]*)/*([^/]*)/*(.*)$");
 	if more ~= "" then
-		code, err = 404, "Unknown URL.";
 		response.status_code = 404;
-		return response:send(handle_error(code, err));
+		return response:send(handle_error(response.status_code, "Unknown URL."));
 	end
 	if node == "" then node = nil; end
 	if day  == "" then day  = nil; end
@@ -639,22 +637,19 @@ function handle_request(event)
 	node = urldecode(node);
 
 	if not html.doc then 
-		code, err = 500, "Muc Theme is not loaded.";
 		response.status_code = 500;
-		return response:send(handle_error(code, err));
+		return response:send(handle_error(response.status_code, "Muc Theme is not loaded."));
 	end
 
 	
 	if node then room = hosts[my_host].modules.muc.rooms[node.."@"..my_host]; end
 	if node and not room then
-		code, err = 404, "Room doesn't exist.";
 		response.status_code = 404;
-		return response:send(handle_error(code, err));
+		return response:send(handle_error(response.status_code, "Room doesn't exist."));
 	end
 	if room and (room._data.hidden or not room._data.logging) then
-		code, err = 404, "There're no logs for this room.";
 		response.status_code = 404;
-		return response:send(handle_error(code, err));
+		return response:send(handle_error(response.status_code, "There're no logs for this room."));
 	end
 
 
@@ -666,9 +661,8 @@ function handle_request(event)
 		if not day:match("^20(%d%d)-(%d%d)-(%d%d)$") then
 			local y,m,d = day:match("^(%d%d)(%d%d)(%d%d)$");
 			if not y then
-				code, err = 404, "No entries for that year.";
 				response.status_code = 404;
-				return response:send(handle_error(code, err));
+				return response:send(handle_error(response.status_code, "No entries for that year."));
 			end
 			response.status_code = 301;
 			response.headers = { ["Location"] = request.url.path:match("^/"..urlBase.."/+[^/]*").."/20"..y.."-"..m.."-"..d.."/" };
@@ -677,9 +671,8 @@ function handle_request(event)
 
 		local body = createDoc(parseDay(node.."@"..my_host, room._data.subject or "", day));
 		if body == "" then
-			code, err = 404, "Day entry doesn't exist.";
 			response.status_code = 404;
-			return response:send(handle_error(code, err));
+			return response:send(handle_error(response.status_code, "Day entry doesn't exist."));
 		end
 		return response:send(body);
 	end
