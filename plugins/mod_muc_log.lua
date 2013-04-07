@@ -3,7 +3,7 @@
 local metronome = metronome;
 local select, tostring = select, _G.tostring;
 local splitJid = require "util.jid".split;
-local config_get = require "core.configmanager".get;
+local cm = require "core.configmanager";
 local datamanager = require "util.datamanager";
 local data_load, data_store, data_getpath = datamanager.load, datamanager.store, datamanager.getpath;
 local datastore = "muc_log";
@@ -13,33 +13,21 @@ local storagemanager = storagemanager;
 local mod_host = module:get_host();
 local config = nil;
 
-local lfs = require "lfs";
+-- Helper Functions
 
-local function checkDatastorePathExists(node, host, today, create)
-	create = create or false;
-	local sql = select(2, storagemanager.get_driver(mod_host, "muc_log")) == "sql" and true;
-	local path = data_getpath(node, host, datastore, "dat", true);
-	if sql then return true; end -- No need to verify log directory existances in this case.
-	path = path:gsub("/[^/]*$", "");
+local function inject_storage_config()
+	local _storage = cm.getconfig()[mod_host].core.storage;
 
-	-- check existance
-	local attributes, err = lfs.attributes(path);
-	if (attributes == nil and not create) or attributes.mode ~= "directory" then
-		module:log("warn", "muc_log folder doesn't exist or isn't a folder: %s", path);
-		return false;
-	elseif attributes == nil and create then
-		lfs.mkdir(path);
+	module:log("debug", "injecting storage config...");
+	if type(_storage) == "string" then cm.getconfig()[mod_host].core.default_storage = _storage; end
+	if type(_storage) == "table" then -- append
+		_storage.muc_log = "internal";
+	else
+		cm.getconfig()[mod_host].core.storage = { muc_log = "internal" };
 	end
-	
-	attributes, err = lfs.attributes(path .. "/" .. today);
-	if attributes == nil then
-		lfs.mkdir(path .. "/" .. today);
-		return true;
-	elseif attributes ~= nil and attributes.mode == "directory" then
-		return true;
-	end
-	return false;
 end
+
+-- Module Definitions
 
 function logIfNeeded(e)
 	local stanza, origin = e.stanza, e.origin;
@@ -94,7 +82,7 @@ function logIfNeeded(e)
 					end
 				end
 
-				if (mucFrom ~= nil or mucTo ~= nil) and checkDatastorePathExists(node, host, today, true) then
+				if (mucFrom ~= nil or mucTo ~= nil) then
 					local data = data_load(node, host, datastore .. "/" .. today);
 					local realFrom = stanza.attr.from;
 					local realTo = stanza.attr.to;
@@ -170,6 +158,10 @@ end
 local function config_ojp_method(self, pr_st)
 	if config_is_method(self) then pr_st:tag("status", {code = "170"}):up(); end
 	return pr_st;
+end
+
+local function reload()
+	inject_storage_config();
 end
 
 function module.load()
