@@ -53,13 +53,29 @@ local function disco_info_query(user, from)
 	module:log("debug", "Sending disco info query to: %s", from);
 end
 
+local pep_errors = {
+	["conflict"] = { "cancel", "conflict" };
+	["invalid-jid"] = { "modify", "bad-request", nil, "invalid-jid" };
+	["item-not-found"] = { "cancel", "item-not-found" };
+	["not-subscribed"] = { "modify", "unexpected-request", nil, "not-subscribed" };
+	["forbidden"] = { "cancel", "forbidden" };
+	["bad-request"] = { "cancel", "bad-request" };
+};
+function pep_error_reply(stanza, error)
+	local e = pep_errors[error];
+	local reply = st.error_reply(stanza, unpack(e, 1, 3));
+	if e[4] then
+		reply:tag(e[4], { xmlns = xmlns_pubsub_errors }):up();
+	end
+	return reply;
+end
+
 function handle_pubsub_iq(event)
 	local origin, stanza = event.origin, event.stanza;
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local full_jid = origin.full_jid;
 	local username, host = jid_split(user);
 	if not services[user] and um_user_exists(username, host) then -- create service on demand.
-
 		-- check if the creating user is the owner or someone requesting its pep service,
 		-- required for certain crawling bots, e.g. Jappix Me
 		if hosts[host].sessions[username] and (full_jid and jid_bare(full_jid) == username) then
@@ -72,6 +88,7 @@ function handle_pubsub_iq(event)
 	
 	local pubsub = stanza.tags[1];
 	local action = pubsub.tags[1];
+	if not action then origin.send(pep_error_reply(stanza, "bad-request")); return true; end
 	local handler = handlers[stanza.attr.type.."_"..action.name];
 	local config = (pubsub.tags[2] and pubsub.tags[2].name == "configure") and pubsub.tags[2];
 	local handler;
@@ -108,22 +125,6 @@ local singleton_nodes = set_new{
 }
 singleton_nodes:add_list(module:get_option("pep_custom_singleton_nodes"));
 
-local pubsub_errors = {
-	["conflict"] = { "cancel", "conflict" };
-	["invalid-jid"] = { "modify", "bad-request", nil, "invalid-jid" };
-	["item-not-found"] = { "cancel", "item-not-found" };
-	["not-subscribed"] = { "modify", "unexpected-request", nil, "not-subscribed" };
-	["forbidden"] = { "cancel", "forbidden" };
-};
-function pubsub_error_reply(stanza, error)
-	local e = pubsub_errors[error];
-	local reply = st.error_reply(stanza, unpack(e, 1, 3));
-	if e[4] then
-		reply:tag(e[4], { xmlns = xmlns_pubsub_errors }):up();
-	end
-	return reply;
-end
-
 function handlers.get_items(origin, stanza, items)
 	local node = items.attr.node;
 	local max = items and items.attr.max_items and tonumber(items.attr.max_items);
@@ -133,7 +134,7 @@ function handlers.get_items(origin, stanza, items)
 	
 	local ok, results, max_tosend = services[user]:get_items(node, stanza.attr.from, id, max);
 	if not ok then
-		return origin.send(pubsub_error_reply(stanza, results));
+		return origin.send(pep_error_reply(stanza, results));
 	end
 	
 	local data = st.stanza("items", { node = node });
@@ -148,7 +149,7 @@ function handlers.get_items(origin, stanza, items)
 			:tag("pubsub", { xmlns = xmlns_pubsub })
 				:add_child(data);
 	else
-		reply = pubsub_error_reply(stanza, "item-not-found");
+		reply = pep_error_reply(stanza, "item-not-found");
 	end
 	return origin.send(reply);
 end
@@ -158,7 +159,7 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local ok, ret = services[user]:get_subscriptions(node, stanza.attr.from, stanza.attr.from);
 	if not ok then
-		return origin.send(pubsub_error_reply(stanza, ret));
+		return origin.send(pep_error_reply(stanza, ret));
 	end
 	local reply = st.reply(stanza)
 		:tag("pubsub", { xmlns = xmlns_pubsub })
@@ -195,7 +196,7 @@ function handlers.set_create(origin, stanza, create, config)
 		if ok then
 			reply = st.reply(stanza);
 		else
-			reply = pubsub_error_reply(stanza, ret);
+			reply = pep_error_reply(stanza, ret);
 		end
 	else
 		repeat
@@ -207,7 +208,7 @@ function handlers.set_create(origin, stanza, create, config)
 				:tag("pubsub", { xmlns = xmlns_pubsub })
 					:tag("create", { node = node });
 		else
-			reply = pubsub_error_reply(stanza, ret);
+			reply = pep_error_reply(stanza, ret);
 		end
 	end
 	return origin.send(reply);
@@ -219,9 +220,9 @@ function handlers_owner.set_delete(origin, stanza, delete)
 	local ok, ret, reply;
 	if node then
 		ok, ret = services[user]:delete(node, stanza.attr.from);
-		if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
+		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
 	else
-		reply = pubsub_error_reply(stanza, "bad-request");
+		reply = pep_error_reply(stanza, "bad-request");
 	end
 	return origin.send(reply);
 end
@@ -247,7 +248,7 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 			reply:add_child(options_tag);
 		end
 	else
-		reply = pubsub_error_reply(stanza, ret);
+		reply = pep_error_reply(stanza, ret);
 	end
 	origin.send(reply);
 	if ok then
@@ -269,9 +270,9 @@ function handlers_owner.set_purge(origin, stanza, purge)
 	local ok, ret, reply;
 	if node then
 		ok, ret = services[user]:purge(node, stanza.attr.from);
-		if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
+		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
 	else
-		reply = pubsub_error_reply(stanza, "bad-request");
+		reply = pep_error_reply(stanza, "bad-request");
 	end
 	return origin.send(reply);
 end
@@ -284,7 +285,7 @@ function handlers.set_unsubscribe(origin, stanza, unsubscribe)
 	if ok then
 		reply = st.reply(stanza);
 	else
-		reply = pubsub_error_reply(stanza, ret);
+		reply = pep_error_reply(stanza, ret);
 	end
 	return origin.send(reply);
 end
@@ -309,7 +310,7 @@ function handlers.set_publish(origin, stanza, publish)
 				:tag("publish", { node = node })
 					:tag("item", { id = id })
 	else
-		reply = pubsub_error_reply(stanza, ret);
+		reply = pep_error_reply(stanza, ret);
 	end
 	
 	return origin.send(reply);
@@ -329,7 +330,7 @@ function handlers.set_retract(origin, stanza, retract)
 	if ok then
 		reply = st.reply(stanza);
 	else
-		reply = pubsub_error_reply(stanza, ret);
+		reply = pep_error_reply(stanza, ret);
 	end
 	return origin.send(reply);
 end

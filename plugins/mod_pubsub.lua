@@ -21,28 +21,6 @@ local service;
 
 local handlers, handlers_owner = {}, {};
 
-function handle_pubsub_iq(event)
-	local origin, stanza = event.origin, event.stanza;
-	local pubsub = stanza.tags[1];
-	local action = pubsub.tags[1];
-	local config = (pubsub.tags[2] and pubsub.tags[2].name == "configure") and pubsub.tags[2];
-	local handler;
-
-	if pubsub.attr.xmlns == xmlns_pubsub_owner then
-		handler = handlers_owner[stanza.attr.type.."_"..action.name];
-	else
-		handler = handlers[stanza.attr.type.."_"..action.name];
-	end
-
-	if handler then
-		if not config then 
-			return handler(origin, stanza, action); 
-		else 
-			return handler(origin, stanza, action, config); 
-		end
-	end
-end
-
 local pubsub_errors = {
 	["conflict"] = { "cancel", "conflict" };
 	["invalid-jid"] = { "modify", "bad-request", nil, "invalid-jid" };
@@ -59,6 +37,29 @@ function pubsub_error_reply(stanza, error)
 		reply:tag(e[4], { xmlns = xmlns_pubsub_errors }):up();
 	end
 	return reply;
+end
+
+function handle_pubsub_iq(event)
+	local origin, stanza = event.origin, event.stanza;
+	local pubsub = stanza.tags[1];
+	local action = pubsub.tags[1];
+	if not action then origin.send(pubsub_error_reply(stanza, "bad-request")); return true; end
+	local config = (pubsub.tags[2] and pubsub.tags[2].name == "configure") and pubsub.tags[2];
+	local handler;
+
+	if pubsub.attr.xmlns == xmlns_pubsub_owner then
+		handler = handlers_owner[stanza.attr.type.."_"..action.name];
+	else
+		handler = handlers[stanza.attr.type.."_"..action.name];
+	end
+
+	if handler then
+		if not config then 
+			return handler(origin, stanza, action); 
+		else 
+			return handler(origin, stanza, action, config); 
+		end
+	end
 end
 
 function handlers_owner.get_configure(origin, stanza, action)
