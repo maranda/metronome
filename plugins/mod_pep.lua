@@ -606,7 +606,7 @@ module:hook("iq-result/bare/disco", function(event)
 				for jid, item in pairs(session.roster) do -- for all interested contacts
 					if item.subscription == "both" or item.subscription == "from" then
 						local node, host = jid_split(jid);
-						if hosts[host] and hosts[host].sessions[node] then
+						if hosts[host] and hosts[host].sessions and hosts[host].sessions[node] then
 							-- service discovery local users' av. resources
 							for resource in pairs(hosts[host].sessions[node].sessions) do
 								disco_info_query(user, jid .. "/" .. resource);
