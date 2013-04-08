@@ -88,7 +88,7 @@ function handle_pubsub_iq(event)
 	
 	local pubsub = stanza.tags[1];
 	local action = pubsub.tags[1];
-	if not action then origin.send(pep_error_reply(stanza, "bad-request")); return true; end
+	if not action then return origin.send(pep_error_reply(stanza, "bad-request")); end
 	local handler = handlers[stanza.attr.type.."_"..action.name];
 	local config = (pubsub.tags[2] and pubsub.tags[2].name == "configure") and pubsub.tags[2];
 	local handler;
