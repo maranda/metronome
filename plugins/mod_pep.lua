@@ -1,6 +1,6 @@
 local hosts = hosts;
 local core_post_stanza = metronome.core_post_stanza;
-local ripairs, tonumber, type = ripairs, tonumber, type;
+local ripairs, tonumber, type, table, os_time = ripairs, tonumber, type, table, os.time;
 
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
@@ -18,6 +18,7 @@ local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
 local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
 local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
 
+hash_map = {};
 services = {};
 local handlers = {};
 local handlers_owner = {};
@@ -36,6 +37,8 @@ module:add_feature("http://jabber.org/protocol/pubsub#publish");
 module:add_feature("http://jabber.org/protocol/pubsub#purge-nodes");
 module:add_feature("http://jabber.org/protocol/pubsub#retrieve-items");
 module:add_feature("http://jabber.org/protocol/pubsub#subscribe");
+
+-- Helpers.
 
 local function subscription_presence(user_bare, recipient)
 	local recipient_bare = jid_bare(recipient);
@@ -70,6 +73,66 @@ function pep_error_reply(stanza, error)
 	return reply;
 end
 
+local singleton_nodes = set_new{ 
+	"http://jabber.org/protocol/activity",
+	"http://jabber.org/protocol/geoloc",
+	"http://jabber.org/protocol/mood",
+	"http://jabber.org/protocol/tune",
+	"urn:xmpp:avatar:data",
+	"urn:xmpp:avatar:metadata",
+	"urn:xmpp:chatting:0",
+	"urn:xmpp:browsing:0",
+	"urn:xmpp:gaming:0",
+	"urn:xmpp:viewing:0"
+}
+singleton_nodes:add_list(module:get_option("pep_custom_singleton_nodes"));
+
+-- define an item cache, useful to avoid event dupes;
+local cache_limit = module:get_option_number("pep_max_cached_items", 10);
+
+local item_cache_mt = {};
+item_cache_mt.__index = item_cache_mt;
+function item_cache_mt:add(item, node, target, force)
+	local _item = tostring(item);
+	if force and self[target] and self[target][node] and self[target][node].item == _item then
+		-- reset time for convenience...
+		self[target][node].time = os_time();
+		return true;
+	elseif force and self[target] and self[target][node] and self[target][node].item ~= _item then
+		-- pop old entry and reuse the table we already have
+		self[target][node].item = _item;
+		self[target][node].time = os_time();
+		return true;
+	end
+
+	if not self:timeup(_item, node, target) then return false; end
+	if #self >= cache_limit then
+		-- pop the uppermost
+		local count = 0;
+		for entry in pairs(self) do
+			count = count + 1;
+			if count == 1 then self[entry] = nil; break; end
+		end
+	end
+	self[target] = self[target] or {};
+	self[target][node] = { item = _item, time = os_time() };
+	return true;
+end
+function item_cache_mt:timeup(item, node, target)
+	local _now = os_time();
+	if not self[target] or not self[target][node] then return true; end
+	if self[target][node] and 
+	   self[target][node].item ~= item or
+	   _now - self[target][node].time >= 5 then
+		self[target][node] = nil;
+		return true;
+	else
+		return false;
+	end
+end
+
+-- Module Definitions.
+
 function handle_pubsub_iq(event)
 	local origin, stanza = event.origin, event.stanza;
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
@@ -80,7 +143,9 @@ function handle_pubsub_iq(event)
 		-- required for certain crawling bots, e.g. Jappix Me
 		if hosts[host].sessions[username] and (full_jid and jid_bare(full_jid) == username) then
 			set_service(pubsub.new(pep_new(username)), user, true);
-			disco_info_query(user, full_jid); -- discover the creating resource immediatly.
+
+			-- discover the creating resource immediatly.
+			module:fire_event("pep-get-client-filters", { user = user, to = full_jid });
 		else
 			set_service(pubsub.new(pep_new(username)), user, true);
 		end
@@ -110,20 +175,6 @@ function handle_pubsub_iq(event)
 		end
 	end
 end
-
-local singleton_nodes = set_new{ 
-	"http://jabber.org/protocol/activity",
-	"http://jabber.org/protocol/geoloc",
-	"http://jabber.org/protocol/mood",
-	"http://jabber.org/protocol/tune",
-	"urn:xmpp:avatar:data",
-	"urn:xmpp:avatar:metadata",
-	"urn:xmpp:chatting:0",
-	"urn:xmpp:browsing:0",
-	"urn:xmpp:gaming:0",
-	"urn:xmpp:viewing:0"
-}
-singleton_nodes:add_list(module:get_option("pep_custom_singleton_nodes"));
 
 function handlers.get_items(origin, stanza, items)
 	local node = items.attr.node;
@@ -310,32 +361,15 @@ function handlers.set_publish(origin, stanza, publish)
 			:tag("pubsub", { xmlns = xmlns_pubsub })
 				:tag("publish", { node = node })
 					:tag("item", { id = id });
+
+		for target in pairs(services[user].nodes[node].subscribers) do
+			services[user].item_cache:add(item, node, target, true);
+		end		
 	else
 		reply = pep_error_reply(stanza, ret);
 	end
 
-	local event_message;
-	if ok and (not services[user].recipients[from] or 
-		   not services[user].recipients[from][node]) then
-		
-		local _, items = services[user]:get_items(node, from);
-		if items then
-			local item = st.clone(items[id]);
-			item.attr.xmlns = nil;
-			event_message = st.message({ from = user, type = "headline" })
-				:tag("event", { xmlns = xmlns_pubsub_event })
-					:tag("items", { node = node })
-						:add_child(item);
-		end			
-	end
-
-	origin.send(reply);
-	if event_message then
-		module:log("debug", "Auto-broadcasting to self as discovery of notifications' interest wasn't yet done");
-		origin.send(event_message);
-	end
-
-	return true;
+	return origin.send(reply);
 end
 
 function handlers.set_retract(origin, stanza, retract)
@@ -356,7 +390,7 @@ function handlers.set_retract(origin, stanza, retract)
 	end
 	return origin.send(reply);
 end
-
+	
 function broadcast(self, node, jids, item)
 	local message;
 	if type(item) == "string" and item == "deleted" then
@@ -379,21 +413,21 @@ function broadcast(self, node, jids, item)
 		end
 	end
 
-	local function send_ifrexist(jid)
+	local function send_event(jid)
 		local function notify(s,f)
-			module:log("debug", "%s -- service sending notification to %s", s, f);
+			module:log("debug", "%s -- service sending %s notification to %s", s, node, f);
 			message.attr.to = f; core_post_stanza(self.session, message);
 		end		
 		
-		if type(self.recipients[jid]) == "table" 
-		   and self.recipients[jid][node] then
+		local subscribers = self.nodes[node].subscribers;
+		if subscribers[jid] then
 			notify(self.name,jid);		
 		end
 	end
 
 	if type(jids) == "table" then
-		for jid in pairs(jids) do send_ifrexist(jid); end
-	else send_ifrexist(jids); end
+		for jid in pairs(jids) do send_event(jid); end
+	else send_event(jids); end
 end
 
 module:hook("iq/bare/http://jabber.org/protocol/pubsub:pubsub", handle_pubsub_iq);
@@ -475,7 +509,7 @@ module:hook("account-disco-items", function(event)
 	end
 end);
 
-local function get_caps_hash_from_presence(stanza, current)
+local function get_caps_hash_from_presence(stanza)
 	local t = stanza.attr.type;
 	if not t then
 		for _, child in pairs(stanza.tags) do
@@ -492,14 +526,28 @@ local function get_caps_hash_from_presence(stanza, current)
 	elseif t == "unavailable" or t == "error" then
 		return;
 	end
-	return current; -- no caps, could mean caps optimization, so return current
 end
 
 local function pep_broadcast_all(user, node, receiver)
 	local ok, items, orderly = services[user]:get_items(node, receiver);
 	if items then
 		for _, id in ipairs(orderly) do
-			services[user]:broadcaster(node, receiver, items[id]);
+			if services[user].item_cache:add(items[id], node, receiver) then 
+				services[user]:broadcaster(node, receiver, items[id]);
+			end
+		end
+	end
+end
+
+local function pep_mutual_recs(source, target, interested)
+	for jid, hash in pairs(source.recipients) do
+		if jid_bare(jid) == source.name and type(hash) == "string" then
+			interested[jid] = hash;
+		end
+	end
+	for jid, hash in pairs(target.recipients) do
+		if jid_bare(jid) == target.name and type(hash) == "string" then
+			interested[jid] = hash;
 		end
 	end
 end
@@ -508,46 +556,41 @@ local function pep_send(recipient, user, ignore)
 	local rec_srv = services[jid_bare(recipient)];
 	local user_srv = services[user];
 
-	if not rec_srv then
+	if ignore then -- fairly hacky...
 		local nodes = user_srv.nodes;
+		module:log("debug", "Ignoring notifications filtering for %s until we obtain 'em... if ever.", recipient);
 		for node, object in pairs(nodes) do
-			if user_srv.recipients[recipient][node] or ignore then
+			object.subscribers[recipient] = true;
+			pep_broadcast_all(user, node, recipient);
+			object.subscribers[recipient] = nil;
+		end		
+	elseif not rec_srv then
+		local nodes = user_srv.nodes;
+		local rec_hash = user_srv.recipients[recipient];
+		for node, object in pairs(nodes) do
+			if hash_map[rec_hash] and hash_map[rec_hash][node] then
 				object.subscribers[recipient] = true;
 				pep_broadcast_all(user, node, recipient);
-				if ignore then object.subscribers[recipient] = nil; end
 			end
 		end
 	else
 		local rec_nodes = rec_srv.nodes;
 		local user_nodes = user_srv.nodes;
 		local interested = {};
-		for jid, map in pairs(user_srv.recipients) do
-			if jid_bare(jid) == user then
-				if rec_srv.recipients[jid] and type(rec_srv.recipients[jid]) == "table" then
-					interested[jid] = rec_srv.recipients[jid];
-				else
-					interested[jid] = map; -- dummy with ours...
-				end
-			end
-		end
+		pep_mutual_recs(user_srv, rec_srv, interested);
 
 		-- Mutually subscribe
-		for jid, map in pairs(interested) do
-			rec_srv.recipients[jid] = map;
+		for jid, hash in pairs(interested) do
 			for node, obj in pairs(rec_nodes) do
-				if map[node] and not obj.subscribers[jid] then
-					obj.subscribers[jid] = true;
-					if rec_srv.name ~= jid_bare(recipient) then 
-						pep_broadcast_all(rec_srv.name, node, recipient);						
-					end
-				end
+				if hash_map[hash] and hash_map[hash][node] then obj.subscribers[jid] = true; end
 			end
 			for node, obj in pairs(user_nodes) do
-				if map[node] then
-					obj.subscribers[jid] = true;
-					pep_broadcast_all(user, node, recipient);
-				end
+				if hash_map[hash] and hash_map[hash][node] then obj.subscribers[jid] = true; end
 			end			
+		end
+
+		for node in pairs(user_nodes) do
+			pep_broadcast_all(user, node, recipient);
 		end
 	end
 end
@@ -566,31 +609,33 @@ module:hook("presence/bare", function(event)
 	
 	if not services[user] then return nil; end -- User Service doesn't exist
 	local nodes = services[user].nodes;
+	local recipients = services[user].recipients;
 	
 	if not t then -- available presence
 		if self or subscription_presence(user, stanza.attr.from) then
 			local recipient = stanza.attr.from;
-			local current = services[user].recipients and services[user].recipients[recipient];
-			local hash = get_caps_hash_from_presence(stanza, current);
-			if current == hash or (current and current == services[user].hash_map[hash]) then return; end
-			if not hash then
-				services[user].recipients[recipient] = nil;
-			else
-				if services[user].hash_map[hash] then
-					services[user].recipients[recipient] = services[user].hash_map[hash];
-					pep_send(recipient, user);
-				else
-					services[user].recipients[recipient] = hash;
-					local from_bare = origin.type == "c2s" and origin.username.."@"..origin.host;
-					if self or origin.type ~= "c2s" or (from_bare and origin.full_jid and services[from_bare] and services[from_bare].recipients and services[from_bare].recipients[origin.full_jid]) ~= hash then
-						disco_info_query(user, recipient);
-					end
+			local current = recipients and recipients[recipient];
+			local hash = get_caps_hash_from_presence(stanza);
+			if not hash then hash = current; end
+				
+			if not hash_map[hash] then
+				if current ~= false then
+					module:fire_event("pep-get-client-filters", 
+					{ user = user; to = stanza.attr.from or origin.full_jid,
+					  hash = hash, recipients = recipients });
+				
+					-- ignore filters once either because they aren't supported or because we don't have 'em yet
+					pep_send(recipient, user, true);
 				end
+			else
+				recipients[recipient] = hash;
+				pep_send(recipient, user);
 			end
 		end
 	elseif t == "unavailable" then
 		local from = stanza.attr.from;
-		for name in pairs((type(services[user].recipients[from]) == "table" and services[user].recipients[from]) or NULL) do
+		local client_map = hash_map[services[user].recipients[from]];
+		for name in pairs(client_map or NULL) do
 			if nodes[name] then nodes[name].subscribers[from] = nil; end
 		end
 		services[user].recipients[from] = nil;
@@ -600,7 +645,8 @@ module:hook("presence/bare", function(event)
 		if subscriptions then
 			for subscriber in pairs(subscriptions) do
 				if jid_bare(subscriber) == from then
-					for name in pairs((type(services[user].recipients[stanza.attr.from]) == "table" and services[user].recipients[stanza.attr.from]) or NULL) do
+					local client_map = hash_map[services[user].recipients[subscriber]];
+					for name in pairs(client_map or NULL) do
 						if nodes[name] then nodes[name].subscribers[subscriber] = nil; end
 					end
 					services[user].recipients[subscriber] = nil;
@@ -610,6 +656,12 @@ module:hook("presence/bare", function(event)
 	end
 end, 10);
 
+module:hook("pep-get-client-filters", function(event)
+	local user, to, hash, recipients = event.user, event.to, event.hash, event.recipients;
+	if hash then recipients[to] = hash; end -- could not obtain caps via presence
+	disco_info_query(user, to);
+end, 100);
+
 module:hook("iq-result/bare/disco", function(event)
 	local session, stanza = event.origin, event.stanza;
 	if stanza.attr.type == "result" then
@@ -618,24 +670,32 @@ module:hook("iq-result/bare/disco", function(event)
 			-- Process disco response
 			local self = not stanza.attr.to;
 			local user = stanza.attr.to or (session.username.."@"..session.host);
-			if not services[user] then return nil; end -- User's pep service doesn't exist
-			module:log("debug", "Processing disco response from %s", stanza.attr.from);
+			if not services[user] then return true; end -- User's pep service doesn't exist
 			local nodes = services[user].nodes;
 			local contact = stanza.attr.from;
 			local current = services[user].recipients[contact];
-			if type(current) ~= "string" then return; end -- check if waiting for recipient's response
+			if current == false then return true; end
+
+			module:log("debug", "Processing disco response from %s", stanza.attr.from);
+			if current == nil then current = ""; end
 			local ver = current;
 			if not string.find(current, "#") then
 				ver = calculate_hash(disco.tags); -- calculate hash
 			end
 			local notify = {};
+			local has_notify = false;
 			for _, feature in pairs(disco.tags) do
 				if feature.name == "feature" and feature.attr.var then
 					local nfeature = feature.attr.var:match("^(.*)%+notify$");
-					if nfeature then notify[nfeature] = true; end
+					if nfeature then notify[nfeature] = true; has_notify = true; end
 				end
 			end
-			services[user].hash_map[ver] = notify; -- update hash map
+			if not has_notify then 
+				services[user].recipients[contact] = false;
+				return true;
+			end
+			hash_map[ver] = notify; -- update hash map
+			services[user].recipients[contact] = ver; -- and contact hash
 			if self then
 				module:log("debug", "Discovering interested roster contacts...");
 				for jid, item in pairs(session.roster) do -- for all interested contacts
@@ -653,7 +713,6 @@ module:hook("iq-result/bare/disco", function(event)
 					end
 				end
 			end
-			services[user].recipients[contact] = notify;
 			for node, object in pairs(nodes) do
 				pep_send(contact, user);
 			end
@@ -674,9 +733,11 @@ end
 
 function set_service(new_service, jid, restore)
 	services[jid] = new_service;
-	services[jid]["hash_map"] = {};
-	services[jid]["name"] = jid;
-	services[jid]["recipients"] = {};
+	services[jid].hash_map = {};
+	services[jid].item_cache = {};
+	setmetatable(services[jid].item_cache, item_cache_mt);
+	services[jid].name = jid;
+	services[jid].recipients = {};
 	module.environment.services[jid] = services[jid];
 	disco_info = build_disco_info(services[jid]);
 	if restore then 
@@ -800,6 +861,8 @@ function module.restore(data)
 		username = jid_split(id);
 		services[id] = set_service(pubsub.new(pep_new(username)), id);
 		services[id].hash_map = service.hash_map or {};
+		services[id].item_cache = service.item_cache or {};
+		setmetatable(services[id].item_cache, item_cache_mt);
 		services[id].nodes = service.nodes or {};
 		services[id].recipients = service.recipients or {};
 	end
