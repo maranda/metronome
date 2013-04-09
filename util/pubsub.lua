@@ -338,10 +338,10 @@ function service:publish(node, actor, id, item)
 	   (node_obj.config.deliver_payloads or node_obj.config.deliver_payloads == nil) then
 		self:broadcaster(node, node_obj.subscribers, item);
 	elseif (node_obj.config.deliver_notifications or node_obj.config.deliver_notifications == nil) then
-		local item_copy = item;
+		local item_copy = st.clone(item);
 		for i=1,#item_copy do item_copy[i] = nil end -- reset tags;
 		item_copy.attr.xmlns = nil;
-		self:broadcaster(node, node_obj.subscribers, item);
+		self:broadcaster(node, node_obj.subscribers, item_copy);
 	end
 	self:save_node(node);	
 	return true;
@@ -416,10 +416,12 @@ function service:get_items(node, actor, id, max)
 			if max then _data_id = calculate_items_tosend(node_obj.data_id, max); end	
 			return true, node_obj.data, _data_id or node_obj.data_id;
 		else
-			local data_copy = node_obj.data;
-			for id, stanza in pairs(data_copy) do -- reset objects tags
-				for i=1,#stanza do stanza[i] = nil end
-				stanza.attr.xmlns = nil;
+			local data_copy = {};
+			for id, stanza in pairs(node_obj.data) do -- reset objects tags
+				local _stanza = st.clone(stanza);
+				for i=1,#_stanza do _stanza[i] = nil end
+				_stanza.attr.xmlns = nil;
+				data_copy[id] = _stanza;
 			end
 			if max then _data_id = calculate_items_tosend(node_obj.data_id, max); end
 			return true, data_copy, _data_id or node_obj.data_id;
