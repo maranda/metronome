@@ -292,6 +292,7 @@ end
 
 function handlers.set_publish(origin, stanza, publish)
 	local node = publish.attr.node;
+	local from = stanza.attr.from or origin.full_jid;
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local item = publish:get_child("item");
 	local recs = {};
@@ -301,19 +302,40 @@ function handlers.set_publish(origin, stanza, publish)
 		services[user].nodes[node].data = {};		-- Clear singleton nodes, this is not exactly correct
 		services[user].nodes[node].data_id = {};	-- Spec wise I think.
 	end
-	local ok, ret = services[user]:publish(node, stanza.attr.from, id, item);
+	local ok, ret = services[user]:publish(node, from, id, item);
 	local reply;
 	
 	if ok then
 		reply = st.reply(stanza)
 			:tag("pubsub", { xmlns = xmlns_pubsub })
 				:tag("publish", { node = node })
-					:tag("item", { id = id })
+					:tag("item", { id = id });
 	else
 		reply = pep_error_reply(stanza, ret);
 	end
-	
-	return origin.send(reply);
+
+	local event_message;
+	if ok and (not services[user].recipients[from] or 
+		   not services[user].recipients[from][node]) then
+		
+		local _, items = services[user]:get_items(node, from);
+		if items then
+			local item = st.clone(items[id]);
+			item.attr.xmlns = nil;
+			event_message = st.message({ from = user, type = "headline" })
+				:tag("event", { xmlns = xmlns_pubsub_event })
+					:tag("items", { node = node })
+						:add_child(item);
+		end			
+	end
+
+	origin.send(reply);
+	if event_message then
+		module:log("debug", "Auto-broadcasting to self as discovery of notifications' interest wasn't yet done");
+		origin.send(event_message);
+	end
+
+	return true;
 end
 
 function handlers.set_retract(origin, stanza, retract)
@@ -473,38 +495,61 @@ local function get_caps_hash_from_presence(stanza, current)
 	return current; -- no caps, could mean caps optimization, so return current
 end
 
-local function pep_send_back(recipient, user)
-	local rec_srv = services[jid_bare(recipient)];
-	local user_srv_recipients = services[user] and services[user].recipients;
-	if not rec_srv or not user_srv_recipients then return; end
-
-	local nodes = rec_srv.nodes;
-	local interested = {};
-	for jid, map in pairs(user_srv_recipients) do
-		if jid_bare(jid) == user then
-			if rec_srv.recipients[jid] and type(rec_srv.recipients[jid]) == "table" then
-				interested[jid] = rec_srv.recipients[jid];
-			else
-				interested[jid] = map; -- dummy with ours...
-			end
+local function pep_broadcast_all(user, node, receiver)
+	local ok, items, orderly = services[user]:get_items(node, receiver);
+	if items then
+		for _, id in ipairs(orderly) do
+			services[user]:broadcaster(node, receiver, items[id]);
 		end
 	end
-	
-	-- Mutually subscribe and send items of interest
-	for jid, map in pairs(interested) do
-		rec_srv.recipients[jid] = map;
-		for node, obj in pairs(nodes) do
-			obj.subscribers[jid] = true;
-			if rec_srv.recipients[jid][node] then
-				local ok, items, orderly = rec_srv:get_items(node, true);
-				if items then
-					for _, id in ipairs(orderly) do
-						rec_srv:broadcaster(node, jid, items[id]);
+end
+
+local function pep_send(recipient, user, ignore)
+	local rec_srv = services[jid_bare(recipient)];
+	local user_srv = services[user];
+
+	if not rec_srv then
+		local nodes = user_srv.nodes;
+		for node, object in pairs(nodes) do
+			if user_srv.recipients[recipient][node] or ignore then
+				object.subscribers[recipient] = true;
+				pep_broadcast_all(user, node, recipient);
+				if ignore then object.subscribers[recipient] = nil; end
+			end
+		end
+	else
+		local rec_nodes = rec_srv.nodes;
+		local user_nodes = user_srv.nodes;
+		local interested = {};
+		for jid, map in pairs(user_srv.recipients) do
+			if jid_bare(jid) == user then
+				if rec_srv.recipients[jid] and type(rec_srv.recipients[jid]) == "table" then
+					interested[jid] = rec_srv.recipients[jid];
+				else
+					interested[jid] = map; -- dummy with ours...
+				end
+			end
+		end
+
+		-- Mutually subscribe
+		for jid, map in pairs(interested) do
+			rec_srv.recipients[jid] = map;
+			for node, obj in pairs(rec_nodes) do
+				if map[node] and not obj.subscribers[jid] then
+					obj.subscribers[jid] = true;
+					if rec_srv.name ~= jid_bare(recipient) then 
+						pep_broadcast_all(rec_srv.name, node, recipient);						
 					end
 				end
 			end
-		end			
-	end	
+			for node, obj in pairs(user_nodes) do
+				if map[node] then
+					obj.subscribers[jid] = true;
+					pep_broadcast_all(user, node, recipient);
+				end
+			end			
+		end
+	end
 end
 
 local function probe_jid(user, from)
@@ -533,32 +578,22 @@ module:hook("presence/bare", function(event)
 			else
 				if services[user].hash_map[hash] then
 					services[user].recipients[recipient] = services[user].hash_map[hash];
-					pep_send_back(recipient, user);
-					for node, object in pairs(nodes) do
-						if services[user].recipients[recipient][node] then
-							object.subscribers[recipient] = true;
-							local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
-							if items then
-								for _, id in ipairs(orderly) do
-									services[user]:broadcaster(node, recipient, items[id]);
-								end
-							end
-						end
-					end
+					pep_send(recipient, user);
 				else
 					services[user].recipients[recipient] = hash;
 					local from_bare = origin.type == "c2s" and origin.username.."@"..origin.host;
 					if self or origin.type ~= "c2s" or (from_bare and origin.full_jid and services[from_bare] and services[from_bare].recipients and services[from_bare].recipients[origin.full_jid]) ~= hash then
-						disco_info_query(user, stanza.attr.from);
+						disco_info_query(user, recipient);
 					end
 				end
 			end
 		end
 	elseif t == "unavailable" then
-		for name in pairs((type(services[user].recipients[stanza.attr.from]) == "table" and services[user].recipients[stanza.attr.from]) or NULL) do
-			if nodes[name] then nodes[name].subscribers[stanza.attr.from] = nil; end
+		local from = stanza.attr.from;
+		for name in pairs((type(services[user].recipients[from]) == "table" and services[user].recipients[from]) or NULL) do
+			if nodes[name] then nodes[name].subscribers[from] = nil; end
 		end
-		services[user].recipients[stanza.attr.from] = nil;
+		services[user].recipients[from] = nil;
 	elseif not self and t == "unsubscribe" then
 		local from = jid_bare(stanza.attr.from);
 		local subscriptions = services[user].recipients;
@@ -619,13 +654,8 @@ module:hook("iq-result/bare/disco", function(event)
 				end
 			end
 			services[user].recipients[contact] = notify;
-			for node in pairs(nodes) do
-				local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
-				if items then
-					for _, id in ipairs(orderly) do
-						services[user]:broadcaster(node, contact, items[id]);
-					end
-				end
+			for node, object in pairs(nodes) do
+				pep_send(contact, user);
 			end
 			return true; -- end cb processing.
 		end
