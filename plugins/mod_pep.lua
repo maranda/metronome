@@ -1,6 +1,6 @@
 local hosts = hosts;
 local core_post_stanza = metronome.core_post_stanza;
-local ripairs, tonumber, type, table, os_time = ripairs, tonumber, type, table, os.time;
+local ripairs, tonumber, type, os_time = ripairs, tonumber, type, os.time;
 
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
@@ -433,55 +433,7 @@ end
 module:hook("iq/bare/http://jabber.org/protocol/pubsub:pubsub", handle_pubsub_iq);
 module:hook("iq/bare/http://jabber.org/protocol/pubsub#owner:pubsub", handle_pubsub_iq);
 
-local disco_info;
-
-local feature_map = {
-	create = { "create-nodes", true and "instant-nodes", "item-ids" };
-	retract = { "delete-items", "retract-items" };
-	publish = { "publish" };
-	get_items = { "retrieve-items" };
-	add_subscription = { "subscribe" };
-	get_subscriptions = { "retrieve-subscriptions" };
-};
-
-local function add_disco_features_from_service(disco, service)
-	for method, features in pairs(feature_map) do
-		if service[method] then
-			for _, feature in ipairs(features) do
-				if feature then
-					disco:tag("feature", { var = xmlns_pubsub_event.."#"..feature }):up();
-				end
-			end
-		end
-	end
-	for affiliation in pairs(service.config.capabilities) do
-		if affiliation ~= "none" and affiliation ~= "owner" then
-			disco:tag("feature", { var = xmlns_pubsub_event.."#"..affiliation.."-affiliation" }):up();
-		end
-	end
-end
-
-local function build_disco_info(service)
-	local disco_info = st.stanza("query", { xmlns = "http://jabber.org/protocol/disco#info" })
-		:tag("identity", { category = "pubsub", type = "pep" })
-		:tag("feature", { var = "http://jabber.org/protocol/pubsub#access-presence" })
-		:tag("feature", { var = "http://jabber.org/protocol/pubsub#auto-create" })
-		:tag("feature", { var = "http://jabber.org/protocol/pubsub#create-and-configure" })
-		:tag("feature", { var = "http://jabber.org/protocol/pubsub#create-nodes" })
-		:tag("feature", { var = "http://jabber.org/protocol/pubsub#delete-items" })
-		:tag("feature", { var = "http://jabber.org/protocol/pubsub#delete-nodes" })		
-		:tag("feature", { var = "http://jabber.org/protocol/pubsub#filtered-notifications" })
-		:tag("feature", { var = "http://jabber.org/protocol/pubsub#persistent-items" })
-		:tag("feature", { var = "http://jabber.org/protocol/pubsub#publish" })
-		:tag("feature", { var = "http://jabber.org/protocol/pubsub#purge-nodes" })
-		:tag("feature", { var = "http://jabber.org/protocol/pubsub#retrieve-items" })
-		:tag("feature", { var = "http://jabber.org/protocol/pubsub#subscribe" }):up();
-	add_disco_features_from_service(disco_info, service);
-	return disco_info;
-end
-
-module:hook("account-disco-info", function(event)
-	local stanza = event.stanza;
+local function append_disco_features(stanza)
 	stanza:tag("identity", {category = "pubsub", type = "pep"}):up();
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#access-presence"}):up();
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#auto-create"}):up();
@@ -495,6 +447,11 @@ module:hook("account-disco-info", function(event)
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#purge-nodes"}):up();
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#retrieve-items"}):up();
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#subscribe"}):up();
+end
+
+module:hook("account-disco-info", function(event)
+	local stanza = event.stanza;
+	append_disco_features(stanza);
 end);
 
 module:hook("account-disco-items", function(event)
@@ -739,7 +696,6 @@ function set_service(new_service, jid, restore)
 	services[jid].name = jid;
 	services[jid].recipients = {};
 	module.environment.services[jid] = services[jid];
-	disco_info = build_disco_info(services[jid]);
 	if restore then 
 		services[jid]:restore(); 
 		for name, node in pairs(services[jid].nodes) do 
