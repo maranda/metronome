@@ -807,10 +807,11 @@ function pep_new(node)
 end
 
 function module.save()
-	return { services = services };
+	return { hash_map = hash_map, services = services };
 end
 
 function module.restore(data)
+	hash_map = data.hash_map or {};
 	local _services = data.services or {};
 	for id, service in pairs(_services) do
 		username = jid_split(id);
