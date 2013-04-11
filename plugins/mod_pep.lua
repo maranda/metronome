@@ -122,8 +122,7 @@ function item_cache_mt:timeup(item, node, target)
 	local _now = os_time();
 	if not self[target] or not self[target][node] then return true; end
 	if self[target][node] and 
-	   self[target][node].item ~= item or
-	   _now - self[target][node].time >= 5 then
+	   (self[target][node].item ~= item or _now - self[target][node].time >= 5) then
 		self[target][node] = nil;
 		return true;
 	else
