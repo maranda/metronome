@@ -40,22 +40,6 @@ module:add_feature("http://jabber.org/protocol/pubsub#subscribe");
 
 -- Helpers.
 
-local function subscription_presence(user_bare, recipient)
-	local recipient_bare = jid_bare(recipient);
-	if (recipient_bare == user_bare) then return true end
-	local username, host = jid_split(user_bare);
-	return is_contact_subscribed(username, host, recipient_bare);
-end
-
-local function disco_info_query(user, from)
-	-- COMPAT from ~= stanza.attr.to because OneTeam can"t deal with missing from attribute
-	core_post_stanza(hosts[module.host], 
-		st.stanza("iq", {from=user, to=from, id="disco", type="get"})
-			:query("http://jabber.org/protocol/disco#info")
-	);
-	module:log("debug", "Sending disco info query to: %s", from);
-end
-
 local pep_errors = {
 	["conflict"] = { "cancel", "conflict" };
 	["invalid-jid"] = { "modify", "bad-request", nil, "invalid-jid" };
@@ -128,6 +112,125 @@ function item_cache_mt:timeup(item, node, target)
 	else
 		return false;
 	end
+end
+
+local function subscription_presence(user_bare, recipient)
+	local recipient_bare = jid_bare(recipient);
+	if (recipient_bare == user_bare) then return true end
+	local username, host = jid_split(user_bare);
+	return is_contact_subscribed(username, host, recipient_bare);
+end
+
+local function disco_info_query(user, from)
+	-- COMPAT from ~= stanza.attr.to because OneTeam can"t deal with missing from attribute
+	core_post_stanza(hosts[module.host], 
+		st.stanza("iq", {from=user, to=from, id="disco", type="get"})
+			:query("http://jabber.org/protocol/disco#info")
+	);
+	module:log("debug", "Sending disco info query to: %s", from);
+end
+
+local function get_caps_hash_from_presence(stanza)
+	local t = stanza.attr.type;
+	if not t then
+		for _, child in pairs(stanza.tags) do
+			if child.name == "c" and child.attr.xmlns == "http://jabber.org/protocol/caps" then
+				local attr = child.attr;
+				if attr.hash then -- new caps
+					if attr.hash == "sha-1" and attr.node and attr.ver then return attr.ver, attr.node.."#"..attr.ver; end
+				else -- legacy caps
+					if attr.node and attr.ver then return attr.node.."#"..attr.ver.."#"..(attr.ext or ""), attr.node.."#"..attr.ver; end
+				end
+				return; -- bad caps format
+			end
+		end
+	elseif t == "unavailable" or t == "error" then
+		return;
+	end
+end
+
+local function pep_broadcast_all(user, node, receiver)
+	local ok, items, orderly = services[user]:get_items(node, receiver);
+	if items then
+		for _, id in ipairs(orderly) do
+			if services[user].item_cache:add(items[id], node, receiver) then 
+				services[user]:broadcaster(node, receiver, items[id]);
+			end
+		end
+	end
+end
+
+local function pep_mutual_recs(source, target, interested)
+	for jid, hash in pairs(source.recipients) do
+		if jid_bare(jid) == source.name and type(hash) == "string" then
+			interested[jid] = hash;
+		end
+	end
+	for jid, hash in pairs(target.recipients) do
+		if jid_bare(jid) == target.name and type(hash) == "string" then
+			interested[jid] = hash;
+		end
+	end
+end
+
+local function pep_send(recipient, user, ignore)
+	local rec_srv = services[jid_bare(recipient)];
+	local user_srv = services[user];
+
+	if ignore then -- fairly hacky...
+		local nodes = user_srv.nodes;
+		module:log("debug", "Ignoring notifications filtering for %s until we obtain 'em... if ever.", recipient);
+		for node, object in pairs(nodes) do
+			object.subscribers[recipient] = true;
+			pep_broadcast_all(user, node, recipient);
+			object.subscribers[recipient] = nil;
+		end		
+	elseif not rec_srv then
+		local nodes = user_srv.nodes;
+		local rec_hash = user_srv.recipients[recipient];
+		for node, object in pairs(nodes) do
+			if hash_map[rec_hash] and hash_map[rec_hash][node] then
+				object.subscribers[recipient] = true;
+				pep_broadcast_all(user, node, recipient);
+			end
+		end
+	else
+		local rec_nodes = rec_srv.nodes;
+		local user_nodes = user_srv.nodes;
+		local interested = {};
+		pep_mutual_recs(user_srv, rec_srv, interested);
+
+		-- Mutually subscribe
+		for jid, hash in pairs(interested) do
+			for node, obj in pairs(rec_nodes) do
+				if hash_map[hash] and hash_map[hash][node] then obj.subscribers[jid] = true; end
+			end
+			for node, obj in pairs(user_nodes) do
+				if hash_map[hash] and hash_map[hash][node] then obj.subscribers[jid] = true; end
+			end			
+		end
+
+		for node in pairs(user_nodes) do
+			pep_broadcast_all(user, node, recipient);
+		end
+	end
+end
+
+local function pep_autosubscribe_recs(name, node)
+	local user_srv = services[name];
+	local recipients = user_srv.recipients;
+	if not user_srv.nodes[node] then return; end
+
+	for jid, hash in pairs(recipients) do
+		if type(hash) == "string" and hash_map[hash] and hash_map[hash][node] then
+			user_srv.nodes[node].subscribers[jid] = true;
+		end
+	end
+end
+
+local function probe_jid(user, from)
+	core_post_stanza(hosts[module.host], st.presence({from=user, to=from, id="peptrigger", type="probe"}));
+	module:log("debug", "Sending trigger probe to: %s", from);
 end
 
 -- Module Definitions.
@@ -261,6 +364,10 @@ function handlers.set_create(origin, stanza, create, config)
 			reply = pep_error_reply(stanza, ret);
 		end
 	end
+
+	if ok then -- auto-resubscribe interested recipients
+		pep_autosubscribe_recs(user, node);
+	end
 	return origin.send(reply);
 end
 
@@ -352,6 +459,13 @@ function handlers.set_publish(origin, stanza, publish)
 		services[user].nodes[node].data = {};		-- Clear singleton nodes, this is not exactly correct
 		services[user].nodes[node].data_id = {};	-- Spec wise I think.
 	end
+	if not services[user].nodes[node] then
+	-- normally this would be handled just by publish() but we have to preceed its broadcast,
+	-- so since autocreate on publish is in place, do create and then resubscribe interested items.
+		services[user]:create(node, from);
+		pep_autosubscribe_recs(user, node);
+	end
+
 	local ok, ret = services[user]:publish(node, from, id, item);
 	local reply;
 	
@@ -464,97 +578,6 @@ module:hook("account-disco-items", function(event)
 		end
 	end
 end);
-
-local function get_caps_hash_from_presence(stanza)
-	local t = stanza.attr.type;
-	if not t then
-		for _, child in pairs(stanza.tags) do
-			if child.name == "c" and child.attr.xmlns == "http://jabber.org/protocol/caps" then
-				local attr = child.attr;
-				if attr.hash then -- new caps
-					if attr.hash == "sha-1" and attr.node and attr.ver then return attr.ver, attr.node.."#"..attr.ver; end
-				else -- legacy caps
-					if attr.node and attr.ver then return attr.node.."#"..attr.ver.."#"..(attr.ext or ""), attr.node.."#"..attr.ver; end
-				end
-				return; -- bad caps format
-			end
-		end
-	elseif t == "unavailable" or t == "error" then
-		return;
-	end
-end
-
-local function pep_broadcast_all(user, node, receiver)
-	local ok, items, orderly = services[user]:get_items(node, receiver);
-	if items then
-		for _, id in ipairs(orderly) do
-			if services[user].item_cache:add(items[id], node, receiver) then 
-				services[user]:broadcaster(node, receiver, items[id]);
-			end
-		end
-	end
-end
-
-local function pep_mutual_recs(source, target, interested)
-	for jid, hash in pairs(source.recipients) do
-		if jid_bare(jid) == source.name and type(hash) == "string" then
-			interested[jid] = hash;
-		end
-	end
-	for jid, hash in pairs(target.recipients) do
-		if jid_bare(jid) == target.name and type(hash) == "string" then
-			interested[jid] = hash;
-		end
-	end
-end
-
-local function pep_send(recipient, user, ignore)
-	local rec_srv = services[jid_bare(recipient)];
-	local user_srv = services[user];
-
-	if ignore then -- fairly hacky...
-		local nodes = user_srv.nodes;
-		module:log("debug", "Ignoring notifications filtering for %s until we obtain 'em... if ever.", recipient);
-		for node, object in pairs(nodes) do
-			object.subscribers[recipient] = true;
-			pep_broadcast_all(user, node, recipient);
-			object.subscribers[recipient] = nil;
-		end		
-	elseif not rec_srv then
-		local nodes = user_srv.nodes;
-		local rec_hash = user_srv.recipients[recipient];
-		for node, object in pairs(nodes) do
-			if hash_map[rec_hash] and hash_map[rec_hash][node] then
-				object.subscribers[recipient] = true;
-				pep_broadcast_all(user, node, recipient);
-			end
-		end
-	else
-		local rec_nodes = rec_srv.nodes;
-		local user_nodes = user_srv.nodes;
-		local interested = {};
-		pep_mutual_recs(user_srv, rec_srv, interested);
-
-		-- Mutually subscribe
-		for jid, hash in pairs(interested) do
-			for node, obj in pairs(rec_nodes) do
-				if hash_map[hash] and hash_map[hash][node] then obj.subscribers[jid] = true; end
-			end
-			for node, obj in pairs(user_nodes) do
-				if hash_map[hash] and hash_map[hash][node] then obj.subscribers[jid] = true; end
-			end			
-		end
-
-		for node in pairs(user_nodes) do
-			pep_broadcast_all(user, node, recipient);
-		end
-	end
-end
-
-local function probe_jid(user, from)
-	core_post_stanza(hosts[module.host], st.presence({from=user, to=from, id="peptrigger", type="probe"}));
-	module:log("debug", "Sending trigger probe to: %s", from);
-end
 
 module:hook("presence/bare", function(event)
 	-- inbound presence to bare JID recieved           
