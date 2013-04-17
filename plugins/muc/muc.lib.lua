@@ -344,12 +344,36 @@ function room_mt:register_cc(xmlns, params)
 	self.cc_registry[xmlns] = {
 		name = params.name;
 		field = params.field;
-		is_method = params.is_method;
-		set_method = params.set_method;
-		check_method = params.check_method;
-		ac_method = params.ac_method;
-		ojp_method = params.ojp_method;
+		is_enabled = params.is_enabled;
+		set = params.set;
+		check = params.check;
+		afterconf = params.afterconf;
+		onjoin = params.onjoin;
 	};
+end
+function room_mt:custom_configs() return next, self.cc_registry end
+function room_mt:get_custom_config(xmlns, method, stanza, conf, changed)
+	if not self.cc_registry[xmlns] and method then
+		log("error", "attempting to call unexistant custom configuration: %s !!!", xmlns);
+		return false;
+	end
+
+	if not method then -- return if custom config exists
+		if self.cc_registry[xmlns] then return true; else return false; end
+	end
+
+	if type(self.cc_registry[xmlns][method]) == "function" then
+		return self.cc_registry[xmlns][method](self, stanza, conf, changed);
+	else
+		return self.cc_registry[xmlns][method];
+	end
+end
+function room_mt:cc_has_method(xmlns, method)
+	if self.cc_registry[xmlns] and self.cc_registry[xmlns][method] then
+		return true;
+	else
+		return false;
+	end
 end
 function room_mt:deregister_cc(xmlns)
 	self.cc_registry[xmlns] = nil;
@@ -510,8 +534,8 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						end
 						if self._data.whois == "anyone" then pr:tag("status", {code = "100"}):up(); end
 						pr:tag("status", {code = "110"}):up();
-						for xmlns, cc in pairs(self.cc_registry) do
-							if cc.ojp_method then pr = cc.ojp_method(self, pr); end
+						for xmlns, cc in self:custom_configs() do
+							if cc.onjoin then pr = cc.onjoin(self, pr); end
 						end
 						pr.attr.to = from;
 						self:_route_stanza(pr);
@@ -657,8 +681,8 @@ function room_mt:get_form_layout()
 		}
 	};
 
-	for xmlns, cc in pairs(self.cc_registry) do
-		t_insert(layout, cc.field(self));
+	for xmlns in self:custom_configs() do
+		t_insert(layout, self:get_custom_config(xmlns, "field"));
 	end
 
 	return dataform.new(layout);
@@ -718,10 +742,11 @@ function room_mt:process_form(origin, stanza)
 
 	local custom_config = {};
 	for name in pairs(fields) do
-		if self.cc_registry[name] then
-			custom_config[self.cc_registry[name].name] = fields[name];
-			dirty = dirty or (custom_config[self.cc_registry[name].name] and (self.cc_registry[name].is_method(self) ~= custom_config[self.cc_registry[name].name]));
-			module:log("debug", "%s=%s (custom field)", self.cc_registry[name].name, custom_config[self.cc_registry[name].name] and "true" or "false");
+		if self:get_custom_config(name) then
+			local _name = self:get_custom_config(name, "name");
+			custom_config[_name] = fields[name];
+			dirty = dirty or (custom_config[_name] and (self:get_custom_config(name, "is_enabled") ~= custom_config[_name]));
+			module:log("debug", "%s=%s (custom field)", _name, custom_config[_name] and "true" or "false");
 		end
 	end
 	local default_config = { 
@@ -744,9 +769,9 @@ function room_mt:process_form(origin, stanza)
 	module:log("debug", "whois=%s", whois);
 
 	for name in pairs(fields) do
-		if self.cc_registry[name] and
-		   self.cc_registry[name].check_method then
-			local invalid = self.cc_registry[name].check_method(self, default_config, custom_config, stanza);
+		if self:get_custom_config(name) and
+		   self:cc_has_method(name, "check") then
+			local invalid = self:get_custom_config(name, "check", stanza, default_config, custom_config);
 			if invalid then return origin.send(invalid); end
 		end
 	end
@@ -762,7 +787,7 @@ function room_mt:process_form(origin, stanza)
 	self:set_changesubject(changesubject);
 	self:set_historylength(historylength);
 
-	for xmlns, cc in pairs(self.cc_registry) do cc.set_method(self, custom_config[cc.name]); end
+	for xmlns, cc in self:custom_configs() do cc.set(self, nil, custom_config[cc.name]); end
 
 	if self.save then self:save(true); end
 	origin.send(st.reply(stanza));
@@ -779,9 +804,9 @@ function room_mt:process_form(origin, stanza)
 			msg.tags[1]:tag("status", {code = code}):up();
 		end
 
-		for xmlns, cc in pairs(self.cc_registry) do
-			if cc.ac_method then 
-				msg = cc.ac_method(self, custom_config[cc.name], msg); 
+		for xmlns, cc in self:custom_configs() do
+			if cc.afterconf then 
+				msg = cc.afterconf(self, msg, custom_config[cc.name]); 
 			end
 		end
 

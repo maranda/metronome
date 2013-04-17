@@ -129,27 +129,27 @@ local function config_field_method(self)
 		name = ns,
 		type = "boolean",
 		label = "Enable room logging?",
-		value = self.cc_registry[ns].is_method(self);
+		value = self:get_custom_config(ns, "is_enabled");
 	};
 
 	return field;
 end
 local function config_is_method(self) return self._data.logging; end
-local function config_set_method(self, logging)
+local function config_set_method(self, stanza, logging)
 	logging = logging and true or nil;
 	if self._data.logging ~= logging then
 		self._data.logging = logging;
 		if self.save then self:save(true); end
 	end
 end
-local function config_check_method(self, default, custom, stanza)
+local function config_check_method(self, stanza, default, custom)
 	local reply;
 	if not default.public and custom.logging then
 		reply = error_reply(stanza, "cancel", "forbidden", "You can enable logging only into public rooms!");
 	end
 	return reply;
 end
-local function config_ac_method(self, logging, msg_st)
+local function config_ac_method(self, msg_st, logging)
 	if logging then
 		msg_st.tags[1]:tag("status", {code = "170"}):up();
 	else
@@ -157,7 +157,7 @@ local function config_ac_method(self, logging, msg_st)
 	end
 	return msg_st;
 end
-local function config_ojp_method(self, pr_st)
+local function config_oj_method(self, pr_st)
 	if config_is_method(self) then pr_st:tag("status", {code = "170"}):up(); end
 	return pr_st;
 end
@@ -174,11 +174,11 @@ function module.load()
 		params = {
 			name = "logging",
 			field = config_field_method,
-			is_method = config_is_method,
-			set_method = config_set_method,
-			check_method = config_check_method,
-			ac_method = config_ac_method,
-			ojp_method = config_ojp_method
+			is_enabled = config_is_method,
+			set = config_set_method,
+			check = config_check_method,
+			afterconf = config_ac_method,
+			onjoin = config_oj_method
 		},
 		action = "register",
 		caller = "muc_log"
