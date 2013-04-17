@@ -274,6 +274,7 @@ function handlers.set_publish(origin, stanza, publish)
 	local node = publish.attr.node;
 	local item = publish:get_child("item");
 	local id = (item and item.attr.id) or uuid_generate();
+	if item and not item.attr.id then item.attr.id = id; end
 	local ok, ret = service:publish(node, stanza.attr.from, id, item);
 	local reply;
 	if ok then

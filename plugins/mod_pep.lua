@@ -455,6 +455,7 @@ function handlers.set_publish(origin, stanza, publish)
 	local recs = {};
 	local recs_count = 0;
 	local id = (item and item.attr.id) or uuid_generate();
+	if item and not item.attr.id then item.attr.id = id; end
 	if singleton_nodes:contains(node) and services[user].nodes[node] then
 		services[user].nodes[node].data = {};		-- Clear singleton nodes, this is not exactly correct
 		services[user].nodes[node].data_id = {};	-- Spec wise I think.
