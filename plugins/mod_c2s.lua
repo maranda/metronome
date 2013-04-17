@@ -200,7 +200,7 @@ function listener.onconnect(conn)
 	
 	if c2s_timeout then
 		add_task(c2s_timeout, function ()
-			if sessions[conn] and sessions[conn].type == "c2s_unauthed" then
+			if session.type == "c2s_unauthed" then
 				session:close("connection-timeout");
 			end
 		end);
