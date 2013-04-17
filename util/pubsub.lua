@@ -316,19 +316,22 @@ function service:publish(node, actor, id, item)
 		end
 		node_obj = self.nodes[node];
 	end
-	node_obj.data[id] = item;
-	table.insert(node_obj.data_id, id);
 
-	-- If max items ~= 0, discard exceeding older items
-	if node_obj.config.max_items and node_obj.config.max_items ~= 0 then
-		if #node_obj.data_id > node_obj.config.max_items then
-			local subtract = (#node_obj.data_id - node_obj.config.max_items <= 0) and
-					 (node_obj.config.max_items + (#node_obj.data_id - node_obj.config.max_items)) or
-					 #node_obj.data_id - node_obj.config.max_items;
-			for entry, id in ipairs(node_obj.data_id) do
-				if entry <= subtract then
-					node_obj.data[id] = nil;
-					table.remove(node_obj.data_id, entry);
+	if item then
+		node_obj.data[id] = item;
+		table.insert(node_obj.data_id, id);
+
+		-- If max items ~= 0, discard exceeding older items
+		if node_obj.config.max_items and node_obj.config.max_items ~= 0 then
+			if #node_obj.data_id > node_obj.config.max_items then
+				local subtract = (#node_obj.data_id - node_obj.config.max_items <= 0) and
+						 (node_obj.config.max_items + (#node_obj.data_id - node_obj.config.max_items)) or
+						 #node_obj.data_id - node_obj.config.max_items;
+				for entry, id in ipairs(node_obj.data_id) do
+					if entry <= subtract then
+						node_obj.data[id] = nil;
+						table.remove(node_obj.data_id, entry);
+					end
 				end
 			end
 		end
@@ -338,9 +341,11 @@ function service:publish(node, actor, id, item)
 	   (node_obj.config.deliver_payloads or node_obj.config.deliver_payloads == nil) then
 		self:broadcaster(node, node_obj.subscribers, item);
 	elseif (node_obj.config.deliver_notifications or node_obj.config.deliver_notifications == nil) then
-		local item_copy = st.clone(item);
-		for i=1,#item_copy do item_copy[i] = nil end -- reset tags;
-		item_copy.attr.xmlns = nil;
+		local item_copy = item and st.clone(item);
+		if item_copy then
+			for i=1,#item_copy do item_copy[i] = nil end -- reset tags;
+			item_copy.attr.xmlns = nil;
+		end
 		self:broadcaster(node, node_obj.subscribers, item_copy);
 	end
 	self:save_node(node);	
