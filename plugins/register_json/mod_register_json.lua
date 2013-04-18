@@ -1,17 +1,23 @@
+local datamanager = datamanager
+local b64_decode = require "util.encodings".base64.decode
+local b64_encode = require "util.encodings".base64.encode
+local http_event = require "net.http.server".fire_server_event
 local jid_prep = require "util.jid".prep
 local jid_split = require "util.jid".split
-local usermanager = usermanager
-local b64_decode = require "util.encodings".base64.decode
 local json_decode = require "util.json".decode
-local os_time = os.time
 local nodeprep = require "util.encodings".stringprep.nodeprep
+local open = io.open
+local os_time = os.time
+local setmt = setmetatable
+local sha1 = require "util.hashes".sha1
+local urldecode = http.urldecode
+local usermanager = usermanager
 local uuid_gen = require "util.uuid".generate
-local timer = require "util.timer";
-local open = io.open;
+local timer = require "util.timer"
 
 module:depends("http")
 
--- Pick up configuration.
+-- Pick up configuration and setup stores/variables.
 
 local auth_token = module:get_option_string("reg_servlet_auth_token")
 local secure = module:get_option_boolean("reg_servlet_secure", true)
@@ -20,16 +26,43 @@ local base_path = module:get_option_string("reg_servlet_base", "/register_accoun
 local throttle_time = module:get_option_number("reg_servlet_ttime", nil)
 local whitelist = module:get_option_set("reg_servlet_wl", {})
 local blacklist = module:get_option_set("reg_servlet_bl", {})
-local http_event = require "net.http.server".fire_server_event
-local urldecode = http.urldecode
+
+local files_base = module.path:gsub("/[^/]+$","") .. "/template/"
 
 local recent_ips = {}
 local pending = {}
 local pending_node = {}
 
-local files_base = module.path:gsub("/[^/]+$","") .. "/template/";
+-- Setup hashes data structure
+
+hashes = { _index = {} }
+local hashes_mt = {} ; hashes_mt.__index = hashes_mt
+function hashes_mt:add(node, mail)
+	local _hash = b64_encode(sha1(mail))
+	if not self:exists(_hash) then
+		self[_hash] = node ; self._index[node] = _hash ; self:save()
+		return true
+	else
+		return false
+	end
+end
+function hashes_mt:exists(hash)
+	if hashes[hash] then return true else return false end
+end
+function hashes_mt:remove(node)
+	local _hash = self._index[node]
+	if _hash then
+		self[_hash] = nil ; self._index[node] = nil ; self:save()
+	end
+end
+function hashes_mt:save()
+	if not datamanager.store("register_json", module.host, "hashes", hashes) then
+		module:log("error", "Failed to save the mail addresses' hashes store.")
+	end
+end
 
 -- Begin
+
 local function handle(code, message) return http_event("http-error", { code = code, message = message }) end
 local function http_response(event, code, message, headers)
 	local response = event.response
@@ -59,7 +92,7 @@ local function handle_req(event)
 		return http_response(event, 400, "Decoding failed.")
 	else
 		-- Decode JSON data and check that all bits are there else throw an error
-		if req_body["username"] == nil or req_body["password"] == nil or req_body["host"] == nil or req_body["ip"] == nil or
+		if req_body["username"] == nil or req_body["password"] == nil or req_body["ip"] == nil or req_body["mail"] == nil or
 		   req_body["auth_token"] == nil then
 			module:log("debug", "%s supplied an insufficent number of elements or wrong elements for the JSON registration", user)
 			return http_response(event, 400, "Invalid syntax.")
@@ -84,7 +117,7 @@ local function handle_req(event)
 					return http_response(event, 401, "Another user registration by that username is pending.")
 				end
 
-				if not usermanager.user_exists(username, req_body["host"]) then
+				if not usermanager.user_exists(username, module.host) then
 					-- if username fails to register successive requests shouldn't be throttled until one is successful.
 					if throttle_time and not whitelist:contains(req_body["ip"]) then
 						if not recent_ips[req_body["ip"]] then
@@ -100,10 +133,20 @@ local function handle_req(event)
 					end
 
 					local uuid = uuid_gen()
-					pending[uuid] = { node = username, host = req_body["host"], password = req_body["password"], ip = req_body["ip"] }
+					if not hashes:add(username, req_body["mail"]) then
+						module:log("warn", "%s (%s) attempted to register to the server with an E-Mail address we already possess the hash of.", username, req_body["ip"])
+						return http_response(event, 409, "The E-Mail Address provided matches the hash associated to an existing account.")
+					end
+					pending[uuid] = { node = username, password = req_body["password"], ip = req_body["ip"] }
 					pending_node[username] = uuid
 
-					timer.add_task(300, function() pending[uuid] = nil ; pending_node[username] = nil end)
+					timer.add_task(300, function()
+						if pending[uuid] then
+							pending[uuid] = nil
+							pending_node[username] = nil
+							hashes:remove(username)
+						end
+					end)
 					module:log("info", "%s (%s) submitted a registration request and is awaiting final verification", username, uuid)
 					return uuid
 				else
@@ -163,16 +206,16 @@ local function handle_verify(event, path)
 			if not pending[uuid] then
 				return r_template(event, "fail")
 			else
-				local username, host, password, ip = 
-				      pending[uuid].node, pending[uuid].host, pending[uuid].password, pending[uuid].ip
+				local username, password, ip = 
+				      pending[uuid].node, pending[uuid].password, pending[uuid].ip
 
-				local ok, error = usermanager.create_user(username, password, host)
+				local ok, error = usermanager.create_user(username, password, module.host)
 				if ok then 
-					hosts[host].events.fire_event(
+					module:fire_event(
 						"user-registered", 
-						{ username = username, host = host, source = "mod_register_json", session = { ip = ip } }
+						{ username = username, host = module.host, source = "mod_register_json", session = { ip = ip } }
 					)
-					module:log("info", "Account %s@%s is successfully verified and activated", username, host)
+					module:log("info", "Account %s@%s is successfully verified and activated", username, module.host)
 					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
 					pending[uuid] = nil ; pending_node[username] = nil
 					return r_template(event, "success")				
@@ -187,7 +230,14 @@ local function handle_verify(event, path)
 	end
 end
 
+local function handle_user_deletion(event)
+	local user, hostname = event.username, event.host
+	if hostname == module.host then hashes:remove(user) end
+end
+
 -- Set it up!
+
+hashes = datamanager.load("register_json", module.host, "hashes") or hashes ; setmt(hashes, hashes_mt)
 
 module:provides("http", {
 	default_path = base_path,
@@ -198,3 +248,10 @@ module:provides("http", {
 		["POST /verify/*"] = handle_verify
         }
 })
+
+module:hook_global("user-deleted", handle_user_deletion, 10);
+
+-- Reloadability
+
+module.save = function() return { hashes = hashes } end
+module.restore = function(data) hashes = data.hashes or { _index = {} } ; setmt(hashes, hashes_mt) end
