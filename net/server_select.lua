@@ -215,7 +215,7 @@ wrapserver = function( listeners, socket, ip, serverport, pattern, sslctx, maxco
 			end
 			connections = connections + 1
 			out_put( "server.lua: accepted new client connection from ", tostring(ip), ":", tostring(clientport), " to ", tostring(serverport))
-			if dispatch then
+			if dispatch and not sslctx then
 				return dispatch( handler );
 			end
 			return;
