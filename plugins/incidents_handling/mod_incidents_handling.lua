@@ -5,7 +5,7 @@ local dataforms_new = require "util.dataforms".new
 local st = require "util.stanza"
 local id_gen = require "util.uuid".generate
 
-local pairs, os_time = pairs, os.time
+local pairs, os_time, setmetatable = pairs, os.time, setmetatable
 
 local xmlns_inc = "urn:xmpp:incident:2"
 local xmlns_iodef = "urn:ietf:params:xml:ns:iodef-1.0"
