@@ -20,6 +20,9 @@ local array = require "util.array";
 local modulemanager = require "modulemanager";
 local core_post_stanza = metronome.core_post_stanza;
 
+local hashed_auth = module:get_option_string("authentication");
+if hashed_auth == "internal_hashed" then hashed_auth = true; else hashed_auth = false; end
+
 module:depends("adhoc");
 local adhoc_new = module:require "adhoc".new;
 
@@ -620,7 +623,7 @@ module:provides("adhoc", change_user_password_desc);
 module:provides("adhoc", config_reload_desc);
 module:provides("adhoc", delete_user_desc);
 module:provides("adhoc", end_user_session_desc);
-module:provides("adhoc", get_user_password_desc);
+if not hashed_auth then module:provides("adhoc", get_user_password_desc); end
 module:provides("adhoc", get_user_roster_desc);
 module:provides("adhoc", get_user_stats_desc);
 module:provides("adhoc", get_online_users_desc);
