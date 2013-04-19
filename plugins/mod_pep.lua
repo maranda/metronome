@@ -101,7 +101,7 @@ function item_cache_mt:add(item, node, target, force)
 		self._count = self._count - 1;
 	end
 	if not _target_exists then self._count = self._count + 1; end
-	local _node_exists = self[target][node] and true;
+	local _node_exists = self[target] and self[target][node] and true;
 	self[target] = self[target] or { _count = 0 };
 	if self[target]._count >= 10 and not _node_exists then
 		for node in pairs(self[target]) do
