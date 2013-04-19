@@ -2,11 +2,14 @@ local datamanager = require "core.storagemanager".olddm;
 
 local host = module.host;
 
+cache = {};
+
 local driver = { name = "internal" };
 local driver_mt = { __index = driver };
 
 function driver:open(store)
-	return setmetatable({ store = store }, driver_mt);
+	if not cache[store] then cache[store] = setmetatable({ store = store }, driver_mt); end
+	return cache[store];
 end
 function driver:get(user)
 	return datamanager.load(user, host, self.store);

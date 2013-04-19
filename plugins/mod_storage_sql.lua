@@ -362,11 +362,16 @@ function list_store:scan(username, from, to, jid, typ)
 	return nil, "not-implemented"
 end
 
+-- Store defs.
+
+cache = {};
+
 local driver = { name = "sql" };
 
 function driver:open(store, typ)
 	if not typ then -- default key-value store
-		return setmetatable({ store = store }, keyval_store);
+		if not cache[store] then cache[store] = setmetatable({ store = store }, keyval_store); end
+		return cache[store];
 	end
 	return nil, "unsupported-store";
 end
