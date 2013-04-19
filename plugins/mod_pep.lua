@@ -73,6 +73,7 @@ singleton_nodes:add_list(module:get_option("pep_custom_singleton_nodes"));
 
 -- define an item cache, useful to avoid event dupes;
 local cache_limit = module:get_option_number("pep_max_cached_items", 10);
+if cache_limit > 30 then cache_limit = 30; end
 
 local item_cache_mt = {};
 item_cache_mt.__index = item_cache_mt;
@@ -90,16 +91,27 @@ function item_cache_mt:add(item, node, target, force)
 	end
 
 	if not self:timeup(_item, node, target) then return false; end
-	if #self >= cache_limit then
-		-- pop the uppermost
-		local count = 0;
-		for entry in pairs(self) do
-			count = count + 1;
-			if count == 1 then self[entry] = nil; break; end
+
+	local _target_exists = self[target] and true;
+	if self._count >= cache_limit and not _target_exists then
+		-- pop an entry
+		for entry in pairs(self) do 
+			if entry ~= "_count" then self[entry] = nil; break; end
 		end
+		self._count = self._count - 1;
 	end
-	self[target] = self[target] or {};
+	if not _target_exists then self._count = self._count + 1; end
+	local _node_exists = self[target][node] and true;
+	self[target] = self[target] or { _count = 0 };
+	if self[target]._count >= 10 and not _node_exists then
+		for node in pairs(self[target]) do
+			if node ~= "_count" then self[target][node] = nil; break; end
+		end
+		self[target]._count = self._count - 1;
+	end
+	if not _node_exists then self[target]._count = self[target]._count + 1; end
 	self[target][node] = { item = _item, time = os_time() };
+
 	return true;
 end
 function item_cache_mt:timeup(item, node, target)
@@ -108,6 +120,7 @@ function item_cache_mt:timeup(item, node, target)
 	if self[target][node] and 
 	   (self[target][node].item ~= item or _now - self[target][node].time >= 5) then
 		self[target][node] = nil;
+		self[target]._count = self[target]._count - 1;
 		return true;
 	else
 		return false;
@@ -714,7 +727,7 @@ end
 function set_service(new_service, jid, restore)
 	services[jid] = new_service;
 	services[jid].hash_map = {};
-	services[jid].item_cache = {};
+	services[jid].item_cache = { _count = 0 };
 	setmetatable(services[jid].item_cache, item_cache_mt);
 	services[jid].name = jid;
 	services[jid].recipients = {};
@@ -841,7 +854,7 @@ function module.restore(data)
 		username = jid_split(id);
 		services[id] = set_service(pubsub.new(pep_new(username)), id);
 		services[id].hash_map = service.hash_map or {};
-		services[id].item_cache = service.item_cache or {};
+		services[id].item_cache = service.item_cache or { _count = 0 };
 		setmetatable(services[id].item_cache, item_cache_mt);
 		services[id].nodes = service.nodes or {};
 		services[id].recipients = service.recipients or {};
