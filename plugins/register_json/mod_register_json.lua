@@ -111,12 +111,12 @@ local function handle_req(event)
 			-- Blacklist can be checked here.
 			if blacklist:contains(ip) then 
 				module:log("warn", "Attempt of reg. submission to the JSON servlet from blacklisted address: %s", ip)
-				return http_response(403, "The specified address is blacklisted, sorry.") 
+				return http_response(event, 403, "The specified address is blacklisted, sorry.") 
 			end
 
 			if not check_mail(mail) then
 				module:log("warn", "%s attempted to use a mail address (%s) matching one of the forbidden patterns.", ip, mail)
-				return http_response(403, "Requesting to register using this E-Mail address is forbidden, sorry.")
+				return http_response(event, 403, "Requesting to register using this E-Mail address is forbidden, sorry.")
 			end
 
 			-- We first check if the supplied username for registration is already there.
