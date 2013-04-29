@@ -81,9 +81,7 @@ local function http_response(event, code, message, headers)
 end
 
 local function handle_req(event)
-	local response = event.response
 	local request = event.request
-	local body = request.body
 	if secure and not request.secure then return nil end
 
 	if request.method ~= "POST" then
@@ -92,7 +90,7 @@ local function handle_req(event)
 	
 	local req_body
 	-- We check that what we have is valid JSON wise else we throw an error...
-	if not pcall(function() req_body = json_decode(b64_decode(body)) end) then
+	if not pcall(function() req_body = json_decode(b64_decode(request.body)) end) then
 		module:log("debug", "Data submitted for user registration by %s failed to Decode.", user)
 		return http_response(event, 400, "Decoding failed.")
 	else
@@ -183,8 +181,6 @@ local function open_file(file)
 end
 
 local function r_template(event, type)
-	local response = event.response
-
 	local data = open_file(files_base..type.."_t.html")
 	if data then
 		data = data:gsub("%%REG%-URL", base_path.."verify/")
@@ -193,7 +189,6 @@ local function r_template(event, type)
 end
 
 local function handle_verify(event, path)
-	local response = event.response
 	local request = event.request
 	local body = request.body
 	if secure and not request.secure then return nil end
@@ -216,8 +211,8 @@ local function handle_verify(event, path)
 		end
 	elseif request.method == "POST" then
 		if path == "" then
-			if not request.body then return http_response(event, 400, "Bad Request.") end
-			local uuid = urldecode(request.body):match("^uuid=(.*)$")
+			if not body then return http_response(event, 400, "Bad Request.") end
+			local uuid = urldecode(body):match("^uuid=(.*)$")
 
 			if not pending[uuid] then
 				return r_template(event, "fail")
