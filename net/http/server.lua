@@ -20,6 +20,8 @@ local hosts = {};
 local default_host;
 local alias_hosts = {};
 
+local recent_wildcard_events, max_cached_wildcard_events = {}, 10000;
+
 local function is_wildcard_event(event)
 	return event:sub(-2, -1) == "/*";
 end
@@ -58,6 +60,12 @@ setmetatable(events._handlers, {
 			handlers_array = false;
 		end
 		rawset(handlers, curr_event, handlers_array);
+		if not event_map[curr_event] then
+			table.insert(recent_wildcard_events, curr_event);
+			if #recent_wildcard_events > max_cached_wildcard_events then
+				rawset(handlers, table.remove(recent_wildcard_events, 1), nil);
+			end
+		end	
 		return handlers_array;
 	end;
 	__newindex = function (handlers, curr_event, handlers_array)
