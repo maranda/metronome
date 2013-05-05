@@ -127,7 +127,7 @@ local function handle_req(event)
 				return http_response(event, 406, "Supplied username contains invalid characters, see RFC 6122.")
 			else
 				if pending_node[username] then
-					module:log("warn", "%s attempted to submit a registration request but another request for that user is pending")
+					module:log("warn", "%s attempted to submit a registration request but another request for that user (%s) is pending", ip, username)
 					return http_response(event, 401, "Another user registration by that username is pending.")
 				end
 
