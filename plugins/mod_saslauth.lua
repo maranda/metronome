@@ -103,18 +103,27 @@ module:hook_stanza(xmlns_sasl, "failure", function (session, stanza)
 end, 90)
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function (session, stanza)
-	if session.type ~= "s2sout_unauthed" or not session.secure then return; end
+	if session.type ~= "s2sout_unauthed" or not session.secure or session.cert_chain_status ~= "valid" then
+		if session.cert_chain_status ~= "valid" then
+			module:log("debug", "Presented certificate is invalid, falling back to dialback...");
+		end
+		return; 
+	end
 
-	local mechanisms = stanza:get_child("mechanisms", xmlns_sasl)
+	local mechanisms = stanza:get_child("mechanisms", xmlns_sasl);
 	if mechanisms then
 		for mech in mechanisms:childtags() do
 			if mech[1] == "EXTERNAL" then
+				if session.dialback_key then
+					module:log("debug", "Not initiating SASL EXTERNAL even if offered as db is being done...");
+					return;
+				end
 				module:log("debug", "Initiating SASL EXTERNAL with %s", session.to_host);
 				local reply = st.stanza("auth", {xmlns = xmlns_sasl, mechanism = "EXTERNAL"});
-				reply:text(base64.encode(session.from_host))
-				session.sends2s(reply)
-				session.external_auth = "attempting"
-				return true
+				reply:text(base64.encode(session.from_host));
+				session.sends2s(reply);
+				session.external_auth = "attempting";
+				return true;
 			end
 		end
 	end
