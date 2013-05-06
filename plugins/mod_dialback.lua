@@ -88,6 +88,7 @@ module:hook("stanza/jabber:server:dialback:result", function(event)
 		module:fire_event("route/remote", {
 			from_host = to, to_host = from;
 			stanza = st.stanza("db:verify", { from = to, to = from, id = origin.streamid }):text(stanza[1]);
+			using_dialback = true;
 		});
 		return true;
 	end
@@ -161,6 +162,7 @@ module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 end, 100);
 
 module:hook("s2s-authenticate-legacy", function (event)
+	event.origin.legacy_dialback = true;
 	module:log("debug", "Initiating dialback...");
 	initiate_dialback(event.origin);
 	return true;

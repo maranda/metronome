@@ -128,6 +128,8 @@ function route_to_new_session(event)
 	-- Store in buffer
 	host_session.bounce_sendq = bounce_sendq;
 	host_session.open_stream = session_open_stream;
+	host_session.using_dialback = event.using_dialback;
+
 	host_session.sendq = { {tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza)} };
 	log("debug", "stanza [%s] queued until connection complete", tostring(stanza.name));
 	s2sout.initiate_connection(host_session);
@@ -305,7 +307,7 @@ function stream_callbacks.streamopened(session, attr)
 	
 		-- If server is pre-1.0, don't wait for features, just do dialback
 		if session.version < 1.0 then
-			if not session.dialback_key then
+			if not session.legacy_dialback then -- FIXME: This could not be correct...
 				hosts[session.from_host].events.fire_event("s2s-authenticate-legacy", { origin = session });
 			else
 				s2s_mark_connected(session);

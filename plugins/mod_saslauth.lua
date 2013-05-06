@@ -114,8 +114,9 @@ module:hook_stanza("http://etherx.jabber.org/streams", "features", function (ses
 	if mechanisms then
 		for mech in mechanisms:childtags() do
 			if mech[1] == "EXTERNAL" then
-				if session.dialback_key then
-					module:log("debug", "Not initiating SASL EXTERNAL even if offered as db is being done");
+				if session.using_dialback then
+					-- prevents an interop issue with OpenFire.
+					module:log("debug", "Not initiating SASL EXTERNAL even if offered as remote entity begun with dialback");
 					return;
 				end
 				module:log("debug", "Initiating SASL EXTERNAL with %s", session.to_host);
