@@ -38,7 +38,6 @@ function check_dependencies()
 	local fatal;
 	
 	local lxp = softreq "lxp"
-	
 	if not lxp then
 		missingdep("luaexpat", {
 				["Debian/Ubuntu"] = "sudo apt-get install liblua5.1-expat0";
@@ -49,7 +48,6 @@ function check_dependencies()
 	end
 	
 	local socket = softreq "socket"
-	
 	if not socket then
 		missingdep("luasocket", {
 				["Debian/Ubuntu"] = "sudo apt-get install liblua5.1-socket2";
@@ -58,6 +56,16 @@ function check_dependencies()
 			});
 		fatal = true;
 	end
+
+	local luaevent = softreq "luaevent"
+	if not luaevent then
+		missingdep("luaevent", {
+		 		["Debian/Ubuntu"] = "sudo apt-get install liblua5.1-event0";
+				["luarocks"] = "luarocks install luaevent";
+		 		["Source"] = "https://github.com/harningt/luaevent";
+		 	});
+		fatal = true;
+	end	
 	
 	local lfs, err = softreq "lfs"
 	if not lfs then
@@ -70,7 +78,6 @@ function check_dependencies()
 	end
 	
 	local ssl = softreq "ssl"
-	
 	if not ssl then
 		missingdep("LuaSec", {
 				["Debian/Ubuntu"] = "http://prosody.im/download/start#debian_and_ubuntu";
