@@ -105,7 +105,7 @@ end, 90)
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function (session, stanza)
 	if session.type ~= "s2sout_unauthed" or not session.secure or session.cert_chain_status ~= "valid" then
 		if session.cert_chain_status ~= "valid" then
-			module:log("debug", "Presented certificate is invalid, falling back to dialback...");
+			module:log("debug", "Presented certificate is invalid, not performing SASL EXTERNAL");
 		end
 		return; 
 	end
@@ -115,7 +115,7 @@ module:hook_stanza("http://etherx.jabber.org/streams", "features", function (ses
 		for mech in mechanisms:childtags() do
 			if mech[1] == "EXTERNAL" then
 				if session.dialback_key then
-					module:log("debug", "Not initiating SASL EXTERNAL even if offered as db is being done...");
+					module:log("debug", "Not initiating SASL EXTERNAL even if offered as db is being done");
 					return;
 				end
 				module:log("debug", "Initiating SASL EXTERNAL with %s", session.to_host);
