@@ -167,16 +167,19 @@ local function check_cert_status(session)
 	end
 
 	if cert then
-		local chain_valid, errors = conn:getpeerverification();
+		local chain_valid, errors;
+		if conn.getpeerverification then						
+			chain_valid, errors = conn:getpeerverification();
+			errors = type(errors) == "nil" and {} or errors;
+		else
+			chain_valid, errors = false, { { "This version of LuaSec doesn't support peer verification" } };
+		end
+
 		-- Is there any interest in printing out all/the number of errors here?
 		if not chain_valid then
 			(session.log or log)("debug", "certificate chain validation result: invalid");
-			if type(errors) == "table" then			
-				for depth, t in ipairs(errors) do
-					(session.log or log)("debug", "certificate error(s) at depth %d: %s", depth-1, table.concat(t, ", "));
-				end
-			else
-				(session.log or log)("debug", "additionally, impossible to obtain error depth(s) as LuaSec didn't return an array: %s", type(errors));
+			for depth, t in ipairs(errors) do
+				(session.log or log)("debug", "certificate error(s) at depth %d: %s", depth-1, table.concat(t, ", "));
 			end
 			session.cert_chain_status = "invalid";
 		else
