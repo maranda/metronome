@@ -67,10 +67,11 @@ local function search_process_handler(event)
 		return 
 	end
 
-	if fields.nickname then params.nickname = true end
-	if fields.realname then params.realname = true end
-	if fields.country then params.country = true end
-	if fields.email then params.email = true end
+	local nickname, realname, country, email
+	if fields.nickname then params.nickname = true ; nickname = escape_magic(fields.nickname:lower()) end
+	if fields.realname then params.realname = true ; realname = escape_magic(fields.realname:lower()) end
+	if fields.country then params.country = true ; country = escape_magic(fields.country:lower()) end
+	if fields.email then params.email = true ; email = escape_magic(fields.email:lower()) end
 	
 	for jid, details in pairs(directory) do
 		local dummy = {}
@@ -78,10 +79,10 @@ local function search_process_handler(event)
 			dummy[f] = b
 		end
 
-		if dummy.nickname and not details.nickname:match(escape_magic(fields.nickname)) then dummy.nickname = false end
-		if dummy.realname and not details.realname:match(escape_magic(fields.realname)) then dummy.realname = false end
-		if dummy.country and not details.country:match(escape_magic(fields.country)) then dummy.country = false end
-		if dummy.email and not details.email:match(escape_magic(fields.email)) then dummy.email = false end
+		if dummy.nickname and not details.nickname:lower():match(nickname) then dummy.nickname = false end
+		if dummy.realname and not details.realname:lower():match(realname) then dummy.realname = false end
+		if dummy.country and not details.country:lower():match(country) then dummy.country = false end
+		if dummy.email and not details.email:lower():match(email) then dummy.email = false end
 
 		for _, check in pairs(dummy) do if not check then dummy = false; break end end
 		if dummy and next(dummy) then
