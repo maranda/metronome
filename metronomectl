@@ -281,7 +281,7 @@ function commands.adduser(arg)
 	local password = read_password();
 	if not password then return 1; end
 	
-	local ok, msg = metronomectl.controluser { user = user, host = host, password = password }, "create";
+	local ok, msg = metronomectl.controluser({ user = user, host = host, password = password }, "create");
 	
 	if ok then return 0; end
 	
@@ -320,7 +320,7 @@ function commands.passwd(arg)
 	local password = read_password();
 	if not password then return 1; end
 
-	local ok, msg = metronomectl.controluser { user = user, host = host, password = password }, "passwd";
+	local ok, msg = metronomectl.controluser({ user = user, host = host, password = password }, "passwd");
 	
 	if ok then return 0; end
 	
@@ -356,7 +356,7 @@ function commands.deluser(arg)
                 show_message [[User doesn't exist]];
                 return 1;
         else
-		ok, msg = metronomectl.controluser { user = user, host = host }, "delete";
+		ok, msg = metronomectl.controluser({ user = user, host = host }, "delete");
 	end
 	
 	if ok then return 0; end
