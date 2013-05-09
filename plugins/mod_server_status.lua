@@ -4,12 +4,14 @@ local base_path = module:get_option_string("server_status_basepath", "/server-st
 local show_hosts = module:get_option_array("server_status_show_hosts", nil)
 local show_comps = module:get_option_array("server_status_show_comps", nil)
 local json_output = module:get_option_boolean("server_status_json", false)
+local hosts = metronome.hosts
 
 local json_encode = require "util.json".encode
+local stanza_counter = metronome.stanza_counter
 
 -- code begin
 
-if not metronome.stanza_counter and not show_hosts and not show_comps then
+if not stanza_counter and not show_hosts and not show_comps then
 	module:log ("error", "mod_server_status requires at least one of the following things:")
 	module:log ("error", "mod_stanza_counter loaded, or either server_status_show_hosts or server_status_show_comps configuration values set.")
 	module:log ("error", "check the module wiki at: http://code.google.com/p/prosody-modules/wiki/mod_server_status")
@@ -43,36 +45,43 @@ local function forge_response_xml()
 	if show_comps then t_builder(show_comps, components) end
 	
 	-- build stanza stats if there
-	if metronome.stanza_counter then
-		stats[1] = response_table.stanzas.elem_header
-		stats[2] = response_table.stanzas.incoming:format(metronome.stanza_counter.iq["incoming"],
-								  metronome.stanza_counter.message["incoming"],
-								  metronome.stanza_counter.presence["incoming"])
-		stats[3] = response_table.stanzas.outgoing:format(metronome.stanza_counter.iq["outgoing"],
-								  metronome.stanza_counter.message["outgoing"],
-								  metronome.stanza_counter.presence["outgoing"])
-		stats[4] = response_table.stanzas.elem_closure
+	local stanzas = response_table.stanzas;
+
+	if stanza_counter then
+		stats[1] = stanzas.elem_header
+		stats[2] = stanzas.incoming:format(stanza_counter.iq["incoming"],
+						   stanza_counter.message["incoming"],
+						   stanza_counter.presence["incoming"])
+		stats[3] = stanzas.outgoing:format(stanza_counter.iq["outgoing"],
+						   stanza_counter.message["outgoing"],
+						   stanza_counter.presence["outgoing"])
+		stats[4] = stanzas.elem_closure
 	end
 
 	-- build hosts stats if there
+	local rt_hosts = response_table.hosts
+
 	if hosts_s[1] then
-		hosts_stats[1] = response_table.hosts.elem_header
+		hosts_stats[1] = rt_hosts.elem_header
 		for _, name in ipairs(hosts_s) do 
-			hosts_stats[#hosts_stats+1] = response_table.hosts.status:format(
+			hosts_stats[#hosts_stats+1] = rt_hosts.status:format(
 				name, hosts[name] and "online" or "offline")
 		end
-		hosts_stats[#hosts_stats+1] = response_table.hosts.elem_closure
+		hosts_stats[#hosts_stats+1] = rt_hosts.elem_closure
 	end
 
 	-- build components stats if there
+	local comps = response_table.comps
+
 	if components[1] then
-		comps_stats[1] = response_table.comps.elem_header
-		for _, name in ipairs(components) do 
-			comps_stats[#comps_stats+1] = response_table.comps.status:format(
-				name, hosts[name] and hosts[name].modules.component and hosts[name].modules.component.connected and "online" or 
-				hosts[name] and hosts[name].modules.component == nil and "online" or "offline")
+		comps_stats[1] = comps.elem_header
+		for _, name in ipairs(components) do
+			local component = hosts[name].modules.component
+			comps_stats[#comps_stats+1] = comps.status:format(
+				name, component and component.connected and "online" or 
+				hosts[name] and component == nil and "online" or "offline")
 		end
-		comps_stats[#comps_stats+1] = response_table.comps.elem_closure
+		comps_stats[#comps_stats+1] = comps.elem_closure
 	end
 
 	-- build xml document
@@ -87,7 +96,7 @@ end
 local function forge_response_json()
 	local result = {}
 
-	if metronome.stanza_counter then result.stanzas = {} ; result.stanzas = metronome.stanza_counter  end
+	if stanza_counter then result.stanzas = {} ; result.stanzas = stanza_counter end
 	if show_hosts then
 		result.hosts = {}
 		for _,n in ipairs(show_hosts) do result.hosts[n] = hosts[n] and "online" or "offline" end
@@ -95,8 +104,9 @@ local function forge_response_json()
 	if show_comps then
 		result.components = {}
 		for _,n in ipairs(show_comps) do 
-			result.components[n] = hosts[n] and hosts[n].modules.component and hosts[n].modules.component.connected and "online" or
-			hosts[n] and hosts[n].modules.component == nil and "online" or "offline"
+			local component = hosts[n].modules.component
+			result.components[n] = component and component.connected and "online" or
+			hosts[n] and component == nil and "online" or "offline"
 		end
 	end
 
