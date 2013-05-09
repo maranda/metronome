@@ -20,6 +20,7 @@ local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
 
 hash_map = {};
 services = {};
+local last_idle_cleanup = os_time();
 local handlers = {};
 local handlers_owner = {};
 local NULL = {};
@@ -71,7 +72,21 @@ local singleton_nodes = set_new{
 }
 singleton_nodes:add_list(module:get_option("pep_custom_singleton_nodes"));
 
--- define an item cache, useful to avoid event dupes;
+-- define in how many time (in seconds) inactive services should be deactivated
+-- default is 3 days, minimal accepted is 3 hours.
+local service_ttd = module:get_option_number("pep_deactivate_service_time", 259200)
+if service_ttd < 10800 then service_ttd = 10800 end
+
+local function idle_service_closer()
+	for name, service in pairs(services) do
+		if os_time() - service.last_used >= service_ttd then
+			module:log("debug", "Deactivated inactive PEP Service -- %s", name);
+			services[name] = nil;
+		end
+	end
+end
+
+-- define an item cache, useful to avoid event dupes
 local cache_limit = module:get_option_number("pep_max_cached_items", 10);
 if cache_limit > 30 then cache_limit = 30; end
 
@@ -253,6 +268,7 @@ function handle_pubsub_iq(event)
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local full_jid = origin.full_jid;
 	local username, host = jid_split(user);
+	local time_now = os_time();
 	if not services[user] and um_user_exists(username, host) then -- create service on demand.
 		-- check if the creating user is the owner or someone requesting its pep service,
 		-- required for certain crawling bots, e.g. Jappix Me
@@ -264,6 +280,13 @@ function handle_pubsub_iq(event)
 		else
 			set_service(pubsub.new(pep_new(username)), user, true);
 		end
+	end
+	services[user].last_used = time_now;
+
+	if time_now - last_idle_cleanup >= 3600 then
+		module:log("debug", "Checking for idle PEP Services...");
+		idle_service_closer();
+		last_idle_cleanup = time_now;
 	end
 	
 	local pubsub = stanza.tags[1];
@@ -726,9 +749,9 @@ end
 
 function set_service(new_service, jid, restore)
 	services[jid] = new_service;
-	services[jid].hash_map = {};
 	services[jid].item_cache = { _count = 0 };
 	setmetatable(services[jid].item_cache, item_cache_mt);
+	services[jid].last_used = os_time();
 	services[jid].name = jid;
 	services[jid].recipients = {};
 	module.environment.services[jid] = services[jid];
@@ -844,18 +867,21 @@ function pep_new(node)
 end
 
 function module.save()
-	return { hash_map = hash_map, services = services };
+	return { hash_map = hash_map, services = services, last_idle_cleanup = last_idle_cleanup };
 end
 
 function module.restore(data)
+	local time_now = os_time();
+
 	hash_map = data.hash_map or {};
+	last_idle_cleanup = data.last_idle_cleanup or time_now;
 	local _services = data.services or {};
 	for id, service in pairs(_services) do
 		username = jid_split(id);
 		services[id] = set_service(pubsub.new(pep_new(username)), id);
-		services[id].hash_map = service.hash_map or {};
 		services[id].item_cache = service.item_cache or { _count = 0 };
 		setmetatable(services[id].item_cache, item_cache_mt);
+		services[id].last_used = service.last_used or time_now;
 		services[id].nodes = service.nodes or {};
 		services[id].recipients = service.recipients or {};
 	end
