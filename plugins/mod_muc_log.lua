@@ -1,6 +1,7 @@
 -- Imported from prosody-modules, mod_muc_log
 
 local metronome = metronome;
+local hosts = metronome.hosts;
 local tostring = tostring;
 local splitJid = require "util.jid".split;
 local cm = require "core.configmanager";
@@ -38,11 +39,12 @@ function logIfNeeded(e)
 		(stanza.name == "iq") or
 	   	(stanza.name == "message" and tostring(stanza.attr.type) == "groupchat")
 	then
-		local node, host, resource = splitJid(stanza.attr.to);
-		if node ~= nil and host ~= nil then
+		local node, host = splitJid(stanza.attr.to);
+		local muc = hosts[host].muc;
+		if node and host then
 			local bare = node .. "@" .. host;
-			if host == mod_host and metronome.hosts[host] ~= nil and metronome.hosts[host].muc ~= nil and metronome.hosts[host].muc.rooms[bare] ~= nil then
-				local room = metronome.hosts[host].muc.rooms[bare]
+			if muc and muc.rooms[bare] then
+				local room = muc.rooms[bare]
 				local today = os.date("%y%m%d");
 				local now = os.date("%X")
 				local mucTo = nil
@@ -58,14 +60,14 @@ function logIfNeeded(e)
 				
 				if stanza.name == "presence" and stanza.attr.type == nil then
 					mucFrom = stanza.attr.to;
-					if room._occupants ~= nil and room._occupants[stanza.attr.to] ~= nil then -- if true, the user has already joined the room
+					if room._occupants and room._occupants[stanza.attr.to] then -- if true, the user has already joined the room
 						alreadyJoined = true;
 						stanza:tag("alreadyJoined"):text("true"); -- we need to log the information that the user has already joined, so add this and remove after logging
 					end
 				elseif stanza.name == "iq" and stanza.attr.type == "set" then -- kick, to is the room, from is the admin, nick who is kicked is attr of iq->query->item
-					if stanza.tags[1] ~= nil and stanza.tags[1].name == "query" then
+					if stanza.tags[1] and stanza.tags[1].name == "query" then
 						local tmp = stanza.tags[1];
-						if tmp.tags[1] ~= nil and tmp.tags[1].name == "item" and tmp.tags[1].attr.nick ~= nil then
+						if tmp.tags[1] ~= nil and tmp.tags[1].name == "item" and tmp.tags[1].attr.nick then
 							tmp = tmp.tags[1];
 							for jid, nick in pairs(room._jid_nick) do
 								if nick == stanza.attr.to .. "/" .. tmp.attr.nick then
@@ -84,7 +86,7 @@ function logIfNeeded(e)
 					end
 				end
 
-				if (mucFrom ~= nil or mucTo ~= nil) then
+				if (mucFrom or mucTo) then
 					local data = data_load(node, host, datastore .. "/" .. today);
 					local realFrom = stanza.attr.from;
 					local realTo = stanza.attr.to;
