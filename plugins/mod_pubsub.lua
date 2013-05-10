@@ -202,7 +202,7 @@ function handlers_owner.set_affiliations(origin, stanza, action)
 	end
 
 	-- pre-emptively check for permission, to save processing power in case of failure
-	if not service:may(node, actor, "set_affiliation") then
+	if not service:may(node, stanza.attr.from, "set_affiliation") then
 		return origin.send(pubsub_error_reply(stanza, "forbidden"));
 	end	
 
