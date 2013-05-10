@@ -195,8 +195,8 @@ local function handle_verify(event, path)
 
 	local valid_files = {
 		["css/style.css"] = files_base.."css/style.css",
-		["images/haze_orange.png"] = files_base.."images/haze_orange.png",
-		["images/metronome.png"] = files_base.."images/metronome.png"
+		["images/tile.png"] = files_base.."images/tile.png",
+		["images/header.png"] = files_base.."images/header.png"
 	}
 
 	if request.method == "GET" then
