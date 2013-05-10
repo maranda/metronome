@@ -7,6 +7,7 @@ local sessionmanager = require "core.sessionmanager";
 local st = require "util.stanza";
 local sm_new_session, sm_destroy_session = sessionmanager.new_session, sessionmanager.destroy_session;
 local uuid_generate = require "util.uuid".generate;
+local hosts = metronome.hosts;
 
 local xpcall, tostring, type = xpcall, tostring, type;
 local traceback = debug.traceback;
@@ -230,7 +231,8 @@ function listener.associate_session(conn, session)
 end
 
 local function handle_deletion(event)
-	local user = event.session;
+	local session, node, host = event.session, event.username, event.host;
+	local user = (session and session) or (hosts[host] and hosts[host].sessions and hosts[host].sessions[node]);
 	if not user then return; end
 	for _, session in pairs(user.sessions) do
 		session:close{ condition = "not-authorized", text = "Account deleted" };
