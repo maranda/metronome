@@ -255,7 +255,10 @@ function commands.adduser(arg)
 		show_usage([[adduser JID]], [[Create the specified user account in Metronome]]);
 		return 1;
 	end
+
 	local user, host = arg[1]:match("([^@]+)@(.+)");
+	local password = arg[2];
+
 	if not user and host then
 		show_message [[Failed to understand JID, please supply the JID you want to create]]
 		show_usage [[adduser user@host]]
@@ -278,12 +281,19 @@ function commands.adduser(arg)
 		return 1;
 	end
 	
-	local password = read_password();
-	if not password then return 1; end
+	local ok, msg;
+	if password then
+		ok, msg = metronomectl.controluser({ user = user, host = host, password = password }, "create");
+	else
+		password = read_password();
+		if not password then return 1; end
+		ok, msg = metronomectl.controluser({ user = user, host = host, password = password }, "create");
+	end
 	
-	local ok, msg = metronomectl.controluser({ user = user, host = host, password = password }, "create");
-	
-	if ok then return 0; end
+	if ok then
+		show_message("User successfully added");
+		return 0; 
+	end
 	
 	show_message("Server Error: "..msg)
 	return 1;
@@ -322,7 +332,10 @@ function commands.passwd(arg)
 
 	local ok, msg = metronomectl.controluser({ user = user, host = host, password = password }, "passwd");
 	
-	if ok then return 0; end
+	if ok then
+		show_message("User password has been changed successfully");
+		return 0; 
+	end
 	
 	show_message("Server Error: "..msg)
 	return 1;
@@ -359,7 +372,10 @@ function commands.deluser(arg)
 		ok, msg = metronomectl.controluser({ user = user, host = host }, "delete");
 	end
 	
-	if ok then return 0; end
+	if ok then
+		show_message("User successfully deleted");
+		return 0; 
+	end
 	
 	show_message("Server Error: "..msg)
 	return 1;
