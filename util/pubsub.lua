@@ -93,6 +93,43 @@ function service:get_affiliation(jid, node, action)
 	return self.config.get_affiliation(self, jid, node, action);
 end
 
+function service:get_affiliations(node, actor, owner)
+	if not self:may(node, actor, "get_affiliations") then
+		return false, "forbidden";
+	end
+
+	local nodes = self.nodes;
+	local node_obj = nodes[node];
+	if node and not node_obj then
+		return false, "item-not-found";
+	end
+
+	local jid = self.config.normalize_jid and self.config.normalize_jid(actor) or actor;
+	local results, has_results = {}, false;
+
+	-- self affiliation check
+	if not owner and node and node_obj.affiliations[jid] then
+		has_results[node] = node_obj.affiliations[jid];
+		return true, has_results;
+	elseif not owner and node and not node_obj.affiliations[jid] then
+		return true, nil;
+	elseif not owner and not node then
+		for name, object in pairs(nodes) do
+			if object.affiliations[jid] then
+				has_results = true;
+				results[name] = object.affiliations[jid];
+			end
+		end
+	elseif owner and node_obj then
+		for jid, affiliation in pairs(node_obj.affiliations) do
+			has_results = true;
+			results[jid] = affiliation;
+		end
+	end
+
+	return true, has_results and results or nil;
+end
+
 function service:set_affiliation(node, actor, jid, affiliation)
 	-- Access checking
 	if not self:may(node, actor, "set_affiliation") then
@@ -103,7 +140,7 @@ function service:set_affiliation(node, actor, jid, affiliation)
 	if not node_obj then
 		return false, "item-not-found";
 	end
-	jid = (type(jid) ~= "boolean" and self.config.normalize_jid(jid)) or jid;
+	jid = (self.config.normalize_jid and self.config.normalize_jid(jid)) or jid;
 	node_obj.affiliations[jid] = affiliation;
 	local _, jid_sub = self:get_subscription(node, true, jid);
 	if not jid_sub and not self:may(node, jid, "be_unsubscribed") then
