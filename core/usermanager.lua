@@ -88,8 +88,9 @@ function create_user(username, password, host)
 end
 
 function delete_user(username, host, source)
-	local session = hosts[host].sessions[username];
-	local ok, err = hosts[host].users.delete_user(username);
+	local hostname = hosts[host];
+	local session = hostname.sessions and hostname.sessions[username];
+	local ok, err = hostname.users.delete_user(username);
 	if not ok then return nil, err; end
 
 	metronome.events.fire_event("user-deleted", { username = username, host = host, session = session, source = source });
