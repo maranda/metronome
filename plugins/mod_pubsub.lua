@@ -318,12 +318,12 @@ function broadcast(self, node, jids, item)
 	end
 
 	if type(item) == "string" and item == "deleted" then
-		local deleted = st.message({ from = module.host, type = headline })
+		local deleted = st.message({ from = module.host, type = "headline" })
 			:tag("event", { xmlns = xmlns_pubsub_event })
 				:tag("delete", { node = node });
 		traverser(jids, deleted);
 	elseif type(item) == "string" and item == "purged" then
-		local purged = st.message({ from = module.host, type = headline })
+		local purged = st.message({ from = module.host, type = "headline" })
 			:tag("event", { xmlns = xmlns_pubsub_event })
 				:tag("purge", { node = node });
 		traverser(jids, purged);
@@ -521,10 +521,7 @@ local function get_affiliation(self, jid, name, action)
 
 	if action == "create" and (not is_server_admin or self.affiliations[bare_jid]) then
 		local _, host = jid_split(jid);
-		local is_local = host == module.host:match("^[%w+]*%.(.*)");
-		if unrestricted_node_creation or is_local then
-			module:log("warn", "service unaffiliated %s user %s created the %s node", 
-				   is_local and "local" or "remote", jid, name);
+		if unrestricted_node_creation or host == module.host:match("^[%w+]*%.(.*)") then 
 			return "local_user"; 
 		end
 	end 
