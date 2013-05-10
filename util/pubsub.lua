@@ -136,10 +136,16 @@ function service:set_affiliation(node, actor, jid, affiliation)
 		return false, "forbidden";
 	end
 	--
+	
 	local node_obj = self.nodes[node];
 	if not node_obj then
 		return false, "item-not-found";
 	end
+
+	if not node_obj.capabilities[affiliation] or not self.capabilities[affiliation] then
+		return false, "bad-request";
+	end
+
 	jid = (self.config.normalize_jid and self.config.normalize_jid(jid)) or jid;
 	node_obj.affiliations[jid] = affiliation;
 	local _, jid_sub = self:get_subscription(node, true, jid);
