@@ -195,7 +195,7 @@ end
 function handlers.get_affiliations(origin, stanza, action) return _get_affiliations(origin, stanza, action, false); end
 function handlers_owner.get_affiliations(origin, stanza, action) return _get_affiliations(origin, stanza, action, true); end
 
-function handlers_owner.set_affiliation(origin, stanza, action)
+function handlers_owner.set_affiliations(origin, stanza, action)
 	local node = action.attr.node;
 	if not service.nodes[node] then
 		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
