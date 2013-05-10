@@ -61,6 +61,8 @@ function handle_pubsub_iq(event)
 		else 
 			return handler(origin, stanza, action, config); 
 		end
+	else
+		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
 	end
 end
 
@@ -149,6 +151,78 @@ function handlers_owner.set_configure(origin, stanza, action)
 		reply = pubsub_error_reply(stanza, "forbidden");
 	end
 	return origin.send(reply);
+end
+
+local function _get_affiliations(origin, stanza, action, owner)
+	local node = action.attr.node;
+	local ok, ret, reply;
+
+	if owner then -- this is node owner request
+		reply = st.reply(stanza)
+				:tag("pubsub", { xmlns = xmlns_pubsub_owner })
+					:tag("affiliations");
+
+		ok, ret = service:get_affiliations(node, stanza.attr.from, true);
+		if ok and ret then
+			for jid, affiliation in pairs(ret) do
+				if affiliation ~= "none" then
+					reply:tag("affiliation", { jid = jid, affiliation = affiliation }):up();
+				end
+			end
+		elseif not ok then
+			reply = pubsub_error_reply(stanza, ret);
+		end
+	else
+		reply = st.reply(stanza)
+			:tag("pubsub", { xmlns = xmlns_pubsub })
+				:tag("affiliations");
+
+		ok, ret = service:get_affiliations(node, stanza.attr.from);
+		if ok and ret then
+			for n, affiliation in pairs(ret) do
+				if affiliation ~= "none" then
+					reply:tag("affiliation", { node = n, affiliation = affiliation }):up();
+				end
+			end
+		elseif not ok then
+			reply = pubsub_error_reply(stanza, ret);
+		end
+	end
+
+	return origin.send(reply);
+end
+
+function handlers.get_affiliations(origin, stanza, action) return _get_affiliations(origin, stanza, action, false); end
+function handlers_owner.get_affiliations(origin, stanza, action) return _get_affiliations(origin, stanza, action, true); end
+
+function handlers_owner.set_affiliation(origin, stanza, action)
+	local node = action.attr.node;
+	if not service.nodes[node] then
+		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
+	end
+
+	-- pre-emptively check for permission, to save processing power in case of failure
+	if not service:may(node, actor, "set_affiliation") then
+		return origin.send(pubsub_error_reply(stanza, "forbidden"));
+	end	
+
+	-- make a list of affiliations to change
+	local _to_change = {};
+	for _, tag in ipairs(action.tags) do
+		if tag.attr.jid and tag.attr.affiliation then
+			_to_change[tag.attr.jid] = tag.attr.affiliation;
+		end
+	end
+	
+	local ok, err;
+	for jid, affiliation in pairs(_to_change) do
+		ok, err = service:set_affiliation(node, true, jid, affiliation);
+		if not ok then
+			return origin.send(pubsub_error_reply(stanza, err));
+		end
+	end
+
+	return origin.send(st.reply(stanza));
 end
 
 function handlers.set_create(origin, stanza, create, config)
@@ -583,6 +657,7 @@ set_service(pubsub.new({
 			be_subscribed = true;
 			be_unsubscribed = true;
 			
+			get_affiliations = true;
 			set_affiliation = false;
 		};
 		publisher = {
@@ -608,6 +683,7 @@ set_service(pubsub.new({
 			be_subscribed = true;
 			be_unsubscribed = true;
 			
+			get_affiliations = true;
 			set_affiliation = false;
 		};
 		owner = {
@@ -634,6 +710,7 @@ set_service(pubsub.new({
 			be_subscribed = true;
 			be_unsubscribed = true;
 			
+			get_affiliations = true;
 			set_affiliation = true;
 		};
 		-- Allow local users to create nodes.
@@ -659,7 +736,8 @@ set_service(pubsub.new({
 			
 			be_subscribed = true;
 			be_unsubscribed = true;
-			
+
+			get_affiliations = true;			
 			set_affiliation = false;
 		};
 	};
