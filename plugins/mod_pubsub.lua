@@ -14,6 +14,8 @@ local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
 
 local autocreate_on_publish = module:get_option_boolean("autocreate_on_publish", false);
 local autocreate_on_subscribe = module:get_option_boolean("autocreate_on_subscribe", false);
+local unrestricted_node_creation = module:get_option_boolean("unrestricted_node_creation", false);
+
 local pubsub_disco_name = module:get_option("name");
 if type(pubsub_disco_name) ~= "string" then pubsub_disco_name = "Metronome PubSub Service"; end
 
@@ -519,7 +521,12 @@ local function get_affiliation(self, jid, name, action)
 
 	if action == "create" and (not is_server_admin or self.affiliations[bare_jid]) then
 		local _, host = jid_split(jid);
-		if host == module.host:match("^[%w+]*%.(.*)") then return "local_user"; end
+		local is_local = host == module.host:match("^[%w+]*%.(.*)");
+		if unrestricted_node_creation or is_local then
+			module:log("warn", "service unaffiliated %s user %s created the %s node", 
+				   is_local and "local" or "remote", jid, name);
+			return "local_user"; 
+		end
 	end 
 
 	-- check first if this is a node config check
