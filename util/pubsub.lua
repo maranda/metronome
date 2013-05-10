@@ -109,8 +109,8 @@ function service:get_affiliations(node, actor, owner)
 
 	-- self affiliation check
 	if not owner and node and node_obj.affiliations[jid] then
-		has_results[node] = node_obj.affiliations[jid];
-		return true, has_results;
+		results[node] = node_obj.affiliations[jid];
+		return true, results;
 	elseif not owner and node and not node_obj.affiliations[jid] then
 		return true, nil;
 	elseif not owner and not node then
@@ -142,7 +142,8 @@ function service:set_affiliation(node, actor, jid, affiliation)
 		return false, "item-not-found";
 	end
 
-	if not node_obj.capabilities[affiliation] or not self.capabilities[affiliation] then
+	if not (node_obj.capabilities and node_obj.capabilities[affiliation]) or
+	   not self.capabilities[affiliation] then
 		return false, "bad-request";
 	end
 
