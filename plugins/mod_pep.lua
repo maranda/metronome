@@ -177,8 +177,8 @@ local function get_caps_hash_from_presence(stanza)
 	end
 end
 
-local function pep_broadcast_all(user, node, receiver)
-	local ok, items, orderly = services[user]:get_items(node, receiver);
+local function pep_broadcast_last(user, node, receiver)
+	local ok, items, orderly = services[user]:get_items(node, receiver, nil, 1);
 	if items then
 		for _, id in ipairs(orderly) do
 			if services[user].item_cache:add(items[id], node, receiver) then 
@@ -210,7 +210,7 @@ local function pep_send(recipient, user, ignore)
 		module:log("debug", "Ignoring notifications filtering for %s until we obtain 'em... if ever.", recipient);
 		for node, object in pairs(nodes) do
 			object.subscribers[recipient] = true;
-			pep_broadcast_all(user, node, recipient);
+			pep_broadcast_last(user, node, recipient);
 			object.subscribers[recipient] = nil;
 		end		
 	elseif not rec_srv then
@@ -219,7 +219,7 @@ local function pep_send(recipient, user, ignore)
 		for node, object in pairs(nodes) do
 			if hash_map[rec_hash] and hash_map[rec_hash][node] then
 				object.subscribers[recipient] = true;
-				pep_broadcast_all(user, node, recipient);
+				pep_broadcast_last(user, node, recipient);
 			end
 		end
 	else
@@ -239,7 +239,7 @@ local function pep_send(recipient, user, ignore)
 		end
 
 		for node in pairs(user_nodes) do
-			pep_broadcast_all(user, node, recipient);
+			pep_broadcast_last(user, node, recipient);
 		end
 	end
 end
