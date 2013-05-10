@@ -303,7 +303,9 @@ function handle_pubsub_iq(event)
 	end	
 
 	-- Update session to the one of the owner.
-	if origin.username and origin.host and services[user].name == origin.username.."@"..origin.host then services[user].session = origin; end
+	if origin.username and origin.host and services[user].name == origin.username.."@"..origin.host then 
+		services[user].session = origin;
+	end
 
 	if handler then
 		if not config then 
@@ -311,6 +313,8 @@ function handle_pubsub_iq(event)
 		else 
 			return handler(origin, stanza, action, config); 
 		end
+	else
+		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
 	end
 end
 
