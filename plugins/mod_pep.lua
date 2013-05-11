@@ -281,6 +281,11 @@ function handle_pubsub_iq(event)
 			set_service(pubsub.new(pep_new(username)), user, true);
 		end
 	end
+
+	if not services[user] then -- we should double check it's created,
+		return;            -- it does not if the user doesn't exist.
+	end
+
 	services[user].last_used = time_now;
 
 	if time_now - last_idle_cleanup >= 3600 then
