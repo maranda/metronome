@@ -14,7 +14,6 @@ local stanza_counter = metronome.stanza_counter
 if not stanza_counter and not show_hosts and not show_comps then
 	module:log ("error", "mod_server_status requires at least one of the following things:")
 	module:log ("error", "mod_stanza_counter loaded, or either server_status_show_hosts or server_status_show_comps configuration values set.")
-	module:log ("error", "check the module wiki at: http://code.google.com/p/prosody-modules/wiki/mod_server_status")
 	return false
 end
 
@@ -49,12 +48,12 @@ local function forge_response_xml()
 
 	if stanza_counter then
 		stats[1] = stanzas.elem_header
-		stats[2] = stanzas.incoming:format(stanza_counter.iq["incoming"],
-						   stanza_counter.message["incoming"],
-						   stanza_counter.presence["incoming"])
-		stats[3] = stanzas.outgoing:format(stanza_counter.iq["outgoing"],
-						   stanza_counter.message["outgoing"],
-						   stanza_counter.presence["outgoing"])
+		stats[2] = stanzas.incoming:format(stanza_counter.iq.incoming,
+						   stanza_counter.message.incoming,
+						   stanza_counter.presence.incoming)
+		stats[3] = stanzas.outgoing:format(stanza_counter.iq.outgoing,
+						   stanza_counter.message.outgoing,
+						   stanza_counter.presence.outgoing)
 		stats[4] = stanzas.elem_closure
 	end
 
