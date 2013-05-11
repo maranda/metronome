@@ -45,8 +45,9 @@ local pep_errors = {
 	["conflict"] = { "cancel", "conflict" };
 	["invalid-jid"] = { "modify", "bad-request", nil, "invalid-jid" };
 	["item-not-found"] = { "cancel", "item-not-found" };
-	["not-subscribed"] = { "modify", "unexpected-request", nil, "not-subscribed" };
+	["feature-not-implemented"] = { "cancel", "feature-not-implemented" };
 	["forbidden"] = { "cancel", "forbidden" };
+	["not-subscribed"] = { "modify", "unexpected-request", nil, "not-subscribed" };
 	["bad-request"] = { "cancel", "bad-request" };
 };
 function pep_error_reply(stanza, error)
