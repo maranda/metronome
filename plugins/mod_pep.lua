@@ -319,7 +319,7 @@ function handle_pubsub_iq(event)
 			return handler(origin, stanza, action, config); 
 		end
 	else
-		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
+		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
 	end
 end
 
