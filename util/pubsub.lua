@@ -142,12 +142,18 @@ function service:set_affiliation(node, actor, jid, affiliation)
 		return false, "item-not-found";
 	end
 
-	if not (node_obj.capabilities and node_obj.capabilities[affiliation]) or
-	   not self.capabilities[affiliation] then
+	if (node_obj.capabilities and not node_obj.capabilities[affiliation]) or
+	   not self.config.capabilities[affiliation] then
 		return false, "bad-request";
 	end
 
 	jid = (self.config.normalize_jid and self.config.normalize_jid(jid)) or jid;
+	if affiliation == "none" then -- is this correct?
+		node_obj.affiliations[jid] = nil;
+		self:save_node(node);
+		return true;
+	end
+
 	node_obj.affiliations[jid] = affiliation;
 	local _, jid_sub = self:get_subscription(node, true, jid);
 	if not jid_sub and not self:may(node, jid, "be_unsubscribed") then
