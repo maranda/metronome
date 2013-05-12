@@ -496,7 +496,7 @@ end
 function service:get_subscriptions(node, actor, jid)
 	-- Access checking
 	local cap;
-	if actor == true or jid == actor or self:jids_equal(actor, jid) then
+	if actor == true or jid == actor or (jid and self:jids_equal(actor, jid)) then
 		cap = "get_subscriptions";
 	else
 		cap = "get_subscriptions_other";
@@ -512,11 +512,24 @@ function service:get_subscriptions(node, actor, jid)
 			return false, "item-not-found";
 		end
 	end
+
+	local ret = {};
+	if not jid then
+		-- retrieve subscriptions as node owner...
+		for jid, subscription in pairs(node_obj.subscribers) do
+			ret[#ret+1] = {
+				jid = self.config.normalize_jid(jid);
+				subscription = subscription;
+			};
+		end
+
+		return true, ret;
+	end
+
 	local normal_jid = self.config.normalize_jid(jid);
 	local subs = self.subscriptions[normal_jid];
 	-- We return the subscription object from the node to save
 	-- a get_subscription() call for each node.
-	local ret = {};
 	if subs then
 		for jid, subscribed_nodes in pairs(subs) do
 			if node then -- Return only subscriptions to this node
