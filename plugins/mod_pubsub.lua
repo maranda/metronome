@@ -29,6 +29,8 @@ local service;
 
 local handlers, handlers_owner = {}, {};
 
+-- Util functions and mappings
+
 local pubsub_errors = {
 	["conflict"] = { "cancel", "conflict" };
 	["invalid-jid"] = { "modify", "bad-request", nil, "invalid-jid" };
@@ -46,6 +48,76 @@ function pubsub_error_reply(stanza, error)
 	end
 	return reply;
 end
+
+function form_layout(service, name)
+	local c_name = "Node configuration for "..name;
+	local node = service.nodes[name];
+
+	return dataforms.new({
+		title = c_name,
+		instructions = c_name,
+		{
+			name = "FORM_TYPE",
+			type = "hidden",
+			value = "http://jabber.org/protocol/pubsub#node_config"
+		},
+		{
+			name = "pubsub#title",
+			type = "text-single",
+			label = "A friendly name for this node",
+			value = node.config.title or ""
+		},
+		{
+			name = "pubsub#deliver_notifications",
+			type = "boolean",
+			label = "Wheter to deliver event notification",
+			value = node.config.deliver_notifications or true
+		},
+		{
+			name = "pubsub#deliver_payloads",
+			type = "boolean",
+			label = "Whether to deliver payloads with event notifications",
+			value = ((node.config.deliver_notifications == false and false) or (node.config.deliver_notifications == true and node.config.deliver_payload)) or true
+		},
+		{
+			name = "pubsub#max_items",
+			type = "text-single",
+			label = "Max number of items to persist",
+			value = type(node.config.max_items) == "number" and tostring(node.config.max_items) or "0"
+		},
+		{
+			name = "pubsub#persist_items",
+			type = "boolean",
+			label = "Whether to persist items to storage or not",
+			value = node.config.persist_items or false
+		}		
+	});
+end
+
+function send_config_form(service, name, origin, stanza)
+	return origin.send(st.reply(stanza)
+		:tag("pubsub", { xmlns = "http://jabber.org/protocol/pubsub#owner" })
+			:tag("configure", { node = name })
+				:add_child(form_layout(service, name):form()):up()
+	);
+end
+
+function process_config_form(service, name, form)
+	local node = service.nodes[name];
+	if not node then return false, "item-not-found" end
+	
+	local fields = form_layout(service, name):data(form);
+
+	node.config["title"] = fields["pubsub#title"];
+	node.config["deliver_notifications"] = fields["pubsub#deliver_notifications"];
+	node.config["deliver_payloads"] = fields["pubsub#deliver_payloads"];
+	node.config["max_items"] = tonumber(fields["pubsub#max_items"]) or 0;
+	node.config["persist_items"] = fields["pubsub#persist_items"];
+
+	return true;
+end
+
+-- Begin
 
 function handle_pubsub_iq(event)
 	local origin, stanza = event.origin, event.stanza;
@@ -300,10 +372,14 @@ function handlers_owner.get_configure(origin, stanza, action)
 		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
 	end
 
+	if not service.nodes[node] then
+		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
+	end
+
 	local ok, ret = service:get_affiliation(stanza.attr.from, node);
 
 	if ret == "owner" then
-		return service:send_node_config_form(node, origin, stanza);
+		return send_config_form(service, node, origin, stanza);
 	else
 		return origin.send(pubsub_error_reply(stanza, "forbidden"));
 	end
@@ -316,6 +392,10 @@ function handlers_owner.set_configure(origin, stanza, action)
 	end
 
 	local ok, ret = service:get_affiliation(stanza.attr.from, node)
+
+	if not service.nodes[node] then
+		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
+	end
 	
 	local reply;
 	if ret == "owner" then
@@ -325,7 +405,7 @@ function handlers_owner.set_configure(origin, stanza, action)
 			if form.attr.type == "cancel" then
 				reply = st.reply(stanza);
 			else
-				local ok, ret = service:process_node_config_form(node, form);
+				local ok, ret = process_config_form(service, node, form);
 				if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
 			end
 		else
@@ -478,79 +558,13 @@ function broadcast(self, node, jids, item)
 	end
 end
 
-function form_layout(self, name)
-	local c_name = "Node configuration for "..name;
-	local node = self.nodes[name];
-
-	return dataforms.new({
-		title = c_name,
-		instructions = c_name,
-		{
-			name = "FORM_TYPE",
-			type = "hidden",
-			value = "http://jabber.org/protocol/pubsub#node_config"
-		},
-		{
-			name = "pubsub#title",
-			type = "text-single",
-			label = "A friendly name for this node",
-			value = node.config.title or ""
-		},
-		{
-			name = "pubsub#deliver_notifications",
-			type = "boolean",
-			label = "Wheter to deliver event notification",
-			value = node.config.deliver_notifications or true
-		},
-		{
-			name = "pubsub#deliver_payloads",
-			type = "boolean",
-			label = "Whether to deliver payloads with event notifications",
-			value = ((node.config.deliver_notifications == false and false) or (node.config.deliver_notifications == true and node.config.deliver_payload)) or true
-		},
-		{
-			name = "pubsub#max_items",
-			type = "boolean",
-			label = "Max number of items to persist",
-			value = node.config.max_items or 0
-		},
-		{
-			name = "pubsub#persist_items",
-			type = "boolean",
-			label = "Whether to persist items to storage or not",
-			value = node.config.persist_items or false
-		}		
-	});
-end
-
-function send_config_form(self, name, origin, stanza)
-	return origin.send(st.reply(stanza)
-		:tag("pubsub", { xmlns = "http://jabber.org/protocol/pubsub#owner" })
-			:tag("configure", { node = name })
-				:add_child(self:node_config_form_layout(name):form()):up()
-	);
-end
-
-function process_config_form(self, name, form)
-	local node = self.nodes[name];
-	if not node then return false, "item-not-found" end
-	
-	local fields = self:node_config_form_get(name):data(form);
-
-	node.config["title"] = fields["pubsub#title"];
-	node.config["deliver_notifications"] = fields["pubsub#deliver_notifications"];
-	node.config["deliver_payloads"] = fields["pubsub#deliver_payloads"];
-
-	return true;
-end
-
 module:hook("iq/host/http://jabber.org/protocol/pubsub:pubsub", handle_pubsub_iq);
 module:hook("iq/host/http://jabber.org/protocol/pubsub#owner:pubsub", handle_pubsub_iq);
 
 local disco_info;
 
 local feature_map = {
-	process_node_config_form = { "config-node", "persistent-items" };
+	[true] = { "config-node", "persistent-items", "manage-affiliations", "manage-subscriptions" };
 	create = { "create-nodes", autocreate_on_publish and "instant-nodes", "item-ids" };
 	delete = { "delete-nodes" };
 	retract = { "delete-items", "retract-items" };
@@ -558,13 +572,13 @@ local feature_map = {
 	purge = { "purge-nodes" };
 	get_items = { "retrieve-items" };
 	add_subscription = { "subscribe" };
-	get_affiliations = { "manage-affiliations", "retrieve-affiliations" };
-	get_subscriptions = { "manage-subscriptions", "retrieve-subscriptions" };
+	get_affiliations = { "retrieve-affiliations" };
+	get_subscriptions = { "retrieve-subscriptions" };
 };
 
 local function add_disco_features_from_service(disco, service)
 	for method, features in pairs(feature_map) do
-		if service[method] then
+		if service[method] or method == true then
 			for _, feature in ipairs(features) do
 				if feature then
 					disco:tag("feature", { var = xmlns_pubsub.."#"..feature }):up();
@@ -807,7 +821,6 @@ set_service(pubsub.new({
 	};
 
 	node_default_config = {
-		title = "";
 		deliver_notifications = true;
 		deliver_payloads = true;
 	};
@@ -816,9 +829,6 @@ set_service(pubsub.new({
 	autocreate_on_subscribe = autocreate_on_subscribe;
 	
 	broadcaster = broadcast;
-	send_node_config_form = send_config_form;
-	process_node_config_form = process_config_form;
-	node_config_form_layout = form_layout;
 	get_affiliation = get_affiliation;
 	
 	normalize_jid = jid_bare;
