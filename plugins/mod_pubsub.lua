@@ -298,6 +298,56 @@ function handlers_owner.set_purge(origin, stanza, purge)
 	return origin.send(reply);
 end
 
+function handlers_owner.get_subscriptions(origin, stanza, subscriptions)
+	local node = subscriptions.attr.node;
+	local ok, subs = service:get_subscriptions(node, stanza.attr.from);
+	if not ok then return origin.send(pubsub_error_reply(stanza, subs)); end
+
+	local reply = st.reply(stanza)
+		:tag("pubsub", { xmlns = xmlns_pubsub_owner })
+			:tag("subscriptions");
+
+	for _, subscription in ipairs(subs) do
+		reply:tag("subscription", { node = node, jid = subscription.jid, subscription = "subscribed" }):up();
+	end
+
+	return origin.send(reply);
+end
+
+function handlers_owner.set_subscriptions(origin, stanza, subscriptions)
+	local node = subscriptions.attr.node;
+
+	-- pre-emptively do checks
+	if not service.nodes[node] then
+		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
+	end
+
+	if not service:may(node, stanza.attr.from, "subscribe_other") or
+	   not service:may(node, stanza.attr.from, "unsubscribe_other") then
+		return origin.send(pubsub_error_reply(stanza, "forbidden"));
+	end
+
+	-- populate list of subscribers
+	local _to_change = {};
+	for _, sub in ipairs(subscriptions.tags) do
+		if sub.subscription ~= "none" or sub.subscription ~= "subscribed" then
+			return origin.send(st.error_reply(stanza, "cancel", "bad-request",
+				"Only none and subscribed subscription types are currently supported"));
+		end
+		_to_change[sub.jid] = sub.subscription;
+	end
+
+	for jid, subscription in pairs(_to_change) do
+		if subscription == "subscribed" then
+			service:add_subscription(node, true, jid);
+		else
+			service:remove_subscription(node, true, jid);
+		end
+	end
+
+	return origin.send(st.reply(stanza));
+end
+
 function handlers.set_subscribe(origin, stanza, subscribe)
 	local node, jid = subscribe.attr.node, subscribe.attr.jid;
 	local options_tag, options = stanza.tags[1]:get_child("options"), nil;
@@ -495,7 +545,8 @@ local feature_map = {
 	purge = { "purge-nodes" };
 	get_items = { "retrieve-items" };
 	add_subscription = { "subscribe" };
-	get_subscriptions = { "retrieve-subscriptions" };
+	get_affiliations = { "manage-affiliations", "retrieve-affiliations" };
+	get_subscriptions = { "manage-subscriptions", "retrieve-subscriptions" };
 };
 
 local function add_disco_features_from_service(disco, service)
