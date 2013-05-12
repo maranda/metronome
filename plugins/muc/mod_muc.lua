@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 if module:get_host_type() ~= "component" then
 	error("MUC should be loaded as a component.", 0);
 end

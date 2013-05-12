@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 module:set_global();
 
 local add_task = require "util.timer".add_task;

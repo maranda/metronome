@@ -1,6 +1,5 @@
 This licensing file is valid for the following files:
 ./sasl.lua
-./sasl/anonymous.lua
 ./sasl/digest-md5.lua
 ./sasl/plain.lua
 ./sasl/scram.lua

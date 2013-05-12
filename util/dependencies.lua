@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 module("dependencies", package.seeall)
 
 function softreq(...) local ok, lib =  pcall(require, ...); if ok then return lib; else return nil, lib; end end

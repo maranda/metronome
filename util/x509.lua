@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 -- TODO: I feel a fair amount of this logic should be integrated into Luasec,
 -- so that everyone isn't re-inventing the wheel.  Dependencies on
 -- IDN libraries complicate that.

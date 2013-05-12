@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local match = string.match;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local nameprep = require "util.encodings".stringprep.nameprep;

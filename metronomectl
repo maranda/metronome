@@ -1,5 +1,9 @@
 #!/usr/bin/env lua
--- metronomectl - command-line controller for Metronome XMPP server
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
 
 CFG_SOURCEDIR=os.getenv("METRONOME_SRCDIR");
 CFG_CONFIGDIR=os.getenv("METRONOME_CFGDIR");

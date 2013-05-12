@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local st = require "util.stanza";
 local sm_bind_resource = require "core.sessionmanager".bind_resource;
 local sm_make_authenticated = require "core.sessionmanager".make_authenticated;

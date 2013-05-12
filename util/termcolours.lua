@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local t_concat, t_insert = table.concat, table.insert;
 local char, format = string.char, string.format;
 local tonumber = tonumber;

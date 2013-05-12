@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local hosts = _G.hosts;
 local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
 

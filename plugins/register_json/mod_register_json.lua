@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local datamanager = datamanager
 local b64_decode = require "util.encodings".base64.decode
 local b64_encode = require "util.encodings".base64.encode

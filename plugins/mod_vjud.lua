@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local datamanager = require "util.datamanager"
 local dataforms_new = require "util.dataforms".new
 local jid_split = require "util.jid".split

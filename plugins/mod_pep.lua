@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local hosts = hosts;
 local core_post_stanza = metronome.core_post_stanza;
 local ripairs, tonumber, type, os_time = ripairs, tonumber, type, os.time;

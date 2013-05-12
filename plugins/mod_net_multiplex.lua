@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 module:set_global();
 
 local max_buffer_len = module:get_option_number("multiplex_buffer_size", 1024);

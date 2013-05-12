@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 -- todo: quick (default) header generation
 -- todo: nxdomain, error handling
 -- todo: cache results of encodeName

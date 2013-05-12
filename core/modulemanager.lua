@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local logger = require "util.logger";
 local log = logger.init("modulemanager");
 local config = require "core.configmanager";

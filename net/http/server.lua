@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local t_insert, t_remove, t_concat = table.insert, table.remove, table.concat;
 local parser_new = require "net.http.parser".new;
 local events = require "util.events".new();

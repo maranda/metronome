@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 --- Adds a little fantasy to the API's room:destroy.
 --- let's have some fun when it comes to lynching lamers.
 

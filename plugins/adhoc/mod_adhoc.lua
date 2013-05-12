@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local st = require "util.stanza";
 local is_admin = require "core.usermanager".is_admin;
 local adhoc_handle_cmd = module:require "adhoc".handle_cmd;

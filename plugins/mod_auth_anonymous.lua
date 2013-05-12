@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local new_sasl = require "util.sasl".new;
 local datamanager = require "util.datamanager";
 local hmac_sha1 = require "util.hmac".sha1;

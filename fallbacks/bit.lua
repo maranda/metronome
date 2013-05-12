@@ -1,11 +1,8 @@
--- Prosody IM
--- Copyright (C) 2008-2010 Matthew Wild
--- Copyright (C) 2008-2010 Waqas Hussain
--- 
--- This project is MIT/X11 licensed. Please see the
--- COPYING file in the source package for more information.
+-- * Metronome IM *
 --
-
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
 
 local type = type;
 local tonumber = tonumber;

@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local commonPrefixLength = require"util.ip".commonPrefixLength
 local new_ip = require"util.ip".new_ip;
 

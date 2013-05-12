@@ -1,3 +1,9 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information.
+
 local get_children = require "core.hostmanager".get_children;
 local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed;
 local jid_split = require "util.jid".split;
