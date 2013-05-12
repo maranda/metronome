@@ -72,20 +72,46 @@ function handle_pubsub_iq(event)
 	end
 end
 
-function handlers_owner.get_configure(origin, stanza, action)
+local function _get_affiliations(origin, stanza, action, owner)
 	local node = action.attr.node;
-	if not node then
-		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
-	end
+	local ok, ret, reply;
 
-	local ok, ret = service:get_affiliation(stanza.attr.from, node);
+	if owner then -- this is node owner request
+		reply = st.reply(stanza)
+				:tag("pubsub", { xmlns = xmlns_pubsub_owner })
+					:tag("affiliations");
 
-	if ret == "owner" then
-		return service:send_node_config_form(node, origin, stanza);
+		ok, ret = service:get_affiliations(node, stanza.attr.from, true);
+		if ok and ret then
+			for jid, affiliation in pairs(ret) do
+				if affiliation ~= "none" then
+					reply:tag("affiliation", { jid = jid, affiliation = affiliation }):up();
+				end
+			end
+		elseif not ok then
+			reply = pubsub_error_reply(stanza, ret);
+		end
 	else
-		return origin.send(pubsub_error_reply(stanza, "forbidden"));
+		reply = st.reply(stanza)
+			:tag("pubsub", { xmlns = xmlns_pubsub })
+				:tag("affiliations");
+
+		ok, ret = service:get_affiliations(node, stanza.attr.from);
+		if ok and ret then
+			for n, affiliation in pairs(ret) do
+				if affiliation ~= "none" then
+					reply:tag("affiliation", { node = n, affiliation = affiliation }):up();
+				end
+			end
+		elseif not ok then
+			reply = pubsub_error_reply(stanza, ret);
+		end
 	end
+
+	return origin.send(reply);
 end
+
+-- pubsub ns handlers
 
 function handlers.get_items(origin, stanza, items)
 	local node = items.attr.node;
@@ -131,105 +157,7 @@ function handlers.get_subscriptions(origin, stanza, subscriptions)
 	return origin.send(reply);
 end
 
-function handlers_owner.set_configure(origin, stanza, action)
-	local node = action.attr.node;
-	if not node then
-		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
-	end
-
-	local ok, ret = service:get_affiliation(stanza.attr.from, node)
-	
-	local reply;
-	if ret == "owner" then
-		if action:get_child("x", "jabber:x:data") and 
-		   (action:get_child("x", "jabber:x:data").attr.type == "submit" or action:get_child("x", "jabber:x:data").attr.type == "cancel") then
-			local form = action:get_child("x", "jabber:x:data");
-			if form.attr.type == "cancel" then
-				reply = st.reply(stanza);
-			else
-				local ok, ret = service:process_node_config_form(node, form);
-				if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
-			end
-		else
-			reply = pubsub_error_reply(stanza, "bad-request");
-		end
-	else
-		reply = pubsub_error_reply(stanza, "forbidden");
-	end
-	return origin.send(reply);
-end
-
-local function _get_affiliations(origin, stanza, action, owner)
-	local node = action.attr.node;
-	local ok, ret, reply;
-
-	if owner then -- this is node owner request
-		reply = st.reply(stanza)
-				:tag("pubsub", { xmlns = xmlns_pubsub_owner })
-					:tag("affiliations");
-
-		ok, ret = service:get_affiliations(node, stanza.attr.from, true);
-		if ok and ret then
-			for jid, affiliation in pairs(ret) do
-				if affiliation ~= "none" then
-					reply:tag("affiliation", { jid = jid, affiliation = affiliation }):up();
-				end
-			end
-		elseif not ok then
-			reply = pubsub_error_reply(stanza, ret);
-		end
-	else
-		reply = st.reply(stanza)
-			:tag("pubsub", { xmlns = xmlns_pubsub })
-				:tag("affiliations");
-
-		ok, ret = service:get_affiliations(node, stanza.attr.from);
-		if ok and ret then
-			for n, affiliation in pairs(ret) do
-				if affiliation ~= "none" then
-					reply:tag("affiliation", { node = n, affiliation = affiliation }):up();
-				end
-			end
-		elseif not ok then
-			reply = pubsub_error_reply(stanza, ret);
-		end
-	end
-
-	return origin.send(reply);
-end
-
 function handlers.get_affiliations(origin, stanza, action) return _get_affiliations(origin, stanza, action, false); end
-function handlers_owner.get_affiliations(origin, stanza, action) return _get_affiliations(origin, stanza, action, true); end
-
-function handlers_owner.set_affiliations(origin, stanza, action)
-	local node = action.attr.node;
-	if not service.nodes[node] then
-		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
-	end
-
-	-- pre-emptively check for permission, to save processing power in case of failure
-	if not service:may(node, stanza.attr.from, "set_affiliation") then
-		return origin.send(pubsub_error_reply(stanza, "forbidden"));
-	end	
-
-	-- make a list of affiliations to change
-	local _to_change = {};
-	for _, tag in ipairs(action.tags) do
-		if tag.attr.jid and tag.attr.affiliation then
-			_to_change[tag.attr.jid] = tag.attr.affiliation;
-		end
-	end
-	
-	local ok, err;
-	for jid, affiliation in pairs(_to_change) do
-		ok, err = service:set_affiliation(node, true, jid, affiliation);
-		if not ok then
-			return origin.send(pubsub_error_reply(stanza, err));
-		end
-	end
-
-	return origin.send(st.reply(stanza));
-end
 
 function handlers.set_create(origin, stanza, create, config)
 	local node = create.attr.node;
@@ -278,80 +206,6 @@ function handlers.set_create(origin, stanza, create, config)
 		end
 	end
 	return origin.send(reply);
-end
-
-function handlers_owner.set_delete(origin, stanza, delete)
-	local node = delete.attr.node;
-	local ok, ret, reply;
-	if node then
-		ok, ret = service:delete(node, stanza.attr.from);
-		if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
-	else
-		reply = pubsub_error_reply(stanza, "bad-request");
-	end
-	return origin.send(reply);
-end
-
-function handlers_owner.set_purge(origin, stanza, purge)
-	local node = purge.attr.node;
-	local ok, ret, reply;
-	if node then
-		ok, ret = service:purge(node, stanza.attr.from);
-		if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
-	else
-		reply = pubsub_error_reply(stanza, "bad-request");
-	end
-	return origin.send(reply);
-end
-
-function handlers_owner.get_subscriptions(origin, stanza, subscriptions)
-	local node = subscriptions.attr.node;
-	local ok, subs = service:get_subscriptions(node, stanza.attr.from);
-	if not ok then return origin.send(pubsub_error_reply(stanza, subs)); end
-
-	local reply = st.reply(stanza)
-		:tag("pubsub", { xmlns = xmlns_pubsub_owner })
-			:tag("subscriptions");
-
-	for _, subscription in ipairs(subs) do
-		reply:tag("subscription", { node = node, jid = subscription.jid, subscription = "subscribed" }):up();
-	end
-
-	return origin.send(reply);
-end
-
-function handlers_owner.set_subscriptions(origin, stanza, subscriptions)
-	local node = subscriptions.attr.node;
-
-	-- pre-emptively do checks
-	if not service.nodes[node] then
-		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
-	end
-
-	if not service:may(node, stanza.attr.from, "subscribe_other") or
-	   not service:may(node, stanza.attr.from, "unsubscribe_other") then
-		return origin.send(pubsub_error_reply(stanza, "forbidden"));
-	end
-
-	-- populate list of subscribers
-	local _to_change = {};
-	for _, sub in ipairs(subscriptions.tags) do
-		if sub.subscription ~= "none" or sub.subscription ~= "subscribed" then
-			return origin.send(st.error_reply(stanza, "cancel", "bad-request",
-				"Only none and subscribed subscription types are currently supported"));
-		end
-		_to_change[sub.jid] = sub.subscription;
-	end
-
-	for jid, subscription in pairs(_to_change) do
-		if subscription == "subscribed" then
-			service:add_subscription(node, true, jid);
-		else
-			service:remove_subscription(node, true, jid);
-		end
-	end
-
-	return origin.send(st.reply(stanza));
 end
 
 function handlers.set_subscribe(origin, stanza, subscribe)
@@ -437,6 +291,159 @@ function handlers.set_retract(origin, stanza, retract)
 	end
 	return origin.send(reply);
 end
+
+-- pubsub#owner ns handlers
+
+function handlers_owner.get_configure(origin, stanza, action)
+	local node = action.attr.node;
+	if not node then
+		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
+	end
+
+	local ok, ret = service:get_affiliation(stanza.attr.from, node);
+
+	if ret == "owner" then
+		return service:send_node_config_form(node, origin, stanza);
+	else
+		return origin.send(pubsub_error_reply(stanza, "forbidden"));
+	end
+end
+
+function handlers_owner.set_configure(origin, stanza, action)
+	local node = action.attr.node;
+	if not node then
+		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
+	end
+
+	local ok, ret = service:get_affiliation(stanza.attr.from, node)
+	
+	local reply;
+	if ret == "owner" then
+		if action:get_child("x", "jabber:x:data") and 
+		   (action:get_child("x", "jabber:x:data").attr.type == "submit" or action:get_child("x", "jabber:x:data").attr.type == "cancel") then
+			local form = action:get_child("x", "jabber:x:data");
+			if form.attr.type == "cancel" then
+				reply = st.reply(stanza);
+			else
+				local ok, ret = service:process_node_config_form(node, form);
+				if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
+			end
+		else
+			reply = pubsub_error_reply(stanza, "bad-request");
+		end
+	else
+		reply = pubsub_error_reply(stanza, "forbidden");
+	end
+	return origin.send(reply);
+end
+
+function handlers_owner.get_affiliations(origin, stanza, action) return _get_affiliations(origin, stanza, action, true); end
+
+function handlers_owner.set_affiliations(origin, stanza, action)
+	local node = action.attr.node;
+	if not service.nodes[node] then
+		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
+	end
+
+	-- pre-emptively check for permission, to save processing power in case of failure
+	if not service:may(node, stanza.attr.from, "set_affiliation") then
+		return origin.send(pubsub_error_reply(stanza, "forbidden"));
+	end	
+
+	-- make a list of affiliations to change
+	local _to_change = {};
+	for _, tag in ipairs(action.tags) do
+		if tag.attr.jid and tag.attr.affiliation then
+			_to_change[tag.attr.jid] = tag.attr.affiliation;
+		end
+	end
+	
+	local ok, err;
+	for jid, affiliation in pairs(_to_change) do
+		ok, err = service:set_affiliation(node, true, jid, affiliation);
+		if not ok then
+			return origin.send(pubsub_error_reply(stanza, err));
+		end
+	end
+
+	return origin.send(st.reply(stanza));
+end
+
+function handlers_owner.set_delete(origin, stanza, delete)
+	local node = delete.attr.node;
+	local ok, ret, reply;
+	if node then
+		ok, ret = service:delete(node, stanza.attr.from);
+		if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
+	else
+		reply = pubsub_error_reply(stanza, "bad-request");
+	end
+	return origin.send(reply);
+end
+
+function handlers_owner.set_purge(origin, stanza, purge)
+	local node = purge.attr.node;
+	local ok, ret, reply;
+	if node then
+		ok, ret = service:purge(node, stanza.attr.from);
+		if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
+	else
+		reply = pubsub_error_reply(stanza, "bad-request");
+	end
+	return origin.send(reply);
+end
+
+function handlers_owner.get_subscriptions(origin, stanza, subscriptions)
+	local node = subscriptions.attr.node;
+	local ok, subs = service:get_subscriptions(node, stanza.attr.from);
+	if not ok then return origin.send(pubsub_error_reply(stanza, subs)); end
+
+	local reply = st.reply(stanza)
+		:tag("pubsub", { xmlns = xmlns_pubsub_owner })
+			:tag("subscriptions");
+
+	for _, subscription in ipairs(subs) do
+		reply:tag("subscription", { node = node, jid = subscription.jid, subscription = "subscribed" }):up();
+	end
+
+	return origin.send(reply);
+end
+
+function handlers_owner.set_subscriptions(origin, stanza, subscriptions)
+	local node = subscriptions.attr.node;
+
+	-- pre-emptively do checks
+	if not service.nodes[node] then
+		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
+	end
+
+	if not service:may(node, stanza.attr.from, "subscribe_other") or
+	   not service:may(node, stanza.attr.from, "unsubscribe_other") then
+		return origin.send(pubsub_error_reply(stanza, "forbidden"));
+	end
+
+	-- populate list of subscribers
+	local _to_change = {};
+	for _, sub in ipairs(subscriptions.tags) do
+		if sub.subscription ~= "none" or sub.subscription ~= "subscribed" then
+			return origin.send(st.error_reply(stanza, "cancel", "bad-request",
+				"Only none and subscribed subscription types are currently supported"));
+		end
+		_to_change[sub.jid] = sub.subscription;
+	end
+
+	for jid, subscription in pairs(_to_change) do
+		if subscription == "subscribed" then
+			service:add_subscription(node, true, jid);
+		else
+			service:remove_subscription(node, true, jid);
+		end
+	end
+
+	return origin.send(st.reply(stanza));
+end
+
+-- handlers end
 
 function broadcast(self, node, jids, item)
 	local function traverser(jids, stanza)

@@ -330,6 +330,8 @@ function handle_pubsub_iq(event)
 	end
 end
 
+-- pubsub ns handlers
+
 function handlers.get_items(origin, stanza, items)
 	local node = items.attr.node;
 	local max = items and items.attr.max_items and tonumber(items.attr.max_items);
@@ -423,19 +425,6 @@ function handlers.set_create(origin, stanza, create, config)
 	return origin.send(reply);
 end
 
-function handlers_owner.set_delete(origin, stanza, delete)
-	local node = delete.attr.node;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
-	local ok, ret, reply;
-	if node then
-		ok, ret = services[user]:delete(node, stanza.attr.from);
-		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
-	else
-		reply = pep_error_reply(stanza, "bad-request");
-	end
-	return origin.send(reply);
-end
-
 function handlers.set_subscribe(origin, stanza, subscribe)
 	local node, jid = subscribe.attr.node, subscribe.attr.jid;
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
@@ -471,19 +460,6 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 		end
 	end
 	return true;
-end
-
-function handlers_owner.set_purge(origin, stanza, purge)
-	local node = purge.attr.node;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
-	local ok, ret, reply;
-	if node then
-		ok, ret = services[user]:purge(node, stanza.attr.from);
-		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
-	else
-		reply = pep_error_reply(stanza, "bad-request");
-	end
-	return origin.send(reply);
 end
 
 function handlers.set_unsubscribe(origin, stanza, unsubscribe)
@@ -556,7 +532,37 @@ function handlers.set_retract(origin, stanza, retract)
 	end
 	return origin.send(reply);
 end
-	
+
+-- pubsub#owner ns handlers
+
+function handlers_owner.set_delete(origin, stanza, delete)
+	local node = delete.attr.node;
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
+	local ok, ret, reply;
+	if node then
+		ok, ret = services[user]:delete(node, stanza.attr.from);
+		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
+	else
+		reply = pep_error_reply(stanza, "bad-request");
+	end
+	return origin.send(reply);
+end
+
+function handlers_owner.set_purge(origin, stanza, purge)
+	local node = purge.attr.node;
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
+	local ok, ret, reply;
+	if node then
+		ok, ret = services[user]:purge(node, stanza.attr.from);
+		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
+	else
+		reply = pep_error_reply(stanza, "bad-request");
+	end
+	return origin.send(reply);
+end
+
+-- handlers end
+
 function broadcast(self, node, jids, item)
 	local message;
 	if type(item) == "string" and item == "deleted" then
