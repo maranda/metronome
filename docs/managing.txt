@@ -1,0 +1,26 @@
+<=========================================================================================
+<
+< Metronome IM Server
+< - How to manage the daemon process.
+<
+<=========================================================================================
+
+Metronome, like Prosody ships with a daemon control manager, metronomectl.
+With it you can perfom common managing tasks, such as:
+
+ * Start the server
+ * Stop the server
+ * Restart the server
+ * Add a new user
+ * Delete and existing user
+ * Change an user password
+ * Manage certificates
+ * See the server status
+
+With a global installation you will out of probability require root privileges or
+sudo to run metronomectl.
+
+A more detailed explanation of the commands can be obtained through metronomectl itself
+using:
+
+metronomectl help
