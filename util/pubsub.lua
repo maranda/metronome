@@ -17,9 +17,6 @@ local service_mt = { __index = service };
 local default_config = {
 	broadcaster = function () end;
 	get_affiliation = function () end;
-	send_node_config_form = function () end;
-	node_config_form_layout = function () end;
-	process_node_config_form = function () end;
 	capabilities = {};
 };
 
@@ -81,18 +78,6 @@ end
 
 function service:broadcaster(node, subscribers, item)
 	return self.config.broadcaster(self, node, subscribers, item);
-end
-
-function service:send_node_config_form(name, origin, stanza, actor)
-	return self.config.send_node_config_form(self, name, origin, stanza, actor);
-end
-
-function service:node_config_form_layout(name)
-	return self.config.node_config_form_layout(self, name);
-end
-
-function service:process_node_config_form(name, form, actor)
-	return self.config.node_config_form_layout(self, name, form, actor);
 end
 
 function service:get_affiliation(jid, node, action)
