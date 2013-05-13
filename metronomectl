@@ -227,20 +227,7 @@ local metronomectl = require "util.metronomectl"
 require "socket"
 -----------------------
 
- -- FIXME: Duplicate code waiting for util.startup
-function read_version()
-	-- Try to determine version
-	local version_file = io.open((CFG_SOURCEDIR or ".").."/metronome.version");
-	if version_file then
-		metronome.version = version_file:read("*a"):gsub("%s*$", "");
-		version_file:close();
-		if #metronome.version == 12 and metronome.version:match("^[a-f0-9]+$") then
-			metronome.version = "hg:"..metronome.version;
-		end
-	else
-		metronome.version = "unknown";
-	end
-end
+read_version = require "util.auxiliary".read_version;
 
 local show_message, show_warning = metronomectl.show_message, metronomectl.show_warning;
 local show_usage = metronomectl.show_usage;
