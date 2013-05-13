@@ -26,6 +26,7 @@ local jid_bare = require "util.jid".bare;
 local lfs = require "lfs";
 local open = io.open;
 local stat = lfs.attributes;
+local hosts = metronome.hosts;
 
 module:set_global();
 
@@ -206,11 +207,9 @@ function module.add_host(module)
 	});
 
 	-- Create node for s2s sessions
-	ok, err = service[module.host]:create(xmlns_s2s_session, true);
+	ok, err = service[module.host]:create(xmlns_s2s_session, module.host);
 	if not ok then
 		module:log("warn", "Could not create node " .. xmlns_s2s_session .. ": " .. tostring(err));
-	else
-		service[module.host]:set_affiliation(xmlns_s2s_session, true, module.host, "owner")
 	end
 
 	-- Add outgoing s2s sessions 
@@ -228,11 +227,9 @@ function module.add_host(module)
 	end
 
 	-- Create node for c2s sessions
-	ok, err = service[module.host]:create(xmlns_c2s_session, true);
+	ok, err = service[module.host]:create(xmlns_c2s_session, module.host);
 	if not ok then
 		module:log("warn", "Could not create node " .. xmlns_c2s_session .. ": " .. tostring(err));
-	else
-		service[module.host]:set_affiliation(xmlns_c2s_session, true, module.host, "owner")
 	end
 
 	-- Add c2s sessions
@@ -343,6 +340,9 @@ end
 
 function get_affiliation(self, jid, host)
 	local bare_jid = jid_bare(jid);
+
+	if hosts[bare_jid] then	return "owner"; end
+
 	if is_admin(bare_jid, host) then
 		return "member";
 	else
