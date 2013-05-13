@@ -12,6 +12,7 @@ local usermanager_user_exists = require "core.usermanager".user_exists;
 local usermanager_create_user = require "core.usermanager".create_user;
 local usermanager_set_password = require "core.usermanager".set_password;
 local usermanager_delete_user = require "core.usermanager".delete_user;
+local load_roster = require "core.rostermanager".load_roster;
 local os_time = os.time;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local jid_bare = require "util.jid".bare;
@@ -94,6 +95,8 @@ local function handle_registration_stanza(event)
 		if query.tags[1] and query.tags[1].name == "remove" then
 			local username, host = session.username, session.host;
 
+			local bare = username.."@"..host;
+
 			local _close_session = session.close;
 			session.close = function(session, ...)
 				session.send(st.reply(stanza));
@@ -109,10 +112,7 @@ local function handle_registration_stanza(event)
 				return true;
 			end
 
-			local roster = session.roster;
-
-			local bare = username.."@"..host;
-			for jid, item in pairs(roster) do
+			for jid, item in pairs(load_roster(username, host)) do
 				if jid and jid ~= "pending" then
 					if item.subscription == "both" or item.subscription == "from" or (roster.pending and roster.pending[jid]) then
 						module:send(st.presence({type="unsubscribed", from=bare, to=jid}));
