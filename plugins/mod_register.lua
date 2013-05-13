@@ -12,7 +12,6 @@ local usermanager_user_exists = require "core.usermanager".user_exists;
 local usermanager_create_user = require "core.usermanager".create_user;
 local usermanager_set_password = require "core.usermanager".set_password;
 local usermanager_delete_user = require "core.usermanager".delete_user;
-local load_roster = require "core.rostermanager".load_roster;
 local os_time = os.time;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local jid_bare = require "util.jid".bare;
@@ -96,6 +95,11 @@ local function handle_registration_stanza(event)
 			local username, host = session.username, session.host;
 
 			local bare = username.."@"..host;
+			local roster = {};
+
+			for key, value in pairs(session.roster or roster) do
+				roster[key] = value;
+			end
 
 			local _close_session = session.close;
 			session.close = function(session, ...)
@@ -112,7 +116,7 @@ local function handle_registration_stanza(event)
 				return true;
 			end
 
-			for jid, item in pairs(load_roster(username, host)) do
+			for jid, item in pairs(roster) do
 				if jid and jid ~= "pending" then
 					if item.subscription == "both" or item.subscription == "from" or (roster.pending and roster.pending[jid]) then
 						module:send(st.presence({type="unsubscribed", from=bare, to=jid}));
@@ -122,6 +126,8 @@ local function handle_registration_stanza(event)
 					end
 				end
 			end
+
+			roster = nil;
 
 			module:log("info", "User removed their account: %s@%s", username, host);
 			module:fire_event("user-deregistered", { username = username, host = host, source = "mod_register", session = session });
