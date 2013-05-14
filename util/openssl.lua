@@ -3,6 +3,9 @@
 -- This file is part of the Metronome XMPP server and is released under the
 -- ISC License, please see the LICENSE file in this source package for more
 -- information.
+--
+-- As per the sublicensing clause, this file is also MIT/X11 Licensed.
+-- ** Copyright (c) 2012, Kim Alvefur
 
 local type, tostring, pairs, ipairs = type, tostring, pairs, ipairs;
 local t_insert, t_concat = table.insert, table.concat;

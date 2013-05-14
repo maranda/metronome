@@ -1,3 +1,5 @@
+-- Please see signal.lua.license for licensing information.
+
 local pairs, ipairs = pairs, ipairs;
 local t_insert = table.insert;
 local type = type

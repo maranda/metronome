@@ -3,6 +3,9 @@
 -- This file is part of the Metronome XMPP server and is released under the
 -- ISC License, please see the LICENSE file in this source package for more
 -- information.
+--
+-- As per the sublicensing clause, this file is also MIT/X11 Licensed.
+-- ** Copyright (c) 2012-2013, Matthew Wild, Waqas Hussain
 
 local response_codes = {
 	-- Source: http://www.iana.org/assignments/http-status-codes

@@ -3,6 +3,9 @@
 -- This file is part of the Metronome XMPP server and is released under the
 -- ISC License, please see the LICENSE file in this source package for more
 -- information.
+--
+-- As per the sublicensing clause, this file is also MIT/X11 Licensed.
+-- ** Copyright (c) 2010-2012, Kim Alvefur, Paul Aurich, Waqas Hussain
 
 -- TODO: I feel a fair amount of this logic should be integrated into Luasec,
 -- so that everyone isn't re-inventing the wheel.  Dependencies on

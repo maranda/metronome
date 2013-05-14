@@ -3,6 +3,9 @@
 -- This file is part of the Metronome XMPP server and is released under the
 -- ISC License, please see the LICENSE file in this source package for more
 -- information.
+--
+-- As per the sublicensing clause, this file is also MIT/X11 Licensed.
+-- ** Copyright (c) 2011-2012, Florian Zeitz, Kim Alvefur
 
 local commonPrefixLength = require"util.ip".commonPrefixLength
 local new_ip = require"util.ip".new_ip;

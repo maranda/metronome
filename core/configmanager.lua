@@ -3,6 +3,9 @@
 -- This file is part of the Metronome XMPP server and is released under the
 -- ISC License, please see the LICENSE file in this source package for more
 -- information.
+--
+-- As per the sublicensing clause, this file is also MIT/X11 Licensed.
+-- ** Copyright (c) 2008-2013, Florian Zeitz, Kim Alvefur, Matthew Wild, Waqas Hussain 
 
 local _G = _G;
 local setmetatable, loadfile, pcall, rawget, rawset, io, error, dofile, type, pairs, table =

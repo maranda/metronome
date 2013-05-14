@@ -3,6 +3,9 @@
 -- This file is part of the Metronome XMPP server and is released under the
 -- ISC License, please see the LICENSE file in this source package for more
 -- information.
+--
+-- As per the sublicensing clause, this file is also MIT/X11 Licensed.
+-- ** Copyright (c) 2008-2013, Kim Alvefur, Marco Cirillo, Matthew Wild, Waqas Hussain
 
 local config = require "core.configmanager";
 local certmanager = require "core.certmanager";
