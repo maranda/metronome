@@ -13,7 +13,6 @@ local json_output = module:get_option_boolean("server_status_json", false)
 local hosts = metronome.hosts
 
 local json_encode = require "util.json".encode
-local stanza_counter = metronome.stanza_counter
 
 -- code begin
 
@@ -51,6 +50,7 @@ local function forge_response_xml()
 	
 	-- build stanza stats if there
 	local stanzas = response_table.stanzas;
+	local stanza_counter = metronome.stanza_counter;
 
 	if stanza_counter then
 		stats[1] = stanzas.elem_header
