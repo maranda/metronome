@@ -77,18 +77,19 @@ function form_t.form(layout, data, formtype)
 					form:tag("value"):text(line):up();
 				end
 			elseif field_type == "list-single" then
-				local has_default = false;
+				local has_default, default = false, nil;
 				for _, val in ipairs(value) do
 					if type(val) == "table" then
 						form:tag("option", { label = val.label }):tag("value"):text(val.value):up():up();
-						if val.default and (not has_default) then
-							form:tag("value"):text(val.value):up();
+						if val.default and not has_default then
+							default = val.value;
 							has_default = true;
 						end
 					else
 						form:tag("option", { label= val }):tag("value"):text(tostring(val)):up():up();
 					end
 				end
+				if default then form:tag("value"):text(default):up(); end
 			elseif field_type == "list-multi" then
 				for _, val in ipairs(value) do
 					if type(val) == "table" then
