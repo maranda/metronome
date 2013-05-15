@@ -6,14 +6,13 @@ CONFIG = $(DESTDIR)$(SYSCONFDIR)
 MODULES = $(DESTDIR)$(PREFIX)/lib/metronome/modules
 SOURCE = $(DESTDIR)$(PREFIX)/lib/metronome
 DATA = $(DESTDIR)$(DATADIR)
-MAN = $(DESTDIR)$(PREFIX)/share/man
 
 INSTALLEDSOURCE = $(PREFIX)/lib/metronome
 INSTALLEDCONFIG = $(SYSCONFDIR)
 INSTALLEDMODULES = $(PREFIX)/lib/metronome/modules
 INSTALLEDDATA = $(DATADIR)
 
-.PHONY: all clean install
+.PHONY: all clean install uninstall
 
 all: metronome.install metronomectl.install metronome.version
 	$(MAKE) -C util-src install
@@ -21,7 +20,6 @@ all: metronome.install metronomectl.install metronome.version
 install: metronome.install metronomectl.install util/encodings.so util/encodings.so util/pposix.so util/signal.so
 	install -d $(BIN) $(CONFIG) $(MODULES) $(SOURCE)
 	install -m750 -d $(DATA)
-	install -d $(MAN)/man1
 	install -d $(CONFIG)/certs
 	install -d $(SOURCE)/core $(SOURCE)/net $(SOURCE)/util
 	install -m755 ./metronome.install $(BIN)/metronome
@@ -44,6 +42,12 @@ clean:
 	rm -f metronomectl.install
 	rm -f metronome.version
 	$(MAKE) clean -C util-src
+
+uninstall:
+	rm -rf $(SOURCE)
+	rm -rf $(MODULES)
+	rm -f $(BIN)/bin/metronome
+	rm -f $(BIN)/bin/metronomectl
 
 util/%.so:
 	$(MAKE) install -C util-src
