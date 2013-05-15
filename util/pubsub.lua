@@ -187,9 +187,9 @@ function service:add_subscription(node, actor, jid, options)
 		return false, "forbidden";
 	end
 
-        if type(actor) ~= "boolean" 
-           and node_obj.config.access_model == "whitelist"
-           and self:get_affiliation(actor, node, action) ~= "owner" then
+	if type(actor) ~= "boolean" 
+	   and node_obj.config.access_model == "whitelist"
+	   and self:get_affiliation(actor, node, action) ~= "owner" then
 		local is_whitelisted = (node_obj.affiliation[actor] ~= nil or node_obj.affiliation[actor] ~= "outcast") and true;
 		if cap == "subscribe" and not is_whitelisted then return false, "forbidden"; end
 	end
