@@ -8,6 +8,7 @@ local events = require "util.events";
 local keys = require "util.iterators".keys;
 local st = require "util.stanza";
 local table = table;
+local type = type;
 
 module("pubsub", package.seeall);
 
@@ -48,9 +49,6 @@ function service:may(node, actor, action)
 	                 or self:get_affiliation(actor, node, action)
 	                 or "none";
 
-	-- Jappix node open publish, temp. compat
-	if node_obj and node_obj.config.open_publish and action == "publish" then return true; end
-	
 	-- Check if node allows/forbids it
 	local node_capabilities = node_obj and node_obj.capabilities;
 	if node_capabilities then
@@ -85,14 +83,14 @@ function service:get_affiliation(jid, node, action)
 end
 
 function service:get_affiliations(node, actor, owner)
-	if not self:may(node, actor, "get_affiliations") then
-		return false, "forbidden";
-	end
-
 	local nodes = self.nodes;
 	local node_obj = nodes[node];
 	if node and not node_obj then
 		return false, "item-not-found";
+	end
+
+	if not self:may(node, actor, "get_affiliations") then
+		return false, "forbidden";
 	end
 
 	local jid = self.config.normalize_jid and self.config.normalize_jid(actor) or actor;
@@ -122,15 +120,13 @@ function service:get_affiliations(node, actor, owner)
 end
 
 function service:set_affiliation(node, actor, jid, affiliation)
-	-- Access checking
-	if not self:may(node, actor, "set_affiliation") then
-		return false, "forbidden";
-	end
-	--
-	
 	local node_obj = self.nodes[node];
 	if not node_obj then
 		return false, "item-not-found";
+	end
+
+	if not self:may(node, actor, "set_affiliation") then
+		return false, "forbidden";
 	end
 
 	if (node_obj.capabilities and not node_obj.capabilities[affiliation]) or
@@ -163,32 +159,41 @@ function service:set_affiliation(node, actor, jid, affiliation)
 end
 
 function service:add_subscription(node, actor, jid, options)
-	-- Access checking
 	local cap;
 	if actor == true or jid == actor or self:jids_equal(actor, jid) then
 		cap = "subscribe";
 	else
 		cap = "subscribe_other";
 	end
-	if not self:may(node, actor, cap) then
-		return false, "forbidden";
-	end
-	if not self:may(node, jid, "be_subscribed") then
-		return false, "forbidden";
-	end
-	--
+
+	local can_subscribe, be_subscribed = self:may(node, actor, cap), self:may(node, jid, "be_subscribed");
+
 	local node_obj = self.nodes[node];
 	if not node_obj then
 		if not self.config.autocreate_on_subscribe then
 			return false, "item-not-found";
-		else
+		elseif can_subscribe and be_subscribed then			
 			local ok, err = self:create(node, true);
 			if not ok then
 				return ok, err;
 			end
 			node_obj = self.nodes[node];
+		else
+			return false, "forbidden";
 		end
 	end
+
+	if not can_subscribe or not be_subscribed then
+		return false, "forbidden";
+	end
+
+        if type(actor) ~= "boolean" 
+           and node_obj.config.access_model == "whitelist"
+           and self:get_affiliation(actor, node, action) ~= "owner" then
+		local is_whitelisted = (node_obj.affiliation[actor] ~= nil or node_obj.affiliation[actor] ~= "outcast") and true;
+		if cap == "subscribe" and not is_whitelisted then return false, "forbidden"; end
+	end
+
 	node_obj.subscribers[jid] = options or true;
 	local normal_jid = self.config.normalize_jid(jid);
 	local subs = self.subscriptions[normal_jid];
@@ -207,7 +212,11 @@ function service:add_subscription(node, actor, jid, options)
 end
 
 function service:remove_subscription(node, actor, jid)
-	-- Access checking
+	local node_obj = self.nodes[node];
+	if not node_obj then
+		return false, "item-not-found";
+	end
+
 	local cap;
 	if actor == true or jid == actor or self:jids_equal(actor, jid) then
 		cap = "unsubscribe";
@@ -220,11 +229,7 @@ function service:remove_subscription(node, actor, jid)
 	if not self:may(node, jid, "be_unsubscribed") then
 		return false, "forbidden";
 	end
-	--
-	local node_obj = self.nodes[node];
-	if not node_obj then
-		return false, "item-not-found";
-	end
+
 	if not node_obj.subscribers[jid] then
 		return false, "not-subscribed";
 	end
@@ -262,30 +267,30 @@ function service:remove_all_subscriptions(actor, jid)
 end
 
 function service:get_subscription(node, actor, jid)
-	-- Access checking
 	local cap;
 	if actor == true or jid == actor or self:jids_equal(actor, jid) then
 		cap = "get_subscription";
 	else
 		cap = "get_subscription_other";
 	end
-	if not self:may(node, actor, cap) then
-		return false, "forbidden";
-	end
-	--
+
 	local node_obj = self.nodes[node];
 	if not node_obj then
 		return false, "item-not-found";
 	end
+
+	if not self:may(node, actor, cap) then
+		return false, "forbidden";
+	end
+
 	return true, node_obj.subscribers[jid];
 end
 
 function service:create(node, actor, config)
-	-- Access checking
 	if not self:may(node, actor, "create") then
 		return false, "forbidden";
 	end
-	--
+
 	if self.nodes[node] then
 		return false, "conflict";
 	end
@@ -305,7 +310,6 @@ function service:create(node, actor, config)
 		affiliations = {};
 	};
 
-	-- This is just a mockup for on creation config, FIXME.
 	if config then
 		for entry, value in pairs(config) do
 			self.nodes[node].config[entry] = value;
@@ -323,14 +327,13 @@ function service:create(node, actor, config)
 end
 
 function service:delete(node, actor)
-	-- Check for access
-	if not self:may(node, actor, "delete") then
-		return false, "forbidden";
-	end
-	
 	if not self.nodes[node] then
 		return false, "item-not-found";
 	else
+		if not self:may(node, actor, "delete") then
+			return false, "forbidden";
+		end
+
 		local subscribers = self.nodes[node].subscribers;
 		self:purge_node(node);
 		self.nodes[node] = nil;
@@ -341,21 +344,26 @@ function service:delete(node, actor)
 end
 
 function service:publish(node, actor, id, item)
-	-- Access checking
-	if not self:may(node, actor, "publish") then
-		return false, "forbidden";
-	end
-	--
 	local node_obj = self.nodes[node];
-	if not node_obj then
-		if not self.config.autocreate_on_publish then
-			return false, "item-not-found";
+	local open_publish = node_obj and node_obj.config and 
+			     node_obj.config.publish_model == "open" and true or false;
+
+	if not node_obj and self.config.autocreate_on_publish then
+		if not self:may(node, actor, "publish") then
+			return false, "forbidden";
 		end
+
 		local ok, err = self:create(node, true);
 		if not ok then
 			return ok, err;
 		end
 		node_obj = self.nodes[node];
+	end
+
+	if not node_obj then return false, "item-not-found" end
+
+	if not open_publish and not self:may(node, actor, "publish") then
+		return false, "forbidden";
 	end
 
 	if item then
@@ -394,14 +402,13 @@ function service:publish(node, actor, id, item)
 end
 
 function service:purge(node, actor)
-	-- Check for access
-	if not self:may(node, actor, "purge") then
-		return false, "forbidden";
-	end
-	
 	if not self.nodes[node] then
 		return false, "item-not-found";
 	else
+		if not self:may(node, actor, "purge") then
+			return false, "forbidden";
+		end
+
 		local subscribers = self.nodes[node].subscribers;
 		self.nodes[node].data = {};
 		self.nodes[node].data_id = {};
@@ -412,15 +419,15 @@ function service:purge(node, actor)
 end
 
 function service:retract(node, actor, id, retract)
-	-- Access checking
-	if not self:may(node, actor, "retract") then
-		return false, "forbidden";
-	end
-	--
 	local node_obj = self.nodes[node];
 	if (not node_obj) or (not node_obj.data[id]) then
 		return false, "item-not-found";
 	end
+
+	if not self:may(node, actor, "retract") then
+		return false, "forbidden";
+	end
+
 	node_obj.data[id] = nil;
 	for index, value in ipairs(node_obj.data_id) do
 		if value == id then table.remove(node_obj.data_id, index); end
@@ -432,14 +439,20 @@ function service:retract(node, actor, id, retract)
 end
 
 function service:get_items(node, actor, id, max)
-	-- Access checking
-	if not self:may(node, actor, "get_items") then
-		return false, "forbidden";
-	end
-	--
 	local node_obj = self.nodes[node];
 	if not node_obj then
 		return false, "item-not-found";
+	end
+
+	if not self:may(node, actor, "get_items") then
+		return false, "forbidden";
+	end
+
+	if type(actor) ~= "boolean"
+           and node_obj.config.access_model == "whitelist"
+           and self:get_affiliation(actor, node, action) ~= "owner" then
+		local is_whitelisted = (node_obj.affiliation[actor] ~= nil or node_obj.affiliation[actor] ~= "outcast") and true;
+		if cap == "subscribe" and not is_whitelisted then return false, "forbidden"; end
 	end
 
 	if (id and max) or (max and max < 0) then
@@ -476,32 +489,31 @@ function service:get_items(node, actor, id, max)
 end
 
 function service:get_nodes(actor)
-	-- Access checking
 	if not self:may(nil, actor, "get_nodes") then
 		return false, "forbidden";
 	end
-	--
+
 	return true, self.nodes;
 end
 
 function service:get_subscriptions(node, actor, jid)
-	-- Access checking
 	local cap;
 	if actor == true or jid == actor or (jid and self:jids_equal(actor, jid)) then
 		cap = "get_subscriptions";
 	else
 		cap = "get_subscriptions_other";
 	end
-	if not self:may(node, actor, cap) then
-		return false, "forbidden";
-	end
-	--
+
 	local node_obj;
 	if node then
 		node_obj = self.nodes[node];
 		if not node_obj then
 			return false, "item-not-found";
 		end
+	end
+
+	if not self:may(node, actor, cap) then
+		return false, "forbidden";
 	end
 
 	local ret = {};
@@ -623,6 +635,13 @@ function service:restore_node(node)
 	local data = self.config.store:get(node);
 	if not data then return; end
 	local restored_data = {};
+
+	-- remove soon: sanitize legacy open publishing config definition
+	if data.config and data.config.open_publish then
+		data.config.open_publish = nil;
+		data.config.publish_model = "open";
+	end
+
 	local node_obj = {
 		name = node;
 		subscribers = data.subscribers;
