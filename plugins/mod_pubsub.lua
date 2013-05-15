@@ -90,7 +90,25 @@ function form_layout(service, name)
 			type = "boolean",
 			label = "Whether to persist items to storage or not",
 			value = node.config.persist_items or false
-		}		
+		},
+		{
+			name = "pubsub#access_model",
+			type = "list-single",
+			label = "Access Model for the node, currently supported models are open and whitelist",
+			value = {
+				{ value = "open", default = (node.config.access_model == "open" or node.config.access_model == nil) and true },
+				{ value = "whitelist", default = node.config.access_model == "whitelist" and true }
+			}
+		},
+		{
+			name = "pubsub#publish_model",
+			type = "list-single",
+			label = "Publisher Model for the node, currently supported models are publisher and open",
+			value = {
+				{ value = "publisher", default = (node.config.publish_model == "publisher" or node.config.publish_model == nil) and true },
+				{ value = "open", default = node.config.publish_model == "open" and true }
+			}
+		},				
 	});
 end
 
@@ -113,6 +131,8 @@ function process_config_form(service, name, form)
 	node.config["deliver_payloads"] = fields["pubsub#deliver_payloads"];
 	node.config["max_items"] = tonumber(fields["pubsub#max_items"]) or 0;
 	node.config["persist_items"] = fields["pubsub#persist_items"];
+	node.config["access_model"] = fields["pubsub#access_model"];
+	node.config["publish_model"] = fields["pubsub#publish_model"];
 
 	return true;
 end
@@ -250,9 +270,12 @@ function handlers.set_create(origin, stanza, create, config)
 				node_config["max_items"] = tonumber(field:get_child_text("value"));
 			elseif field.attr.var == "pubsub#persist_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
 				node_config["persist_items"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
-			-- Jappix compat below.
-			elseif field.attr.var == "pubsub#publish_model" and field:get_child_text("value") == "open" then
-				node_config["open_publish"] = true;
+			elseif field.attr.var == "pubsub#access_model" then
+				local value = field:get_child_text("value");
+				if value == "open" or value == "whitelist" then node_config["access_model"] = value; end
+			elseif field.attr.var == "pubsub#publish_model" then
+				local value = field:get_child_text("value");
+				if value == "publisher" or value == "open" then	node_config["publish_model"] = value; end
 			end
 		end
 	end
