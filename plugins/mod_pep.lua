@@ -391,9 +391,9 @@ function handlers.set_create(origin, stanza, create, config)
 				node_config["max_items"] = tonumber(field:get_child_text("value")) or 20;
 			elseif field.attr.var == "pubsub#persist_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
 				node_config["persist_items"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
-			-- Jappix compat below.
-			elseif field.attr.var == "pubsub#publish_model" and field:get_child_text("value") == "open" then
-				node_config["open_publish"] = true;
+			elseif field.attr.var == "pubsub#publish_model" then
+				local value = field:get_child_text("value");
+				if value == "publisher" or value == "open" then	node_config["publish_model"] = value; end
 			end
 		end
 	end
