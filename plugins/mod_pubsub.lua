@@ -587,7 +587,7 @@ module:hook("iq/host/http://jabber.org/protocol/pubsub#owner:pubsub", handle_pub
 local disco_info;
 
 local feature_map = {
-	[true] = { "config-node", "persistent-items", "manage-affiliations", "manage-subscriptions" };
+	[true] = { "access-open", "access-whitelist", "config-node", "persistent-items", "manage-affiliations", "manage-subscriptions" };
 	create = { "create-nodes", autocreate_on_publish and "instant-nodes", "item-ids" };
 	delete = { "delete-nodes" };
 	retract = { "delete-items", "retract-items" };
