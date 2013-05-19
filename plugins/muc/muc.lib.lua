@@ -166,6 +166,7 @@ function room_mt:send_occupant_list(to)
 end
 function room_mt:send_history(to, stanza)
 	local history = self._data["history"]; -- send discussion history
+	local history_length = self._data.history_length or default_history_length;
 	if history then
 		local x_tag = stanza and stanza:get_child("x", "http://jabber.org/protocol/muc");
 		local history_tag = x_tag and x_tag:get_child("history", "http://jabber.org/protocol/muc");
@@ -175,6 +176,8 @@ function room_mt:send_history(to, stanza)
 		
 		local maxstanzas = math.floor(history_tag and tonumber(history_tag.attr.maxstanzas) or #history);
 		if not history_tag then maxstanzas = 20; end
+
+		if maxstanzas > history_length then maxstanzas = history_length end
 
 		local seconds = history_tag and tonumber(history_tag.attr.seconds);
 		if seconds then seconds = datetime.datetime(os.time() - math.floor(seconds)); end
