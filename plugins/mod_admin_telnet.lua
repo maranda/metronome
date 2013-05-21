@@ -35,6 +35,7 @@ local st = require "util.stanza";
 local cm = configmanager;
 local mm = modulemanager;
 local um = usermanager;
+local read_version = read_version;
 
 local commands = module:shared("commands")
 local def_env = module:shared("env");
@@ -264,6 +265,13 @@ def_env.server = {};
 
 function def_env.server:version()
 	return true, tostring(metronome.version or "unknown");
+end
+
+function def_env.server:update_version()
+	read_version();
+
+	for name in pairs(hosts) do mm.reload(name, "version"); end
+	return true, tostring("Updated, "..(metronome.version or "unknown"));
 end
 
 function def_env.server:uptime()
