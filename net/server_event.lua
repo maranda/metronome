@@ -1,3 +1,5 @@
+-- Please see server_event.lua.license for licensing information.
+
 --[[
 
 
