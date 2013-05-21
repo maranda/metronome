@@ -2,7 +2,7 @@
 --
 -- This file is part of the Metronome XMPP server and is released under the
 -- ISC License, please see the LICENSE file in this source package for more
--- information.
+-- information about copyright and licensing.
 --
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2011, Christian Haase, Jeff Mitchell, Matthew Wild

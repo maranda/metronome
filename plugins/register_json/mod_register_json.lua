@@ -2,7 +2,7 @@
 --
 -- This file is part of the Metronome XMPP server and is released under the
 -- ISC License, please see the LICENSE file in this source package for more
--- information.
+-- information about copyright and licensing.
 
 local datamanager = datamanager
 local b64_decode = require "util.encodings".base64.decode
