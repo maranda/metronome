@@ -153,21 +153,22 @@ function stanza_mt:maptags(callback)
 	local n_children, n_tags = #self, #tags;
 	
 	local i = 1;
-	while curr_tag <= n_tags do
+	while n_tags > 0 and curr_tag <= n_tags do
 		if self[i] == tags[curr_tag] then
 			local ret = callback(self[i]);
 			if ret == nil then
 				t_remove(self, i);
 				t_remove(tags, curr_tag);
-				n_children = n_children - 1;
-				n_tags = n_tags - 1;
+				i, curr_tag, n_children, n_tags =
+				i - 1, curr_tag - 1, n_children - 1, n_tags - 1;
+				
 			else
 				self[i] = ret;
 				tags[i] = ret;
 			end
-			i = i + 1;
 			curr_tag = curr_tag + 1;
 		end
+		i = i + 1;
 	end
 	return self;
 end
