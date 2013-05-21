@@ -28,29 +28,20 @@ local muc_domain = nil; --module:get_host();
 local default_history_length = 20;
 
 ------------
-local function filter_xmlns_from_array(array, filters)
-	local count = 0;
-	for i=#array,1,-1 do
-		local attr = array[i].attr;
-		if filters[attr and attr.xmlns] then
-			t_remove(array, i);
-			count = count + 1;
-		end
+local filters = {["http://jabber.org/protocol/muc"]=true;["http://jabber.org/protocol/muc#user"]=true};
+local function filter_stanza(tag)
+	if not filters[tag.attr.xmlns] then
+		return tag;
+	else
+		return nil;
 	end
-	return count;
 end
-local function filter_xmlns_from_stanza(stanza, filters)
-	if filters then
-		if filter_xmlns_from_array(stanza.tags, filters) ~= 0 then
-			return stanza, filter_xmlns_from_array(stanza, filters);
-		end
-	end
-	return stanza, 0;
-end
-local presence_filters = {["http://jabber.org/protocol/muc"]=true;["http://jabber.org/protocol/muc#user"]=true};
+
 local function get_filtered_presence(stanza)
-	return filter_xmlns_from_stanza(st.clone(stanza):reset(), presence_filters);
+	local clone = st.clone(stanza);
+	return clone:maptags(filter_stanza);
 end
+
 local kickable_error_conditions = {
 	["gone"] = true;
 	["internal-server-error"] = true;
@@ -240,7 +231,6 @@ function room_mt:get_disco_items(stanza)
 	return reply;
 end
 function room_mt:set_subject(current_nick, subject)
-	-- TODO check nick's authority
 	if subject == "" then subject = nil; end
 	self._data["subject"] = subject;
 	self._data["subject_from"] = current_nick;
@@ -489,7 +479,8 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 								self._occupants[to].sessions[from] = pr;
 								self:broadcast_presence(pr, from);
 							else
-								--TODO malformed-jid
+								log("debug", "%s sent a malformed nick change request!", current_nick);
+								origin.send(st.error_reply(stanza, "cancel", "jid-malformed"));
 							end
 						end
 					end
