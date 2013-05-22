@@ -7,16 +7,6 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009, Waqas Hussain
 
--- mod_discoitems.lua
---
--- In the config, you can add:
---
--- disco_items = {
---  {"proxy.eu.jabber.org", "Jabber.org SOCKS5 service"};
---  {"conference.jabber.org", "The Jabber.org MUC"};
--- };
---
-
 local st = require "util.stanza";
 
 local result_query = st.stanza("query", {xmlns = "http://jabber.org/protocol/disco#items"});
