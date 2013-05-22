@@ -759,6 +759,15 @@ module:hook("iq-result/bare/disco", function(event)
 	end
 end, -1);
 
+module:hook_global("user-deleted", function(event)
+	local username, host = event.username, event.host;
+
+	if host == module.host then
+		local encoded_node = encode_node(username);
+		storagemanager.purge("pep/"..encoded_node, host);
+	end	
+end, 100);
+
 local admin_aff = "owner";
 local function get_affiliation(self, jid)
 	local bare_jid = jid_bare(jid);
