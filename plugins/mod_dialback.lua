@@ -183,7 +183,7 @@ end);
 
 function module.unload()
 	if not s2s_strict_mode then
-		module:log("error", "In interoperability mode mod_s2s directly depends on mod_dialback for its local instances.");
-		module:log("error", "Perhaps it will be unloaded as well for this host. (To prevent this set s2s_strict_mode = true in the config)");
+		module:log("warn", "In interoperability mode mod_s2s directly depends on mod_dialback for its local instances.");
+		module:log("warn", "Perhaps it will be unloaded as well for this host. (To prevent this set s2s_strict_mode = true in the config)");
 	end
 end
