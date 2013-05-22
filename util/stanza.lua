@@ -161,10 +161,9 @@ function stanza_mt:maptags(callback)
 				t_remove(tags, curr_tag);
 				i, curr_tag, n_children, n_tags =
 				i - 1, curr_tag - 1, n_children - 1, n_tags - 1;
-				
 			else
 				self[i] = ret;
-				tags[i] = ret;
+				tags[curr_tag] = ret;
 			end
 			curr_tag = curr_tag + 1;
 		end
