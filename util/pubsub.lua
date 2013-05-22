@@ -635,12 +635,6 @@ function service:restore_node(node)
 	if not data then return; end
 	local restored_data = {};
 
-	-- remove soon: sanitize legacy open publishing config definition
-	if data.config and data.config.open_publish then
-		data.config.open_publish = nil;
-		data.config.publish_model = "open";
-	end
-
 	local node_obj = {
 		name = node;
 		subscribers = data.subscribers;
