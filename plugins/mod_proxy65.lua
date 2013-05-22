@@ -106,9 +106,14 @@ function module.add_host(module)
 	
 	module:hook("iq-get/host/http://jabber.org/protocol/disco#info:query", function(event)
 		local origin, stanza = event.origin, event.stanza;
-		origin.send(st.reply(stanza):query("http://jabber.org/protocol/disco#info")
-			:tag("identity", {category = "proxy", type = "bytestreams", name = name}):up()
-			:tag("feature", {var = "http://jabber.org/protocol/bytestreams"}) );
+		if not stanza.tags[1].attr.node then
+			origin.send(st.reply(stanza):query("http://jabber.org/protocol/disco#info")
+				:tag("identity", {category = "proxy", type = "bytestreams", name = name}):up()
+				:tag("feature", {var = "http://jabber.org/protocol/bytestreams"}) );
+		else
+			origin.send(st.error_reply(stanza, "cancel", "item-not-found"))
+		end
+
 		return true;
 	end, -1);
 	
