@@ -558,17 +558,16 @@ function service:get_subscriptions(node, actor, jid)
 	return true, ret;
 end
 
--- Access models only affect 'none' affiliation caps, service/default access level...
 function service:set_node_capabilities(node, actor, capabilities)
-	-- Access checking
-	if not self:may(node, actor, "configure") then
-		return false, "forbidden";
-	end
-	--
 	local node_obj = self.nodes[node];
 	if not node_obj then
 		return false, "item-not-found";
 	end
+
+	if not self:may(node, actor, "configure") then
+		return false, "forbidden";
+	end
+
 	node_obj.capabilities = capabilities;
 	self:save_node(node);
 	return true;
