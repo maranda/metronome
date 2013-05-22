@@ -107,7 +107,7 @@ function module.unload()
 end
 
 local function reload()
-        module:log("info", "server configuration is being reloaded, refreshing options.");
+	module:log("info", "server configuration is being reloaded, refreshing options.");
 	secure_auth_only = module:get_option_boolean("c2s_require_encryption", false) or module:get_option_boolean("require_encryption", false);
 	secure_s2s_only = module:get_option_boolean("s2s_require_encryption", false);
 	allow_s2s_tls = module:get_option_boolean("s2s_allow_encryption", true);
