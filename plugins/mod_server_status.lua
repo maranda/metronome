@@ -10,13 +10,14 @@ local base_path = module:get_option_string("server_status_basepath", "/server-st
 local show_hosts = module:get_option_array("server_status_show_hosts", nil)
 local show_comps = module:get_option_array("server_status_show_comps", nil)
 local json_output = module:get_option_boolean("server_status_json", false)
+local metronome = metronome
 local hosts = metronome.hosts
 
 local json_encode = require "util.json".encode
 
 -- code begin
 
-if not stanza_counter and not show_hosts and not show_comps then
+if not metronome.stanza_counter and not show_hosts and not show_comps then
 	module:log ("error", "mod_server_status requires at least one of the following things:")
 	module:log ("error", "mod_stanza_counter loaded, or either server_status_show_hosts or server_status_show_comps configuration values set.")
 	return false
@@ -49,8 +50,8 @@ local function forge_response_xml()
 	if show_comps then t_builder(show_comps, components) end
 	
 	-- build stanza stats if there
-	local stanzas = response_table.stanzas;
-	local stanza_counter = metronome.stanza_counter;
+	local stanzas = response_table.stanzas
+	local stanza_counter = metronome.stanza_counter
 
 	if stanza_counter then
 		stats[1] = stanzas.elem_header
@@ -100,6 +101,7 @@ end
 
 local function forge_response_json()
 	local result = {}
+	local stanza_counter = metronome.stanza_counter
 
 	if stanza_counter then result.stanzas = {} ; result.stanzas = stanza_counter end
 	if show_hosts then
