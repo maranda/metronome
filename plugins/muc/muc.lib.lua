@@ -479,8 +479,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 								self._occupants[to].sessions[from] = pr;
 								self:broadcast_presence(pr, from);
 							else
-								log("debug", "%s sent a malformed nick change request!", current_nick);
-								origin.send(st.error_reply(stanza, "cancel", "jid-malformed"));
+								-- Handle Malformed Jids... possibly without endless loops.
 							end
 						end
 					end
