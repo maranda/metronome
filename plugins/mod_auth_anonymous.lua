@@ -33,7 +33,12 @@ function new_default_provider(host)
 	end
 
 	function provider.user_exists(username)
-		return nil, "Only anonymous users are supported."; -- FIXME check if anonymous user is connected?
+		local user_session = my_host.sessions[username];
+		if not user_session then 
+			return nil, "No anonymous user connected with that username."; 
+		end
+
+		return true;
 	end
 
 	function provider.create_user(username, password)
