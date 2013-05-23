@@ -11,22 +11,21 @@ module:depends("http");
 local metronome = metronome;
 local hosts = metronome.hosts;
 local my_host = module:get_host();
-local tabSort = table.sort;
 local strchar = string.char;
 local strformat = string.format;
-local splitJid = require "util.jid".split;
+local split_jid = require "util.jid".split;
 local config_get = require "core.configmanager".get;
 local urldecode = require "net.http".urldecode;
 local http_event = require "net.http.server".fire_server_event;
 local data_load, data_getpath = datamanager.load, datamanager.getpath;
 local datastore = "muc_log";
-local urlBase = "muc_log";
+local url_base = "muc_log";
 local config = nil;
-local tostring, tonumber = tostring, tonumber;
+local table, tostring, tonumber = table, tostring, tonumber;
 local os_date, os_time = os.date, os.time;
 local str_format = string.format;
 local io_open = io.open;
-local themesParent = (module.path and module.path:gsub("[/\\][^/\\]*$", "")  or (metronome.paths.plugins or "./plugins") .. "/muc_log_http") .. "/themes";
+local themes_parent = (module.path and module.path:gsub("[/\\][^/\\]*$", "")  or (metronome.paths.plugins or "./plugins") .. "/muc_log_http") .. "/themes";
 
 local lom = require "lxp.lom";
 local lfs = require "lfs";
@@ -42,7 +41,7 @@ end
 
 -- Module Definitions
 
-local function htmlEscape(t)
+local function html_escape(t)
 	if t then
 		t = t:gsub("<", "&lt;");
 		t = t:gsub(">", "&gt;");
@@ -58,26 +57,26 @@ local function htmlEscape(t)
 	return t;
 end
 
-function createDoc(body, title)
+function create_doc(body, title)
 	if not body then return "" end
 	body = body:gsub("%%", "%%%%");
 	return html.doc:gsub("###BODY_STUFF###", body)
-		:gsub("<title>muc_log</title>", "<title>"..(title and htmlEscape(title) or "Chatroom logs").."</title>");
+		:gsub("<title>muc_log</title>", "<title>"..(title and html_escape(title) or "Chatroom logs").."</title>");
 end
 
-function urlunescape (escapedUrl)
-	escapedUrl = escapedUrl:gsub("+", " ")
-	escapedUrl = escapedUrl:gsub("%%(%x%x)", function(h) return strchar(tonumber(h,16)) end)
-	escapedUrl = escapedUrl:gsub("\r\n", "\n")
-	return escapedUrl
+function urlunescape (url)
+	url = url:gsub("+", " ")
+	url = url:gsub("%%(%x%x)", function(h) return strchar(tonumber(h,16)) end)
+	url = url:gsub("\r\n", "\n")
+	return url
 end
 
-local function generateRoomListSiteContent(component)
+local function generate_room_list(component)
 	local rooms = "";
 	local component_host = hosts[component];
 	if component_host and component_host.muc ~= nil then
 		for jid, room in pairs(component_host.muc.rooms) do
-			local node = splitJid(jid);
+			local node = split_jid(jid);
 			if not room._data.hidden and room._data.logging and node then
 				rooms = rooms .. html.rooms.bit:gsub("###ROOM###", node):gsub("###COMPONENT###", component);
 			end
@@ -97,32 +96,32 @@ local function get_days_for_month(month, year)
 	return 30;
 end
 
-local function createMonth(month, year, dayCallback)
-	local htmlStr = html.month.header;
+local function create_month(month, year, callback)
+	local html_str = html.month.header;
 	local days = get_days_for_month(month, year);
 	local time = os_time{year=year, month=month, day=1};
 	local dow = tostring(os_date("%a", time))
 	local title = tostring(os_date("%B", time));
-	local weekDays = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
-	local weekDay = 0;
+	local week_days = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+	local week_day = 0;
 	local weeks = 1;
-	local logAvailableForMinimumOneDay = false;
+	local _available_for_one_day = false;
 
-	local weekDaysHtml = "";
-	for _, tmp in ipairs(weekDays) do
-		weekDaysHtml = weekDaysHtml .. html.month.weekDay:gsub("###DAY###", tmp) .. "\n";
+	local week_days_html = "";
+	for _, tmp in ipairs(week_days) do
+		week_days_html = week_days_html .. html.month.weekDay:gsub("###DAY###", tmp) .. "\n";
 	end
 
-	htmlStr = htmlStr:gsub("###TITLE###", title):gsub("###WEEKDAYS###", weekDaysHtml);
+	html_str = html_str:gsub("###TITLE###", title):gsub("###WEEKDAYS###", week_days_html);
 
 	for i = 1, 31 do
-		weekDay = weekDay + 1;
-		if weekDay == 1 then htmlStr = htmlStr .. "<tr>\n"; end
+		week_day = week_day + 1;
+		if week_day == 1 then html_str = html_str .. "<tr>\n"; end
 		if i == 1 then
-			for _, tmp in ipairs(weekDays) do
+			for _, tmp in ipairs(week_days) do
 				if dow ~= tmp then
-					htmlStr = htmlStr .. html.month.emptyDay .. "\n";
-					weekDay = weekDay + 1;
+					html_str = html_str .. html.month.emptyDay .. "\n";
+					week_day = week_day + 1;
 				else
 					break;
 				end
@@ -130,99 +129,99 @@ local function createMonth(month, year, dayCallback)
 		end
 		if i < days + 1 then
 			local tmp = tostring(i);
-			if dayCallback ~= nil and dayCallback.callback ~= nil then
-				tmp = dayCallback.callback(dayCallback.path, i, month, year, dayCallback.room, dayCallback.webPath);
+			if callback and callback.callback then
+				tmp = callback.callback(callback.path, i, month, year, callback.room, callback.webpath);
 			end
 			if tmp == nil then
 				tmp = tostring(i);
 			else
-				logAvailableForMinimumOneDay = true;
+				_available_for_one_day = true;
 			end
-			htmlStr = htmlStr .. html.month.day:gsub("###DAY###", tmp) .. "\n";
+			html_str = html_str .. html.month.day:gsub("###DAY###", tmp) .. "\n";
 		end
 
 		if i >= days then
 			break;
 		end
 
-		if weekDay == 7 then
-			weekDay = 0;
+		if week_day == 7 then
+			week_day = 0;
 			weeks = weeks + 1;
-			htmlStr = htmlStr .. "</tr>\n";
+			html_str = html_str .. "</tr>\n";
 		end
 	end
 
-	if weekDay + 1 < 8 or weeks < 6 then
-		weekDay = weekDay + 1;
-		if weekDay > 7 then
-			weekDay = 1;
+	if week_day + 1 < 8 or weeks < 6 then
+		week_day = week_day + 1;
+		if week_day > 7 then
+			week_day = 1;
 		end
-		if weekDay == 1 then
+		if week_day == 1 then
 			weeks = weeks + 1;
 		end
 		for y = weeks, 6 do
-			if weekDay == 1 then
-				htmlStr = htmlStr .. "<tr>\n";
+			if week_day == 1 then
+				html_str = html_str .. "<tr>\n";
 			end
-			for i = weekDay, 7 do
-				htmlStr = htmlStr .. html.month.emptyDay .. "\n";
+			for i = week_day, 7 do
+				html_str = html_str .. html.month.emptyDay .. "\n";
 			end
-			weekDay = 1
-			htmlStr = htmlStr .. "</tr>\n";
+			week_day = 1
+			html_str = html_str .. "</tr>\n";
 		end
 	end
-	htmlStr = htmlStr .. html.month.footer;
-	if logAvailableForMinimumOneDay then
-		return htmlStr;
+	html_str = html_str .. html.month.footer;
+	if _available_for_one_day then
+		return html_str;
 	end
 end
 
-local function createYear(year, dayCallback)
+local function create_year(year, callback)
 	local year = year;
 	local tmp;
 	if tonumber(year) <= 99 then
 		year = year + 2000;
 	end
-	local htmlStr = "";
+	local html_str = "";
 	for i=1, 12 do
-		tmp = createMonth(i, year, dayCallback);
+		tmp = create_month(i, year, callback);
 		if tmp then
-			htmlStr = htmlStr .. "<div style='float: left; padding: 5px;'>\n" .. tmp .. "</div>\n";
+			html_str = html_str .. "<div style='float: left; padding: 5px;'>\n" .. tmp .. "</div>\n";
 		end
 	end
-	if htmlStr ~= "" then
-		return "<div name='yearDiv' style='padding: 40px; text-align: center;'>" .. html.year.title:gsub("###YEAR###", tostring(year)) .. htmlStr .. "</div><br style='clear:both;'/> \n";
+	if html_str ~= "" then
+		return "<div name='yearDiv' style='padding: 40px; text-align: center;'>" .. html.year.title:gsub("###YEAR###", tostring(year)) .. html_str .. "</div><br style='clear:both;'/> \n";
 	end
 	return "";
 end
 
-local function perDayCallback(path, day, month, year, room, webPath)
-	local webPath = webPath or ""
+local function day_callback(path, day, month, year, room, webpath)
+	local webpath = webpath or ""
 	local year = year;
 	if year > 2000 then
 		year = year - 2000;
 	end
-	local bareDay = str_format("20%.02d-%.02d-%.02d", year, month, day);
+	local bare_day = str_format("20%.02d-%.02d-%.02d", year, month, day);
 	room = p_encode(room);
 	local attributes, err = lfs.attributes(path.."/"..str_format("%.02d%.02d%.02d", year, month, day).."/"..room..".dat");
 	if attributes ~= nil and attributes.mode == "file" then
 		local s = html.days.bit;
-		s = s:gsub("###BARE_DAY###", webPath .. bareDay);
+		s = s:gsub("###BARE_DAY###", webpath .. bare_day);
 		s = s:gsub("###DAY###", day);
 		return s;
 	end
 	return;
 end
 
-local function generateDayListSiteContentByRoom(bareRoomJid)
+local function generate_day_room_content(bare_room_jid)
 	local days = "";
-	local arrDays = {};
+	local days_array = {};
 	local tmp;
-	local node, host = splitJid(bareRoomJid);
+	local node, host = split_jid(bare_room_jid);
 	local path = data_getpath(node, host, datastore);
 	local room = nil;
-	local nextRoom = "";
-	local previousRoom = "";
+	local next_room = "";
+	local previous_room = "";
 	local rooms = "";
 	local attributes = nil;
 	local since = "";
@@ -230,7 +229,7 @@ local function generateDayListSiteContentByRoom(bareRoomJid)
 	local topic = "";
 	local component = hosts[host];
 
-	if not(component and component.muc and component.muc.rooms[bareRoomJid]) then
+	if not(component and component.muc and component.muc.rooms[bare_room_jid]) then
 		return;
 	end
 
@@ -239,15 +238,15 @@ local function generateDayListSiteContentByRoom(bareRoomJid)
 	do
 		local found = 0;
 		for jid, room in pairs(component.muc.rooms) do
-			local node = splitJid(jid)
+			local node = split_jid(jid)
 			if not room._data.hidden and room._data.logging and node then
 				if found == 0 then
-					previousRoom = node
+					previous_room = node
 				elseif found == 1 then
-					nextRoom = node
+					next_room = node
 					found = -1
 				end
-				if jid == bareRoomJid then
+				if jid == bare_room_jid then
 					found = 1
 				end
 
@@ -255,13 +254,13 @@ local function generateDayListSiteContentByRoom(bareRoomJid)
 			end
 		end
 
-		room = component.muc.rooms[bareRoomJid];
+		room = component.muc.rooms[bare_room_jid];
 		if room._data.hidden or not room._data.logging then
 			room = nil;
 		end
 	end
-	if attributes ~= nil and room ~= nil then
-		local alreadyDoneYears = {};
+	if attributes and room then
+		local already_done_years = {};
 		topic = room._data.subject or "(no subject)"
 		if topic:len() > 135 then
 			topic = topic:sub(1, topic:find(" ", 120)) .. " ..."
@@ -274,26 +273,26 @@ local function generateDayListSiteContentByRoom(bareRoomJid)
 			if year then
 				to = tostring(os_date("%B %Y", os_time({ day=tonumber(day), month=tonumber(month), year=2000+tonumber(year) })));
 				if since == "" then since = to; end
-				if not alreadyDoneYears[year] then
+				if not already_done_years[year] then
 					module:log("debug", "creating overview for: %s", to);
-					days = createYear(year, {callback=perDayCallback, path=path, room=node}) .. days;
-					alreadyDoneYears[year] = true;
+					days = create_year(year, {callback=day_callback, path=path, room=node}) .. days;
+					already_done_years[year] = true;
 				end
 			end
 		end
 	end
 
 	tmp = html.days.body:gsub("###DAYS_STUFF###", days);
-	tmp = tmp:gsub("###PREVIOUS_ROOM###", previousRoom == "" and node or previousRoom);
-	tmp = tmp:gsub("###NEXT_ROOM###", nextRoom == "" and node or nextRoom);
+	tmp = tmp:gsub("###PREVIOUS_ROOM###", previous_room == "" and node or previous_room);
+	tmp = tmp:gsub("###NEXT_ROOM###", next_room == "" and node or next_room);
 	tmp = tmp:gsub("###ROOMS###", rooms);
 	tmp = tmp:gsub("###ROOMTOPIC###", topic);
 	tmp = tmp:gsub("###SINCE###", since);
 	tmp = tmp:gsub("###TO###", to);
-	return tmp:gsub("###JID###", bareRoomJid), "Chatroom logs for "..bareRoomJid;
+	return tmp:gsub("###JID###", bare_room_jid), "Chatroom logs for "..bare_room_jid;
 end
 
-local function parseIqStanza(stanza, timeStuff, nick)
+local function parse_iq(stanza, time, nick)
 	local text = nil;
 	local victim = nil;
 	if(stanza.attr.type == "set") then
@@ -314,84 +313,84 @@ local function parseIqStanza(stanza, timeStuff, nick)
 				break;
 			end
 		end
-		if victim ~= nil then
-			if text ~= nil then
-				text = html.day.reason:gsub("###REASON###", htmlEscape(text));
+		if victim then
+			if text then
+				text = html.day.reason:gsub("###REASON###", html_escape(text));
 			else
 				text = "";
 			end
-			return html.day.kick:gsub("###TIME_STUFF###", timeStuff):gsub("###VICTIM###", victim):gsub("###REASON_STUFF###", text);
+			return html.day.kick:gsub("###TIME_STUFF###", time):gsub("###VICTIM###", victim):gsub("###REASON_STUFF###", text);
 		end
 	end
 	return;
 end
 
-local function parsePresenceStanza(stanza, timeStuff, nick)
+local function parse_presence(stanza, time, nick)
 	local ret = "";
-	local showJoin = "block"
+	local show_join = "block"
 
-	if config and not config.showJoin then
-		showJoin = "none";
+	if config and not config.show_join then
+		show_join = "none";
 	end
 
 	if stanza.attr.type == nil then
-		local showStatus = "block"
-		if config and not config.showStatus then
-			showStatus = "none";
+		local show_status = "block"
+		if config and not config.show_status then
+			show_status = "none";
 		end
 		local show, status = nil, "";
-		local alreadyJoined = false;
+		local already_joined = false;
 		for _, tag in ipairs(stanza) do
 			if tag.tag == "alreadyJoined" then
-				alreadyJoined = true;
+				already_joined = true;
 			elseif tag.tag == "show" then
 				show = tag[1];
 			elseif tag.tag == "status" and tag[1] ~= nil then
 				status = tag[1];
 			end
 		end
-		if alreadyJoined == true then
+		if already_joined == true then
 			if show == nil then
 				show = "online";
 			end
-			ret = html.day.presence.statusChange:gsub("###TIME_STUFF###", timeStuff);
+			ret = html.day.presence.statusChange:gsub("###TIME_STUFF###", time);
 			if status ~= "" then
-				status = html.day.presence.statusText:gsub("###STATUS###", htmlEscape(status));
+				status = html.day.presence.statusText:gsub("###STATUS###", html_escape(status));
 			end
-			ret = ret:gsub("###SHOW###", show):gsub("###NICK###", nick):gsub("###SHOWHIDE###", showStatus):gsub("###STATUS_STUFF###", status);
+			ret = ret:gsub("###SHOW###", show):gsub("###NICK###", nick):gsub("###SHOWHIDE###", show_status):gsub("###STATUS_STUFF###", status);
 		else
-			ret = html.day.presence.join:gsub("###TIME_STUFF###", timeStuff):gsub("###SHOWHIDE###", showJoin):gsub("###NICK###", nick);
+			ret = html.day.presence.join:gsub("###TIME_STUFF###", time):gsub("###SHOWHIDE###", show_join):gsub("###NICK###", nick);
 		end
-	elseif stanza.attr.type ~= nil and stanza.attr.type == "unavailable" then
+	elseif stanza.attr.type == "unavailable" then
 
-		ret = html.day.presence.leave:gsub("###TIME_STUFF###", timeStuff):gsub("###SHOWHIDE###", showJoin):gsub("###NICK###", nick);
+		ret = html.day.presence.leave:gsub("###TIME_STUFF###", time):gsub("###SHOWHIDE###", show_join):gsub("###NICK###", nick);
 	end
 	return ret;
 end
 
-local function parseMessageStanza(stanza, timeStuff, nick)
+local function parse_message(stanza, time, nick)
 	local body, title, ret = nil, nil, "";
 
 	for _,tag in ipairs(stanza) do
 		if tag.tag == "body" then
 			body = tag[1];
-			if nick ~= nil then
+			if nick then
 				break;
 			end
 		elseif tag.tag == "nick" and nick == nil then
-			nick = htmlEscape(tag[1]);
-			if body ~= nil or title ~= nil then
+			nick = html_escape(tag[1]);
+			if body or title then
 				break;
 			end
 		elseif tag.tag == "subject" then
 			title = tag[1];
-			if nick ~= nil then
+			if nick then
 				break;
 			end
 		end
 	end
-	if nick ~= nil and body ~= nil then
-		body = htmlEscape(body);
+	if nick and body then
+		body = html_escape(body);
 		local me = body:find("^/me");
 		local template = "";
 		if not me then
@@ -400,15 +399,15 @@ local function parseMessageStanza(stanza, timeStuff, nick)
 			template = html.day.messageMe;
 			body = body:gsub("^/me ", "");
 		end
-		ret = template:gsub("###TIME_STUFF###", timeStuff):gsub("###NICK###", nick):gsub("###MSG###", body);
-	elseif nick ~= nil and title ~= nil then
-		title = htmlEscape(title);
-		ret = html.day.titleChange:gsub("###TIME_STUFF###", timeStuff):gsub("###NICK###", nick):gsub("###TITLE###", title);
+		ret = template:gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###MSG###", body);
+	elseif nick and title then
+		title = html_escape(title);
+		ret = html.day.titleChange:gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###TITLE###", title);
 	end
 	return ret;
 end
 
-local function incrementDay(bare_day)
+local function increment_day(bare_day)
 	local year, month, day = bare_day:match("^20(%d%d)-(%d%d)-(%d%d)$");
 	local leapyear = false;
 	module:log("debug", tostring(day).."/"..tostring(month).."/"..tostring(year))
@@ -448,9 +447,9 @@ local function incrementDay(bare_day)
 	return strformat("20%.02d-%.02d-%.02d", year, month, day);
 end
 
-local function findNextDay(bareRoomJid, bare_day)
-	local node, host = splitJid(bareRoomJid);
-	local day = incrementDay(bare_day);
+local function find_next_day(bare_room_jid, bare_day)
+	local node, host = split_jid(bare_room_jid);
+	local day = increment_day(bare_day);
 	local max_trys = 7;
 
 	module:log("debug", day);
@@ -459,7 +458,7 @@ local function findNextDay(bareRoomJid, bare_day)
 		if max_trys == 0 then
 			break;
 		end
-		day = incrementDay(day);
+		day = increment_day(day);
 	end
 	if max_trys == 0 then
 		return nil;
@@ -468,7 +467,7 @@ local function findNextDay(bareRoomJid, bare_day)
 	end
 end
 
-local function decrementDay(bare_day)
+local function decrement_day(bare_day)
 	local year, month, day = bare_day:match("^20(%d%d)-(%d%d)-(%d%d)$");
 	local leapyear = false;
 	module:log("debug", tostring(day).."/"..tostring(month).."/"..tostring(year))
@@ -506,9 +505,9 @@ local function decrementDay(bare_day)
 	return strformat("20%.02d-%.02d-%.02d", year, month, day);
 end
 
-local function findPreviousDay(bareRoomJid, bare_day)
-	local node, host = splitJid(bareRoomJid);
-	local day = decrementDay(bare_day);
+local function find_previous_day(bare_room_jid, bare_day)
+	local node, host = split_jid(bare_room_jid);
+	local day = decrement_day(bare_day);
 	local max_trys = 7;
 	module:log("debug", day);
 	while(not store_exists(node, host, day)) do
@@ -516,7 +515,7 @@ local function findPreviousDay(bareRoomJid, bare_day)
 		if max_trys == 0 then
 			break;
 		end
-		day = decrementDay(day);
+		day = decrement_day(day);
 	end
 	if max_trys == 0 then
 		return nil;
@@ -525,16 +524,16 @@ local function findPreviousDay(bareRoomJid, bare_day)
 	end
 end
 
-local function parseDay(bareRoomJid, roomSubject, bare_day)
+local function parse_day(bare_room_jid, room_subject, bare_day)
 	local ret = "";
 	local year;
 	local month;
 	local day;
 	local tmp;
-	local node, host = splitJid(bareRoomJid);
+	local node, host = split_jid(bare_room_jid);
 	local year, month, day = bare_day:match("^20(%d%d)-(%d%d)-(%d%d)$");
-	local previousDay = findPreviousDay(bareRoomJid, bare_day);
-	local nextDay = findNextDay(bareRoomJid, bare_day);
+	local previous_day = find_previous_day(bare_room_jid, bare_day);
+	local next_day = find_next_day(bare_room_jid, bare_day);
 	local temptime = {day=0, month=0, year=0};
 	local path = data_getpath(node, host, datastore);
 	path = path:gsub("/[^/]*$", "");
@@ -547,7 +546,7 @@ local function parseDay(bareRoomJid, roomSubject, bare_day)
 	temptime.day = tonumber(day)
 	temptime.month = tonumber(month)
 	temptime.year = tonumber(year)
-	calendar = createMonth(temptime.month, temptime.year, {callback=perDayCallback, path=path, room=node, webPath="../"}) or ""
+	calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, room=node, webpath="../"}) or ""
 
 	if bare_day then
 		local data = data_load(node, host, datastore .. "/" .. bare_day:match("^20(.*)"):gsub("-", ""));
@@ -562,19 +561,19 @@ local function parseDay(bareRoomJid, roomSubject, bare_day)
 
 						-- grep nick from "from" resource
 						if stanza[1].attr.from then -- presence and messages
-							nick = htmlEscape(stanza[1].attr.from:match("/(.+)$"));
+							nick = html_escape(stanza[1].attr.from:match("/(.+)$"));
 						elseif stanza[1].attr.to then -- iq
-							nick = htmlEscape(stanza[1].attr.to:match("/(.+)$"));
+							nick = html_escape(stanza[1].attr.to:match("/(.+)$"));
 						end
 
 						if stanza[1].tag == "presence" and nick then
-							tmp = parsePresenceStanza(stanza[1], timeStuff, nick);
+							tmp = parse_presence(stanza[1], timeStuff, nick);
 						elseif stanza[1].tag == "message" then
-							tmp = parseMessageStanza(stanza[1], timeStuff, nick);
+							tmp = parse_message(stanza[1], timeStuff, nick);
 						elseif stanza[1].tag == "iq" then
-							tmp = parseIqStanza(stanza[1], timeStuff, nick);
+							tmp = parse_iq(stanza[1], timeStuff, nick);
 						else
-							module:log("info", "unknown stanza subtag in log found. room: %s; day: %s", bareRoomJid, year .. "/" .. month .. "/" .. day);
+							module:log("info", "unknown stanza subtag in log found. room: %s; day: %s", bare_room_jid, year .. "/" .. month .. "/" .. day);
 						end
 						if tmp then
 							ret = ret .. tmp
@@ -585,23 +584,23 @@ local function parseDay(bareRoomJid, roomSubject, bare_day)
 			end
 		end
 		if ret ~= "" then
-			if nextDay then
-				nextDay = html.day.dayLink:gsub("###DAY###", nextDay):gsub("###TEXT###", "&gt;")
+			if next_day then
+				next_day = html.day.dayLink:gsub("###DAY###", next_day):gsub("###TEXT###", "&gt;")
 			end
-			if previousDay then
-				previousDay = html.day.dayLink:gsub("###DAY###", previousDay):gsub("###TEXT###", "&lt;");
+			if previous_day then
+				previous_day = html.day.dayLink:gsub("###DAY###", previous_day):gsub("###TEXT###", "&lt;");
 			end
 			ret = ret:gsub("%%", "%%%%");
-			tmp = html.day.body:gsub("###DAY_STUFF###", ret):gsub("###JID###", bareRoomJid);
+			tmp = html.day.body:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
 			tmp = tmp:gsub("###CALENDAR###", calendar);
 			tmp = tmp:gsub("###DATE###", tostring(os_date("%A, %B %d, %Y", os_time(temptime))));
-			tmp = tmp:gsub("###TITLE_STUFF###", html.day.title:gsub("###TITLE###", roomSubject));
-			tmp = tmp:gsub("###STATUS_CHECKED###", config.showStatus and "checked='checked'" or "");
-			tmp = tmp:gsub("###JOIN_CHECKED###", config.showJoin and "checked='checked'" or "");
-			tmp = tmp:gsub("###NEXT_LINK###", nextDay or "");
-			tmp = tmp:gsub("###PREVIOUS_LINK###", previousDay or "");
+			tmp = tmp:gsub("###TITLE_STUFF###", html.day.title:gsub("###TITLE###", room_subject));
+			tmp = tmp:gsub("###STATUS_CHECKED###", config.show_status and "checked='checked'" or "");
+			tmp = tmp:gsub("###JOIN_CHECKED###", config.show_join and "checked='checked'" or "");
+			tmp = tmp:gsub("###NEXT_LINK###", next_day or "");
+			tmp = tmp:gsub("###PREVIOUS_LINK###", previous_day or "");
 
-			return tmp, "Chatroom logs for "..bareRoomJid.." ("..tostring(os_date("%A, %B %d, %Y", os_time(temptime)))..")";
+			return tmp, "Chatroom logs for "..bare_room_jid.." ("..tostring(os_date("%A, %B %d, %Y", os_time(temptime)))..")";
 		end
 	end
 end
@@ -612,7 +611,7 @@ function handle_request(event)
 	local request = event.request;
 	local room;
 
-	local node, day, more = request.url.path:match("^/"..urlBase.."/+([^/]*)/*([^/]*)/*(.*)$");
+	local node, day, more = request.url.path:match("^/"..url_base.."/+([^/]*)/*([^/]*)/*(.*)$");
 	if more ~= "" then
 		response.status_code = 404;
 		return response:send(handle_error(response.status_code, "Unknown URL."));
@@ -640,9 +639,9 @@ function handle_request(event)
 
 
 	if not node then -- room list for component
-		return response:send(createDoc(generateRoomListSiteContent(my_host))); 
+		return response:send(create_doc(generate_room_list(my_host))); 
 	elseif not day then -- room's listing
-		return response:send(createDoc(generateDayListSiteContentByRoom(node.."@"..my_host)));
+		return response:send(create_doc(generate_day_room_content(node.."@"..my_host)));
 	else
 		if not day:match("^20(%d%d)-(%d%d)-(%d%d)$") then
 			local y,m,d = day:match("^(%d%d)(%d%d)(%d%d)$");
@@ -651,11 +650,11 @@ function handle_request(event)
 				return response:send(handle_error(response.status_code, "No entries for that year."));
 			end
 			response.status_code = 301;
-			response.headers = { ["Location"] = request.url.path:match("^/"..urlBase.."/+[^/]*").."/20"..y.."-"..m.."-"..d.."/" };
+			response.headers = { ["Location"] = request.url.path:match("^/"..url_base.."/+[^/]*").."/20"..y.."-"..m.."-"..d.."/" };
 			return response:send();
 		end
 
-		local body = createDoc(parseDay(node.."@"..my_host, room._data.subject or "", day));
+		local body = create_doc(parse_day(node.."@"..my_host, room._data.subject or "", day));
 		if body == "" then
 			response.status_code = 404;
 			return response:send(handle_error(response.status_code, "Day entry doesn't exist."));
@@ -664,7 +663,7 @@ function handle_request(event)
 	end
 end
 
-local function readFile(filepath)
+local function read_file(filepath)
 	local f,err = io_open(filepath, "r");
 	if not f then return f,err; end
 	local t = f:read("*all");
@@ -672,11 +671,11 @@ local function readFile(filepath)
 	return t;
 end
 
-local function loadTheme(path)
+local function load_theme(path)
 	for file in lfs.dir(path) do
 		if file:match("%.html$") then
 			module:log("debug", "opening theme file: " .. file);
-			local content,err = readFile(path .. "/" .. file);
+			local content,err = read_file(path .. "/" .. file);
 			if not content then return content,err; end
 
 			-- html.a.b.c = content of a_b_c.html
@@ -693,26 +692,26 @@ end
 
 function module.load()
 	config = module:get_option_table("muc_log_http_config", {});
-	if config.showStatus == nil then config.showStatus = true; end
-	if config.showJoin == nil then config.showJoin = true; end
-	if config.urlBase and type(config.urlBase) == "string" then urlBase = config.urlBase; end
+	if config.show_status == nil then config.show_status = true; end
+	if config.show_join == nil then config.show_join = true; end
+	if config.url_base and type(config.url_base) == "string" then url_base = config.url_base; end
 
 	theme = config.theme or "metronome";
-	local themePath = themesParent .. "/" .. tostring(theme);
-	local attributes, err = lfs.attributes(themePath);
+	local theme_path = themes_parent .. "/" .. tostring(theme);
+	local attributes, err = lfs.attributes(theme_path);
 	if attributes == nil or attributes.mode ~= "directory" then
-		module:log("error", "Theme folder of theme \"".. tostring(theme) .. "\" isn't existing. expected Path: " .. themePath);
+		module:log("error", "Theme folder of theme \"".. tostring(theme) .. "\" isn't existing. expected Path: " .. theme_path);
 		return false;
 	end
 
-	local themeLoaded,err = loadTheme(themePath);
+	local themeLoaded,err = load_theme(theme_path);
 	if not themeLoaded then
 		module:log("error", "Theme \"%s\" is missing something: %s", tostring(theme), err);
 		return false;
 	end
 
 	module:provides("http", {
-		default_path = urlBase,
+		default_path = url_base,
 	        route = {
                 	["GET /*"] = handle_request;
         	}
