@@ -64,7 +64,7 @@ local resting_session = { -- Resting, not dead
 function retire_session(session)
 	local log = session.log or log;
 	for k in pairs(session) do
-		if k ~= "log" and k ~= "id" and k ~= "full_jid" and k ~= "username" and k ~= "host" then
+		if k ~= "log" and k ~= "id" and k ~= "ip" and k ~= "full_jid" and k ~= "username" and k ~= "host" then
 			session[k] = nil;
 		end
 	end
