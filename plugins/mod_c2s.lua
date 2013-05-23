@@ -151,7 +151,7 @@ local function session_close(session, reason)
 		function session.send() return false; end
 		
 		local reason = (reason and (reason.text or reason.condition)) or reason;
-		session.log("info", "c2s stream for %s closed: %s", session.full_jid or ("<"..session.ip..">"), reason or "session closed");
+		session.log("info", "c2s stream for %s closed: %s", session.full_jid or "<"..tostring(session.ip)..">", reason or "session closed");
 
 		local conn = session.conn;
 		if reason == nil and not session.notopen and session.type == "c2s" then
