@@ -10,11 +10,13 @@
 local new_sasl = require "util.sasl".new;
 local datamanager = require "util.datamanager";
 local hmac_sha1 = require "util.hmac".sha1;
+local gen_uuid = require "util.uuid".generate;
 local b64_encode = require "util.encodings".base64.encode;
 local os_time = os.time;
 
 local multi_resourcing = module:get_option_boolean("allow_anonymous_multiresourcing", false);
 local sha1_gentoken = module:get_option_string("anonymous_jid_gentoken", b64_encode(os_time()));
+local randomize_for_loopback = module:get_option_boolean("anonymous_randomize_for_loopback", false);
 local my_host = hosts[module.host];
 
 function new_default_provider(host)
@@ -48,7 +50,13 @@ function new_default_provider(host)
 	function provider.get_sasl_handler(session)
 		local anonymous_authentication_profile = {
 			anonymous = function(sasl, session, realm)
-				local username = hmac_sha1(session.ip, sha1_gentoken, true);
+				local username;
+				if randomize_for_loopback and (session.ip == "127.0.0.1" or session.ip == "::1") then
+					username = hmac_sha1(gen_uuid(), sha1_gentoken, true);
+				else
+					username = hmac_sha1(session.ip, sha1_gentoken, true);
+				end
+
 				if not multi_resourcing and my_host.sessions[username] then
 					return nil, "You're allowed to have only one anonymous session at any given time, good bye.";
 				end
