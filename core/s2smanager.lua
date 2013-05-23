@@ -8,8 +8,8 @@
 -- ** Copyright (c) 2008-2013, Florian Zeitz, Kim Alvefur, Marco Cirillo, Matthew Wild, Waqas Hussain
 
 local hosts = hosts;
-local tostring, pairs, ipairs, getmetatable, newproxy, setmetatable
-    = tostring, pairs, ipairs, getmetatable, newproxy, setmetatable;
+local tostring, pairs, ipairs, getmetatable, setmetatable
+    = tostring, pairs, ipairs, getmetatable, setmetatable;
 
 local fire_event = metronome.events.fire_event;
 local logger_init = require "util.logger".init;
@@ -25,15 +25,8 @@ local incoming_s2s = incoming_s2s;
 
 module "s2smanager"
 
-local open_sessions = 0;
-
 function new_incoming(conn)
 	local session = { conn = conn, type = "s2sin_unauthed", direction = "incoming", hosts = {} };
-	if true then
-		session.trace = newproxy(true);
-		getmetatable(session.trace).__gc = function () open_sessions = open_sessions - 1; end;
-	end
-	open_sessions = open_sessions + 1;
 	session.log = logger_init("s2sin"..tostring(conn):match("[a-f0-9]+$"));
 	incoming_s2s[session] = true;
 	return session;
@@ -131,7 +124,7 @@ local resting_session = { -- Resting, not dead
 function retire_session(session, reason)
 	local log = session.log or log;
 	for k in pairs(session) do
-		if k ~= "trace" and k ~= "log" and k ~= "id" and k ~= "conn" and k ~= "from_host" and k ~= "to_host" then
+		if k ~= "log" and k ~= "id" and k ~= "conn" and k ~= "from_host" and k ~= "to_host" then
 			session[k] = nil;
 		end
 	end
