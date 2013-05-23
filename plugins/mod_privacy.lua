@@ -294,9 +294,8 @@ function check_stanza(e, session)
 	local is_to_user = bare_jid == jid_bare(to);
 	local is_from_user = bare_jid == jid_bare(from);
 	
-	if privacy_lists.lists == nil or
-		not (session.active_privacylist or privacy_lists.default)
-	then
+	if privacy_lists.lists == nil or 
+	   not (session.active_privacylist or privacy_lists.default) then
 		return; -- Nothing to block, default is Allow all
 	end
 	if is_from_user and is_to_user then
@@ -315,13 +314,11 @@ function check_stanza(e, session)
 	for _,item in ipairs(list.items) do
 		local apply = false;
 		local block = false;
-		if (
-			(stanza.name == "message" and item.message) or
-			(stanza.name == "iq" and item.iq) or
-			(stanza.name == "presence" and is_to_user and item["presence-in"]) or
-			(stanza.name == "presence" and is_from_user and item["presence-out"]) or
-			(item.message == false and item.iq == false and item["presence-in"] == false and item["presence-out"] == false)
-		) then
+		if ((stanza.name == "message" and item.message) or
+		    (stanza.name == "iq" and item.iq) or
+		    (stanza.name == "presence" and is_to_user and item["presence-in"]) or
+		    (stanza.name == "presence" and is_from_user and item["presence-out"]) or
+		    (item.message == false and item.iq == false and item["presence-in"] == false and item["presence-out"] == false)) then
 			apply = true;
 		end
 		if apply then
