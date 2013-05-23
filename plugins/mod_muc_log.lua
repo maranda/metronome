@@ -9,7 +9,7 @@
 local metronome = metronome;
 local hosts = metronome.hosts;
 local tostring = tostring;
-local splitJid = require "util.jid".split;
+local split_jid = require "util.jid".split;
 local cm = require "core.configmanager";
 local datamanager = require "util.datamanager";
 local data_load, data_store, data_getpath = datamanager.load, datamanager.store, datamanager.getpath;
@@ -38,14 +38,14 @@ end
 
 -- Module Definitions
 
-function logIfNeeded(e)
+function log_if_needed(e)
 	local stanza, origin = e.stanza, e.origin;
 	
 	if	(stanza.name == "presence") or
 		(stanza.name == "iq") or
 	   	(stanza.name == "message" and tostring(stanza.attr.type) == "groupchat")
 	then
-		local node, host = splitJid(stanza.attr.to);
+		local node, host = split_jid(stanza.attr.to);
 		local muc = hosts[host].muc;
 		if node and host then
 			local bare = node .. "@" .. host;
@@ -53,9 +53,9 @@ function logIfNeeded(e)
 				local room = muc.rooms[bare]
 				local today = os.date("%y%m%d");
 				local now = os.date("%X")
-				local mucTo = nil
-				local mucFrom = nil;
-				local alreadyJoined = false;
+				local muc_to = nil
+				local muc_from = nil;
+				local already_joined = false;
 				
 				if room._data.hidden then -- do not log any data of private rooms
 					return;
@@ -65,10 +65,10 @@ function logIfNeeded(e)
 				end
 				
 				if stanza.name == "presence" and stanza.attr.type == nil then
-					mucFrom = stanza.attr.to;
-					if room._occupants and room._occupants[stanza.attr.to] then -- if true, the user has already joined the room
-						alreadyJoined = true;
-						stanza:tag("alreadyJoined"):text("true"); -- we need to log the information that the user has already joined, so add this and remove after logging
+					muc_from = stanza.attr.to;
+					if room._occupants and room._occupants[stanza.attr.to] then
+						already_joined = true;
+						stanza:tag("alreadyJoined"):text("true"); 
 					end
 				elseif stanza.name == "iq" and stanza.attr.type == "set" then -- kick, to is the room, from is the admin, nick who is kicked is attr of iq->query->item
 					if stanza.tags[1] and stanza.tags[1].name == "query" then
@@ -77,7 +77,7 @@ function logIfNeeded(e)
 							tmp = tmp.tags[1];
 							for jid, nick in pairs(room._jid_nick) do
 								if nick == stanza.attr.to .. "/" .. tmp.attr.nick then
-									mucTo = nick;
+									muc_to = nick;
 									break;
 								end
 							end
@@ -86,13 +86,13 @@ function logIfNeeded(e)
 				else
 					for jid, nick in pairs(room._jid_nick) do
 						if jid == stanza.attr.from then
-							mucFrom = nick;
+							muc_from = nick;
 							break;
 						end
 					end
 				end
 
-				if (mucFrom or mucTo) then
+				if (muc_from or muc_to) then
 					local data = data_load(node, host, datastore .. "/" .. today);
 					local realFrom = stanza.attr.from;
 					local realTo = stanza.attr.to;
@@ -101,12 +101,12 @@ function logIfNeeded(e)
 						data = {};
 					end
 					
-					stanza.attr.from = mucFrom;
-					stanza.attr.to = mucTo;
+					stanza.attr.from = muc_from;
+					stanza.attr.to = muc_to;
 					data[#data + 1] = "<stanza time=\"".. now .. "\">" .. tostring(stanza) .. "</stanza>\n";
 					stanza.attr.from = realFrom;
 					stanza.attr.to = realTo;
-					if alreadyJoined == true then
+					if already_joined == true then
 						if stanza[#stanza].name == "alreadyJoined" then  -- normaly the faked element should be the last, remove it when it is the last
 							stanza[#stanza] = nil;
 						else
@@ -125,9 +125,9 @@ function logIfNeeded(e)
 	end
 end
 
-module:hook("message/bare", logIfNeeded, 500);
-module:hook("iq/bare", logIfNeeded, 500);
-module:hook("presence/full", logIfNeeded, 500);
+module:hook("message/bare", log_if_needed, 500);
+module:hook("iq/bare", log_if_needed, 500);
+module:hook("presence/full", log_if_needed, 500);
 
 -- Define config methods
 
