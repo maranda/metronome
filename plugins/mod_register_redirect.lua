@@ -13,8 +13,8 @@ function reg_redirect(event)
 	local url = module:get_option_string("registration_url", nil)
 	local inst_text = module:get_option_string("registration_text", nil)
 	local oob = module:get_option_boolean("registration_oob", true)
-	local admins_g = cman.get("*", "core", "admins")
-	local admins_l = cman.get(module:get_host(), "core", "admins")
+	local admins_g = cman.get("*", "admins")
+	local admins_l = cman.get(module:get_host(), "admins")
 	local no_wl = module:get_option_boolean("no_registration_whitelist", false)
 	local test_ip = false
 
