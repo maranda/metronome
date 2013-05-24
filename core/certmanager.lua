@@ -18,18 +18,30 @@ local metronome = metronome;
 local resolve_path = configmanager.resolve_relative_path;
 local config_path = metronome.paths.config;
 
-local luasec_has_noticket;
+local noticket, verifyext, no_compression;
 if ssl then
 	local luasec_major, luasec_minor = ssl._VERSION:match("^(%d+)%.(%d+)");
-	luasec_has_noticket = tonumber(luasec_major)>0 or tonumber(luasec_minor)>=4;
+	noticket = tonumber(luasec_major)>0 or tonumber(luasec_minor)>=4;
+	verifyext = tonumber(luasec_major)>0 or tonumber(luasec_minor)>=5;
+	no_compression = tonumber(luasec_major)>0 or tonumber(luasec_minor)>=5;
 end
 
 module "certmanager"
 
 local default_ssl_config = configmanager.get("*", "core", "ssl");
 local default_capath = "/etc/ssl/certs";
-local default_verify = (ssl and ssl.x509 and { "peer", "client_once", "continue", "ignore_purpose" }) or "none";
-local default_options = { "no_sslv2", luasec_has_noticket and "no_ticket" or nil };
+local default_verify = (ssl and ssl.x509 and { "peer", "client_once" }) or "none";
+local default_options = { "no_sslv2", noticket and "no_ticket" or nil };
+local default_verifyext = { "lsec_continue", "lsec_ignore_purpose" };
+
+if not verifyext and ssl and ssl.x509 then
+	default_verify[#default_verify + 1] = "continue";
+	default_verify[#default_verify + 1] = "ignore_purpose";
+end
+
+if no_compression and configmanager.get("*", "ssl_compression") ~= true then
+	default_options[#default_options + 1] = "no_compression";
+end
 
 function create_context(host, mode, user_ssl_config)
 	user_ssl_config = user_ssl_config or default_ssl_config;
@@ -46,6 +58,7 @@ function create_context(host, mode, user_ssl_config)
 		capath = resolve_path(config_path, user_ssl_config.capath or default_capath);
 		cafile = resolve_path(config_path, user_ssl_config.cafile);
 		verify = user_ssl_config.verify or default_verify;
+		verifyext = user_ssl_config.verifyext or default_verifyext;
 		options = user_ssl_config.options or default_options;
 		depth = user_ssl_config.depth;
 	};
