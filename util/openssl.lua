@@ -113,11 +113,9 @@ function ssl_config:from_metronome(hosts, config, certhosts, raw)
 			if name == certhost or name:sub(-1-#certhost) == "."..certhost then
 				found_matching_hosts = true;
 				self:add_dNSName(name);
-				--print(name .. "#component_module: " .. (config.get(name, "component_module") or "nil"));
 				if config.get(name, "component_module") == nil then
 					self:add_sRVName(name, "xmpp-client");
 				end
-				--print(name .. "#anonymous_login: " .. tostring(config.get(name, "anonymous_login")));
 				if not (config.get(name, "anonymous_login") or
 						config.get(name, "authentication") == "anonymous") then
 					self:add_sRVName(name, "xmpp-server");
