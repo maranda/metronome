@@ -23,14 +23,14 @@ local config = nil;
 -- Helper Functions
 
 local function inject_storage_config()
-	local _storage = cm.getconfig()[mod_host].core.storage;
+	local _storage = cm.getconfig()[mod_host].storage;
 
 	module:log("debug", "injecting storage config...");
-	if type(_storage) == "string" then cm.getconfig()[mod_host].core.default_storage = _storage; end
+	if type(_storage) == "string" then cm.getconfig()[mod_host].default_storage = _storage; end
 	if type(_storage) == "table" then -- append
 		_storage.muc_log = "internal";
 	else
-		cm.getconfig()[mod_host].core.storage = { muc_log = "internal" };
+		cm.getconfig()[mod_host].storage = { muc_log = "internal" };
 	end
 
 	storagemanager.get_driver(mod_host, "muc_log"); -- init
