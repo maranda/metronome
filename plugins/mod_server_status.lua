@@ -17,12 +17,6 @@ local json_encode = require "util.json".encode
 
 -- code begin
 
-if not metronome.stanza_counter and not show_hosts and not show_comps then
-	module:log ("error", "mod_server_status requires at least one of the following things:")
-	module:log ("error", "mod_stanza_counter loaded, or either server_status_show_hosts or server_status_show_comps configuration values set.")
-	return false
-end
-
 local response_table = {}
 response_table.header = '<?xml version="1.0" encoding="UTF-8" ?>'
 response_table.doc_header = '<document>'
