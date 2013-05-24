@@ -14,7 +14,7 @@ INSTALLEDDATA = $(DATADIR)
 
 .PHONY: all clean install uninstall
 
-all: metronome.install metronomectl.install metronome.version
+all: metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
 	$(MAKE) -C util-src install
 
 install: metronome.install metronomectl.install util/encodings.so util/encodings.so util/pposix.so util/signal.so
@@ -34,12 +34,14 @@ install: metronome.install metronomectl.install util/encodings.so util/encodings
 	install -m644 util/sasl/* $(SOURCE)/util/sasl
 	umask 0022 && cp -r plugins/* $(MODULES)
 	install -m644 certs/* $(CONFIG)/certs
+	test -e $(CONFIG)/metronome.cfg.lua || install -m644 metronome.cfg.lua.install $(CONFIG)/metronome.cfg.lua
 	test -e metronome.version && install metronome.version $(SOURCE)/metronome.version || true
 	$(MAKE) install -C util-src
 
 clean:
 	rm -f metronome.install
 	rm -f metronomectl.install
+	rm -f metronome.cfg.lua.install
 	rm -f metronome.version
 	$(MAKE) clean -C util-src
 
