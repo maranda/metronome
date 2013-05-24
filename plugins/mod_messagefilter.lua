@@ -7,10 +7,9 @@
 local st = require "util.stanza";
 local split = require "util.jid".split;
 
-local patterns = config.get(module:get_host(), "core", "messagefilter_patterns") or {};
-local hosts = config.get(module:get_host(), "core", "messagefilter_chosts") or {};
-
-local bounce_message = config.get(module:get_host(), "core", "messagefilter_bmsg") or "Message rejected by server filter";
+local patterns = module:get_option_table("messagefilter_patterns", {});
+local hosts = module:get_option_table("messagefilter_chosts", {});
+local bounce_message = module:get_option_string("messagefilter_bmsg", "Message rejected by server filter");
 
 local function message_filter(event)
 	local origin, stanza = event.origin, event.stanza;
