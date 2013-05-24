@@ -8,8 +8,8 @@
 -- ** Copyright (c) 2008-2013, Florian Zeitz, Kim Alvefur, Matthew Wild, Waqas Hussain 
 
 local _G = _G;
-local setmetatable, loadfile, pcall, rawget, rawset, io, error, dofile, type, pairs, table =
-      setmetatable, loadfile, pcall, rawget, rawset, io, error, dofile, type, pairs, table;
+local setmetatable, rawget, rawset, io, error, dofile, type, pairs, table =
+      setmetatable, rawget, rawset, io, error, dofile, type, pairs, table;
 local format, math_max = string.format, math.max;
 
 local fire_event = metronome and metronome.events.fire_event or function () end;
@@ -23,7 +23,7 @@ module "configmanager"
 local parsers = {};
 
 local config_mt = { __index = function (t, k) return rawget(t, "*"); end};
-local config = setmetatable({ ["*"] = { core = {} } }, config_mt);
+local config = setmetatable({ ["*"] = {} }, config_mt);
 
 local host_mt = { };
 
@@ -40,15 +40,9 @@ function getconfig()
 	return config;
 end
 
-function get(host, section, key)
-	if not key then
-		section, key = "core", section;
-	end
-	local sec = config[host][section];
-	if sec then
-		return sec[key];
-	end
-	return nil;
+function get(host, key, old_key)
+	if key == "core" then key = old_key; end
+	return config[host][key];
 end
 
 function is_host_defined(host)
@@ -59,33 +53,27 @@ function is_host_defined(host)
 	end
 end
 
-function _M.rawget(host, section, key)
-	local hostconfig = rawget(config, host);
-	if hostconfig then
-		local sectionconfig = rawget(hostconfig, section);
-		if sectionconfig then
-			return rawget(sectionconfig, key);
-		end
-	end
+function _M.rawget(host, key, old_key)
+	if key == "core" then key = old_key; end
+	local host_config = rawget(config, host);
+	if host_config then rawget(host_config, key); end
 end
 
-local function set(config, host, section, key, value)
-	if host and section and key then
+local function set(config, host, key, value)
+	if host and key then
 		local hostconfig = rawget(config, host);
 		if not hostconfig then
 			hostconfig = rawset(config, host, setmetatable({}, host_mt))[host];
 		end
-		if not rawget(hostconfig, section) then
-			hostconfig[section] = setmetatable({}, section_mt(section));
-		end
-		hostconfig[section][key] = value;
+		hostconfig[key] = value;
 		return true;
 	end
 	return false;
 end
 
-function _M.set(host, section, key, value)
-	return set(config, host, section, key, value);
+function _M.set(host, key, value, old_value)
+	if key == "core" then key, value = value, old_value; end
+	return set(config, host, key, value);
 end
 
 do
@@ -127,7 +115,7 @@ function load(filename, format)
 	if parsers[format] and parsers[format].load then
 		local f, err = io.open(filename);
 		if f then
-			local new_config = setmetatable({ ["*"] = { core = {} } }, config_mt);
+			local new_config = setmetatable({ ["*"] = {} }, config_mt);
 			local ok, err = parsers[format].load(f:read("*a"), filename, new_config);
 			f:close();
 			if ok then
@@ -169,7 +157,7 @@ end
 
 do
 	local pcall, setmetatable = _G.pcall, _G.setmetatable;
-	local rawget, tostring = _G.rawget, _G.tostring;
+	local rawget = _G.rawget;
 	parsers.lua = {};
 	function parsers.lua.load(data, config_file, config)
 		local env;
@@ -178,53 +166,46 @@ do
 			Host = true, host = true, VirtualHost = true,
 			Component = true, component = true,
 			Include = true, include = true, RunScript = true }, {
-				__index = function (t, k)
-					return rawget(_G, k) or
-						function (settings_table)
-							config[__currenthost or "*"][k] = settings_table;
-						end;
-				end,
-				__newindex = function (t, k, v)
-					set(config, env.__currenthost or "*", "core", k, v);
-				end
+				__index = function (t, k) return rawget(_G, k) end,
+				__newindex = function (t, k, v) set(config, env.__currenthost or "*", k, v); end
 		});
 		
 		rawset(env, "__currenthost", "*")
 		function env.VirtualHost(name)
-			if rawget(config, name) and rawget(config[name].core, "component_module") then
+			if rawget(config, name) and rawget(config[name], "component_module") then
 				error(format("Host %q clashes with previously defined %s Component %q, for services use a sub-domain like conference.%s",
-					name, config[name].core.component_module:gsub("^%a+$", { component = "external", muc = "MUC"}), name, name), 0);
+					name, config[name].component_module:gsub("^%a+$", { component = "external", muc = "MUC"}), name, name), 0);
 			end
 			rawset(env, "__currenthost", name);
 			-- Needs at least one setting to logically exist :)
-			set(config, name or "*", "core", "defined", true);
+			set(config, name or "*", "defined", true);
 			return function (config_options)
 				rawset(env, "__currenthost", "*");
 				for option_name, option_value in pairs(config_options) do
-					set(config, name or "*", "core", option_name, option_value);
+					set(config, name or "*", option_name, option_value);
 				end
 			end;
 		end
 		env.Host, env.host = env.VirtualHost, env.VirtualHost;
 		
 		function env.Component(name)
-			if rawget(config, name) and rawget(config[name].core, "defined") and not rawget(config[name].core, "component_module") then
+			if rawget(config, name) and rawget(config[name], "defined") and not rawget(config[name], "component_module") then
 				error(format("Component %q clashes with previously defined Host %q, for services use a sub-domain like conference.%s",
 					name, name, name), 0);
 			end
-			set(config, name, "core", "component_module", "component");
-			set(config, name, "core", "load_global_modules", false);
+			set(config, name, "component_module", "component");
+			set(config, name, "load_global_modules", false);
 			rawset(env, "__currenthost", name);
 			local function handle_config_options(config_options)
 				rawset(env, "__currenthost", "*");
 				for option_name, option_value in pairs(config_options) do
-					set(config, name or "*", "core", option_name, option_value);
+					set(config, name or "*", option_name, option_value);
 				end
 			end
 	
-			return function (module)
+			return function(module)
 					if type(module) == "string" then
-						set(config, name, "core", "component_module", module);
+						set(config, name, "component_module", module);
 						return handle_config_options;
 					end
 					return handle_config_options(module);
