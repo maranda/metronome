@@ -96,11 +96,11 @@ do
 		os.exit(1);
 	end
 end
-local original_logging_config = config.get("*", "core", "log");
-config.set("*", "core", "log", { { levels = { min="info" }, to = "console" } });
+local original_logging_config = config.get("*", "log");
+config.set("*", "log", { { levels = { min="info" }, to = "console" } });
 
-local data_path = config.get("*", "core", "data_path") or CFG_DATADIR or "data";
-local custom_plugin_paths = config.get("*", "core", "plugin_paths");
+local data_path = config.get("*", "data_path") or CFG_DATADIR or "data";
+local custom_plugin_paths = config.get("*", "plugin_paths");
 if custom_plugin_paths then
 	local path_sep = package.config:sub(3,3);
 	-- path1;path2;path3;defaultpath...
@@ -124,14 +124,14 @@ if ok and pposix then
 	if pposix._VERSION ~= want_pposix_version then print(string.format("Unknown version (%s) of binary pposix module, expected %s", tostring(pposix._VERSION), want_pposix_version)); return; end
 	current_uid = pposix.getuid();
 	if current_uid == 0 then
-		local s_fd_limit = config.get("*", "core", "metronome_max_files_soft") or 9216;
-		local h_fd_limit = config.get("*", "core", "metronome_max_files_hard") or 9216;
+		local s_fd_limit = config.get("*", "metronome_max_files_soft") or 9216;
+		local h_fd_limit = config.get("*", "metronome_max_files_hard") or 9216;
 		if not pposix.setrlimit("NOFILE", s_fd_limit, h_fd_limit) then
 			print("Warning: Couldn't set the max open files limit.");
 		end
 
-		local desired_user = config.get("*", "core", "metronome_user") or "metronome";
-		local desired_group = config.get("*", "core", "metronome_group") or desired_user;
+		local desired_user = config.get("*", "metronome_user") or "metronome";
+		local desired_group = config.get("*", "metronome_group") or desired_user;
 		local ok, err = pposix.setgid(desired_group);
 		if ok then
 			ok, err = pposix.initgroups(desired_user);
@@ -147,7 +147,7 @@ if ok and pposix then
 		end
 	end
 	
-	pposix.umask(config.get("*", "core", "umask") or "027");
+	pposix.umask(config.get("*", "umask") or "027");
 	pposix.setenv("HOME", data_path);
 else
 	print("Error: Unable to load pposix module. Check that Metronome is installed correctly.")
@@ -236,7 +236,7 @@ local show_yesno = metronomectl.show_yesno;
 local show_prompt = metronomectl.show_prompt;
 local read_password = metronomectl.read_password;
 
-local metronomectl_timeout = (config.get("*", "core", "metronomectl_timeout") or 5) * 2;
+local metronomectl_timeout = (config.get("*", "metronomectl_timeout") or 5) * 2;
 -----------------------
 local commands = {};
 local command = arg[1];
@@ -396,7 +396,7 @@ function commands.start(arg)
 	
 	local ok, ret = metronomectl.start();
 	if ok then
-		if config.get("*", "core", "daemonize") ~= false then
+		if config.get("*", "daemonize") ~= false then
 			local i=1;
 			while true do
 				local ok, running = metronomectl.isrunning();
