@@ -43,8 +43,8 @@ function initialize_host(host)
 	
 	host_session.events.add_handler("item-added/auth-provider", function (event)
 		local provider = event.item;
-		local auth_provider = config.get(host, "core", "authentication") or default_provider;
-		if config.get(host, "core", "anonymous_login") then
+		local auth_provider = config.get(host, "authentication") or default_provider;
+		if config.get(host, "anonymous_login") then
 			log("error", "Deprecated config option 'anonymous_login'. Use authentication = 'anonymous' instead.");
 			auth_provider = "anonymous";
 		end -- COMPAT 0.7
@@ -62,8 +62,8 @@ function initialize_host(host)
 		end
 	end);
 	host_session.users = new_null_provider();
-	local auth_provider = config.get(host, "core", "authentication") or default_provider;
-	if config.get(host, "core", "anonymous_login") then auth_provider = "anonymous"; end
+	local auth_provider = config.get(host, "authentication") or default_provider;
+	if config.get(host, "anonymous_login") then auth_provider = "anonymous"; end
 	if auth_provider ~= "null" then
 		modulemanager.load(host, "auth_"..auth_provider);
 	end
@@ -122,8 +122,8 @@ function is_admin(jid, host)
 	jid = jid_bare(jid);
 	host = host or "*";
 	
-	local host_admins = config.get(host, "core", "admins");
-	local global_admins = config.get("*", "core", "admins");
+	local host_admins = config.get(host, "admins");
+	local global_admins = config.get("*", "admins");
 	
 	if host_admins and host_admins ~= global_admins then
 		if type(host_admins) == "table" then

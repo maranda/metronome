@@ -28,7 +28,7 @@ end
 
 module "certmanager"
 
-local default_ssl_config = configmanager.get("*", "core", "ssl");
+local default_ssl_config = configmanager.get("*", "ssl");
 local default_capath = "/etc/ssl/certs";
 local default_verify = (ssl and ssl.x509 and { "peer", "client_once" }) or "none";
 local default_options = { "no_sslv2", noticket and "no_ticket" or nil };
@@ -101,7 +101,7 @@ function create_context(host, mode, user_ssl_config)
 end
 
 function reload_ssl_config()
-	default_ssl_config = configmanager.get("*", "core", "ssl");
+	default_ssl_config = configmanager.get("*", "ssl");
 end
 
 metronome.events.add_handler("config-reloaded", reload_ssl_config);
