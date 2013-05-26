@@ -1,3 +1,5 @@
+-- Please see sasl.lua.license for licensing information.
+
 local tostring = tostring;
 local type = type;
 

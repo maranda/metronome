@@ -449,8 +449,8 @@ function service:get_items(node, actor, id, max)
 	end
 
 	if type(actor) ~= "boolean"
-           and node_obj.config.access_model == "whitelist"
-           and self:get_affiliation(actor, node, action) ~= "owner" then
+	   and node_obj.config.access_model == "whitelist"
+	   and self:get_affiliation(actor, node, action) ~= "owner" then
 		local is_whitelisted = (node_obj.affiliation[actor] ~= nil or node_obj.affiliation[actor] ~= "outcast") and true;
 		if cap == "subscribe" and not is_whitelisted then return false, "forbidden"; end
 	end

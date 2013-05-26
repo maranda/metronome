@@ -1,3 +1,5 @@
+-- Please see sasl.lua.license for licensing information.
+
 local s_match = string.match;
 local type = type
 local string = string
