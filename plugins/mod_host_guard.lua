@@ -8,13 +8,14 @@ module:set_global()
 
 local hosts = hosts
 local incoming_s2s = metronome.incoming_s2s
+local default_hexed_text = "Your server is into this service's HEX List and is therefore forbidden to access it."
 
 local guard_blockall = module:get_option_set("host_guard_blockall", {})
 local guard_ball_wl = module:get_option_set("host_guard_blockall_exceptions", {})
 local guard_protect = module:get_option_set("host_guard_selective", {})
 local guard_block_bl = module:get_option_set("host_guard_blacklist", {})
 local guard_hexlist = module:get_option_set("host_guard_hexlist", {})
-local guard_hexlist_text = module:get_option_string("host_guard_hexlist_text", "Your server is into this service's HEX List and is therefore forbidden to access it.");
+local guard_hexlist_text = module:get_option_string("host_guard_hexlist_text", default_hexed_text)
 
 local config = configmanager
 local error_reply = require "util.stanza".error_reply
@@ -110,7 +111,8 @@ local function reload()
 	guard_ball_wl = module:get_option_set("host_guard_blockall_exceptions", {})
 	guard_protect = module:get_option_set("host_guard_selective", {})
 	guard_block_bl = module:get_option_set("host_guard_blacklist", {})
-	guard_hexlist = module:get_option_set("host_guard_hexlist", {})	
+	guard_hexlist = module:get_option_set("host_guard_hexlist", {})
+	guard_hexlist_text = module:get_option_string("host_guard_hexlist_text", default_hexed_text)
 
 	init_hosts(true)
 end
