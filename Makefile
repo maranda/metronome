@@ -11,7 +11,7 @@ INSTALLEDCONFIG = $(SYSCONFDIR)
 INSTALLEDMODULES = $(PREFIX)/lib/metronome/modules
 INSTALLEDDATA = $(DATADIR)
 
-.PHONY: all clean install uninstall
+.PHONY: all clean install upgrade uninstall
 
 all: metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
 	$(MAKE) -C util-src install
