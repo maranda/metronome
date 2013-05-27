@@ -6,9 +6,10 @@
 
 local st = require "util.stanza";
 local split = require "util.jid".split;
+local hosts = metronome.hosts;
 
 local patterns = module:get_option_table("messagefilter_patterns", {});
-local hosts = module:get_option_table("messagefilter_chosts", {});
+local ahosts = module:get_option_set("messagefilter_anon_hosts", {});
 local bounce_message = module:get_option_string("messagefilter_bmsg", "Message rejected by server filter");
 
 local function message_filter(event)
@@ -22,7 +23,7 @@ local function message_filter(event)
 							:tag("text", {xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas"}):text(bounce_message):up();
 
 	if body_text then
-		local host = hosts[fromhost];
+		local host = ahosts:contains("fromhost") and hosts[fromhost];
 		if host and not host.modules.auth_anonymous then return; end
 		
 		for _, pattern in ipairs(patterns) do
