@@ -14,6 +14,7 @@ local guard_ball_wl = module:get_option_set("host_guard_blockall_exceptions", {}
 local guard_protect = module:get_option_set("host_guard_selective", {})
 local guard_block_bl = module:get_option_set("host_guard_blacklist", {})
 local guard_hexlist = module:get_option_set("host_guard_hexlist", {})
+local guard_hexlist_text = module:get_option_string("host_guard_hexlist_text", "Your server is into this service's HEX List and is therefore forbidden to access it.");
 
 local config = configmanager
 local error_reply = require "util.stanza".error_reply
@@ -26,7 +27,7 @@ local function s2s_hook (event)
 	if origin.type == "s2sin" or origin.type == "s2sin_unauthed" then
 	   if guard_hexlist:contains(from_host) then
 		module:log("error", "remote hexed service %s attempted to access host %s", from_host, to_host)
-		origin:close({condition = "policy-violation", text = "Your server is into LW.Org IM's HEX List and is therefore forbidden to access the service, please see http://www.lightwitch.org/im-service/hex-list for more info."})
+		origin:close({condition = "policy-violation", text = guard_hexlist_text})
 		return false
 	   end
 	   if guard_blockall:contains(to_host) and not guard_ball_wl:contains(from_host) or
