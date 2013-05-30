@@ -53,12 +53,6 @@ function is_host_defined(host)
 	end
 end
 
-function _M.rawget(host, key, old_key)
-	if key == "core" then key = old_key; end
-	local host_config = rawget(config, host);
-	if host_config then rawget(host_config, key); end
-end
-
 local function set(config, host, key, value)
 	if host and key then
 		local hostconfig = rawget(config, host);
