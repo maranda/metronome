@@ -37,6 +37,6 @@ local function message_filter(event)
 	end
 end
 
-module:hook("message/bare", message_filter, 500);
-module:hook("message/full", message_filter, 500);
-module:hook("message/host", message_filter, 500);
+module:hook("message/bare", message_filter, 1000);
+module:hook("message/full", message_filter, 1000);
+module:hook("message/host", message_filter, 1000);
