@@ -12,6 +12,7 @@ local show_comps = module:get_option_array("server_status_show_comps", nil)
 local json_output = module:get_option_boolean("server_status_json", false)
 local metronome = metronome
 local hosts = metronome.hosts
+local NULL = {}
 
 local json_encode = require "util.json".encode
 
@@ -26,6 +27,12 @@ response_table.stanzas = {
 		incoming = '    <incoming iq="%d" message="%d" presence="%d" />', 
 		outgoing = '    <outgoing iq="%d" message="%d" presence="%d" />'
 }
+response_table.sessions = {
+		elem_header = '  <sessions>', elem_closure = '  </sessions>',
+		bosh = '    <bosh number="%d" />',
+		c2s = '    <c2s number="%d" />',
+		s2s = '    <s2s incoming="%d" outgoing="%d" />'
+}
 response_table.hosts = {
 		elem_header = '  <hosts>', elem_closure = '  </hosts>',
 		status = '    <status name="%s" current="%s" />'
@@ -35,13 +42,48 @@ response_table.comps = {
 		status = '    <status name="%s" current="%s" />'
 }
 
+local function count_sessions()
+	local count_c2s, count_bosh, count_s2sin, count_s2sout = 0, 0, 0, 0
+	local incoming_s2s = metronome.incoming_s2s
+
+	for name, host in pairs(hosts) do
+		for _, user in pairs(host.sessions or NULL) do
+			for resource, session in pairs(user.sessions or NULL) do
+				if session.bosh_version then
+					count_bosh = count_bosh + 1
+				else
+					count_c2s = count_c2s + 1
+				end
+			end
+		end
+
+		for _, remotehost in pairs(host.s2sout or NULL) do
+			count_s2sout = count_s2sout + 1
+		end
+	end
+
+	for _ in pairs(incoming_s2s) do count_s2sin = count_s2sin + 1 end
+
+	return count_c2s, count_bosh, count_s2sin, count_s2sout
+end
+
 local function forge_response_xml()
-	local hosts_s = {}; local components = {}; local stats = {}; local hosts_stats = {}; local comps_stats = {}
+	local hosts_s, components, stats, hosts_stats, comps_stats, sessions_stats = {}, {}, {}, {}, {}, {}
 
 	local function t_builder(t,r) for _, bstring in ipairs(t) do r[#r+1] = bstring end end
 
 	if show_hosts then t_builder(show_hosts, hosts_s) end
 	if show_comps then t_builder(show_comps, components) end
+
+	-- total sessions handled by the server
+	local count_c2s, count_bosh, count_s2sin, count_s2sout = count_sessions()
+	local sessions = response_table.sessions
+	
+	sessions_stats[1] = sessions.elem_header
+	sessions_stats[2] = sessions.bosh:format(count_bosh)
+	sessions_stats[3] = sessions.c2s:format(count_c2s)
+	sessions_stats[4] = sessions.s2s:format(count_s2sin, count_s2sout)
+	sessions_stats[5] = sessions.elem_closure
 	
 	-- build stanza stats if there
 	local stanzas = response_table.stanzas
@@ -87,7 +129,7 @@ local function forge_response_xml()
 	-- build xml document
 	local result = {}
 	result[#result+1] = response_table.header; result[#result+1] = response_table.doc_header -- start
-	t_builder(stats, result); t_builder(hosts_stats, result); t_builder(comps_stats, result)
+	t_builder(stats, result); t_builder(sessions_stats, result); t_builder(hosts_stats, result); t_builder(comps_stats, result);
 	result[#result+1] = response_table.doc_closure -- end
 
 	return table.concat(result, "\n")
@@ -96,12 +138,18 @@ end
 local function forge_response_json()
 	local result = {}
 	local stanza_counter = metronome.stanza_counter
+	local count_c2s, count_bosh, count_s2sin, count_s2sout = count_sessions()	
 
 	if stanza_counter then result.stanzas = {} ; result.stanzas = stanza_counter end
+
+	result.sessions = {} ; local sessions = result.sessions
+	sessions.bosh = count_bosh ; sessions.c2s = count_c2s ; sessions.s2s = { incoming = count_s2sin, outgoing = count_s2sout }
+
 	if show_hosts then
 		result.hosts = {}
 		for _,n in ipairs(show_hosts) do result.hosts[n] = hosts[n] and "online" or "offline" end
 	end
+
 	if show_comps then
 		result.components = {}
 		for _,n in ipairs(show_comps) do 
