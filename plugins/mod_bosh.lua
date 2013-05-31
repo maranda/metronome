@@ -76,9 +76,24 @@ end
 
 local t_insert, t_remove, t_concat = table.insert, table.remove, table.concat;
 local os_time = os.time;
+local ipairs, pairs, tonumber, tostring, type = ipairs, pairs, tonumber, tostring, type;
+local clone_table = require "util.auxiliary".clone_table;
+local json_encode = require "util.json".encode;
+local url_decode = require "net.http".urldecode;
 
 local sessions, inactive_sessions = module:shared("sessions", "inactive_sessions");
 local waiting_requests = {};
+
+local function jsonp_encode(callback, data)
+	if type(data) == "string" then
+		data = callback.."("..json_encode({ reply = data })..");";
+	elseif type(data) == "table" and data.body then
+		data = clone_table(data)
+		data.body = callback.."("..json_encode({ reply = data.body })..");"
+		data.headers["Content-Type"] = "text/javascript; charset=utf-8";
+	end
+	return data;		
+end
 
 function on_destroy_request(request)
 	log("debug", "Request destroyed: %s", tostring(request));
@@ -174,7 +189,6 @@ function handle_POST(event)
 	end
 end
 
-
 local function bosh_reset_stream(session) session.notopen = true; end
 
 local stream_xmlns_attr = { xmlns = "urn:ietf:params:xml:ns:xmpp-streams" };
@@ -185,7 +199,6 @@ local function bosh_close_stream(session, reason)
 	local close_reply = st.stanza("body", { xmlns = xmlns_bosh, type = "terminate",
 		["xmlns:stream"] = xmlns_streams });
 	
-
 	if reason then
 		close_reply.attr.condition = "remote-stream-error";
 		if type(reason) == "string" then
@@ -410,10 +423,34 @@ function on_timer()
 end
 module:add_timer(1, on_timer);
 
-
-local function GET_response(event)
+local function handle_GET(event)
 	local request, response = event.request, event.response;
 	if force_secure and not request.secure then return nil; end
+
+	local query = request.url.query;
+	local callback, data;
+	if cross_domain and query then
+		if query:match("=") then
+			local params = {};
+			for key, value in query:gmatch("&?([^=%?]+)=([^&%?]+)&?") do
+				if key and value then
+					params[url_decode(key)] = url_decode(value);
+				end
+			end
+			callback, data = params.callback, params.data;
+		else
+			callback, data = "_BOSH_", url_decode(query);
+		end
+	end
+
+	if callback and data then
+		local _send = response.send;
+		function response:send(data)
+			return _send(self, jsonp_encode(callback, data));
+		end
+		request.method = "POST";
+		return handle_POST(event);
+	end	
 
 	response.headers = { content_type = "text/html" };
 	response.body = "<html><body><p>It works! Now point your BOSH client to this URL to connect to the XMPP Server.</p></body></html>";
@@ -425,8 +462,8 @@ function module.add_host(module)
 	module:provides("http", {
 		default_path = "/http-bind";
 		route = {
-			["GET"] = GET_response;
-			["GET /"] = GET_response;
+			["GET"] = handle_GET;
+			["GET /"] = handle_GET;
 			["OPTIONS"] = handle_OPTIONS;
 			["OPTIONS /"] = handle_OPTIONS;
 			["POST"] = handle_POST;
