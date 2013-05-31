@@ -88,8 +88,8 @@ local function jsonp_encode(callback, data)
 	if type(data) == "string" then
 		data = callback.."("..json_encode({ reply = data })..");";
 	elseif type(data) == "table" and data.body then
-		data = clone_table(data)
-		data.body = callback.."("..json_encode({ reply = data.body })..");"
+		data = clone_table(data);
+		data.body = callback.."("..json_encode({ reply = data.body })..");";
 		data.headers["Content-Type"] = "text/javascript; charset=utf-8";
 	end
 	return data;		
