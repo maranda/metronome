@@ -6,7 +6,8 @@
 
 -- This contains the auxiliary utility functions for Metronome's env.
 
-local CFG_SOURCEDIR, open, metronome, type = _G.CFG_SOURCEDIR, io.open, _G.metronome, type;
+local CFG_SOURCEDIR, open, metronome = _G.CFG_SOURCEDIR, io.open, _G.metronome;
+local pairs, type = pairs, type;
 
 module "auxiliary"
 
@@ -33,7 +34,7 @@ end
 function clone_table(t)
 	local clone = {};
 	for key, value in pairs(t) do
-		if type(t) == "table" then
+		if type(value) == "table" then
 			clone[key] = clone_table(value);
 		else
 			clone[key] = value;
