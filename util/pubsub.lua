@@ -538,7 +538,7 @@ function service:get_subscriptions(node, actor, jid)
 			if node then -- Return only subscriptions to this node
 				if subscribed_nodes[node] then
 					ret[#ret+1] = {
-						node = subscribed_node;
+						node = node;
 						jid = jid;
 						subscription = node_obj.subscribers[jid];
 					};
