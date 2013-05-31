@@ -448,7 +448,9 @@ local function handle_GET(event)
 		function response:send(data)
 			return _send(self, jsonp_encode(callback, data));
 		end
+
 		request.method = "POST";
+		request.body = data;
 		return handle_POST(event);
 	end	
 
