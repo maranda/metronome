@@ -32,11 +32,11 @@ end
 
 function clone_table(t)
 	local clone = {};
-	for key, value in pairs(t) then
+	for key, value in pairs(t) do
 		if type(t) == "table" then
-			clone[key] == clone_table(value);
+			clone[key] = clone_table(value);
 		else
-			clone[key] == value;
+			clone[key] = value;
 		end
 	end
 	return clone;
