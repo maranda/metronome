@@ -14,11 +14,13 @@ local server = require "net.server";
 local log = require "util.logger".init("portmanager");
 local multitable = require "util.multitable";
 local set = require "util.set";
+local clone_table = require "util.auxiliary".clone_table;
 
 local table = table;
 local setmetatable, rawset, rawget = setmetatable, rawset, rawget;
 local type, pairs, tonumber, ipairs = type, pairs, tonumber, ipairs;
 
+local NULL = {};
 local metronome = metronome;
 local fire_event = metronome.events.fire_event;
 
@@ -71,13 +73,8 @@ metronome.events.add_handler("item-removed/net-provider", function (event)
 end);
 
 local function duplicate_ssl_config(ssl_config)
-	local ssl_config = type(ssl_config) == "table" and ssl_config or {};
-
-	local _config = {};
-	for k, v in pairs(ssl_config) do
-		_config[k] = v;
-	end
-	return _config;
+	if type(ssl_config) ~= "table" then return NULL; end
+	return clone_table(ssl_config);
 end
 
 --- Public API
