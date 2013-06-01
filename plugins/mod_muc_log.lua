@@ -125,9 +125,9 @@ function log_if_needed(e)
 	end
 end
 
-module:hook("message/bare", log_if_needed, 500);
-module:hook("iq/bare", log_if_needed, 500);
-if log_presences then module:hook("presence/full", log_if_needed, 500); end
+module:hook("message/bare", log_if_needed, 50);
+module:hook("iq/bare", log_if_needed, 50);
+if log_presences then module:hook("presence/full", log_if_needed, 50); end
 
 -- Define config methods
 
