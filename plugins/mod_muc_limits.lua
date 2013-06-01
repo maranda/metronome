@@ -65,7 +65,7 @@ function module.unload()
 	end
 end
 
-module:hook("message/bare", handle_stanza, 10);
-module:hook("message/full", handle_stanza, 10);
-module:hook("presence/bare", handle_stanza, 10);
-module:hook("presence/full", handle_stanza, 10);
+module:hook("message/bare", handle_stanza, 100);
+module:hook("message/full", handle_stanza, 100);
+module:hook("presence/bare", handle_stanza, 100);
+module:hook("presence/full", handle_stanza, 100);
