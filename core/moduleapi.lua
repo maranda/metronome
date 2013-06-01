@@ -177,7 +177,7 @@ function api:get_option(name, default_value)
 	local value = config.get(self.host, name);
 	if value == nil then
 		value = config.get("*", name);
-		value = value == nil and default_value or v;
+		value = value == nil and default_value or value;
 	end
 	return value;
 end
