@@ -282,7 +282,11 @@ local function generate_day_room_content(bare_room_jid)
 		end
 	end
 
-	tmp = html.days.body:gsub("###DAYS_STUFF###", days);
+	if config.show_presences then
+		tmp = html.days.body:gsub("###DAYS_STUFF###", days);
+	else
+		tmp = html.days.bodynp:gsub("###DAYS_STUFF###", days);
+	end
 	tmp = tmp:gsub("###PREVIOUS_ROOM###", previous_room == "" and node or previous_room);
 	tmp = tmp:gsub("###NEXT_ROOM###", next_room == "" and node or next_room);
 	tmp = tmp:gsub("###ROOMS###", rooms);
@@ -692,6 +696,7 @@ end
 
 function module.load()
 	config = module:get_option_table("muc_log_http_config", {});
+	if module:get_option_boolean("muc_log_presences", false) then config.show_presences = true end
 	if config.show_status == nil then config.show_status = true; end
 	if config.show_join == nil then config.show_join = true; end
 	if config.url_base and type(config.url_base) == "string" then url_base = config.url_base; end
