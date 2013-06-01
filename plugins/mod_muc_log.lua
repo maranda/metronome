@@ -18,7 +18,7 @@ local error_reply = require "util.stanza".error_reply;
 local storagemanager = storagemanager;
 
 local mod_host = module:get_host();
-local config = nil;
+local log_presences = module:get_option_boolean("muc_log_presences", true);
 
 -- Helper Functions
 
@@ -127,7 +127,7 @@ end
 
 module:hook("message/bare", log_if_needed, 500);
 module:hook("iq/bare", log_if_needed, 500);
-module:hook("presence/full", log_if_needed, 500);
+if log_presences then module:hook("presence/full", log_if_needed, 500); end
 
 -- Define config methods
 
