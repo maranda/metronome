@@ -18,7 +18,7 @@ local error_reply = require "util.stanza".error_reply;
 local storagemanager = storagemanager;
 
 local mod_host = module:get_host();
-local log_presences = module:get_option_boolean("muc_log_presences", true);
+local log_presences = module:get_option_boolean("muc_log_presences", false);
 
 -- Helper Functions
 
