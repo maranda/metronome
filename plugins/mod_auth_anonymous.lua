@@ -51,8 +51,8 @@ function new_default_provider(host)
 		local anonymous_authentication_profile = {
 			anonymous = function(sasl, session, realm)
 				local username;
-				if randomize_for_loopback and (session.ip == "127.0.0.1" or session.ip == "::1") then
-					username = hmac_sha1(gen_uuid(), sha1_gentoken, true);
+				if randomize_for_loopback and (session.ip:match("^127%.%d+%.%d+%.%d+") or session.ip == "::1") then
+					username = gen_uuid();
 				else
 					username = hmac_sha1(session.ip, sha1_gentoken, true);
 				end
