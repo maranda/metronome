@@ -282,11 +282,7 @@ local function generate_day_room_content(bare_room_jid)
 		end
 	end
 
-	if config.show_presences then
-		tmp = html.days.body:gsub("###DAYS_STUFF###", days);
-	else
-		tmp = html.days.bodynp:gsub("###DAYS_STUFF###", days);
-	end
+	tmp = html.days.body:gsub("###DAYS_STUFF###", days);
 	tmp = tmp:gsub("###PREVIOUS_ROOM###", previous_room == "" and node or previous_room);
 	tmp = tmp:gsub("###NEXT_ROOM###", next_room == "" and node or next_room);
 	tmp = tmp:gsub("###ROOMS###", rooms);
@@ -595,7 +591,11 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 				previous_day = html.day.dayLink:gsub("###DAY###", previous_day):gsub("###TEXT###", "&lt;");
 			end
 			ret = ret:gsub("%%", "%%%%");
-			tmp = html.day.body:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
+			if config.show_presences then
+				tmp = html.day.body:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
+			else
+				tmp = html.day.bodynp:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
+			end
 			tmp = tmp:gsub("###CALENDAR###", calendar);
 			tmp = tmp:gsub("###DATE###", tostring(os_date("%A, %B %d, %Y", os_time(temptime))));
 			tmp = tmp:gsub("###TITLE_STUFF###", html.day.title:gsub("###TITLE###", room_subject));
