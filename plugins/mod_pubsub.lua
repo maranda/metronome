@@ -122,17 +122,23 @@ end
 
 function process_config_form(service, name, form)
 	local node = service.nodes[name];
-	if not node then return false, "item-not-found" end
+	if not node then return false, "item-not-found"; end
 	
 	local fields = form_layout(service, name):data(form);
+
+	-- some sanity checks
+	local a_model, p_model = fields["pubsub#access_model"], fields["pubsub#publish_model"];
+	if (a_model ~= "open" or a_model ~= "whitelist") or (p_model ~= "publisher" or p_model ~= "open") then
+		return false, "bad-request";
+	end
 
 	node.config["title"] = fields["pubsub#title"];
 	node.config["deliver_notifications"] = fields["pubsub#deliver_notifications"];
 	node.config["deliver_payloads"] = fields["pubsub#deliver_payloads"];
 	node.config["max_items"] = tonumber(fields["pubsub#max_items"]) or 0;
 	node.config["persist_items"] = fields["pubsub#persist_items"];
-	node.config["access_model"] = fields["pubsub#access_model"];
-	node.config["publish_model"] = fields["pubsub#publish_model"];
+	node.config["access_model"] = a_model;
+	node.config["publish_model"] = p_model;
 
 	return true;
 end
@@ -224,13 +230,10 @@ function handlers.get_items(origin, stanza, items)
 	end
 
 	local reply;
-	if data then
-		reply = st.reply(stanza)
-			:tag("pubsub", { xmlns = xmlns_pubsub })
-				:add_child(data);
-	else
-		reply = pubsub_error_reply(stanza, "item-not-found");
-	end
+	reply = st.reply(stanza)
+		:tag("pubsub", { xmlns = xmlns_pubsub })
+			:add_child(data);
+
 	return origin.send(reply);
 end
 
@@ -587,7 +590,7 @@ module:hook("iq/host/http://jabber.org/protocol/pubsub#owner:pubsub", handle_pub
 local disco_info;
 
 local feature_map = {
-	[true] = { "access-open", "access-whitelist", "config-node", "persistent-items", "manage-affiliations", "manage-subscriptions" };
+	[true] = { "access-open", "config-node", "persistent-items", "manage-affiliations", "manage-subscriptions" };
 	create = { "create-nodes", "create-and-configure", autocreate_on_publish and "instant-nodes", "item-ids" };
 	delete = { "delete-nodes" };
 	retract = { "delete-items", "retract-items" };
