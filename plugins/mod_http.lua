@@ -137,7 +137,6 @@ module:add_item("net-provider", {
 module:add_item("net-provider", {
 	name = "https";
 	listener = server.listener;
-	default_port = 5281;
 	encryption = "ssl";
 	ssl_config = { verify = "none" };
 	multiplex = {
