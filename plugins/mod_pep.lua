@@ -413,8 +413,6 @@ function handlers.get_items(origin, stanza, items)
 	local id = item and item.attr.id;
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 
-	local has_access_presence = get_items
-	
 	local ok, results, max_tosend = services[user]:get_items(node, stanza.attr.from, id, max);
 	if not ok then
 		return origin.send(pep_error_reply(stanza, results));
