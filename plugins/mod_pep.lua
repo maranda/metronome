@@ -36,6 +36,7 @@ module:add_feature("http://jabber.org/protocol/pubsub#access-presence");
 module:add_feature("http://jabber.org/protocol/pubsub#auto-create");
 module:add_feature("http://jabber.org/protocol/pubsub#create-and-configure");
 module:add_feature("http://jabber.org/protocol/pubsub#create-nodes");
+module:add_feature("http://jabber.org/protocol/pubsub#config-node");
 module:add_feature("http://jabber.org/protocol/pubsub#delete-items");
 module:add_feature("http://jabber.org/protocol/pubsub#delete-nodes");
 module:add_feature("http://jabber.org/protocol/pubsub#filtered-notifications");
@@ -268,6 +269,63 @@ local function probe_jid(user, from)
 	module:log("debug", "Sending trigger probe to: %s", from);
 end
 
+function form_layout(service, name)
+	local c_name = "Node configuration for "..name;
+	local node = service.nodes[name];
+
+	return dataforms.new({
+		title = c_name,
+		instructions = c_name,
+		{
+			name = "FORM_TYPE",
+			type = "hidden",
+			value = "http://jabber.org/protocol/pubsub#node_config"
+		},
+		{
+			name = "pubsub#max_items",
+			type = "text-single",
+			label = "Max number of items to persist",
+			value = type(node.config.max_items) == "number" and tostring(node.config.max_items) or "0"
+		},
+		{
+			name = "pubsub#persist_items",
+			type = "boolean",
+			label = "Whether to persist items to storage or not",
+			value = node.config.persist_items or false
+		},
+		{
+			name = "pubsub#publish_model",
+			type = "list-single",
+			label = "Publisher Model for the node, currently supported models are publisher and open",
+			value = {
+				{ value = "publisher", default = (node.config.publish_model == "publisher" or node.config.publish_model == nil) and true },
+				{ value = "open", default = node.config.publish_model == "open" and true }
+			}
+		},				
+	});
+end
+
+function send_config_form(service, name, origin, stanza)
+	return origin.send(st.reply(stanza)
+		:tag("pubsub", { xmlns = "http://jabber.org/protocol/pubsub#owner" })
+			:tag("configure", { node = name })
+				:add_child(form_layout(service, name):form()):up()
+	);
+end
+
+function process_config_form(service, name, form)
+	local node = service.nodes[name];
+	if not node then return false, "item-not-found" end
+	
+	local fields = form_layout(service, name):data(form);
+
+	node.config["max_items"] = tonumber(fields["pubsub#max_items"]) or 0;
+	node.config["persist_items"] = fields["pubsub#persist_items"];
+	node.config["publish_model"] = fields["pubsub#publish_model"];
+
+	return true;
+end
+
 -- Module Definitions.
 
 function handle_pubsub_iq(event)
@@ -388,14 +446,18 @@ function handlers.set_create(origin, stanza, create, config)
 		local fields = config:get_child("x", "jabber:x:data");
 		for _, field in ipairs(fields.tags) do
 			if field.attr.var == "pubsub#max_items" then
-				node_config["max_items"] = tonumber(field:get_child_text("value")) or 20;
+				node_config.max_items = tonumber(field:get_child_text("value")) or 20;
 			elseif field.attr.var == "pubsub#persist_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
-				node_config["persist_items"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
+				node_config.persist_items = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
 			elseif field.attr.var == "pubsub#publish_model" then
 				local value = field:get_child_text("value");
-				if value == "publisher" or value == "open" then	node_config["publish_model"] = value; end
+				if value == "publisher" or value == "open" then	node_config.publish_model = value; end
 			end
 		end
+	end
+
+	if singleton_nodes:contains(node) and not node_config then
+		node_config = { max_items = 1 };
 	end
 
 	if node then
@@ -484,14 +546,12 @@ function handlers.set_publish(origin, stanza, publish)
 	local recs_count = 0;
 	local id = (item and item.attr.id) or uuid_generate();
 	if item and not item.attr.id then item.attr.id = id; end
-	if singleton_nodes:contains(node) and services[user].nodes[node] then
-		services[user].nodes[node].data = {};		-- Clear singleton nodes, this is not exactly correct
-		services[user].nodes[node].data_id = {};	-- Spec wise I think.
-	end
 	if not services[user].nodes[node] then
 	-- normally this would be handled just by publish() but we have to preceed its broadcast,
 	-- so since autocreate on publish is in place, do create and then resubscribe interested items.
-		services[user]:create(node, from);
+		local node_config;
+		if singleton_nodes:contains(node) then node_config = { max_items = 1 }; end
+		services[user]:create(node, from, node_config);
 		pep_autosubscribe_recs(user, node);
 	end
 
@@ -534,6 +594,60 @@ function handlers.set_retract(origin, stanza, retract)
 end
 
 -- pubsub#owner ns handlers
+
+function handlers_owner.get_configure(origin, stanza, action)
+	local node = action.attr.node;
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
+	if not node then
+		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
+	end
+
+	if not services[user].nodes[node] then
+		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
+	end
+
+	local ok, ret = services[user]:get_affiliation(stanza.attr.from);
+
+	if ret == "owner" then
+		return send_config_form(services[user], node, origin, stanza);
+	else
+		return origin.send(pubsub_error_reply(stanza, "forbidden"));
+	end
+end
+
+function handlers_owner.set_configure(origin, stanza, action)
+	local node = action.attr.node;
+	local user = stanza.attr.to or (origin.username.."@"..origin.host);
+
+	if not node then
+		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
+	end
+
+	if not services[user].nodes[node] then
+		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
+	end
+
+	local ok, ret = services[user]:get_affiliation(stanza.attr.from)
+	
+	local reply;
+	if ret == "owner" then
+		if action:get_child("x", "jabber:x:data") and 
+		   (action:get_child("x", "jabber:x:data").attr.type == "submit" or action:get_child("x", "jabber:x:data").attr.type == "cancel") then
+			local form = action:get_child("x", "jabber:x:data");
+			if form.attr.type == "cancel" then
+				reply = st.reply(stanza);
+			else
+				local ok, ret = process_config_form(services[user], node, form);
+				if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
+			end
+		else
+			reply = pubsub_error_reply(stanza, "bad-request");
+		end
+	else
+		reply = pubsub_error_reply(stanza, "forbidden");
+	end
+	return origin.send(reply);
+end
 
 function handlers_owner.set_delete(origin, stanza, delete)
 	local node = delete.attr.node;
