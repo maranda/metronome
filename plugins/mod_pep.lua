@@ -294,6 +294,15 @@ function form_layout(service, name)
 			value = node.config.persist_items or false
 		},
 		{
+			name = "pubsub#access_model",
+			type = "list-single",
+			label = "Access Model for the node, currently supported models are presence and open",
+			value = {
+				{ value = "presence", default = (node.config.access_model == "presence" or node.config.access_model == nil) and true },
+				{ value = "open", default = node.config.access_model == "open" and true }
+			}
+		},
+		{
 			name = "pubsub#publish_model",
 			type = "list-single",
 			label = "Publisher Model for the node, currently supported models are publisher and open",
@@ -319,9 +328,16 @@ function process_config_form(service, name, form)
 	
 	local fields = form_layout(service, name):data(form);
 
+	-- some sanity checks
+	local a_model, p_model = fields["pubsub#access_model"], fields["pubsub#publish_model"];
+	if (a_model ~= "presence" or a_model ~= "open") or (p_model ~= "publisher" or p_model ~= "open") then
+		return false, "bad-request";
+	end
+
 	node.config["max_items"] = tonumber(fields["pubsub#max_items"]) or 0;
 	node.config["persist_items"] = fields["pubsub#persist_items"];
-	node.config["publish_model"] = fields["pubsub#publish_model"];
+	node.config["access_model"] = a_model;
+	node.config["publish_model"] = p_model;
 
 	return true;
 end
@@ -396,6 +412,8 @@ function handlers.get_items(origin, stanza, items)
 	local item = items:get_child("item");
 	local id = item and item.attr.id;
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
+
+	local has_access_presence = get_items
 	
 	local ok, results, max_tosend = services[user]:get_items(node, stanza.attr.from, id, max);
 	if not ok then
@@ -409,13 +427,10 @@ function handlers.get_items(origin, stanza, items)
 		for _, id in ipairs(max_tosend) do data:add_child(results[id]); end		
 	end
 
-	if data then
-		reply = st.reply(stanza)
-			:tag("pubsub", { xmlns = xmlns_pubsub })
-				:add_child(data);
-	else
-		reply = pep_error_reply(stanza, "item-not-found");
-	end
+	reply = st.reply(stanza)
+		:tag("pubsub", { xmlns = xmlns_pubsub })
+			:add_child(data);
+
 	return origin.send(reply);
 end
 
@@ -449,9 +464,12 @@ function handlers.set_create(origin, stanza, create, config)
 				node_config.max_items = tonumber(field:get_child_text("value")) or 20;
 			elseif field.attr.var == "pubsub#persist_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
 				node_config.persist_items = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
+			elseif field.attr.var == "pubsub#access_model" then
+				local value = field:get_child_text("value");
+				if value == "presence" or value == "open" then node_config.publish_model = value; end
 			elseif field.attr.var == "pubsub#publish_model" then
 				local value = field:get_child_text("value");
-				if value == "publisher" or value == "open" then	node_config.publish_model = value; end
+				if value == "publisher" or value == "open" then node_config.publish_model = value; end
 			end
 		end
 	end
@@ -606,7 +624,7 @@ function handlers_owner.get_configure(origin, stanza, action)
 		return origin.send(pep_error_reply(stanza, "item-not-found"));
 	end
 
-	local ok, ret = services[user]:get_affiliation(stanza.attr.from);
+	local ok, ret = services[user]:get_affiliation(stanza.attr.from, node);
 
 	if ret == "owner" then
 		return send_config_form(services[user], node, origin, stanza);
@@ -627,7 +645,7 @@ function handlers_owner.set_configure(origin, stanza, action)
 		return origin.send(pep_error_reply(stanza, "item-not-found"));
 	end
 
-	local ok, ret = services[user]:get_affiliation(stanza.attr.from)
+	local ok, ret = services[user]:get_affiliation(stanza.attr.from, node)
 	
 	local reply;
 	if ret == "owner" then
@@ -883,11 +901,18 @@ module:hook_global("user-deleted", function(event)
 end, 100);
 
 local admin_aff = "owner";
-local function get_affiliation(self, jid)
+local function get_affiliation(self, jid, node)
 	local bare_jid = jid_bare(jid);
 	if bare_jid == self.name then
 		return admin_aff;
 	else
+		local node = self.nodes[node];
+		local access_model = node.config.access_model;
+		if node and (not access_model or access_model == "presence") then
+			local user, host = jid_split(self.name);
+			if not is_contact_subscribed(user, host, bare_jid) then	return "no_access"; end
+		end
+			
 		return "none";
 	end
 end
@@ -919,6 +944,30 @@ function pep_new(node)
 
 	local new_service = {
 			capabilities = {
+				no_access = {
+					create = false;
+					delete = false;
+					publish = false;
+					purge = false;
+					retract = false;
+					get_nodes = false;
+
+					subscribe = false;
+					unsubscribe = false;
+					get_subscription = false;
+					get_subscriptions = false;
+					get_items = false;
+
+					subscribe_other = false;
+					unsubscribe_other = false;
+					get_subscription_other = false;
+					get_subscriptions_other = false;
+
+					be_subscribed = false;
+					be_unsubscribed = false;
+
+					set_affiliation = false;
+				};
 				none = {
 					create = false;
 					delete = false;
