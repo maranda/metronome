@@ -588,7 +588,7 @@ local disco_info;
 
 local feature_map = {
 	[true] = { "access-open", "access-whitelist", "config-node", "persistent-items", "manage-affiliations", "manage-subscriptions" };
-	create = { "create-nodes", autocreate_on_publish and "instant-nodes", "item-ids" };
+	create = { "create-nodes", "create-and-configure", autocreate_on_publish and "instant-nodes", "item-ids" };
 	delete = { "delete-nodes" };
 	retract = { "delete-items", "retract-items" };
 	publish = { "publish" };
