@@ -414,11 +414,11 @@ function handlers_owner.set_configure(origin, stanza, action)
 		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
 	end
 
-	local ok, ret = service:get_affiliation(stanza.attr.from, node)
-
 	if not service.nodes[node] then
 		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
 	end
+
+	local ok, ret = service:get_affiliation(stanza.attr.from, node)
 	
 	local reply;
 	if ret == "owner" then
