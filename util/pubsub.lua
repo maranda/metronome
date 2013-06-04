@@ -376,9 +376,9 @@ function service:publish(node, actor, id, item)
 				local subtract = (#node_obj.data_id - node_obj.config.max_items <= 0) and
 						 (node_obj.config.max_items + (#node_obj.data_id - node_obj.config.max_items)) or
 						 #node_obj.data_id - node_obj.config.max_items;
-				for entry, id in ipairs(node_obj.data_id) do
+				for entry, i_id in ipairs(node_obj.data_id) do
 					if entry <= subtract then
-						node_obj.data[id] = nil;
+						if id ~= i_id then node_obj.data[i_id] = nil; end -- check for id dupes
 						table.remove(node_obj.data_id, entry);
 					end
 				end
