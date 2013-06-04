@@ -599,11 +599,11 @@ function handlers_owner.get_configure(origin, stanza, action)
 	local node = action.attr.node;
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	if not node then
-		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
+		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
 	end
 
 	if not services[user].nodes[node] then
-		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
+		return origin.send(pep_error_reply(stanza, "item-not-found"));
 	end
 
 	local ok, ret = services[user]:get_affiliation(stanza.attr.from);
@@ -611,7 +611,7 @@ function handlers_owner.get_configure(origin, stanza, action)
 	if ret == "owner" then
 		return send_config_form(services[user], node, origin, stanza);
 	else
-		return origin.send(pubsub_error_reply(stanza, "forbidden"));
+		return origin.send(pep_error_reply(stanza, "forbidden"));
 	end
 end
 
@@ -620,11 +620,11 @@ function handlers_owner.set_configure(origin, stanza, action)
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 
 	if not node then
-		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
+		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
 	end
 
 	if not services[user].nodes[node] then
-		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
+		return origin.send(pep_error_reply(stanza, "item-not-found"));
 	end
 
 	local ok, ret = services[user]:get_affiliation(stanza.attr.from)
@@ -638,13 +638,13 @@ function handlers_owner.set_configure(origin, stanza, action)
 				reply = st.reply(stanza);
 			else
 				local ok, ret = process_config_form(services[user], node, form);
-				if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
+				if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
 			end
 		else
-			reply = pubsub_error_reply(stanza, "bad-request");
+			reply = pep_error_reply(stanza, "bad-request");
 		end
 	else
-		reply = pubsub_error_reply(stanza, "forbidden");
+		reply = pep_error_reply(stanza, "forbidden");
 	end
 	return origin.send(reply);
 end
