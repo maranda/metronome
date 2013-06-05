@@ -9,6 +9,7 @@
 
 local st = require "util.stanza";
 local new_throttle = require "util.throttle".create;
+local jid_bare = require "util.jid".bare;
 local jid_split = require "util.jid".split;
 
 local xmlns_muc = "http://jabber.org/protocol/muc";
