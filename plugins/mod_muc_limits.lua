@@ -17,6 +17,8 @@ local period = math.max(module:get_option_number("muc_event_rate", 0.5), 0);
 local burst = math.max(module:get_option_number("muc_burst_factor", 6), 1);
 local exclusion_list = module:get_option_set("muc_throttle_host_exclusion");
 
+local rooms = metronome.hosts[module.host].modules.muc.rooms;
+
 local function handle_stanza(event)
 	local origin, stanza = event.origin, event.stanza;
 
@@ -30,11 +32,11 @@ local function handle_stanza(event)
 	end
 
 	local dest_room, dest_host, dest_nick = jid.split(stanza.attr.to);
-	local room = hosts[module.host].modules.muc.rooms[dest_room.."@"..dest_host];
+	local room = rooms[dest_room.."@"..dest_host];
 	if not room then return; end
 	local from_jid = stanza.attr.from;
 	local occupant = room._occupants[room._jid_nick[from_jid]];
-	if occupant and occupant.affiliation then
+	if (occupant and occupant.affiliation) or (not(occupant) and room._affiliations[jid_bare(from_jid)]) then
 		module:log("debug", "Skipping stanza from affiliated user...");
 		return;
 	end
@@ -60,7 +62,7 @@ local function handle_stanza(event)
 end
 
 function module.unload()
-	for room_jid, room in pairs(hosts[module.host].modules.muc.rooms) do
+	for room_jid, room in pairs(rooms) do
 		room.throttle = nil;
 	end
 end
