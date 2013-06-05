@@ -622,7 +622,7 @@ function handlers_owner.get_configure(origin, stanza, action)
 		return origin.send(pep_error_reply(stanza, "item-not-found"));
 	end
 
-	local ok, ret = services[user]:get_affiliation(stanza.attr.from, node);
+	local ret = services[user]:get_affiliation(stanza.attr.from, node);
 
 	if ret == "owner" then
 		return send_config_form(services[user], node, origin, stanza);
@@ -643,7 +643,7 @@ function handlers_owner.set_configure(origin, stanza, action)
 		return origin.send(pep_error_reply(stanza, "item-not-found"));
 	end
 
-	local ok, ret = services[user]:get_affiliation(stanza.attr.from, node)
+	local ret = services[user]:get_affiliation(stanza.attr.from, node)
 	
 	local reply;
 	if ret == "owner" then
