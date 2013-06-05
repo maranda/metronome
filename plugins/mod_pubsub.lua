@@ -273,7 +273,7 @@ function handlers.set_create(origin, stanza, create, config)
 	if config then
 		local form = config:get_child("x", "jabber:x:data");
 		ok, node_config = process_config_form(services[user], node, form, true);
-		if not ok then return origin.send(pep_error_reply(stanza, node_config)); end
+		if not ok then return origin.send(pubsub_error_reply(stanza, node_config)); end
 	end
 
 	if node then
