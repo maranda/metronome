@@ -141,7 +141,10 @@ function handle_POST(event)
 	local context = { request = request, response = response, notopen = true };
 	local stream = new_xmpp_stream(context, stream_callbacks);
 	response.context = context;
-	stream:feed(body);
+	if not stream:feed(body) then
+		module:log("warn", "Couldn't parse the body of the request: %s", tostring(body));
+		return 400;
+	end
 
 	local session = sessions[context.sid];
 	if session then
@@ -152,9 +155,6 @@ function handle_POST(event)
 		local r = session.requests;
 		log("debug", "Session %s has %d out of %d requests open", context.sid, #r, session.bosh_hold);
 		log("debug", "and there are %d things in the send_buffer:", #session.send_buffer);
-		for i, thing in ipairs(session.send_buffer) do
-			log("debug", "    %s", tostring(thing));
-		end
 		if #r > session.bosh_hold then
 			log("debug", "We are holding too many requests, so...");
 			if #session.send_buffer > 0 then
@@ -187,6 +187,9 @@ function handle_POST(event)
 			return true; -- Inform http server we shall reply later
 		end
 	end
+
+	module:log("warn", "The request isn't associated with a session.");
+	return 400;
 end
 
 local function bosh_reset_stream(session) session.notopen = true; end
@@ -296,6 +299,7 @@ function stream_callbacks.streamopened(context, attr)
 					body_attr.ver  = '1.6'; from = session.host;
 					body_attr["xmlns:xmpp"] = "urn:xmpp:xbosh";
 					body_attr["xmpp:version"] = "1.0";
+					creating_session = nil;
 				end
 				oldest_request:send(st.stanza("body", body_attr):top_tag()..t_concat(session.send_buffer).."</body>");
 				session.send_buffer = {};
