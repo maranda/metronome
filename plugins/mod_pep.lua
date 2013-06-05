@@ -331,7 +331,7 @@ function process_config_form(service, name, form)
 
 	-- some sanity checks
 	local a_model, p_model = fields["pubsub#access_model"], fields["pubsub#publish_model"];
-	if (a_model ~= "presence" or a_model ~= "open") or (p_model ~= "publisher" or p_model ~= "open") then
+	if (a_model ~= "presence" and a_model ~= "open") or (p_model ~= "publisher" and p_model ~= "open") then
 		return false, "bad-request";
 	end
 
