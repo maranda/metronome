@@ -16,6 +16,7 @@ local uuid_generate = require "util.uuid".generate;
 local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed;
 local calculate_hash = require "util.caps".calculate_hash;
 local set_new = require "util.set".new;
+local dataforms = require "util.dataforms";
 local encode_node = datamanager.path_encode;
 local um_user_exists = usermanager.user_exists;
 
