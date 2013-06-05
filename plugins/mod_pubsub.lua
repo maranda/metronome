@@ -120,25 +120,34 @@ function send_config_form(service, name, origin, stanza)
 	);
 end
 
-function process_config_form(service, name, form)
+function process_config_form(service, name, form, new)
 	local node = service.nodes[name];
-	if not node then return false, "item-not-found"; end
+	if not node and not new then return false, "item-not-found"; end
 	
-	local fields = form_layout(service, name):data(form);
+	if not form or form.attr.type ~= "submit" then return false, "bad-request" end
+	local node_config = node.config or {};
 
-	-- some sanity checks
-	local a_model, p_model = fields["pubsub#access_model"], fields["pubsub#publish_model"];
-	if (a_model ~= "open" and a_model ~= "whitelist") or (p_model ~= "publisher" and p_model ~= "open") then
-		return false, "bad-request";
+	for _, field in ipairs(form.tags) do
+		if field.attr.var == "pubsub#title" and field:get_child_text("value") then
+			node_config.title = field:get_child_text("value");
+		elseif field.attr.var == "pubsub#deliver_notifications" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
+			node_config.deliver_notifications = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
+		elseif field.attr.var == "pubsub#deliver_payloads" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
+			node_config.deliver_payloads = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
+		elseif field.attr.var == "pubsub#max_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
+			node_config.max_items = tonumber(field:get_child_text("value"));
+		elseif field.attr.var == "pubsub#persist_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
+			node_config.persist_items = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
+		elseif field.attr.var == "pubsub#access_model" then
+			local value = field:get_child_text("value");
+			if value == "open" or value == "whitelist" then node_config.access_model = value; end
+		elseif field.attr.var == "pubsub#publish_model" then
+			local value = field:get_child_text("value");
+			if value == "publisher" or value == "open" then	node_config.publish_model = value; end
+		end
 	end
 
-	node.config["title"] = fields["pubsub#title"];
-	node.config["deliver_notifications"] = fields["pubsub#deliver_notifications"];
-	node.config["deliver_payloads"] = fields["pubsub#deliver_payloads"];
-	node.config["max_items"] = tonumber(fields["pubsub#max_items"]) or 0;
-	node.config["persist_items"] = fields["pubsub#persist_items"];
-	node.config["access_model"] = a_model;
-	node.config["publish_model"] = p_model;
+	if new then return true, node_config end
 
 	return true;
 end
@@ -259,28 +268,11 @@ function handlers.set_create(origin, stanza, create, config)
 	local ok, ret, reply;
 
 	local node_config;
+	local node_config;
 	if config then
-		node_config = {};
-		local fields = config:get_child("x", "jabber:x:data");
-		for _, field in ipairs(fields.tags) do
-			if field.attr.var == "pubsub#title" and field:get_child_text("value") then
-				node_config["title"] = field:get_child_text("value");
-			elseif field.attr.var == "pubsub#deliver_notifications" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
-				node_config["deliver_notifications"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
-			elseif field.attr.var == "pubsub#deliver_payloads" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
-				node_config["deliver_payloads"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
-			elseif field.attr.var == "pubsub#max_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
-				node_config["max_items"] = tonumber(field:get_child_text("value"));
-			elseif field.attr.var == "pubsub#persist_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
-				node_config["persist_items"] = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
-			elseif field.attr.var == "pubsub#access_model" then
-				local value = field:get_child_text("value");
-				if value == "open" or value == "whitelist" then node_config["access_model"] = value; end
-			elseif field.attr.var == "pubsub#publish_model" then
-				local value = field:get_child_text("value");
-				if value == "publisher" or value == "open" then	node_config["publish_model"] = value; end
-			end
-		end
+		local form = config:get_child("x", "jabber:x:data");
+		ok, node_config = process_config_form(services[user], node, form, true);
+		if not ok then return origin.send(pep_error_reply(stanza, node_config)); end
 	end
 
 	if node then
@@ -425,18 +417,13 @@ function handlers_owner.set_configure(origin, stanza, action)
 	
 	local reply;
 	if ret == "owner" then
-		if action:get_child("x", "jabber:x:data") and 
-		   (action:get_child("x", "jabber:x:data").attr.type == "submit" or action:get_child("x", "jabber:x:data").attr.type == "cancel") then
-			local form = action:get_child("x", "jabber:x:data");
-			if form.attr.type == "cancel" then
-				reply = st.reply(stanza);
-			else
-				local ok, ret = process_config_form(service, node, form);
-				if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
-			end
-		else
-			reply = pubsub_error_reply(stanza, "bad-request");
+		local form = action:get_child("x", "jabber:x:data");
+		if form and form.attr.type == "cancel" then
+			return origin.send(st.reply(stanza));
 		end
+
+		local ok, ret = process_config_form(service, node, form);
+		if ok then reply = st.reply(stanza); else reply = pubsub_error_reply(stanza, ret); end
 	else
 		reply = pubsub_error_reply(stanza, "forbidden");
 	end
