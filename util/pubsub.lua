@@ -644,14 +644,6 @@ function service:restore_node(node)
 		data_id = data.data_id;
 	};
 
-	-- Temporary compat stub to add new configuration values to microblog and inbox nodes
-	local node_config = node_obj.config;
-	if node == "urn:xmpp:microblog:0" and not node_config.access_model then
-		node_config.access_model = "open";
-	elseif node == "urn:xmpp:inbox" and not node_config.access_model then
-		node_config.access_model = "open";
-	end	
-
 	for id, item in pairs(data.data) do
 		restored_data[id] = st.deserialize(item);
 	end
