@@ -128,8 +128,13 @@ function service:set_affiliation(node, actor, jid, affiliation)
 		return false, "forbidden";
 	end
 
-	if (node_obj.capabilities and not node_obj.capabilities[affiliation]) or
-	   not self.config.capabilities[affiliation] then
+	local caps = node_obj.capabilities and node_obj.capabilities[affiliation];
+	local global_caps = self.config.capabilities[affiliation]; 
+	local _not_exist = not caps and not global_caps and true;
+
+	if _not_exist then
+		return false, "bad-request";
+	elseif (caps and caps.dummy) or (global_caps and global_caps.dummy) then
 		return false, "bad-request";
 	end
 
@@ -189,7 +194,7 @@ function service:add_subscription(node, actor, jid, options)
 	if actor ~= true
 	   and node_obj.config.access_model == "whitelist"
 	   and self:get_affiliation(actor, node, action) ~= "owner" then
-		local is_whitelisted = (node_obj.affiliation[actor] ~= nil or node_obj.affiliation[actor] ~= "outcast") and true;
+		local is_whitelisted = node_obj.affiliations[actor] ~= nil and true;
 		if cap == "subscribe" and not is_whitelisted then return false, "forbidden"; end
 	end
 
@@ -470,7 +475,7 @@ function service:get_items(node, actor, id, max)
 	if actor ~= true
 	   and node_obj.config.access_model == "whitelist"
 	   and self:get_affiliation(actor, node, action) ~= "owner" then
-		local is_whitelisted = (node_obj.affiliation[actor] ~= nil or node_obj.affiliation[actor] ~= "outcast") and true;
+		local is_whitelisted = node_obj.affiliations[actor] ~= nil and true;
 		if cap == "subscribe" and not is_whitelisted then return false, "forbidden"; end
 	end
 

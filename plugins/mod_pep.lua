@@ -890,6 +890,8 @@ function pep_new(node)
 					be_unsubscribed = false;
 
 					set_affiliation = false;
+
+					dummy = true;
 				};
 				none = {
 					create = false;

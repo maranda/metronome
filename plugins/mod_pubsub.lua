@@ -757,6 +757,32 @@ set_service(pubsub.new({
 			get_affiliations = true;
 			set_affiliation = false;
 		};
+		member = {
+			create = false;
+			configure = false;
+			delete = false;
+			publish = false;
+			purge = false;
+			retract = false;
+			get_nodes = true;
+			
+			subscribe = true;
+			unsubscribe = true;
+			get_subscription = true;
+			get_subscriptions = true;
+			get_items = true;
+			
+			subscribe_other = false;
+			unsubscribe_other = false;
+			get_subscription_other = false;
+			get_subscriptions_other = false;
+			
+			be_subscribed = true;
+			be_unsubscribed = true;
+			
+			get_affiliations = true;
+			set_affiliation = false;
+		};
 		publisher = {
 			create = false;
 			configure = false;
@@ -836,6 +862,8 @@ set_service(pubsub.new({
 
 			get_affiliations = true;			
 			set_affiliation = false;
+
+			dummy = true;
 		};
 	};
 
