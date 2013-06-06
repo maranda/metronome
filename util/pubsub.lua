@@ -8,7 +8,6 @@ local events = require "util.events";
 local keys = require "util.iterators".keys;
 local st = require "util.stanza";
 local table = table;
-local type = type;
 
 module("pubsub", package.seeall);
 
@@ -39,7 +38,7 @@ end
 
 function service:may(node, actor, action)
 	-- Employ normalization
-	if type(actor) ~= "boolean" then actor = self.config.normalize_jid(actor); end
+	if actor ~= true then actor = self.config.normalize_jid(actor); end
 
 	if actor == true then return true; end
 	
@@ -173,7 +172,7 @@ function service:add_subscription(node, actor, jid, options)
 		if not self.config.autocreate_on_subscribe then
 			return false, "item-not-found";
 		elseif can_subscribe and be_subscribed then			
-			local ok, err = self:create(node, true);
+			local ok, err = self:create(node, true, nil, actor);
 			if not ok then
 				return ok, err;
 			end
@@ -187,7 +186,7 @@ function service:add_subscription(node, actor, jid, options)
 		return false, "forbidden";
 	end
 
-	if type(actor) ~= "boolean" 
+	if actor ~= true
 	   and node_obj.config.access_model == "whitelist"
 	   and self:get_affiliation(actor, node, action) ~= "owner" then
 		local is_whitelisted = (node_obj.affiliation[actor] ~= nil or node_obj.affiliation[actor] ~= "outcast") and true;
@@ -286,7 +285,7 @@ function service:get_subscription(node, actor, jid)
 	return true, node_obj.subscribers[jid];
 end
 
-function service:create(node, actor, config)
+function service:create(node, actor, config, jid)
 	if not self:may(node, actor, "create") then
 		return false, "forbidden";
 	end
@@ -294,6 +293,8 @@ function service:create(node, actor, config)
 	if self.nodes[node] then
 		return false, "conflict";
 	end
+
+	local normalized_jid = (actor == true and self.config.normalize_jid(jid)) or self.config.normalize_jid(actor);
 
 	local _node_default_config;
 	if self.config.node_default_config then
@@ -307,6 +308,7 @@ function service:create(node, actor, config)
 		config = _node_default_config or {};
 		data = {};
 		data_id = {};
+		data_author = {};
 		affiliations = {};
 	};
 
@@ -316,11 +318,12 @@ function service:create(node, actor, config)
 		end
 	end
 
-	local ok, err = self:set_affiliation(node, true, actor, "owner");
+	local ok, err = self:set_affiliation(node, true, normalized_jid, "owner");
 	if not ok then
 		self.nodes[node] = nil
 		return ok, err;
 	end
+
 	ok, err = self:save_node(node);
 	if ok then self:save(); end
 	return ok, err;
@@ -343,7 +346,7 @@ function service:delete(node, actor)
 	end
 end
 
-function service:publish(node, actor, id, item)
+function service:publish(node, actor, id, item, jid)
 	local node_obj = self.nodes[node];
 	local open_publish = node_obj and node_obj.config and 
 			     node_obj.config.publish_model == "open" and true or false;
@@ -353,7 +356,7 @@ function service:publish(node, actor, id, item)
 			return false, "forbidden";
 		end
 
-		local ok, err = self:create(node, true);
+		local ok, err = self:create(node, true, nil, actor);
 		if not ok then
 			return ok, err;
 		end
@@ -369,6 +372,7 @@ function service:publish(node, actor, id, item)
 	if item then
 		node_obj.data[id] = item;
 		table.insert(node_obj.data_id, id);
+		node_obj.data_author[id] = (actor == true and self.config.normalize_jid(jid)) or self.config.normalize_jid(actor);
 
 		-- If max items ~= 0, discard exceeding older items
 		if node_obj.config.max_items and node_obj.config.max_items ~= 0 then
@@ -378,7 +382,10 @@ function service:publish(node, actor, id, item)
 						 #node_obj.data_id - node_obj.config.max_items;
 				for entry, i_id in ipairs(node_obj.data_id) do
 					if entry <= subtract then
-						if id ~= i_id then node_obj.data[i_id] = nil; end -- check for id dupes
+						if id ~= i_id then -- check for id dupes
+							node_obj.data[i_id] = nil;
+							node_obj.data_author[i_id] = nil;
+						end
 						table.remove(node_obj.data_id, entry);
 					end
 				end
@@ -412,6 +419,7 @@ function service:purge(node, actor)
 		local subscribers = self.nodes[node].subscribers;
 		self.nodes[node].data = {};
 		self.nodes[node].data_id = {};
+		self.nodes[node].data_author = {};
 		self:save_node(node);
 		self:broadcaster(node, subscribers, "purged");
 		return true;
@@ -424,11 +432,22 @@ function service:retract(node, actor, id, retract)
 		return false, "item-not-found";
 	end
 
-	if not self:may(node, actor, "retract") then
+	local open_publish = node_obj and node_obj.config and 
+			     node_obj.config.publish_model == "open" and true or false;
+
+	if not open_publish and not self:may(node, actor, "retract") then
 		return false, "forbidden";
 	end
 
+	local normalize_jid = self.config.normalize_jid;
+	if actor ~= true and node_obj.affiliations[normalize_jid(actor)] == "publisher" then
+		if node_obj.data_author[id] == normalize_jid(actor) then
+			return false, "forbidden";
+		end
+	end
+
 	node_obj.data[id] = nil;
+	node_obj.data_author[id] = nil;
 	for index, value in ipairs(node_obj.data_id) do
 		if value == id then table.remove(node_obj.data_id, index); end
 	end
@@ -448,7 +467,7 @@ function service:get_items(node, actor, id, max)
 		return false, "forbidden";
 	end
 
-	if type(actor) ~= "boolean"
+	if actor ~= true
 	   and node_obj.config.access_model == "whitelist"
 	   and self:get_affiliation(actor, node, action) ~= "owner" then
 		local is_whitelisted = (node_obj.affiliation[actor] ~= nil or node_obj.affiliation[actor] ~= "outcast") and true;
@@ -617,6 +636,7 @@ function service:save_node(node)
 		config = node_obj.config;
 		data = saved_data;
 		data_id = node_obj.data_id;
+		data_author = node_obj.data_author;
 	});
 	return true;
 end
@@ -642,7 +662,15 @@ function service:restore_node(node)
 		config = data.config;
 		data = restored_data;
 		data_id = data.data_id;
+		data_author = data.data_author or {}; -- temp. code to convert data structure
 	};
+
+	-- temp. code, renormalize affiliations.
+	local normalize_affiliations = {};
+	for jid, aff in pairs(node_obj.affiliations) do
+		normalize_affiliations[self.config.normalize_jid(jid)] = aff;
+	end
+	node_obj.affiliations = normalize_affiliations;
 
 	for id, item in pairs(data.data) do
 		restored_data[id] = st.deserialize(item);
