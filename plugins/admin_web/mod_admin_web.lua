@@ -210,7 +210,7 @@ function module.add_host(module)
 	});
 
 	-- Create node for s2s sessions
-	ok, err = service[module.host]:create(xmlns_s2s_session, module.host);
+	ok, err = service[module.host]:create(xmlns_s2s_session, true, nil, module.host);
 	if not ok then
 		module:log("warn", "Could not create node " .. xmlns_s2s_session .. ": " .. tostring(err));
 	end
@@ -230,7 +230,7 @@ function module.add_host(module)
 	end
 
 	-- Create node for c2s sessions
-	ok, err = service[module.host]:create(xmlns_c2s_session, module.host);
+	ok, err = service[module.host]:create(xmlns_c2s_session, true, nil, module.host);
 	if not ok then
 		module:log("warn", "Could not create node " .. xmlns_c2s_session .. ": " .. tostring(err));
 	end
@@ -343,8 +343,6 @@ end
 
 function get_affiliation(self, jid, host)
 	local bare_jid = jid_bare(jid);
-
-	if hosts[bare_jid] then	return "owner"; end
 
 	if is_admin(bare_jid, host) then
 		return "member";
