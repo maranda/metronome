@@ -45,7 +45,6 @@ module:add_feature("http://jabber.org/protocol/pubsub#persistent-items");
 module:add_feature("http://jabber.org/protocol/pubsub#publish");
 module:add_feature("http://jabber.org/protocol/pubsub#purge-nodes");
 module:add_feature("http://jabber.org/protocol/pubsub#retrieve-items");
-module:add_feature("http://jabber.org/protocol/pubsub#subscribe");
 
 -- Helpers.
 
@@ -445,22 +444,6 @@ function handlers.get_items(origin, stanza, items)
 	return origin.send(reply);
 end
 
-function handlers.get_subscriptions(origin, stanza, subscriptions)
-	local node = subscriptions.attr.node;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
-	local ok, ret = services[user]:get_subscriptions(node, stanza.attr.from, stanza.attr.from);
-	if not ok then
-		return origin.send(pep_error_reply(stanza, ret));
-	end
-	local reply = st.reply(stanza)
-		:tag("pubsub", { xmlns = xmlns_pubsub })
-			:tag("subscriptions");
-	for _, sub in ipairs(ret) do
-		reply:tag("subscription", { node = sub.node, jid = sub.jid, subscription = "subscribed" }):up();
-	end
-	return origin.send(reply);
-end
-
 function handlers.set_create(origin, stanza, create, config)
 	local node = create.attr.node;
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
@@ -487,7 +470,7 @@ function handlers.set_create(origin, stanza, create, config)
 	else
 		repeat
 			node = uuid_generate();
-			ok, ret = services[user]:create(node, stanza.attr.from);
+			ok, ret = services[user]:create(node, stanza.attr.from, node_config);
 		until ok or ret ~= "conflict";
 		if ok then
 			reply = st.reply(stanza)
@@ -500,56 +483,6 @@ function handlers.set_create(origin, stanza, create, config)
 
 	if ok then -- auto-resubscribe interested recipients
 		pep_autosubscribe_recs(user, node);
-	end
-	return origin.send(reply);
-end
-
-function handlers.set_subscribe(origin, stanza, subscribe)
-	local node, jid = subscribe.attr.node, subscribe.attr.jid;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
-	local options_tag, options = stanza.tags[1]:get_child("options"), nil;
-	if options_tag then
-		options = options_form:data(options_tag.tags[1]);
-	end
-	local ok, ret = services[user]:add_subscription(node, stanza.attr.from, jid, options);
-	local reply;
-	if ok then
-		reply = st.reply(stanza)
-			:tag("pubsub", { xmlns = xmlns_pubsub })
-				:tag("subscription", {
-					node = node,
-					jid = jid,
-					subscription = "subscribed"
-				}):up();
-		if options_tag then
-			reply:add_child(options_tag);
-		end
-	else
-		reply = pep_error_reply(stanza, ret);
-	end
-	origin.send(reply);
-	if ok then
-		-- Send all current items
-		local ok, items, orderly = services[user]:get_items(node, stanza.attr.from);
-		if items then
-			local jids = { [jid] = options or true };
-			for _, id in pairs(orderly) do
-				services[user]:broadcaster(node, jids, items[id]);
-			end
-		end
-	end
-	return true;
-end
-
-function handlers.set_unsubscribe(origin, stanza, unsubscribe)
-	local node, jid = unsubscribe.attr.node, unsubscribe.attr.jid;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
-	local ok, ret = services[user]:remove_subscription(node, stanza.attr.from, jid);
-	local reply;
-	if ok then
-		reply = st.reply(stanza);
-	else
-		reply = pep_error_reply(stanza, ret);
 	end
 	return origin.send(reply);
 end
@@ -929,10 +862,6 @@ function set_service(new_service, jid, restore)
 	return services[jid];
 end
 
-local function normalize_dummy(jid)
-	return jid;
-end
-
 function pep_new(node)
 	local encoded_node = encode_node(node);
 
@@ -1046,7 +975,7 @@ function pep_new(node)
 			broadcaster = broadcast;
 			get_affiliation = get_affiliation;
 
-			normalize_jid = normalize_dummy;
+			normalize_jid = jid_bare;
 
 			store = storagemanager.open(module.host, "pep/"..encoded_node);
 		};
