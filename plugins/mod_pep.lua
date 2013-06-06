@@ -324,11 +324,16 @@ function send_config_form(service, name, origin, stanza)
 end
 
 function process_config_form(service, name, form, new)
-	local node = service.nodes[name];
-	if not node and not new then return false, "item-not-found" end
+	local node_config, node;
+	if new then
+		node_config = {};
+	else
+		node = service.nodes[name];
+		if not node then return false, "item-not-found"; end
+		node_config = node.config;
+	end
 
 	if not form or form.attr.type ~= "submit" then return false, "bad-request" end
-	local node_config = node.config or {};
 
 	for _, field in ipairs(form.tags) do
 		if field.attr.var == "pubsub#max_items" then
