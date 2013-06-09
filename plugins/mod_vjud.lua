@@ -196,8 +196,10 @@ local function optin_command_handler(self, data, state)
 		if not fields.nickname and not fields.realname and not fields.country and not fields.email then
 			return { status = "completed", error = { message = "You need to fill at least one field." } }
 		else
-			if not directory[jid_bare(data.from)] then
-				directory[jid_bare(data.from)] = { nickname = fields.nickname or "", realname = fields.realname or "", country = fields.country or "", email = fields.email or "" }
+			local jid = jid_bare(data.from)
+
+			if not directory[jid] then
+				directory[jid] = { nickname = fields.nickname or "", realname = fields.realname or "", country = fields.country or "", email = fields.email or "" }
 				if datamanager.store("store", my_host, "directory", directory) then
 					return { status = "completed", info = "Success." }
 				else
@@ -214,6 +216,8 @@ end
 
 local function optin_vcard_command_handler(self, data, state)
 	local node, host = jid_split(data.from)
+	local jid = jid_bare(data.from)
+
 	if host ~= synchronize_to_host or not hosts[synchronize_to_host] then
 		return { status = completed, error = { message = "You can't signup to this directory sorry." } }
 	end
