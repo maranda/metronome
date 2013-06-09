@@ -9,8 +9,11 @@ local dataforms_new = require "util.dataforms".new
 local jid_split = require "util.jid".split
 local jid_bare = require "util.jid".bare
 local restrict_to_hosts = module:get_option_set("restrict_to_hosts")
+local synchronize_to_host = module:get_option_string("synchronize_to_host_vcards")
 local ud_disco_name = module:get_option_string("ud_disco_name", "Metronome User Directory")
 local st = require "util.stanza"
+local hosts = metronome.hosts;
+local metronome = metronome;
 
 module:depends("adhoc")
 
@@ -50,6 +53,25 @@ local function escape_magic(string)
 	return string
 end
 
+local function vcard_parse(vcard)
+	local country = (vcard:get_child("ADR") and vcard:get_child("ADR"):get_child_text("CTRY")) or ""
+	local realname = vcard:get_child_text("FN") or ""
+	local nickname = vcard:get_child_text("NICKNAME") or ""
+	local email = (vcard:get_child("EMAIL") and vcard:get_child("EMAIL"):get_child_text("USERID")) or ""
+
+	return { nickname = nickname, realname = realname, country = country, email = email }
+end
+
+local function vcard_handler(event)
+	local user, host, vcard = event.node, event.host, event.vcard
+	local jid = user.."@"..host
+	
+	if directory[jid] then
+		directory[jid] = vcard_parse(vcard)
+		datamanager.store("store", my_host, "directory", directory)
+	end
+end
+
 local function search_get_handler(event)
 	local origin, stanza = event.origin, event.stanza
 	local reply = st.reply(stanza)
@@ -61,13 +83,13 @@ end
 local function search_process_handler(event)
 	local form, matching_results, params, origin, stanza = nil, {}, {}, event.origin, event.stanza
 	
-	for _, tag in ipairs(stanza.tags[1].tags) do if tag.name == "x" and tag.attr.xmlns == "jabber:x:data" then form = tag; break; end end
-	if not form then origin.send(st.error_reply(stanza, "cancel", "service-unavailable")); return end
+	for _, tag in ipairs(stanza.tags[1].tags) do if tag.name == "x" and tag.attr.xmlns == "jabber:x:data" then form = tag ; break end end
+	if not form then origin.send(st.error_reply(stanza, "cancel", "service-unavailable")) return end
 
-	if form.attr.type == "cancel" then origin.send(st.reply(stanza)); return end
+	if form.attr.type == "cancel" then origin.send(st.reply(stanza)) return end
 	if form.attr.type ~= "submit" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "You need to submit the search form.")); return end
 
-	local fields = search_form_layout():data(form);
+	local fields = search_form_layout():data(form)
 	if fields.FORM_TYPE ~= "jabber:iq:search" then 
 		origin.send(st.error_reply(stanza, "cancel", "bad-request", "Not a search form")) 
 		return 
@@ -90,7 +112,7 @@ local function search_process_handler(event)
 		if dummy.country and not details.country:lower():match(country) then dummy.country = false end
 		if dummy.email and not details.email:lower():match(email) then dummy.email = false end
 
-		for _, check in pairs(dummy) do if not check then dummy = false; break end end
+		for _, check in pairs(dummy) do if not check then dummy = false ; break end end
 		if dummy and next(dummy) then
 			matching_results[#matching_results + 1] = { 
 				jid = jid,
@@ -148,6 +170,7 @@ end
 module:hook("iq-get/host/jabber:iq:search:query", search_get_handler)
 module:hook("iq-get/host/http://jabber.org/protocol/disco#info:query", disco_handler)
 module:hook("iq-set/host/jabber:iq:search:query", search_process_handler)
+if synchronize_to_host then module:hook_global("vcard-updated", vcard_handler) end
 
 --- Adhoc Handlers
 
@@ -189,6 +212,26 @@ local function optin_command_handler(self, data, state)
 	end
 end
 
+local function optin_vcard_command_handler(self, data, state)
+	local node, host = jid_split(data.from)
+	if host ~= synchronize_to_host or not hosts[synchronize_to_hosts] then
+		return { status = completed, error = { message = "You can't signup to this directory sorry." } }
+	end
+
+	local ok, vcard = metronome.events.fire_event("vcard-synchronize", { node = node, host = host })
+	if ok then
+		directory[jid] = vcard_parse(vcard)
+	else
+		directory[jid] = { nickname = "", realname = "", country = "", email = "" }
+	end
+	
+	if datamanager.store("store", my_host, "directory", directory) then
+		return { status = "completed", info = "Success." }
+	else
+		return { status = "completed", error = { message = "Adding was successful but I failed to write to the directory store, please report to the admin." } }
+	end
+end
+
 local function optout_command_handler(self, data, state)
 	if directory[jid_bare(data.from)] then
 		directory[jid_bare(data.from)] = nil
@@ -203,7 +246,12 @@ local function optout_command_handler(self, data, state)
 end
 
 local adhoc_new = module:require "adhoc".new
-local optin_descriptor = adhoc_new("Optin for the user search directory", "optin", optin_command_handler)
+local optin_descriptor
+if not synchronize_to_host then
+	optin_descriptor = adhoc_new("Optin for the user search directory", "optin", optin_command_handler)
+else
+	optin_descriptor = adhoc_new("Optin for the user search directory", "optin", optin_vcard_command_handler)
+end
 local optout_descriptor = adhoc_new("Optout for the user search directory", "optout", optout_command_handler)
 module:provides("adhoc", optin_descriptor)
 module:provides("adhoc", optout_descriptor)
