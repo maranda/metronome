@@ -214,7 +214,7 @@ end
 
 local function optin_vcard_command_handler(self, data, state)
 	local node, host = jid_split(data.from)
-	if host ~= synchronize_to_host or not hosts[synchronize_to_hosts] then
+	if host ~= synchronize_to_host or not hosts[synchronize_to_host] then
 		return { status = completed, error = { message = "You can't signup to this directory sorry." } }
 	end
 
