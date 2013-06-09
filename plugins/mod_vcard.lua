@@ -21,9 +21,9 @@ local function handle_synchronize(event)
 	local vCard = st.deserialize(datamanager.load(node, host, "vcard"));
 
 	if vCard then
-		return true, vCard;
+		return vCard;
 	else
-		return false, nil;
+		return false;
 	end
 end		
 
