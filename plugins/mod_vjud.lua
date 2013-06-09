@@ -218,8 +218,8 @@ local function optin_vcard_command_handler(self, data, state)
 		return { status = completed, error = { message = "You can't signup to this directory sorry." } }
 	end
 
-	local ok, vcard = metronome.events.fire_event("vcard-synchronize", { node = node, host = host })
-	if ok then
+	local vcard = metronome.events.fire_event("vcard-synchronize", { node = node, host = host })
+	if vcard then
 		directory[jid] = vcard_parse(vcard)
 	else
 		directory[jid] = { nickname = "", realname = "", country = "", email = "" }
