@@ -677,7 +677,6 @@ local function append_disco_features(stanza)
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#publish"}):up();
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#purge-nodes"}):up();
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#retrieve-items"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#subscribe"}):up();
 end
 
 module:hook("account-disco-info", function(event)
