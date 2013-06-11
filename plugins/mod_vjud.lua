@@ -86,8 +86,8 @@ local function search_process_handler(event)
 	for _, tag in ipairs(stanza.tags[1].tags) do if tag.name == "x" and tag.attr.xmlns == "jabber:x:data" then form = tag ; break end end
 	if not form then origin.send(st.error_reply(stanza, "cancel", "service-unavailable")) return end
 
-	if form.attr.type == "cancel" then origin.send(st.reply(stanza)) return end
-	if form.attr.type ~= "submit" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "You need to submit the search form.")); return end
+	if form.attr.type == "cancel" then origin.send(st.reply(stanza)) ; return end
+	if form.attr.type ~= "submit" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "You need to submit the search form.")) ; return end
 
 	local fields = search_form_layout():data(form)
 	if fields.FORM_TYPE ~= "jabber:iq:search" then 
