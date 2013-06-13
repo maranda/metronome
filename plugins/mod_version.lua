@@ -5,6 +5,7 @@
 -- information about copyright and licensing.
 
 local st = require "util.stanza";
+local os_getenv = os.getenv;
 
 module:add_feature("jabber:iq:version");
 
@@ -18,7 +19,7 @@ local random_osv_cmd = module:get_option_string("refresh_random_osv_cmd");
 local log_requests = module:get_option_boolean("log_version_requests", true);
 
 if not module:get_option_boolean("hide_os_type") and not random_osv_cmd then
-	if os.getenv("WINDIR") then
+	if os_getenv("WINDIR") then
 		version = "Windows";
 	else
 		local os_version_command = module:get_option_string("os_version_command");
