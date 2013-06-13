@@ -12,6 +12,7 @@ local log = require "util.logger".init("certmanager");
 local ssl = ssl;
 local ssl_newcontext = ssl and ssl.newcontext;
 
+local openssl_version = require "util.auxiliary".get_openssl_version();
 local tostring = tostring;
 
 local metronome = metronome;
@@ -30,6 +31,12 @@ module "certmanager"
 
 local default_ssl_config = configmanager.get("*", "ssl");
 local default_capath = "/etc/ssl/certs";
+local default_ciphers;
+if openssl_version and openssl_version >= 101 then
+	default_ciphers = "HIGH:!CAMELLIA:!aNULL:@STRENGTH";
+else
+	dafault_ciphers = "HIGH:!aNULL:@STRENGTH";
+end
 local default_verify = (ssl and ssl.x509 and { "peer", "client_once" }) or "none";
 local default_options = { "no_sslv2", noticket and "no_ticket" or nil };
 local default_verifyext = { "lsec_continue", "lsec_ignore_purpose" };
@@ -61,13 +68,15 @@ function create_context(host, mode, user_ssl_config)
 		verifyext = user_ssl_config.verifyext or default_verifyext;
 		options = user_ssl_config.options or default_options;
 		depth = user_ssl_config.depth;
+		curve = user_ssl_config.curve or "secp384r1";
+		dhparam = user_ssl_config.dhparam;
 	};
 
 	local ctx, err = ssl_newcontext(ssl_config);
 
-	if ctx and user_ssl_config.ciphers then
+	if ctx then
 		local success;
-		success, err = ssl.context.setcipher(ctx, user_ssl_config.ciphers);
+		success, err = ssl.context.setcipher(ctx, user_ssl_config.ciphers or default_ciphers);
 		if not success then ctx = nil; end
 	end
 
