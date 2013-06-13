@@ -6,9 +6,9 @@
 
 -- This contains the auxiliary utility functions for Metronome's env.
 
-local CFG_SOURCEDIR, open, popen, metronome = 
-      _G.CFG_SOURCEDIR, io.open, io.popen, _G.metronome;
-local pairs, type = pairs, type;
+local CFG_SOURCEDIR, metronome = _G.CFG_SOURCEDIR, _G.metronome;
+local open, popen = io.open, io.popen;
+local pairs, tonumber, type = pairs, tonumber, type;
 
 module "auxiliary"
 
@@ -28,7 +28,7 @@ function get_openssl_version()
 	local version = popen("openssl version"):read();
 	if version then
 		version = version:match("^OpenSSL%s([%d%p]+)"):gsub("%p", "");
-		return version;
+		return tonumber(version);
 	else
 		return false;
 	end
