@@ -118,7 +118,7 @@ local function forge_response_xml()
 	if components[1] then
 		comps_stats[1] = comps.elem_header
 		for _, name in ipairs(components) do
-			local component = hosts[name].modules.component
+			local component = hosts[name] and hosts[name].modules.component
 			comps_stats[#comps_stats+1] = comps.status:format(
 				name, component and component.connected and "online" or 
 				hosts[name] and component == nil and "online" or "offline")
