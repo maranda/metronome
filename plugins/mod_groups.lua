@@ -78,8 +78,13 @@ function remove_virtual_contacts(username, host, datastore, data)
 end
 
 function module.load()
-	groups_file = config.get(module:get_host(), "groups_file");
-	if not groups_file then return; end
+	groups_file = config.get(module_host, "groups_file");
+	if not groups_file then
+		module:log("error", 
+			   "No groups file found, please be sure to add the groups_file statement on the %s host section",
+			   module_host);
+		return; 
+	end
 	
 	module:hook("roster-load", inject_roster_contacts);
 	datamanager.add_callback(remove_virtual_contacts);
