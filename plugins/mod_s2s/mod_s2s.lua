@@ -51,7 +51,7 @@ local function bounce_sendq(session, reason)
 	local dummy = {
 		type = "s2sin";
 		send = function(s)
-			(session.log or log)("error", "Replying to to an s2s error reply, please report this! Traceback: %s", traceback());
+			(session.log or log)("error", "Replying to a s2s error reply, please report this! Stanza: %s Traceback: %s", tostring(s), traceback());
 		end;
 		dummy = true;
 	};
