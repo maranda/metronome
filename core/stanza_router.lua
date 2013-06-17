@@ -54,10 +54,13 @@ end
 
 local iq_types = { set=true, get=true, result=true, error=true };
 function core_process_stanza(origin, stanza)
-	(origin.log or log)("debug", "Received[%s]: %s", origin.type, stanza:top_tag())
+	(origin.log or log)("debug", "Received[%s]: %s", origin.type, stanza:top_tag());
 
 	-- TODO verify validity of stanza (as well as JID validity)
-	if stanza.attr.type == "error" and #stanza.tags == 0 then return; end -- TODO invalid stanza, log
+	if stanza.attr.type == "error" and #stanza.tags == 0 then
+		log("warn", "Invalid stanza received: %s", tostring(stanza));
+		return;
+	end
 	if stanza.name == "iq" then
 		if not stanza.attr.id then stanza.attr.id = ""; end
 		if not iq_types[stanza.attr.type] or ((stanza.attr.type == "set" or stanza.attr.type == "get") and (#stanza.tags ~= 1)) then
@@ -71,7 +74,7 @@ function core_process_stanza(origin, stanza)
 			and not(stanza.name == "iq" and stanza.attr.type == "set" and stanza.tags[1] and stanza.tags[1].name == "bind"
 					and stanza.tags[1].attr.xmlns == "urn:ietf:params:xml:ns:xmpp-bind") then
 			if stanza.attr.type ~= "result" and stanza.attr.type ~= "error" then
-				origin.send(st.error_reply(stanza, "auth", "not-authorized")); -- FIXME maybe allow stanzas to account or server
+				origin.send(st.error_reply(stanza, "auth", "not-authorized"));
 			end
 			return;
 		end
