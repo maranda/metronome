@@ -40,7 +40,7 @@ local consider_bosh_secure = module:get_option_boolean("consider_bosh_secure");
 local force_secure = module:get_option_boolean("force_https_bosh");
 local no_raw_req_logging = module:get_option_boolean("bosh_no_raw_requests_logging", true);
 
-local default_headers = { ["Content-Type"] = "text/xml; charset=utf-8", ["Connection"] = "keep-alive" };
+local default_headers = { ["Content-Type"] = "text/xml; charset=utf-8" };
 
 local cross_domain = module:get_option("cross_domain_bosh", false);
 if cross_domain then
@@ -296,7 +296,8 @@ function stream_callbacks.streamopened(context, attr)
 					body_attr.hold = tostring(session.bosh_hold);
 					body_attr.authid = sid;
 					body_attr.secure = "true";
-					body_attr.ver  = '1.6'; from = session.host;
+					body_attr.ver = '1.6'; 
+					body_attr.from = session.host;
 					body_attr["xmlns:xmpp"] = "urn:xmpp:xbosh";
 					body_attr["xmpp:version"] = "1.0";
 					creating_session = nil;
