@@ -44,8 +44,8 @@ local xmlns_c2s_session = "http://lightwitch.org/metronome/streams/c2s";
 local xmlns_s2s_session = "http://lightwitch.org/metronome/streams/s2s";
 
 local mime_map = {
-	html = "text/html";
-	xml = "text/xml";
+	html = "text/html; charset=utf-8";
+	xml = "text/xml; charset=utf-8";
 	js = "text/javascript";
 	css = "text/css";
 };
