@@ -179,7 +179,8 @@ function handle_request(conn, request, finish_cb)
 	local response = {
 		request = request;
 		status_code = 200;
-		headers = { date = date_header, connection = (keep_alive and "Keep-Alive" or "close") };
+		headers = { date = date_header };
+		keep_alive = keep_alive;
 		conn = conn;
 		send = _M.send_response;
 		finish_cb = finish_cb;
@@ -248,6 +249,7 @@ function _M.send_response(response, body)
 	local headers = response.headers;
 	body = body or response.body or "";
 	headers.content_length = #body;
+	headers.connection = response.keep_alive and "Keep-Alive" or "close";
 
 	local output = { status_line };
 	for k,v in pairs(headers) do
