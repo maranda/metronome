@@ -662,22 +662,15 @@ function service:restore_node(node)
 
 	local node_obj = {
 		name = node;
-		subscribers = data.subscribers;
-		affiliations = data.affiliations;
-		config = data.config;
+		subscribers = data.subscribers or {};
+		affiliations = data.affiliations or {};
+		config = data.config or {};
 		data = restored_data;
-		data_id = data.data_id;
-		data_author = data.data_author or {}; -- temp. code to convert data structure
+		data_id = data.data_id or {};
+		data_author = data.data_author or {};
 	};
 
-	-- temp. code, renormalize affiliations.
-	local normalize_affiliations = {};
-	for jid, aff in pairs(node_obj.affiliations) do
-		normalize_affiliations[self.config.normalize_jid(jid)] = aff;
-	end
-	node_obj.affiliations = normalize_affiliations;
-
-	for id, item in pairs(data.data) do
+	for id, item in pairs(data.data or restored_data) do
 		restored_data[id] = st.deserialize(item);
 	end
 	self.nodes[node] = node_obj;
