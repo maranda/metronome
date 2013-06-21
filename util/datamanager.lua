@@ -106,6 +106,20 @@ function remove_callback(func)
 	end
 end
 
+local function recursive_ds_create(host, datastore)
+	local last_done;
+	local host_data_path = data_path.."/"..host;
+	for dir in datastore:gmatch("[^/]+") do
+		if not last_done then		
+			mkdir(host_data_path.."/"..dir);
+			last_done = dir;
+		else
+			last_done = last_done.."/"..dir;
+			mkdir(host_data_path.."/"..last_done);
+		end
+	end
+end
+
 function getpath(username, host, datastore, ext, create)
 	ext = ext or "dat";
 	host = (host and encode(host)) or "_global";
@@ -113,22 +127,14 @@ function getpath(username, host, datastore, ext, create)
 	if username then
 		if create then
 			mkdir(mkdir(data_path).."/"..host);
-
-			local last_done;
-			local host_data_path = data_path.."/"..host;
-			for dir in datastore:gmatch("[^/]+") do
-				if not last_done then		
-					mkdir(host_data_path.."/"..dir);
-					last_done = dir;
-				else
-					last_done = last_done.."/"..dir;
-					mkdir(host_data_path.."/"..last_done);
-				end
-			end
+			recursive_ds_create(host, datastore);
 		end
 		return format("%s/%s/%s/%s.%s", data_path, host, datastore, username, ext);
 	else
-		if create then mkdir(mkdir(data_path).."/"..host); end
+		if create then 
+			mkdir(mkdir(data_path).."/"..host);
+			recursive_ds_create(host, datastore);
+		end
 		return format("%s/%s/%s.%s", data_path, host, datastore, ext);
 	end
 end
