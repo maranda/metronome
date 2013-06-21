@@ -6,7 +6,7 @@
 
 local hosts = hosts;
 local core_post_stanza = metronome.core_post_stanza;
-local ripairs, tonumber, type, os_time = ripairs, tonumber, type, os.time;
+local ripairs, tonumber, type, os_remove, os_time, select = ripairs, tonumber, type, os.remove, os.time, select;
 
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
@@ -18,6 +18,7 @@ local calculate_hash = require "util.caps".calculate_hash;
 local set_new = require "util.set".new;
 local dataforms = require "util.dataforms";
 local encode_node = datamanager.path_encode;
+local get_path = datamanager.getpath;
 local um_user_exists = usermanager.user_exists;
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
@@ -821,8 +822,28 @@ module:hook_global("user-deleted", function(event)
 	local username, host = event.username, event.host;
 
 	if host == module.host then
+		local jid = username.."@"..host;
 		local encoded_node = encode_node(username);
-		storagemanager.purge("pep/"..encoded_node, host);
+		local service = services[jid] or set_service(pubsub.new(pep_new(username)), jid, true);
+		local nodes = service.nodes;
+		local store = service.config.store;
+
+		for node in pairs(nodes) do
+			module:log("debug", "Wiped %s's node %s", jid, node);
+			store:set(node, nil); 
+		end
+		store:set(nil, nil);
+		services[jid] = nil;
+
+		local type = select(2, storagemanager.get_driver(host));
+		if type == "internal" then
+			local path = get_path(encoded_node, host, "pep"):match("^(.*)%.");
+			local done = os_remove(path);
+
+			if done then
+				module:log("debug", "Removed %s pep store directory (%s)", jid, path);
+			end
+		end
 	end	
 end, 100);
 
