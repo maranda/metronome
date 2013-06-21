@@ -111,7 +111,21 @@ function getpath(username, host, datastore, ext, create)
 	host = (host and encode(host)) or "_global";
 	username = username and encode(username);
 	if username then
-		if create then mkdir(mkdir(mkdir(data_path).."/"..host).."/"..datastore); end
+		if create then
+			mkdir(mkdir(data_path).."/"..host);
+
+			local last_done;
+			local host_data_path = data_path.."/"..host;
+			for dir in datastore:gmatch("[^/]+") do
+				if not last_done then		
+					mkdir(host_data_path.."/"..dir);
+					last_done = dir;
+				else
+					last_done = last_done.."/"..dir;
+					mkdir(host_data_path.."/"..last_done);
+				end
+			end
+		end
 		return format("%s/%s/%s/%s.%s", data_path, host, datastore, username, ext);
 	else
 		if create then mkdir(mkdir(data_path).."/"..host); end
