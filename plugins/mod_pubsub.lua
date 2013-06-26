@@ -134,7 +134,7 @@ function process_config_form(service, name, form, new)
 
 	for _, field in ipairs(form.tags) do
 		if field.attr.var == "pubsub#title" and field:get_child_text("value") then
-			node_config.title = field:get_child_text("value");
+			node_config.title = (field:get_child_text("value") ~= "" and field:get_child_text("value")) or nil;
 		elseif field.attr.var == "pubsub#deliver_notifications" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
 			node_config.deliver_notifications = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
 		elseif field.attr.var == "pubsub#deliver_payloads" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
@@ -671,7 +671,7 @@ module:hook("iq-get/host/http://jabber.org/protocol/disco#items:query", function
 		local reply = st.reply(event.stanza)
 			:tag("query", { xmlns = "http://jabber.org/protocol/disco#items" });
 		for node, node_obj in pairs(ret) do
-			reply:tag("item", { jid = module.host, node = node, name = node_obj.config.name }):up();
+			reply:tag("item", { jid = module.host, node = node, name = node_obj.config.title }):up();
 		end
 		return event.origin.send(reply);
 	end
