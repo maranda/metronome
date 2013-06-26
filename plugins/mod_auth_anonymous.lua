@@ -16,7 +16,7 @@ local os_time = os.time;
 
 local multi_resourcing = module:get_option_boolean("allow_anonymous_multiresourcing", false);
 local sha1_gentoken = module:get_option_string("anonymous_jid_gentoken", b64_encode(os_time()));
-local randomize_for_loopback = module:get_option_boolean("anonymous_randomize_for_loopback", false);
+local randomize_for_trusted = module:get_option_set("anonymous_randomize_for_trusted_addresses", nil);
 local my_host = hosts[module.host];
 
 function new_default_provider(host)
@@ -51,7 +51,7 @@ function new_default_provider(host)
 		local anonymous_authentication_profile = {
 			anonymous = function(sasl, session, realm)
 				local username;
-				if randomize_for_loopback and (session.ip:match("^127%.%d+%.%d+%.%d+") or session.ip == "::1") then
+				if randomize_for_trusted and randomize_for_trusted:contains(session.ip) then
 					username = gen_uuid();
 				else
 					username = hmac_sha1(session.ip, sha1_gentoken, true);
