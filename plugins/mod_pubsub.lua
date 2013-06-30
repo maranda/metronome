@@ -306,11 +306,12 @@ end
 
 function handlers.set_subscribe(origin, stanza, subscribe)
 	local node, jid = subscribe.attr.node, subscribe.attr.jid;
-	local options_tag, options = stanza.tags[1]:get_child("options"), nil;
+	local options_tag = stanza.tags[1]:get_child("options") and true;
 	if options_tag then
-		options = options_form:data(options_tag.tags[1]);
+		return origin.send(st.error_reply(stanza, "modify", "bad-request",
+				"Subscription options aren't supported by this service"));
 	end
-	local ok, ret = service:add_subscription(node, stanza.attr.from, jid, options);
+	local ok, ret = service:add_subscription(node, stanza.attr.from, jid);
 	local reply;
 	if ok then
 		reply = st.reply(stanza)
@@ -320,9 +321,6 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 					jid = jid,
 					subscription = "subscribed"
 				}):up();
-		if options_tag then
-			reply:add_child(options_tag);
-		end
 	else
 		reply = pubsub_error_reply(stanza, ret);
 	end
