@@ -510,6 +510,7 @@ end
 
 function handlers_owner.set_subscriptions(origin, stanza, subscriptions)
 	local node = subscriptions.attr.node;
+	local subscriptions = subscriptions.tags;
 
 	-- pre-emptively do checks
 	if not service.nodes[node] then
@@ -523,12 +524,13 @@ function handlers_owner.set_subscriptions(origin, stanza, subscriptions)
 
 	-- populate list of subscribers
 	local _to_change = {};
-	for _, sub in ipairs(subscriptions.tags) do
-		if sub.subscription ~= "none" or sub.subscription ~= "subscribed" then
+	for _, sub in ipairs(subscriptions) do
+		local subscription = sub.attr.subscription;
+		if subscription ~= "none" and subscription ~= "subscribed" then
 			return origin.send(st.error_reply(stanza, "cancel", "bad-request",
 				"Only none and subscribed subscription types are currently supported"));
 		end
-		_to_change[sub.jid] = sub.subscription;
+		_to_change[sub.attr.jid] = subscription;
 	end
 
 	for jid, subscription in pairs(_to_change) do
