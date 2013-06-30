@@ -18,11 +18,6 @@ ul {
   margin-right: 0
 }
 
-#log_container {
-  clear: both;
-  display: none
-}
-
 #adhocCommands {
   border-right: solid 1px
 }
@@ -38,6 +33,23 @@ ul {
   border: solid 1px;
   background: #eef0f2;
   color: #000000
+}
+
+#error {
+   display: none;
+   width: 240px;
+   margin: 200px 2em 0 1em;
+   padding-right: 1em;
+   padding-top: 0.5em;
+   border: solid 1px;
+   padding-right: 1em;
+   background: #d5c6db;
+}
+
+#error p {
+   color: red;
+   font-weight: bold;
+   text-align: center;
 }
 
 #main {

@@ -1,5 +1,4 @@
 var BOSH_SERVICE = '/http-bind/';
-var show_log = false;
 
 Strophe.addNamespace('C2SSTREAM', 'http://lightwitch.org/metronome/streams/c2s');
 Strophe.addNamespace('S2SSTREAM', 'http://lightwitch.org/metronome/streams/s2s');
@@ -11,19 +10,6 @@ var connection   = null;
 
 var adminsubHost = null;
 var adhocControl = new Adhoc('#adhocDisplay', function() {});
-
-function log(msg) {
-    var entry = $('<div></div>').append(document.createTextNode(msg));
-    $('#log').append(entry);
-}
-
-function rawInput(data) {
-    log('RECV: ' + data);
-}
-
-function rawOutput(data) {
-    log('SENT: ' + data);
-}
 
 function _cbNewS2S(e) {
     var items, entry, tmp, retract, id, jid;
@@ -93,23 +79,18 @@ function _cbAdminSub(e) {
 }
 
 function onConnect(status) {
-    if (status == Strophe.Status.CONNECTING) {
-        log('Strophe is connecting.');
-    } else if (status == Strophe.Status.CONNFAIL) {
-        log('Strophe failed to connect.');
+    if (status == Strophe.Status.CONNFAIL) {
+	showError('Connection failure!');
         showConnect();
-    } else if (status == Strophe.Status.DISCONNECTING) {
-        log('Strophe is disconnecting.');
     } else if (status == Strophe.Status.DISCONNECTED) {
-        log('Strophe is disconnected.');
         showConnect();
     } else if (status == Strophe.Status.AUTHFAIL) {
-        log('Authentication failed');
+	showError('Authentication failure!');
         if (connection) {
             connection.disconnect();
         }
     } else if (status == Strophe.Status.CONNECTED) {
-        log('Strophe is connected.');
+	$('#error').hide();
         connection.sendIQ($iq({to: connection.domain, type: 'get', id: connection.getUniqueId()}).c('adminsub', {xmlns: Strophe.NS.ADMINSUB})
             .c('adminfor'), function(e) {
                 var items;
@@ -160,17 +141,14 @@ function showDisconnect() {
     $('#adhoc').show();
 }
 
+function showError(error) {
+    $('#error').empty();
+    $('#error').html('<p>' + error + '</p>');
+    $('#error').show();
+}
+
 $(document).ready(function () {
     connection = new Strophe.Connection(BOSH_SERVICE);
-    if (show_log) {
-        $('#log_container').show();
-        connection.rawInput = rawInput;
-        connection.rawOutput = rawOutput;
-    }
-
-    $("#log_toggle").click(function () {
-        $("#log").toggle();
-    });
 
     $('#cred').bind('submit', function (event) {
         var button = $('#connect').get(0);
@@ -178,7 +156,6 @@ $(document).ready(function () {
         var pass = $('#pass');
         localJID = jid.get(0).value;
 
-	$('#log').empty();
 	connection.connect(localJID, pass.get(0).value, onConnect);
         event.preventDefault();
     });
