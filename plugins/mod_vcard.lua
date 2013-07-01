@@ -45,9 +45,9 @@ local function handle_vcard(event)
 		end
 	else
 		if not to then
-			local vCard = st.preserialize(stanza.tags[1]);
+			local vCard = stanza.tags[1];
 			
-			if datamanager.store(session.username, session.host, "vcard", vCard) then
+			if datamanager.store(session.username, session.host, "vcard", st.preserialize(vCard)) then
 				session.send(st.reply(stanza));
 				metronome.events.fire_event("vcard-updated", { node = session.username, host = session.host, vcard = vCard });
 			else
