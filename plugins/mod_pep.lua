@@ -219,7 +219,7 @@ local function pep_send(recipient, user, ignore)
 		module:log("debug", "Ignoring notifications filtering for %s until we obtain 'em... if ever.", recipient);
 		for node, object in pairs(nodes) do
 			object.subscribers[recipient] = true;
-			pep_broadcast_last(user, node, recipient);
+			pep_broadcast_last(user_srv, node, recipient);
 			object.subscribers[recipient] = nil;
 		end		
 	elseif not rec_srv then
