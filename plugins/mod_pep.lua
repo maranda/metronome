@@ -186,12 +186,12 @@ local function get_caps_hash_from_presence(stanza)
 	end
 end
 
-local function pep_broadcast_last(user, node, receiver)
-	local ok, items, orderly = services[user]:get_items(node, receiver, nil, 1);
+local function pep_broadcast_last(service, node, receiver)
+	local ok, items, orderly = service:get_items(node, receiver, nil, 1);
 	if items then
 		for _, id in ipairs(orderly) do
-			if services[user].item_cache:add(items[id], node, receiver) then 
-				services[user]:broadcaster(node, receiver, items[id]);
+			if service.item_cache:add(items[id], node, receiver) then 
+				service:broadcaster(node, receiver, items[id]);
 			end
 		end
 	end
@@ -228,7 +228,7 @@ local function pep_send(recipient, user, ignore)
 		for node, object in pairs(nodes) do
 			if hash_map[rec_hash] and hash_map[rec_hash][node] then
 				object.subscribers[recipient] = true;
-				pep_broadcast_last(user, node, recipient);
+				pep_broadcast_last(user_srv, node, recipient);
 			end
 		end
 	else
@@ -248,19 +248,18 @@ local function pep_send(recipient, user, ignore)
 		end
 
 		for node in pairs(user_nodes) do
-			pep_broadcast_last(user, node, recipient);
+			pep_broadcast_last(user_srv, node, recipient);
 		end
 	end
 end
 
-local function pep_autosubscribe_recs(name, node)
-	local user_srv = services[name];
-	local recipients = user_srv.recipients;
-	if not user_srv.nodes[node] then return; end
+local function pep_autosubscribe_recs(service, node)
+	local recipients = service.recipients;
+	if not service.nodes[node] then return; end
 
 	for jid, hash in pairs(recipients) do
 		if type(hash) == "string" and hash_map[hash] and hash_map[hash][node] then
-			user_srv.nodes[node].subscribers[jid] = true;
+			service.nodes[node].subscribers[jid] = true;
 		end
 	end
 end
@@ -363,7 +362,8 @@ function handle_pubsub_iq(event)
 	local full_jid = origin.full_jid;
 	local username, host = jid_split(user);
 	local time_now = os_time();
-	if not services[user] and um_user_exists(username, host) then -- create service on demand.
+	local user_service = services[user];
+	if not user_service and um_user_exists(username, host) then -- create service on demand.
 		-- check if the creating user is the owner or someone requesting its pep service,
 		-- required for certain crawling bots, e.g. Jappix Me
 		if hosts[host].sessions[username] and (full_jid and jid_bare(full_jid) == username) then
@@ -376,11 +376,11 @@ function handle_pubsub_iq(event)
 		end
 	end
 
-	if not services[user] then -- we should double check it's created,
+	if not user_service then -- we should double check it's created,
 		return;            -- it does not if the user doesn't exist.
 	end
 
-	services[user].last_used = time_now;
+	user_service.last_used = time_now;
 
 	if time_now - last_idle_cleanup >= 3600 then
 		module:log("debug", "Checking for idle PEP Services...");
@@ -402,15 +402,15 @@ function handle_pubsub_iq(event)
 	end	
 
 	-- Update session to the one of the owner.
-	if origin.username and origin.host and services[user].name == origin.username.."@"..origin.host then 
-		services[user].session = origin;
+	if origin.username and origin.host and user_service.name == origin.username.."@"..origin.host then 
+		user_service.session = origin;
 	end
 
 	if handler then
 		if not config then 
-			return handler(origin, stanza, action); 
+			return handler(user_service, origin, stanza, action); 
 		else 
-			return handler(origin, stanza, action, config); 
+			return handler(user_service, origin, stanza, action, config); 
 		end
 	else
 		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
@@ -419,14 +419,13 @@ end
 
 -- pubsub ns handlers
 
-function handlers.get_items(origin, stanza, items)
+function handlers.get_items(service, origin, stanza, items)
 	local node = items.attr.node;
 	local max = items and items.attr.max_items and tonumber(items.attr.max_items);
 	local item = items:get_child("item");
 	local id = item and item.attr.id;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 
-	local ok, results, max_tosend = services[user]:get_items(node, stanza.attr.from, id, max);
+	local ok, results, max_tosend = service:get_items(node, stanza.attr.from, id, max);
 	if not ok then
 		return origin.send(pep_error_reply(stanza, results));
 	end
@@ -445,15 +444,14 @@ function handlers.get_items(origin, stanza, items)
 	return origin.send(reply);
 end
 
-function handlers.set_create(origin, stanza, create, config)
+function handlers.set_create(service, origin, stanza, create, config)
 	local node = create.attr.node;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local ok, ret, reply;
 
 	local node_config;
 	if config then
 		local form = config:get_child("x", "jabber:x:data");
-		ok, node_config = process_config_form(services[user], node, form, true);
+		ok, node_config = process_config_form(service, node, form, true);
 		if not ok then return origin.send(pep_error_reply(stanza, node_config)); end
 	end
 
@@ -462,7 +460,7 @@ function handlers.set_create(origin, stanza, create, config)
 	end
 
 	if node then
-		ok, ret = services[user]:create(node, stanza.attr.from, node_config);
+		ok, ret = service:create(node, stanza.attr.from, node_config);
 		if ok then
 			reply = st.reply(stanza);
 		else
@@ -471,7 +469,7 @@ function handlers.set_create(origin, stanza, create, config)
 	else
 		repeat
 			node = uuid_generate();
-			ok, ret = services[user]:create(node, stanza.attr.from, node_config);
+			ok, ret = service:create(node, stanza.attr.from, node_config);
 		until ok or ret ~= "conflict";
 		if ok then
 			reply = st.reply(stanza)
@@ -483,30 +481,29 @@ function handlers.set_create(origin, stanza, create, config)
 	end
 
 	if ok then -- auto-resubscribe interested recipients
-		pep_autosubscribe_recs(user, node);
+		pep_autosubscribe_recs(service, node);
 	end
 	return origin.send(reply);
 end
 
-function handlers.set_publish(origin, stanza, publish)
+function handlers.set_publish(service, origin, stanza, publish)
 	local node = publish.attr.node;
 	local from = stanza.attr.from or origin.full_jid;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local item = publish:get_child("item");
 	local recs = {};
 	local recs_count = 0;
 	local id = (item and item.attr.id) or uuid_generate();
 	if item and not item.attr.id then item.attr.id = id; end
-	if not services[user].nodes[node] then
+	if not service.nodes[node] then
 	-- normally this would be handled just by publish() but we have to preceed its broadcast,
 	-- so since autocreate on publish is in place, do create and then resubscribe interested items.
 		local node_config;
 		if singleton_nodes:contains(node) then node_config = { max_items = 1 }; end
-		services[user]:create(node, from, node_config);
-		pep_autosubscribe_recs(user, node);
+		service:create(node, from, node_config);
+		pep_autosubscribe_recs(service, node);
 	end
 
-	local ok, ret = services[user]:publish(node, from, id, item);
+	local ok, ret = service:publish(node, from, id, item);
 	local reply;
 	
 	if ok then
@@ -515,8 +512,8 @@ function handlers.set_publish(origin, stanza, publish)
 				:tag("publish", { node = node })
 					:tag("item", { id = id });
 
-		for target in pairs(services[user].nodes[node].subscribers) do
-			services[user].item_cache:add(item, node, target, true);
+		for target in pairs(service.nodes[node].subscribers) do
+			service.item_cache:add(item, node, target, true);
 		end		
 	else
 		reply = pep_error_reply(stanza, ret);
@@ -525,9 +522,8 @@ function handlers.set_publish(origin, stanza, publish)
 	return origin.send(reply);
 end
 
-function handlers.set_retract(origin, stanza, retract)
+function handlers.set_retract(service, origin, stanza, retract)
 	local node, notify = retract.attr.node, retract.attr.notify;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	notify = (notify == "1") or (notify == "true");
 	local item = retract:get_child("item");
 	local id = item and item.attr.id
@@ -535,7 +531,7 @@ function handlers.set_retract(origin, stanza, retract)
 	if notify then
 		notifier = st.stanza("retract", { id = id });
 	end
-	local ok, ret = services[user]:retract(node, stanza.attr.from, id, notifier);
+	local ok, ret = service:retract(node, stanza.attr.from, id, notifier);
 	if ok then
 		reply = st.reply(stanza);
 	else
@@ -546,39 +542,36 @@ end
 
 -- pubsub#owner ns handlers
 
-function handlers_owner.get_configure(origin, stanza, action)
+function handlers_owner.get_configure(service, origin, stanza, action)
 	local node = action.attr.node;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	if not node then
 		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
 	end
 
-	if not services[user].nodes[node] then
+	if not service.nodes[node] then
 		return origin.send(pep_error_reply(stanza, "item-not-found"));
 	end
 
-	local ret = services[user]:get_affiliation(stanza.attr.from, node);
+	local ret = service:get_affiliation(stanza.attr.from, node);
 
 	if ret == "owner" then
-		return send_config_form(services[user], node, origin, stanza);
+		return send_config_form(service, node, origin, stanza);
 	else
 		return origin.send(pep_error_reply(stanza, "forbidden"));
 	end
 end
 
-function handlers_owner.set_configure(origin, stanza, action)
+function handlers_owner.set_configure(service, origin, stanza, action)
 	local node = action.attr.node;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
-
 	if not node then
 		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
 	end
 
-	if not services[user].nodes[node] then
+	if not service.nodes[node] then
 		return origin.send(pep_error_reply(stanza, "item-not-found"));
 	end
 
-	local ret = services[user]:get_affiliation(stanza.attr.from, node)
+	local ret = service:get_affiliation(stanza.attr.from, node)
 	
 	local reply;
 	if ret == "owner" then
@@ -587,7 +580,7 @@ function handlers_owner.set_configure(origin, stanza, action)
 			return origin.send(st.reply(stanza));
 		end
 
-		local ok, ret = process_config_form(services[user], node, form);
+		local ok, ret = process_config_form(service, node, form);
 		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
 	else
 		reply = pep_error_reply(stanza, "forbidden");
@@ -595,12 +588,11 @@ function handlers_owner.set_configure(origin, stanza, action)
 	return origin.send(reply);
 end
 
-function handlers_owner.set_delete(origin, stanza, delete)
+function handlers_owner.set_delete(service, origin, stanza, delete)
 	local node = delete.attr.node;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local ok, ret, reply;
 	if node then
-		ok, ret = services[user]:delete(node, stanza.attr.from);
+		ok, ret = service:delete(node, stanza.attr.from);
 		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
 	else
 		reply = pep_error_reply(stanza, "bad-request");
@@ -608,12 +600,11 @@ function handlers_owner.set_delete(origin, stanza, delete)
 	return origin.send(reply);
 end
 
-function handlers_owner.set_purge(origin, stanza, purge)
+function handlers_owner.set_purge(service, origin, stanza, purge)
 	local node = purge.attr.node;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local ok, ret, reply;
 	if node then
-		ok, ret = services[user]:purge(node, stanza.attr.from);
+		ok, ret = service:purge(node, stanza.attr.from);
 		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
 	else
 		reply = pep_error_reply(stanza, "bad-request");
@@ -703,10 +694,11 @@ module:hook("presence/bare", function(event)
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
 	local t = stanza.attr.type;
 	local self = not stanza.attr.to;
+	local service = services[user];
 	
-	if not services[user] then return nil; end -- User Service doesn't exist
-	local nodes = services[user].nodes;
-	local recipients = services[user].recipients;
+	if not service then return nil; end -- User Service doesn't exist
+	local nodes = service.nodes;
+	local recipients = service.recipients;
 	
 	if not t then -- available presence
 		if self or subscription_presence(user, stanza.attr.from) then
@@ -731,22 +723,22 @@ module:hook("presence/bare", function(event)
 		end
 	elseif t == "unavailable" then
 		local from = stanza.attr.from;
-		local client_map = hash_map[services[user].recipients[from]];
+		local client_map = hash_map[service.recipients[from]];
 		for name in pairs(client_map or NULL) do
 			if nodes[name] then nodes[name].subscribers[from] = nil; end
 		end
-		services[user].recipients[from] = nil;
+		service.recipients[from] = nil;
 	elseif not self and t == "unsubscribe" then
 		local from = jid_bare(stanza.attr.from);
-		local subscriptions = services[user].recipients;
+		local subscriptions = service.recipients;
 		if subscriptions then
 			for subscriber in pairs(subscriptions) do
 				if jid_bare(subscriber) == from then
-					local client_map = hash_map[services[user].recipients[subscriber]];
+					local client_map = hash_map[service.recipients[subscriber]];
 					for name in pairs(client_map or NULL) do
 						if nodes[name] then nodes[name].subscribers[subscriber] = nil; end
 					end
-					services[user].recipients[subscriber] = nil;
+					service.recipients[subscriber] = nil;
 				end
 			end
 		end
@@ -767,10 +759,11 @@ module:hook("iq-result/bare/disco", function(event)
 			-- Process disco response
 			local self = not stanza.attr.to;
 			local user = stanza.attr.to or (session.username.."@"..session.host);
-			if not services[user] then return true; end -- User's pep service doesn't exist
-			local nodes = services[user].nodes;
+			local service = services[user];
+			if not service then return true; end -- User's pep service doesn't exist
+			local nodes = service.nodes;
 			local contact = stanza.attr.from;
-			local current = services[user].recipients[contact];
+			local current = service.recipients[contact];
 			if current == false then return true; end
 
 			module:log("debug", "Processing disco response from %s", stanza.attr.from);
@@ -788,11 +781,11 @@ module:hook("iq-result/bare/disco", function(event)
 				end
 			end
 			if not has_notify then 
-				services[user].recipients[contact] = false;
+				service.recipients[contact] = false;
 				return true;
 			end
 			hash_map[ver] = notify; -- update hash map
-			services[user].recipients[contact] = ver; -- and contact hash
+			service.recipients[contact] = ver; -- and contact hash
 			if self then
 				module:log("debug", "Discovering interested roster contacts...");
 				for jid, item in pairs(session.roster) do -- for all interested contacts
