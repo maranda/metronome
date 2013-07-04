@@ -343,6 +343,7 @@ function service:delete(node, actor)
 		end
 
 		local subscribers = self.nodes[node].subscribers;
+		for jid in pairs(subscribers) do self:remove_subscription(node, true, jid); end
 		self:purge_node(node);
 		self.nodes[node] = nil;
 		self:save()
@@ -669,6 +670,8 @@ function service:restore_node(node)
 		data_id = data.data_id or {};
 		data_author = data.data_author or {};
 	};
+
+	if config.title == "" then config.title = nil; end -- sanitize values, temporary.
 
 	for id, item in pairs(data.data or restored_data) do
 		restored_data[id] = st.deserialize(item);
