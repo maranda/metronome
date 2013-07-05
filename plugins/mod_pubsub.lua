@@ -718,7 +718,7 @@ function set_service(new_service)
 	service = new_service;
 	module.environment.service = service;
 	disco_info = build_disco_info(service);
-	service:restore();
+	service:restore(true);
 end
 
 function module.save()
