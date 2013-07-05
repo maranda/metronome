@@ -703,7 +703,7 @@ function service:restore_node(node, delayed)
 		delayed = delayed;
 	};
 
-	if config.title == "" then config.title = nil; end -- sanitize values, temporary.
+	if node_obj.config.title == "" then node_obj.config.title = nil; end -- sanitize values, temporary.
 
 	self.nodes[node] = node_obj;
 	return true;
