@@ -1,5 +1,5 @@
 .DEFAULT: localhost.cert
-keysize=2048
+keysize=4096
 
 # How to:
 # First, `make yourhost.cnf` which creates a openssl config file.
