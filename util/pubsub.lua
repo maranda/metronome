@@ -7,7 +7,7 @@
 local events = require "util.events";
 local keys = require "util.iterators".keys;
 local st = require "util.stanza";
-local table = table;
+local ipairs, pairs, table = ipairs, pairs, table;
 
 module("pubsub", package.seeall);
 
@@ -659,6 +659,9 @@ end
 
 function service:sanitize_subscriptions()
 	local nodes, subscriptions = self.nodes, self.subscriptions;
+	-- clean unexisting nodes, those that weren't persistant
+	-- this should be done far more cleanly, but it's still less expensive
+	-- then pre-hand checks, FIXME.
 	for normal_jid, entry in pairs(subscriptions) do
 		for jid, subs in pairs(entry) do
 			for node in pairs(subs) do
@@ -666,6 +669,17 @@ function service:sanitize_subscriptions()
 					subscriptions[normal_jid][jid][node] = nil;
 				end
 			end
+		end
+	end
+
+	for normal_jid in pairs(subscriptions) do
+		for jid in pairs(subscriptions[normal_jid]) do
+			if not next(subscriptions[normal_jid][jid]) then
+				subscriptions[normal_jid][jid] = nil;
+			end
+		end
+		if not next(subscriptions[normal_jid]) then
+			subscriptions[normal_jid] = nil;
 		end
 	end
 end
