@@ -7,7 +7,7 @@
 local events = require "util.events";
 local keys = require "util.iterators".keys;
 local st = require "util.stanza";
-local ipairs, pairs, table = ipairs, pairs, table;
+local ipairs, next, pairs, table = ipairs, next, pairs, table;
 
 module("pubsub", package.seeall);
 
