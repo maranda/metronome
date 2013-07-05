@@ -649,10 +649,25 @@ function service:restore(delayed)
 	local data = self.config.store:get(nil);
 	if not data then return; end
 	self.affiliations = data.affiliations;
+	self.subscriptions = data.subscriptions;
 	for i, node in ipairs(data.nodes) do
 		self:restore_node(node, delayed);
 	end
+	self:sanitize_subscriptions();
 	return true;
+end
+
+function service:sanitize_subscriptions()
+	local nodes, subscriptions = self.nodes, self.subscriptions;
+	for normal_jid, entry in pairs(subscriptions) do
+		for jid, subs in pairs(entry) do
+			for node in pairs(subs) do
+				if not nodes[node] then
+					subscriptions[normal_jid][jid][node] = nil;
+				end
+			end
+		end
+	end
 end
 
 function service:save_node(node)
@@ -702,8 +717,6 @@ function service:restore_node(node, delayed)
 		data_author = data.data_author or {};
 		delayed = delayed;
 	};
-
-	if node_obj.config.title == "" then node_obj.config.title = nil; end -- sanitize values, temporary.
 
 	self.nodes[node] = node_obj;
 	return true;
