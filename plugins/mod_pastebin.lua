@@ -38,7 +38,8 @@ local line_threshold = module:get_option_number("pastebin_line_threshold", 4);
 local max_summary_length = module:get_option_number("pastebin_summary_length", 150);
 local html_preview = module:get_option_boolean("pastebin_html_preview", true);
 
-local base_path = module:get_option_string("pastebin_path", "/pastebin/"); 
+local base_path = module:get_option_string("pastebin_path", "/pastebin/");
+if not base_path:find("/$") then base_path = base_path.."/" end
 local base_url = module:get_option_string("pastebin_url", module:http_url(nil, base_path));
 
 -- Seconds a paste should live for in seconds (config is in hours), default 24 hours
