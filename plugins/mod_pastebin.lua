@@ -136,6 +136,7 @@ end
 
 
 module:provides("http", {
+	default_path = "/pastebin/",
 	route = {
 		["GET /*"] = handle_request;
 	};
