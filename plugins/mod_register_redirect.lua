@@ -7,19 +7,21 @@
 local st = require "util.stanza"
 local cman = configmanager
 
+local ip_wl = module:get_option_set("registration_whitelist", { "127.0.0.1" })
+local url = module:get_option_string("registration_url", nil)
+local inst_text = module:get_option_string("registration_text", nil)
+local oob = module:get_option_boolean("registration_oob", true)
+local admins_g = cman.get("*", "admins")
+local admins_l = cman.get(module:get_host(), "admins")
+local no_wl = module:get_option_boolean("no_registration_whitelist", false)
+
+if type(admins_g) ~= "table" then admins_g = nil end
+if type(admins_l) ~= "table" then admins_l = nil end
+
 function reg_redirect(event)
 	local stanza, origin = event.stanza, event.origin
-	local ip_wl = module:get_option("registration_whitelist") or { "127.0.0.1" }
-	local url = module:get_option_string("registration_url", nil)
-	local inst_text = module:get_option_string("registration_text", nil)
-	local oob = module:get_option_boolean("registration_oob", true)
-	local admins_g = cman.get("*", "admins")
-	local admins_l = cman.get(module:get_host(), "admins")
-	local no_wl = module:get_option_boolean("no_registration_whitelist", false)
-	local test_ip = false
 
-	if type(admins_g) ~= "table" then admins_g = nil end
-	if type(admins_l) ~= "table" then admins_l = nil end
+	if not no_wl and ip_wl:contains(origin.ip) then return; end
 
 	-- perform checks to set default responses and sanity checks.
 	if not inst_text then
@@ -51,7 +53,7 @@ function reg_redirect(event)
 					inst_text = "Please contact "..module:get_host().."'s server administrator via xmpp to register an account on this server at: "..ajid
 				else
 					module:log("error", "Please be sure to, _at the very least_, configure one server administrator either global or hostwise...")
-					module:log("error", "if you want to use this module, or read it's configuration wiki at: http://code.google.com/p/prosody-modules/wiki/mod_register_redirect")
+					module:log("error", "if you want to use this module.")
 					return origin.send(st.error_reply(stanza, "wait", "internal-server-error")) -- bouncing request.
 				end
 			end
@@ -60,13 +62,6 @@ function reg_redirect(event)
 		if not url:match("^%w+[:].*$") then
 			module:log("error", "Please check your configuration, the URL specified is not valid.")
 			return origin.send(st.error_reply(stanza, "wait", "internal-server-error")) -- bouncing request.
-		end
-	end
-
-	if not no_wl then
-		for i,ip in ipairs(ip_wl) do
-			if origin.ip == ip then test_ip = true end
-			break
 		end
 	end
 
