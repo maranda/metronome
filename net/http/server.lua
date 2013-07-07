@@ -110,19 +110,15 @@ function listener.onconnect(conn)
 		waiting = true;
 		while sessions[conn] and #pending > 0 do
 			local request = t_remove(pending);
-			--log("debug", "process_next: %s", request.path);
-			--handle_request(conn, request, process_next);
 			_1, _2, _3 = conn, request, process_next;
 			if not xpcall(_handle_request, _traceback_handler) then
 				conn:write("HTTP/1.0 500 Internal Server Error\r\n\r\n"..events.fire_event("http-error", { code = 500, private_message = last_err }));
 				conn:close();
 			end
 		end
-		--log("debug", "ready for more");
 		waiting = false;
 	end
 	local function success_cb(request)
-		--log("debug", "success_cb: %s", request.path);
 		if waiting then
 			log("error", "http connection handler is not reentrant: %s", request.path);
 			assert(false, "http connection handler is not reentrant");
@@ -166,7 +162,6 @@ function _M.hijack_response(response, listener)
 	error("TODO");
 end
 function handle_request(conn, request, finish_cb)
-	--log("debug", "handler: %s", request.path);
 	local headers = {};
 	for k,v in pairs(request.headers) do headers[k:gsub("-", "_")] = v; end
 	request.headers = headers;
@@ -213,7 +208,6 @@ function handle_request(conn, request, finish_cb)
 
 	local event = request.method.." "..host..request.path:match("[^?]*");
 	local payload = { request = request, response = response };
-	--log("debug", "Firing event: %s", event);
 	local result = events.fire_event(event, payload);
 	if result ~= nil then
 		if result ~= true then

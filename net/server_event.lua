@@ -155,7 +155,6 @@ do
 		if self.type == "client" then
 			local callback = function( )
 				self:_lock( false,  false, false )
-				--vdebug( "start listening on client socket with id:", self.id )
 				self.eventread = addevent( base, self.conn, EV_READ, self.readcallback, cfg.READ_TIMEOUT );  -- register callback
 				if call_onconnect then
 					self:onconnect()
@@ -166,13 +165,11 @@ do
 			self.eventsession = addevent( base, nil, EV_TIMEOUT, callback, 0 )
 		else
 			self:_lock( false )
-			--vdebug( "start listening on server socket with id:", self.id )
 			self.eventread = addevent( base, self.conn, EV_READ, self.readcallback )  -- register callback
 		end
 		return true
 	end
 	function interface_mt:_start_ssl(call_onconnect) -- old socket will be destroyed, therefore we have to close read/write events first
-			--vdebug( "starting ssl session with client id:", self.id )
 			local _
 			_ = self.eventread and self.eventread:close( )  -- close events; this must be called outside of the event callbacks!
 			_ = self.eventwrite and self.eventwrite:close( )
@@ -306,7 +303,6 @@ do
 	-- Public methods
 	function interface_mt:write(data)
 		if self.nowriting then return nil, "locked" end
-		--vdebug( "try to send data to client, id/data:", self.id, data )
 		data = tostring( data )
 		local len = #data
 		local total = len + self.writebufferlen
@@ -318,7 +314,6 @@ do
 		t_insert(self.writebuffer, data) -- new buffer
 		self.writebufferlen = total
 		if not self.eventwrite then  -- register new write event
-			--vdebug( "register new write event" )
 			self.eventwrite = addevent( base, self.conn, EV_WRITE, self.writecallback, cfg.WRITE_TIMEOUT )
 		end
 		return true
@@ -466,7 +461,6 @@ do
 	local addevent = base.addevent
 	local socket_gettime = socket.gettime
 	function handleclient( client, ip, port, server, pattern, listener, sslctx )  -- creates an client interface
-		--vdebug("creating client interfacce...")
 		local interface = {
 			type = "client";
 			conn = client;
@@ -502,9 +496,7 @@ do
 		if not ssl then interface.starttls = false; end
 		interface.id = tostring(interface):match("%x+$");
 		interface.writecallback = function( event )  -- called on write events
-			--vdebug( "new client write event, id/ip/port:", interface, ip, port )
 			if interface.nowriting or ( interface.fatalerror and ( "client to close" ~= interface.fatalerror ) ) then  -- leave this event
-				--vdebug( "leaving this event because:", interface.nowriting or interface.fatalerror )
 				interface.eventwrite = false
 				return -1
 			end
@@ -518,7 +510,6 @@ do
 				if interface._usingssl then  -- handle luasec
 					if interface.eventreadtimeout then  -- we have to read first
 						local ret = interface.readcallback( )  -- call readcallback
-						--vdebug( "tried to read in writecallback, result:", ret )
 					end
 					if interface.eventwritetimeout then  -- luasec only
 						interface.eventwritetimeout:close( )  -- first we have to close timeout event which where regged after a wantread error
@@ -527,7 +518,6 @@ do
 				end
 				interface.writebuffer = { t_concat(interface.writebuffer) }
 				local succ, err, byte = interface.conn:send( interface.writebuffer[1], 1, interface.writebufferlen )
-				--vdebug( "write data:", interface.writebuffer, "error:", err, "part:", byte )
 				if succ then  -- writing succesful
 					interface.writebuffer[1] = nil
 					interface.writebufferlen = 0
@@ -544,7 +534,6 @@ do
 					interface.eventwrite = nil
 					return -1
 				elseif byte and (err == "timeout" or err == "wantwrite") then  -- want write again
-					--vdebug( "writebuffer is not empty:", err )
 					interface.writebuffer[1] = string_sub( interface.writebuffer[1], byte + 1, interface.writebufferlen )  -- new buffer
 					interface.writebufferlen = interface.writebufferlen - byte
 					if "wantread" == err then  -- happens only with luasec
@@ -570,9 +559,7 @@ do
 		end
 		
 		interface.readcallback = function( event )  -- called on read events
-			--vdebug( "new client read event, id/ip/port:", tostring(interface.id), tostring(ip), tostring(port) )
 			if interface.noreading or interface.fatalerror then  -- leave this event
-				--vdebug( "leaving this event because:", tostring(interface.noreading or interface.fatalerror) )
 				interface.eventread = nil
 				return -1
 			end
@@ -586,7 +573,6 @@ do
 				if interface._usingssl then  -- handle luasec
 					if interface.eventwritetimeout then  -- ok, in the past writecallback was regged
 						local ret = interface.writecallback( )  -- call it
-						--vdebug( "tried to write in readcallback, result:", tostring(ret) )
 					end
 					if interface.eventreadtimeout then
 						interface.eventreadtimeout:close( )
@@ -594,7 +580,6 @@ do
 					end
 				end
 				local buffer, err, part = interface.conn:receive( interface._pattern )  -- receive buffer with "pattern"
-				--vdebug( "read data:", tostring(buffer), "error:", tostring(err), "part:", tostring(part) )
 				buffer = buffer or part
 				if buffer and #buffer > cfg.MAX_READ_LENGTH then  -- check buffer length
 					interface.fatalerror = "receive buffer exceeded"
@@ -660,9 +645,7 @@ do
 		}
 		interface.id = tostring(interface):match("%x+$");
 		interface.readcallback = function( event )  -- server handler, called on incoming connections
-			--vdebug( "server can accept, id/addr/port:", interface, addr, port )
 			if interface.fatalerror then
-				--vdebug( "leaving this event because:", self.fatalerror )
 				interface.eventread = nil
 				return -1
 			end
@@ -675,7 +658,6 @@ do
 					return EV_READ  -- accept again
 				end
 			end
-			--vdebug("max connection check ok, accepting...")
 			local client, err = server:accept()    -- try to accept; TODO: check err
 			while client do
 				if interface._connections >= cfg.MAX_CONNECTIONS then
@@ -686,7 +668,6 @@ do
 				local client_ip, client_port = client:getpeername( )
 				interface._connections = interface._connections + 1  -- increase connection count
 				local clientinterface = handleclient( client, client_ip, client_port, interface, pattern, listener, sslctx )
-				--vdebug( "client id:", clientinterface, "startssl:", startssl )
 				if ssl and sslctx then
 					clientinterface:starttls(sslctx, true)
 				else
@@ -709,7 +690,6 @@ end
 
 local addserver = ( function( )
 	return function( addr, port, listener, pattern, sslcfg, startssl )  -- TODO: check arguments
-		--vdebug( "creating new tcp server with following parameters:", addr or "nil", port or "nil", sslcfg or "nil", startssl or "nil")
 		local server, err = socket.bind( addr, port, cfg.ACCEPT_QUEUE )  -- create server socket
 		if not server then
 			debug( "creating server socket on "..addr.." port "..port.." failed:", err )
@@ -739,7 +719,7 @@ do
 		local interface = handleclient( client, ip, port, nil, pattern, listeners, sslctx )
 		interface:_start_connection(sslctx)
 		return interface, client
-		--function handleclient( client, ip, port, server, pattern, listener, _, sslctx )  -- creates an client interface
+		--function handleclient( client, ip, port, server, pattern, listener, _, sslctx )  -- creates a client interface
 	end
 	
 	function addclient( addr, serverport, listener, pattern, localaddr, localport, sslcfg, startssl )
