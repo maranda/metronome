@@ -18,14 +18,12 @@ local jid_bare, jid_prep = jid.bare, jid.prep;
 local module_host = module:get_host();
 
 function inject_roster_contacts(username, host, roster)
-	--module:log("debug", "Injecting group members to roster");
 	local bare_jid = username.."@"..host;
 	if not members[bare_jid] and not members[false] then return; end -- Not a member of any groups
 	
 	local function import_jids_to_roster(group_name)
 		for jid in pairs(groups[group_name]) do
 			-- Add them to roster
-			--module:log("debug", "processing jid %s in group %s", tostring(jid), tostring(group_name));
 			if jid ~= bare_jid then
 				if not roster[jid] then roster[jid] = {}; end
 				roster[jid].subscription = "both";
@@ -43,14 +41,12 @@ function inject_roster_contacts(username, host, roster)
 
 	if members[bare_jid] then
 		for _, group_name in ipairs(members[bare_jid]) do
-			--module:log("debug", "Importing group %s", group_name);
 			import_jids_to_roster(group_name);
 		end
 	end
 	
 	if members[false] then
 		for _, group_name in ipairs(members[false]) do
-			--module:log("debug", "Importing group %s", group_name);
 			import_jids_to_roster(group_name);
 		end
 	end

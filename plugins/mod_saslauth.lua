@@ -33,13 +33,11 @@ module:hook ("config-reloaded", reload);
 local function build_reply(status, ret, err_msg)
 	local reply = st.stanza(status, {xmlns = xmlns_sasl});
 	if status == "challenge" then
-		--log("debug", "CHALLENGE: %s", ret or "");
 		reply:text(base64.encode(ret or ""));
 	elseif status == "failure" then
 		reply:tag(ret):up();
 		if err_msg then reply:tag("text"):text(err_msg); end
 	elseif status == "success" then
-		--log("debug", "SUCCESS: %s", ret or "");
 		reply:text(base64.encode(ret or ""));
 	else
 		module:log("error", "Unknown sasl status: %s", status);
@@ -71,7 +69,6 @@ local function sasl_process_cdata(session, stanza)
 	local text = stanza[1];
 	if text then
 		text = base64.decode(text);
-		--log("debug", "AUTH: %s", text:gsub("[%z\001-\008\011\012\014-\031]", " "));
 		if not text then
 			session.sasl_handler = nil;
 			session.send(build_reply("failure", "incorrect-encoding"));
@@ -161,7 +158,7 @@ local function s2s_external_auth(session, stanza)
 
 	-- Either the value is "=" and we've already verified the external
 	-- cert identity, or the value is a string and either matches the
-	-- from_host (
+	-- from_host
 
 	text = base64.decode(text)
 	if not text then
@@ -273,7 +270,7 @@ module:hook("s2s-stream-features", function(event)
 	if origin.secure and origin.type == "s2sin_unauthed" then
 		-- Offer EXTERNAL if chain is valid and either we didn't validate
 		-- the identity or it passed.
-		if origin.cert_chain_status == "valid" and origin.cert_identity_status ~= "invalid" then --TODO: Configurable
+		if origin.cert_chain_status == "valid" and origin.cert_identity_status ~= "invalid" then
 			module:log("debug", "Offering SASL EXTERNAL")
 			features:tag("mechanisms", { xmlns = xmlns_sasl })
 				:tag("mechanism"):text("EXTERNAL")

@@ -70,8 +70,6 @@ function handle_request(event, pasteid)
 		return event.response:send("Invalid paste id, perhaps it expired?");
 	end
 	
-	--module:log("debug", "Received request, replying: %s", pastes[pasteid].text);
-	
 	return pastes[pasteid];
 end
 
@@ -90,8 +88,6 @@ function check_message(data)
 	if not body then return; end
 	body = body:get_text();
 	
-	--module:log("debug", "Body(%s) length: %d", type(body), #(body or ""));
-	
 	if body and (
 		((#body > length_threshold)
 		 and (utf8_length(body) > length_threshold)) or
@@ -103,7 +99,6 @@ function check_message(data)
 		end
 		local url = pastebin_text(body);
 		module:log("debug", "Pasted message as %s", url);		
-		--module:log("debug", " stanza[bodyindex] = %q", tostring( stanza[bodyindex]));
 		local summary = (body:sub(1, max_summary_length):gsub(utf8_pattern, drop_invalid_utf8) or ""):match("[^\n]+") or "";
 		summary = summary:match("^%s*(.-)%s*$");
 		local summary_prefixed = summary:match("[,:]$");
