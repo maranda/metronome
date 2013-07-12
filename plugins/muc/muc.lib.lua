@@ -208,7 +208,7 @@ end
 function room_mt:get_disco_info(stanza)
 	local count = 0; for _ in pairs(self._occupants) do count = count + 1; end
 	return st.reply(stanza):query("http://jabber.org/protocol/disco#info")
-		:tag("identity", {category = "conference", type = "text", name = self:get_name()}):up()
+		:tag("identity", {category = "conference", type = "text", name = self:get_option("name")}):up()
 		:tag("feature", {var = "http://jabber.org/protocol/muc"}):up()
 		:tag("feature", {var = self:get_option("password") and "muc_passwordprotected" or "muc_unsecured"}):up()
 		:tag("feature", {var = self:get_option("moderated") and "muc_moderated" or "muc_unmoderated"}):up()
@@ -220,7 +220,7 @@ function room_mt:get_disco_info(stanza)
 			{ name = "FORM_TYPE", type = "hidden", value = "http://jabber.org/protocol/muc#roominfo" },
 			{ name = "muc#roominfo_description", label = "Description"},
 			{ name = "muc#roominfo_occupants", label = "Number of occupants", value = tostring(count) }
-		}):form({["muc#roominfo_description"] = self:get_description()}, "result"))
+		}):form({["muc#roominfo_description"] = self:get_option("description")}, "result"))
 	;
 end
 function room_mt:get_disco_items(stanza)
@@ -335,7 +335,6 @@ local function deconstruct_stanza_id(room, stanza)
 		end
 	end
 end
-
 
 function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 	local from, to = stanza.attr.from, stanza.attr.to;
@@ -669,7 +668,7 @@ function room_mt:process_form(origin, stanza)
 		local _name = self:get_custom_config(ns, "name");
 		
 		if self:cc_has_method(ns, "check") then
-			local invalid = self:get_custom_config(name, "check", stanza, value);
+			local invalid = self:get_custom_config(ns, "check", stanza, value);
 			if invalid then return origin.send(invalid); end
 		end
 		if self:cc_has_method(ns, "submitted") then
@@ -694,7 +693,7 @@ function room_mt:process_form(origin, stanza)
 		end
 
 		for ns in pairs(submitted) do
-			msg = self:get_custom_config(name, "submitted", msg);
+			msg = self:get_custom_config(ns, "submitted", msg);
 		end
 
 		self:broadcast_message(msg, false);
