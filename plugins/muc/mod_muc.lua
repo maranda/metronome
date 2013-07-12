@@ -293,6 +293,7 @@ function shutdown_component()
 		local stanza = st.presence({type = "unavailable"})
 			:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
 				:tag("item", {affiliation = "none", role = "none"}):up();
+				:tag("status", { code = "332"}):up();
 		for roomjid, room in pairs(rooms) do
 			shutdown_room(room, stanza);
 		end
