@@ -160,7 +160,7 @@ local function config_submitted(self, msg_st)
 	return msg_st;
 end
 local function config_onjoin(self, pr_st)
-	if config_is_method(self) then pr_st:tag("status", {code = "170"}):up(); end
+	if self:get_option("logging") then pr_st:tag("status", {code = "170"}):up(); end
 	return pr_st;
 end
 
