@@ -87,8 +87,8 @@ function room_mt:get_default_role(affiliation)
 	elseif affiliation == "member" then
 		return "participant";
 	elseif not affiliation then
-		if not self:is_members_only() then
-			return self:is_moderated() and "visitor" or "participant";
+		if not self:get_option("members_only") then
+			return self:get_option("moderated") and "visitor" or "participant";
 		end
 	end
 end
@@ -210,11 +210,11 @@ function room_mt:get_disco_info(stanza)
 	return st.reply(stanza):query("http://jabber.org/protocol/disco#info")
 		:tag("identity", {category = "conference", type = "text", name = self:get_name()}):up()
 		:tag("feature", {var = "http://jabber.org/protocol/muc"}):up()
-		:tag("feature", {var = self:get_password() and "muc_passwordprotected" or "muc_unsecured"}):up()
-		:tag("feature", {var = self:is_moderated() and "muc_moderated" or "muc_unmoderated"}):up()
-		:tag("feature", {var = self:is_members_only() and "muc_membersonly" or "muc_open"}):up()
-		:tag("feature", {var = self:is_persistent() and "muc_persistent" or "muc_temporary"}):up()
-		:tag("feature", {var = self:is_hidden() and "muc_hidden" or "muc_public"}):up()
+		:tag("feature", {var = self:get_option("password") and "muc_passwordprotected" or "muc_unsecured"}):up()
+		:tag("feature", {var = self:get_option("moderated") and "muc_moderated" or "muc_unmoderated"}):up()
+		:tag("feature", {var = self:get_option("members_only") and "muc_membersonly" or "muc_open"}):up()
+		:tag("feature", {var = self:get_option("persistent") and "muc_persistent" or "muc_temporary"}):up()
+		:tag("feature", {var = not self:get_option("public") and "muc_hidden" or "muc_public"}):up()
 		:tag("feature", {var = self._data.whois ~= "anyone" and "muc_semianonymous" or "muc_nonanonymous"}):up()
 		:add_child(dataform.new({
 			{ name = "FORM_TYPE", type = "hidden", value = "http://jabber.org/protocol/muc#roominfo" },
@@ -251,105 +251,36 @@ local function build_unavailable_presence_from_error(stanza)
 		:tag("status"):text(error_message);
 end
 
-function room_mt:set_name(name)
-	if name == "" or type(name) ~= "string" or name == (jid_split(self.jid)) then name = nil; end
-	if self._data.name ~= name then
-		self._data.name = name;
-		if self.save then self:save(true); end
+-- config handlers
+
+function room_mt:get_option(name)
+	return self._data[name];
+end
+
+function room_mt:set_option(name, value, changed)
+	if type(value) == "string" and value == "" then value = nil; end
+	if value == false then value = nil; end
+
+	if value ~= self:get_option(name) then
+		self._data[name] = value;
+		if changed then 
+			changed[name] = true;
+		end
+		return true;
 	end
+
+	return false;
 end
-function room_mt:get_name()
-	return self._data.name or jid_split(self.jid);
-end
-function room_mt:set_description(description)
-	if description == "" or type(description) ~= "string" then description = nil; end
-	if self._data.description ~= description then
-		self._data.description = description;
-		if self.save then self:save(true); end
-	end
-end
-function room_mt:get_description()
-	return self._data.description;
-end
-function room_mt:set_password(password)
-	if password == "" or type(password) ~= "string" then password = nil; end
-	if self._data.password ~= password then
-		self._data.password = password;
-		if self.save then self:save(true); end
-	end
-end
-function room_mt:get_password()
-	return self._data.password;
-end
-function room_mt:set_moderated(moderated)
-	moderated = moderated and true or nil;
-	if self._data.moderated ~= moderated then
-		self._data.moderated = moderated;
-		if self.save then self:save(true); end
-	end
-end
-function room_mt:is_moderated()
-	return self._data.moderated;
-end
-function room_mt:set_members_only(members_only)
-	members_only = members_only and true or nil;
-	if self._data.members_only ~= members_only then
-		self._data.members_only = members_only;
-		if self.save then self:save(true); end
-	end
-end
-function room_mt:is_members_only()
-	return self._data.members_only;
-end
-function room_mt:set_persistent(persistent)
-	persistent = persistent and true or nil;
-	if self._data.persistent ~= persistent then
-		self._data.persistent = persistent;
-		if self.save then self:save(true); end
-	end
-end
-function room_mt:is_persistent()
-	return self._data.persistent;
-end
-function room_mt:set_hidden(hidden)
-	hidden = hidden and true or nil;
-	if self._data.hidden ~= hidden then
-		self._data.hidden = hidden;
-		if self.save then self:save(true); end
-	end
-end
-function room_mt:is_hidden()
-	return self._data.hidden;
-end
-function room_mt:set_changesubject(changesubject)
-	changesubject = changesubject and true or nil;
-	if self._data.changesubject ~= changesubject then
-		self._data.changesubject = changesubject;
-		if self.save then self:save(true); end
-	end
-end
-function room_mt:get_changesubject()
-	return self._data.changesubject;
-end
-function room_mt:get_historylength()
-	return self._data.history_length or default_history_length;
-end
-function room_mt:set_historylength(length)
-	length = math.min(tonumber(length) or default_history_length, self._data_max_history_length or math.huge);
-	if length == default_history_length then
-		length = nil;
-	end
-	self._data.history_length = length;
-end
+
+-- custom config registry
+
 room_mt.cc_registry = {};
 function room_mt:register_cc(xmlns, params)
 	self.cc_registry[xmlns] = {
 		name = params.name;
 		field = params.field;
-		is_enabled = params.is_enabled;
-		set = params.set;
 		check = params.check;
-		afterconf = params.afterconf;
+		submitted = params.submitted;
 		onjoin = params.onjoin;
 	};
 end
@@ -504,7 +435,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 				local password = stanza:get_child("x", "http://jabber.org/protocol/muc");
 				password = password and password:get_child("password", "http://jabber.org/protocol/muc");
 				password = password and password[1] ~= "" and password[1];
-				if self:get_password() and self:get_password() ~= password and not admin_toggles[jid_bare(from)] then
+				if self:get_option("password") and self:get_option("password") ~= password and not admin_toggles[jid_bare(from)] then
 					log("debug", "%s couldn't join due to invalid password: %s", from, to);
 					local reply = st.error_reply(stanza, "auth", "not-authorized"):up();
 					reply.tags[1].attr.code = "401";
@@ -623,31 +554,31 @@ function room_mt:get_form_layout()
 			name = "muc#roomconfig_roomname",
 			type = "text-single",
 			label = "Name",
-			value = self:get_name() or "",
+			value = self:get_option("name") or "",
 		},
 		{
 			name = "muc#roomconfig_roomdesc",
 			type = "text-single",
 			label = "Description",
-			value = self:get_description() or "",
+			value = self:get_option("description") or "",
 		},
 		{
 			name = "muc#roomconfig_persistentroom",
 			type = "boolean",
 			label = "Make Room Persistent?",
-			value = self:is_persistent()
+			value = self:get_option("persistent")
 		},
 		{
 			name = "muc#roomconfig_publicroom",
 			type = "boolean",
 			label = "Make Room Publicly Searchable?",
-			value = not self:is_hidden()
+			value = not self:get_option("public")
 		},
 		{
 			name = "muc#roomconfig_changesubject",
 			type = "boolean",
 			label = "Allow Occupants to Change Subject?",
-			value = self:get_changesubject()
+			value = self:get_option("changesubject")
 		},
 		{
 			name = "muc#roomconfig_whois",
@@ -662,25 +593,25 @@ function room_mt:get_form_layout()
 			name = "muc#roomconfig_roomsecret",
 			type = "text-private",
 			label = "Password",
-			value = self:get_password() or "",
+			value = self:get_option("password") or ""
 		},
 		{
 			name = "muc#roomconfig_moderatedroom",
 			type = "boolean",
 			label = "Make Room Moderated?",
-			value = self:is_moderated()
+			value = self:get_option("moderated")
 		},
 		{
 			name = "muc#roomconfig_membersonly",
 			type = "boolean",
 			label = "Make Room Members-Only?",
-			value = self:is_members_only()
+			value = self:get_option("members_only")
 		},
 		{
 			name = "muc#roomconfig_historylength",
 			type = "text-single",
 			label = "Maximum Number of History Messages Returned by Room",
-			value = tostring(self:get_historylength())
+			value = tostring(self:get_option("history_length"))
 		}
 	};
 
@@ -707,110 +638,63 @@ function room_mt:process_form(origin, stanza)
 	local fields = self:get_form_layout():data(form);
 	if fields.FORM_TYPE ~= "http://jabber.org/protocol/muc#roomconfig" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "Form is not of type room configuration")); return; end
 
-	local dirty = false
+	fields.FORM_TYPE = nil;
+	local changed = {};
 
+	-- Process default entries
 	local name = fields["muc#roomconfig_roomname"];
-	if name ~= self:get_name() then
-		self:set_name(name);
-	end
-
-	local description = fields["muc#roomconfig_roomdesc"];
-	if description ~= self:get_description() then
-		self:set_description(description);
-	end
-
-	local persistent = fields["muc#roomconfig_persistentroom"];
-	dirty = dirty or (self:is_persistent() ~= persistent)
-	module:log("debug", "persistent=%s", tostring(persistent));
-
-	local moderated = fields["muc#roomconfig_moderatedroom"];
-	dirty = dirty or (self:is_moderated() ~= moderated)
-	module:log("debug", "moderated=%s", tostring(moderated));
-
-	local membersonly = fields["muc#roomconfig_membersonly"];
-	dirty = dirty or (self:is_members_only() ~= membersonly)
-	module:log("debug", "membersonly=%s", tostring(membersonly));
-
-	local public = fields["muc#roomconfig_publicroom"];
-	dirty = dirty or (self:is_hidden() ~= (not public and true or nil));
-	module:log("debug", "publicroom=%s", public and "true" or "false");
-
-	local changesubject = fields["muc#roomconfig_changesubject"];
-	dirty = dirty or (self:get_changesubject() ~= (not changesubject and true or nil));
-	module:log("debug", "changesubject=%s", changesubject and "true" or "false");
-
-	local historylength = tonumber(fields["muc#roomconfig_historylength"]);
-	dirty = dirty or (historylength and (self:get_historylength() ~= historylength));
-	module:log("debug", "historylength=%s", historylength);
-
-	local custom_config = {};
-	for name in pairs(fields) do
-		if self:get_custom_config(name) then
-			local _name = self:get_custom_config(name, "name");
-			custom_config[_name] = fields[name];
-			dirty = dirty or (custom_config[_name] and (self:get_custom_config(name, "is_enabled") ~= custom_config[_name]));
-			module:log("debug", "%s=%s (custom field)", _name, custom_config[_name] and "true" or "false");
-		end
-	end
-	local default_config = { 
-		name = name,
-		description = description,
-		persistent = persistent,
-		moderated = moderated,
-		membersonly = membersonly,
-		public = public,
-		changesubject = changesubject,
-		historylength = historylength
-	};
+	if name == (jid_split(self.jid)) then name = nil; end
+	
+	self:set_option("name", name, changed); fields["muc#roomconfig_roomname"] = nil;
+	self:set_option("description", fields["muc#roomconfig_roomdesc"], changed); fields["muc#roomconfig_roomdesc"] = nil;
+	self:set_option("persistent", fields["muc#roomconfig_persistentroom"], changed); fields["muc#roomconfig_persistentroom"] = nil;
+	self:set_option("moderated", fields["muc#roomconfig_moderatedroom"], changed); fields["muc#roomconfig_moderatedroom"] = nil;
+	self:set_option("members_only", fields["muc#roomconfig_membersonly"], changed); fields["muc#roomconfig_membersonly"] = nil;
+	self:set_option("hidden", not fields["muc#roomconfig_publicroom"], changed); fields["muc#roomconfig_public"] = nil;
+	self:set_option("changesubject", fields["muc#roomconfig_changesubject"], changed); fields["muc#roomconfig_changesubject"] = nil;
+	self:set_option("history_length", tonumber(fields["muc#roomconfig_historylength"]) or default_history_length, changed); fields["muc#roomconfig_historylength"] = nil;
 
 	local whois = fields["muc#roomconfig_whois"];
 	if not valid_whois[whois] then
 		return origin.send(st.error_reply(stanza, "cancel", "bad-request", "Invalid value for 'whois'"));
 	end
-	local whois_changed = self._data.whois ~= whois;
-	self._data.whois = whois;
-	module:log("debug", "whois=%s", whois);
 
-	for name in pairs(fields) do
-		if self:get_custom_config(name) and
-		   self:cc_has_method(name, "check") then
-			local invalid = self:get_custom_config(name, "check", stanza, default_config, custom_config);
+	local whois_changed = self:set_option("whois", fields["muc#roomconfig_whois"], changed); fields["muc#roomconfig_whois"] = nil;
+	self:set_option("password", fields["muc#roomconfig_secret"], changed); fields["muc#roomconfig_secret"] = nil;
+
+	-- Process custom entries
+	local submitted = {};
+
+	for ns, value in pairs(fields) do
+		local _name = self:get_custom_config(ns, "name");
+		
+		if self:cc_has_method(ns, "check") then
+			local invalid = self:get_custom_config(name, "check", stanza, value);
 			if invalid then return origin.send(invalid); end
 		end
-	end
+		if self:cc_has_method(ns, "submitted") then
+			submitted[ns] = true;	
+		end
 
-	local password = fields["muc#roomconfig_roomsecret"];
-	if self:get_password() ~= password then
-		self:set_password(password);
+		changed = self:set_option(_name, value, changed);
 	end
-	self:set_moderated(moderated);
-	self:set_members_only(membersonly);
-	self:set_persistent(persistent);
-	self:set_hidden(not public);
-	self:set_changesubject(changesubject);
-	self:set_historylength(historylength);
-
-	for xmlns, cc in self:custom_configs() do cc.set(self, nil, custom_config[cc.name]); end
 
 	if self.save then self:save(true); end
 	origin.send(st.reply(stanza));
 
-	if dirty or whois_changed then
+	if next(changed) then
 		local msg = st.message({type = "groupchat", from = self.jid})
 			:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"}):up()
 
-		if dirty then
-			msg.tags[1]:tag("status", {code = "104"}):up();
-		end
+		msg.tags[1]:tag("status", {code = "104"}):up();
+
 		if whois_changed then
 			local code = (whois == "moderators") and "173" or "172";
 			msg.tags[1]:tag("status", {code = code}):up();
 		end
 
-		for xmlns, cc in self:custom_configs() do
-			if cc.afterconf then 
-				msg = cc.afterconf(self, msg, custom_config[cc.name]); 
-			end
+		for ns in pairs(submitted) do
+			msg = self:get_custom_config(name, "submitted", msg);
 		end
 
 		self:broadcast_message(msg, false);
@@ -971,7 +855,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 					origin.send(st.error_reply(stanza, "auth", "forbidden"));
 				end
 			else
-				self:broadcast_message(stanza, self:get_historylength() > 0);
+				self:broadcast_message(stanza, self:get_option("history_length") > 0);
 			end
 			stanza.attr.from = from;
 		end
@@ -1006,8 +890,8 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 							:tag("invite", {from = _from})
 								:tag("reason"):text(_reason or ""):up()
 							:up();
-							if self:get_password() then
-								invite:tag("password"):text(self:get_password()):up();
+							if self:get_option("password") then
+								invite:tag("password"):text(self:get_option("password")):up();
 							end
 						invite:up()
 						:tag("x", {xmlns = "jabber:x:conference", jid = _to}) -- COMPAT: Some older clients expect this
@@ -1016,7 +900,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 						:tag("body") -- Add a plain message for clients which don't support invites
 							:text(_from.." invited you to the room ".._to..(_reason and (" (".._reason..")") or ""))
 						:up();
-					if self:is_members_only() and not self:get_affiliation(_recipient) then
+					if self:get_option("members_only") and not self:get_affiliation(_recipient) then
 						log("debug", "%s invited %s into members only room %s, granting membership", _from, _recipient, _to);
 						self:set_affiliation(_from, _recipient, "member", nil, "Invited by " .. self._jid_nick[_from]);
 					end
