@@ -650,7 +650,7 @@ function room_mt:process_form(origin, stanza)
 	self:set_option("persistent", fields["muc#roomconfig_persistentroom"], changed); fields["muc#roomconfig_persistentroom"] = nil;
 	self:set_option("moderated", fields["muc#roomconfig_moderatedroom"], changed); fields["muc#roomconfig_moderatedroom"] = nil;
 	self:set_option("members_only", fields["muc#roomconfig_membersonly"], changed); fields["muc#roomconfig_membersonly"] = nil;
-	self:set_option("hidden", not fields["muc#roomconfig_publicroom"], changed); fields["muc#roomconfig_public"] = nil;
+	self:set_option("hidden", not fields["muc#roomconfig_publicroom"], changed); fields["muc#roomconfig_publicroom"] = nil;
 	self:set_option("changesubject", fields["muc#roomconfig_changesubject"], changed); fields["muc#roomconfig_changesubject"] = nil;
 	self:set_option("history_length", tonumber(fields["muc#roomconfig_historylength"]) or default_history_length, changed); fields["muc#roomconfig_historylength"] = nil;
 
@@ -676,7 +676,7 @@ function room_mt:process_form(origin, stanza)
 			submitted[ns] = true;	
 		end
 
-		changed = self:set_option(_name, value, changed);
+		self:set_option(_name, value, changed);
 	end
 
 	if self.save then self:save(true); end
