@@ -133,41 +133,33 @@ end
 
 -- Define config methods
 
-local function config_field_method(self)
+local function config_field(self)
 	local ns = "muc#roomconfig_enablelogging";
 	local field = {
 		name = ns,
 		type = "boolean",
 		label = "Enable room logging?",
-		value = self:get_custom_config(ns, "is_enabled");
+		value = self:get_option("logging");
 	};
 
 	return field;
 end
-local function config_is_method(self) return self._data.logging; end
-local function config_set_method(self, stanza, logging)
-	logging = logging and true or nil;
-	if self._data.logging ~= logging then
-		self._data.logging = logging;
-		if self.save then self:save(true); end
-	end
-end
-local function config_check_method(self, stanza, default, custom)
+local function config_check(self, stanza, config)
 	local reply;
-	if not default.public and custom.logging then
+	if self:get_option("hidden") and config then
 		reply = error_reply(stanza, "cancel", "forbidden", "You can enable logging only into public rooms!");
 	end
 	return reply;
 end
-local function config_ac_method(self, msg_st, logging)
-	if logging then
+local function config_submitted(self, msg_st)
+	if self:get_option("logging") then
 		msg_st.tags[1]:tag("status", {code = "170"}):up();
 	else
 		msg_st.tags[1]:tag("status", {code = "171"}):up();
 	end
 	return msg_st;
 end
-local function config_oj_method(self, pr_st)
+local function config_onjoin(self, pr_st)
 	if config_is_method(self) then pr_st:tag("status", {code = "170"}):up(); end
 	return pr_st;
 end
@@ -183,12 +175,10 @@ function module.load()
 		xmlns = "muc#roomconfig_enablelogging",
 		params = {
 			name = "logging",
-			field = config_field_method,
-			is_enabled = config_is_method,
-			set = config_set_method,
-			check = config_check_method,
-			afterconf = config_ac_method,
-			onjoin = config_oj_method
+			field = config_field,
+			check = config_check,
+			submitted = config_submitted,
+			onjoin = config_onjoin
 		},
 		action = "register",
 		caller = "muc_log"
