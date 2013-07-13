@@ -130,7 +130,7 @@ function room_mt:broadcast_message(stanza, historic)
 		stanza:tag("x", {xmlns = "jabber:x:delay", from = muc_domain, stamp = datetime.legacy()}):up(); -- XEP-0091 (deprecated)
 		local entry = { stanza = stanza, stamp = stamp };
 		t_insert(history, entry);
-		while #history > (self._data.history_length or default_history_length) do t_remove(history, 1) end
+		while #history > self._data.history_length do t_remove(history, 1) end
 	end
 end
 function room_mt:broadcast_except_nick(stanza, nick)
@@ -158,7 +158,7 @@ function room_mt:send_occupant_list(to)
 end
 function room_mt:send_history(to, stanza)
 	local history = self._data["history"]; -- send discussion history
-	local history_length = self._data.history_length or default_history_length;
+	local history_length = self._data.history_length;
 	if history then
 		local x_tag = stanza and stanza:get_child("x", "http://jabber.org/protocol/muc");
 		local history_tag = x_tag and x_tag:get_child("history", "http://jabber.org/protocol/muc");
