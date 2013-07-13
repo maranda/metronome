@@ -724,7 +724,7 @@ function room_mt:destroy(newjid, reason, password)
 		end
 		self._occupants[nick] = nil;
 	end
-	self:set_persistent(false);
+	if self:set_option("persistent", false) and self.save then self:save(true); end
 end
 
 function room_mt:handle_to_room(origin, stanza) -- presence changes and groupchat messages, along with disco/etc
