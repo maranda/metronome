@@ -209,7 +209,7 @@ end
 function room_mt:get_disco_info(stanza)
 	local count = 0; for _ in pairs(self._occupants) do count = count + 1; end
 	return st.reply(stanza):query("http://jabber.org/protocol/disco#info")
-		:tag("identity", {category = "conference", type = "text", name = self:get_option("name")}):up()
+		:tag("identity", {category = "conference", type = "text", name = self:get_name()}):up()
 		:tag("feature", {var = "http://jabber.org/protocol/muc"}):up()
 		:tag("feature", {var = self:get_option("password") and "muc_passwordprotected" or "muc_unsecured"}):up()
 		:tag("feature", {var = self:get_option("moderated") and "muc_moderated" or "muc_unmoderated"}):up()
@@ -253,6 +253,9 @@ local function build_unavailable_presence_from_error(stanza)
 end
 
 -- config handlers
+function room_mt:get_name()
+	return self._data.name or jid_split(self.jid);
+end
 
 function room_mt:get_option(name)
 	return self._data[name];
