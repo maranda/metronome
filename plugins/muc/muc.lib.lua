@@ -26,6 +26,7 @@ local md5 = require "util.hashes".md5;
 
 local muc_domain = nil; --module:get_host();
 local default_history_length = 20;
+local max_history_length;
 
 ------------
 local filters = {["http://jabber.org/protocol/muc"]=true;["http://jabber.org/protocol/muc#user"]=true};
@@ -643,6 +644,16 @@ function room_mt:process_form(origin, stanza)
 	-- Process default entries
 	local name = fields["muc#roomconfig_roomname"];
 	if name == (jid_split(self.jid)) then name = nil; end
+
+	local history_length = tonumber(fields["muc#roomconfig_historylength"]);
+	if history_length and history_length > max_history_length then
+		return origin.send(st.error_reply(stanza, "cancel", "bad-request", "History length value cannot exceed "..tostring(max_history_length)));
+	end
+
+	local whois = fields["muc#roomconfig_whois"];
+	if not valid_whois[whois] then
+		return origin.send(st.error_reply(stanza, "cancel", "bad-request", "Invalid value for 'whois'"));
+	end
 	
 	self:set_option("name", name, changed); fields["muc#roomconfig_roomname"] = nil;
 	self:set_option("description", fields["muc#roomconfig_roomdesc"], changed); fields["muc#roomconfig_roomdesc"] = nil;
@@ -651,13 +662,7 @@ function room_mt:process_form(origin, stanza)
 	self:set_option("members_only", fields["muc#roomconfig_membersonly"], changed); fields["muc#roomconfig_membersonly"] = nil;
 	self:set_option("hidden", not fields["muc#roomconfig_publicroom"], changed); fields["muc#roomconfig_publicroom"] = nil;
 	self:set_option("changesubject", fields["muc#roomconfig_changesubject"], changed); fields["muc#roomconfig_changesubject"] = nil;
-	self:set_option("history_length", tonumber(fields["muc#roomconfig_historylength"]) or default_history_length, changed); fields["muc#roomconfig_historylength"] = nil;
-
-	local whois = fields["muc#roomconfig_whois"];
-	if not valid_whois[whois] then
-		return origin.send(st.error_reply(stanza, "cancel", "bad-request", "Invalid value for 'whois'"));
-	end
-
+	self:set_option("history_length", history_length or default_history_length, changed); fields["muc#roomconfig_historylength"] = nil;
 	local whois_changed = self:set_option("whois", fields["muc#roomconfig_whois"], changed); fields["muc#roomconfig_whois"] = nil;
 	self:set_option("password", fields["muc#roomconfig_secret"], changed); fields["muc#roomconfig_secret"] = nil;
 
@@ -1131,18 +1136,21 @@ end
 
 local _M = {}; -- module "muc"
 
-function _M.new_room(jid, config)
+function _M.new_room(jid)
 	return setmetatable({
 		jid = jid;
 		_jid_nick = {};
 		_occupants = {};
 		_data = {
 		    whois = "moderators";
-		    history_length = (config and config.max_history_length) or default_history_length;
-		    max_history_length = (config and config.max_history_length) or default_history_length;
+		    history_length = default_history_length;
 		};
 		_affiliations = {};
 	}, room_mt);
+end
+
+function _M.set_max_history(limit)
+	max_history_length = limit;
 end
 
 _M.admin_toggles = admin_toggles;
