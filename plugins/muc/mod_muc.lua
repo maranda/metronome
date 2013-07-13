@@ -148,7 +148,7 @@ local function get_disco_items(stanza)
 	local reply = st.iq({type = "result", id = stanza.attr.id, from = muc_host, to = stanza.attr.from}):query("http://jabber.org/protocol/disco#items");
 	for jid, room in pairs(rooms) do
 		if not room:get_option("hidden") then
-			reply:tag("item", {jid = jid, name = room:get_option("name")}):up();
+			reply:tag("item", {jid = jid, name = room:get_name()}):up();
 		end
 	end
 	return reply; -- TODO cache disco reply
