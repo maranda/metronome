@@ -61,6 +61,7 @@ function stream_callbacks.streamopened(session, attr)
 	if session_host.type == "component" then
 		-- c2s streams to server components should be properly bounced.
 		session:close{ condition = "not-allowed", text = "This entity doesn't offer c2s streams" };
+		return;
 	end
 
 	send("<?xml version='1.0'?>"..st.stanza("stream:stream", {
