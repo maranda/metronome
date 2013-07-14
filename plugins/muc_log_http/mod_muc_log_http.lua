@@ -6,6 +6,12 @@
 
 -- Ported from prosody's http muc log module (into prosody modules).
 
+local modulemanager = modulemanager;
+if not modulemanager.is_loaded(module.host, "muc") then
+	module:log("error", "mod_muc_log_http can only be loaded on a muc component!")
+	return;
+end
+
 module:depends("http");
 
 local metronome = metronome;
@@ -31,6 +37,8 @@ local lom = require "lxp.lom";
 local lfs = require "lfs";
 local html = {};
 local theme;
+
+local muc_rooms = hosts[my_host].muc.rooms;
 
 -- Helper Functions
 
@@ -71,18 +79,16 @@ function urlunescape (url)
 	return url
 end
 
-local function generate_room_list(component)
+local function generate_room_list()
 	local rooms = "";
-	local component_host = hosts[component];
-	if component_host and component_host.muc ~= nil then
-		for jid, room in pairs(component_host.muc.rooms) do
-			local node = split_jid(jid);
-			if not room._data.hidden and room._data.logging and node then
-				rooms = rooms .. html.rooms.bit:gsub("###ROOM###", node):gsub("###COMPONENT###", component);
-			end
+	local html_rooms = html.rooms;
+	for jid, room in pairs(muc_rooms) do
+		local node = split_jid(jid);
+		if not room._data.hidden and room._data.logging and node then
+			rooms = rooms .. html_rooms.bit:gsub("###ROOM###", node):gsub("###COMPONENT###", my_host);
 		end
-		return html.rooms.body:gsub("###ROOMS_STUFF###", rooms):gsub("###COMPONENT###", component), "Chatroom logs for "..component;
 	end
+	return html_rooms.body:gsub("###ROOMS_STUFF###", rooms):gsub("###COMPONENT###", my_host), "Chatroom logs for "..my_host;
 end
 
 -- Calendar stuff
@@ -227,17 +233,13 @@ local function generate_day_room_content(bare_room_jid)
 	local since = "";
 	local to = "";
 	local topic = "";
-	local component = hosts[host];
-
-	if not(component and component.muc and component.muc.rooms[bare_room_jid]) then
-		return;
-	end
+	local html_days = html.days;
 
 	path = path:gsub("/[^/]*$", "");
 	attributes = lfs.attributes(path);
 	do
 		local found = 0;
-		for jid, room in pairs(component.muc.rooms) do
+		for jid, room in pairs(muc_rooms) do
 			local node = split_jid(jid)
 			if not room._data.hidden and room._data.logging and node then
 				if found == 0 then
@@ -250,11 +252,11 @@ local function generate_day_room_content(bare_room_jid)
 					found = 1
 				end
 
-				rooms = rooms .. html.days.rooms.bit:gsub("###ROOM###", node);
+				rooms = rooms .. html_days.rooms.bit:gsub("###ROOM###", node);
 			end
 		end
 
-		room = component.muc.rooms[bare_room_jid];
+		room = muc_rooms[bare_room_jid];
 		if room._data.hidden or not room._data.logging then
 			room = nil;
 		end
@@ -282,7 +284,7 @@ local function generate_day_room_content(bare_room_jid)
 		end
 	end
 
-	tmp = html.days.body:gsub("###DAYS_STUFF###", days);
+	tmp = html_days.body:gsub("###DAYS_STUFF###", days);
 	tmp = tmp:gsub("###PREVIOUS_ROOM###", previous_room == "" and node or previous_room);
 	tmp = tmp:gsub("###NEXT_ROOM###", next_room == "" and node or next_room);
 	tmp = tmp:gsub("###ROOMS###", rooms);
@@ -295,6 +297,7 @@ end
 local function parse_iq(stanza, time, nick)
 	local text = nil;
 	local victim = nil;
+	local html_day = html.day;
 	if(stanza.attr.type == "set") then
 		for _,tag in ipairs(stanza) do
 			if tag.tag == "query" then
@@ -315,11 +318,11 @@ local function parse_iq(stanza, time, nick)
 		end
 		if victim then
 			if text then
-				text = html.day.reason:gsub("###REASON###", html_escape(text));
+				text = html_day.reason:gsub("###REASON###", html_escape(text));
 			else
 				text = "";
 			end
-			return html.day.kick:gsub("###TIME_STUFF###", time):gsub("###VICTIM###", victim):gsub("###REASON_STUFF###", text);
+			return html_day.kick:gsub("###TIME_STUFF###", time):gsub("###VICTIM###", victim):gsub("###REASON_STUFF###", text);
 		end
 	end
 	return;
@@ -327,7 +330,8 @@ end
 
 local function parse_presence(stanza, time, nick)
 	local ret = "";
-	local show_join = "block"
+	local show_join = "block";
+	local html_day_pre = html.day.presence;
 
 	if config and not config.show_join then
 		show_join = "none";
@@ -353,23 +357,24 @@ local function parse_presence(stanza, time, nick)
 			if show == nil then
 				show = "online";
 			end
-			ret = html.day.presence.statusChange:gsub("###TIME_STUFF###", time);
+			ret = html_day_pre.statusChange:gsub("###TIME_STUFF###", time);
 			if status ~= "" then
-				status = html.day.presence.statusText:gsub("###STATUS###", html_escape(status));
+				status = html_day_pre.statusText:gsub("###STATUS###", html_escape(status));
 			end
 			ret = ret:gsub("###SHOW###", show):gsub("###NICK###", nick):gsub("###SHOWHIDE###", show_status):gsub("###STATUS_STUFF###", status);
 		else
-			ret = html.day.presence.join:gsub("###TIME_STUFF###", time):gsub("###SHOWHIDE###", show_join):gsub("###NICK###", nick);
+			ret = html_day_pre.join:gsub("###TIME_STUFF###", time):gsub("###SHOWHIDE###", show_join):gsub("###NICK###", nick);
 		end
 	elseif stanza.attr.type == "unavailable" then
 
-		ret = html.day.presence.leave:gsub("###TIME_STUFF###", time):gsub("###SHOWHIDE###", show_join):gsub("###NICK###", nick);
+		ret = html_day_pre.leave:gsub("###TIME_STUFF###", time):gsub("###SHOWHIDE###", show_join):gsub("###NICK###", nick);
 	end
 	return ret;
 end
 
 local function parse_message(stanza, time, nick)
 	local body, title, ret = nil, nil, "";
+	local html_day = html.day;
 
 	for _,tag in ipairs(stanza) do
 		if tag.tag == "body" then
@@ -394,15 +399,15 @@ local function parse_message(stanza, time, nick)
 		local me = body:find("^/me");
 		local template = "";
 		if not me then
-			template = html.day.message;
+			template = html_day.message;
 		else
-			template = html.day.messageMe;
+			template = html_day.messageMe;
 			body = body:gsub("^/me ", "");
 		end
 		ret = template:gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###MSG###", body);
 	elseif nick and title then
 		title = html_escape(title);
-		ret = html.day.titleChange:gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###TITLE###", title);
+		ret = html_day.titleChange:gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###TITLE###", title);
 	end
 	return ret;
 end
@@ -526,10 +531,6 @@ end
 
 local function parse_day(bare_room_jid, room_subject, bare_day)
 	local ret = "";
-	local year;
-	local month;
-	local day;
-	local tmp;
 	local node, host = split_jid(bare_room_jid);
 	local year, month, day = bare_day:match("^20(%d%d)-(%d%d)-(%d%d)$");
 	local previous_day = find_previous_day(bare_room_jid, bare_day);
@@ -537,7 +538,8 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 	local temptime = {day=0, month=0, year=0};
 	local path = data_getpath(node, host, datastore);
 	path = path:gsub("/[^/]*$", "");
-	local calendar = ""
+	local calendar = "";
+	local html_day = html.day;
 
 	if tonumber(year) <= 99 then
 		year = year + 2000;
@@ -554,7 +556,7 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 			for i=1, #data, 1 do
 				local stanza = lom.parse(data[i]);
 				if stanza and stanza.attr and stanza.attr.time then
-					local timeStuff = html.day.time:gsub("###TIME###", stanza.attr.time):gsub("###UTC###", stanza.attr.utc or stanza.attr.time);
+					local timeStuff = html_day.time:gsub("###TIME###", stanza.attr.time):gsub("###UTC###", stanza.attr.utc or stanza.attr.time);
 					if stanza[1] ~= nil then
 						local nick;
 						local tmp;
@@ -585,20 +587,20 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 		end
 		if ret ~= "" then
 			if next_day then
-				next_day = html.day.dayLink:gsub("###DAY###", next_day):gsub("###TEXT###", "&gt;")
+				next_day = html_day.dayLink:gsub("###DAY###", next_day):gsub("###TEXT###", "&gt;")
 			end
 			if previous_day then
-				previous_day = html.day.dayLink:gsub("###DAY###", previous_day):gsub("###TEXT###", "&lt;");
+				previous_day = html_day.dayLink:gsub("###DAY###", previous_day):gsub("###TEXT###", "&lt;");
 			end
 			ret = ret:gsub("%%", "%%%%");
 			if config.show_presences then
-				tmp = html.day.body:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
+				tmp = html_day.body:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
 			else
-				tmp = html.day.bodynp:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
+				tmp = html_day.bodynp:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
 			end
 			tmp = tmp:gsub("###CALENDAR###", calendar);
 			tmp = tmp:gsub("###DATE###", tostring(os_date("%A, %B %d, %Y", os_time(temptime))));
-			tmp = tmp:gsub("###TITLE_STUFF###", html.day.title:gsub("###TITLE###", room_subject));
+			tmp = tmp:gsub("###TITLE_STUFF###", html_day.title:gsub("###TITLE###", room_subject));
 			tmp = tmp:gsub("###STATUS_CHECKED###", config.show_status and "checked='checked'" or "");
 			tmp = tmp:gsub("###JOIN_CHECKED###", config.show_join and "checked='checked'" or "");
 			tmp = tmp:gsub("###NEXT_LINK###", next_day or "");
@@ -629,9 +631,8 @@ function handle_request(event)
 		response.status_code = 500;
 		return response:send(handle_error(response.status_code, "Muc Theme is not loaded."));
 	end
-
 	
-	if node then room = hosts[my_host].modules.muc.rooms[node.."@"..my_host]; end
+	if node then room = muc_rooms[node.."@"..my_host]; end
 	if node and not room then
 		response.status_code = 404;
 		return response:send(handle_error(response.status_code, "Room doesn't exist."));
@@ -643,7 +644,7 @@ function handle_request(event)
 
 
 	if not node then -- room list for component
-		return response:send(create_doc(generate_room_list(my_host))); 
+		return response:send(create_doc(generate_room_list())); 
 	elseif not day then -- room's listing
 		return response:send(create_doc(generate_day_room_content(node.."@"..my_host)));
 	else
