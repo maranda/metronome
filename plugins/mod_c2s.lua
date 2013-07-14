@@ -47,14 +47,20 @@ function stream_callbacks.streamopened(session, attr)
 			text = "A valid 'to' attribute is required on stream headers" };
 		return;
 	end
+	local session_host = hosts[session.host];
 	session.version = tonumber(attr.version) or 0;
 	session.streamid = uuid_generate();
 	(session.log or session)("debug", "Client sent opening <stream:stream> to %s", session.host);
 
-	if not hosts[session.host] then
-		-- We don't serve this host...
-		session:close{ condition = "host-unknown", text = "This server does not serve "..tostring(session.host)};
+	if not session_host then
+		-- We don't serve this host.
+		session:close{ condition = "host-unknown", text = "This server does not serve "..tostring(session.host) };
 		return;
+	end
+
+	if session_host.type == "component" then
+		-- c2s streams to server components should be properly bounced.
+		session:close{ condition = "not-allowed", text = "This entity doesn't offer c2s streams" };
 	end
 
 	send("<?xml version='1.0'?>"..st.stanza("stream:stream", {
