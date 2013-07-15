@@ -667,7 +667,7 @@ function room_mt:process_form(origin, stanza)
 	self:set_option("changesubject", fields["muc#roomconfig_changesubject"], changed); fields["muc#roomconfig_changesubject"] = nil;
 	self:set_option("history_length", history_length or default_history_length, changed); fields["muc#roomconfig_historylength"] = nil;
 	local whois_changed = self:set_option("whois", fields["muc#roomconfig_whois"], changed); fields["muc#roomconfig_whois"] = nil;
-	self:set_option("password", fields["muc#roomconfig_secret"], changed); fields["muc#roomconfig_secret"] = nil;
+	self:set_option("password", fields["muc#roomconfig_roomsecret"], changed); fields["muc#roomconfig_roomsecret"] = nil;
 
 	-- Process custom entries
 	local submitted = {};
