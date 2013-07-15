@@ -13,7 +13,7 @@ local xmlns_extdisco = "urn:xmpp:extdisco:1";
 module:add_feature(xmlns_extdisco);
 
 module:hook("config-reloaded", function() 
-	services = module:get_option_table("external_services"); 
+	services = module:get_option_table("external_services", {}); 
 end);
 
 module:hook("iq-get/host/"..xmlns_extdisco..":services", function (event)
