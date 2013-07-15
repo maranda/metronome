@@ -255,11 +255,12 @@ end
 
 local function pep_autosubscribe_recs(service, node)
 	local recipients = service.recipients;
-	if not service.nodes[node] then return; end
+	local _node = service.nodes[node];
+	if not _node then return; end
 
 	for jid, hash in pairs(recipients) do
 		if type(hash) == "string" and hash_map[hash] and hash_map[hash][node] then
-			service.nodes[node].subscribers[jid] = true;
+			_node.subscribers[jid] = true;
 		end
 	end
 end
@@ -723,22 +724,22 @@ module:hook("presence/bare", function(event)
 		end
 	elseif t == "unavailable" then
 		local from = stanza.attr.from;
-		local client_map = hash_map[service.recipients[from]];
+		local client_map = hash_map[recipients[from]];
 		for name in pairs(client_map or NULL) do
 			if nodes[name] then nodes[name].subscribers[from] = nil; end
 		end
-		service.recipients[from] = nil;
+		recipients[from] = nil;
 	elseif not self and t == "unsubscribe" then
 		local from = jid_bare(stanza.attr.from);
-		local subscriptions = service.recipients;
+		local subscriptions = recipients;
 		if subscriptions then
 			for subscriber in pairs(subscriptions) do
 				if jid_bare(subscriber) == from then
-					local client_map = hash_map[service.recipients[subscriber]];
+					local client_map = hash_map[recipients[subscriber]];
 					for name in pairs(client_map or NULL) do
 						if nodes[name] then nodes[name].subscribers[subscriber] = nil; end
 					end
-					service.recipients[subscriber] = nil;
+					recipients[subscriber] = nil;
 				end
 			end
 		end
@@ -762,8 +763,9 @@ module:hook("iq-result/bare/disco", function(event)
 			local service = services[user];
 			if not service then return true; end -- User's pep service doesn't exist
 			local nodes = service.nodes;
+			local recipients = service.recipients;
 			local contact = stanza.attr.from;
-			local current = service.recipients[contact];
+			local current = recipients[contact];
 			if current == false then return true; end
 
 			module:log("debug", "Processing disco response from %s", stanza.attr.from);
@@ -781,11 +783,11 @@ module:hook("iq-result/bare/disco", function(event)
 				end
 			end
 			if not has_notify then 
-				service.recipients[contact] = false;
+				recipients[contact] = false;
 				return true;
 			end
 			hash_map[ver] = notify; -- update hash map
-			service.recipients[contact] = ver; -- and contact hash
+			recipients[contact] = ver; -- and contact hash
 			if self then
 				module:log("debug", "Discovering interested roster contacts...");
 				for jid, item in pairs(session.roster) do -- for all interested contacts
