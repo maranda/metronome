@@ -21,6 +21,7 @@ module:hook("iq-get/host/"..xmlns_extdisco..":services", function (event)
 	local service = stanza:get_child("service", xmlns_extdisco);
 	local service_type = service and service.attr.type;
 	local reply = st.reply(stanza);
+	reply:tag("services", { xmlns = xmlns_extdisco });
 
 	for host, service_info in pairs(services) do
 		if not(service_type) or service_info.type == service_type then
