@@ -329,7 +329,7 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 		-- Send all current items
 		local ok, items, orderly = service:get_items(node, stanza.attr.from);
 		if items then
-			local jids = { [jid] = options or true };
+			local jids = { [jid] = true };
 			for _, id in ipairs(orderly) do
 				service:broadcaster(node, jids, items[id]);
 			end
