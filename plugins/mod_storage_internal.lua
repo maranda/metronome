@@ -36,4 +36,8 @@ function driver:purge(user)
 	return datamanager.purge(user, host);
 end
 
+function driver:users()
+	return nil, "User listing is not available for this storage backend";
+end
+
 module:add_item("data-driver", driver);
