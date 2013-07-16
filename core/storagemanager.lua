@@ -129,5 +129,8 @@ end
 function datamanager.purge(username, host)
 	return purge(username, host);
 end
+function datamanager.users(host)
+	return get_driver(host):users();
+end
 
 return _M;
