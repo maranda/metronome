@@ -44,7 +44,6 @@ modules_enabled = {
 			--"posix"; -- POSIX functionality, sends server to background, enables syslog, etc.
 		  	--"admin_telnet"; -- telnet to port 5582 (needs console_enabled = true)
 			--"bosh"; -- Enable BOSH clients, aka "Jabber over HTTP"
-			--"httpserver"; -- Serve static files from a directory over HTTP
 		  };
  
 -- Disable account creation by default, for security
