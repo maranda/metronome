@@ -9,7 +9,7 @@
 -- A table is a list of values, except each value has a name. An 
 -- example would be:
 --
--- ssl = { key = "keyfile.key", certificate = "certificate.crt" }
+-- ssl = { key = "keyfile.key", certificate = "certificate.cert" }
 --
 -- Tip: You can check that the syntax of this file is correct when you have finished
 -- by running: luac -p metronome.cfg.lua
@@ -44,7 +44,7 @@ modules_enabled = {
 			--"posix"; -- POSIX functionality, sends server to background, enables syslog, etc.
 		  	--"admin_telnet"; -- administration console, telnet to port 5582
 			--"bosh"; -- Enable BOSH clients, aka "Jabber over HTTP"
-		  };
+};
  
 -- Disable account creation by default, for security
 allow_registration = false;
@@ -53,8 +53,9 @@ allow_registration = false;
 -- to use SSL/TLS, you may comment or remove this
 ssl = { 
 	key = "certs/localhost.key";
-	certificate = "certs/localhost.crt";
-	}
+	certificate = "certs/localhost.cert";
+}
+
 -- This allows clients to connect to localhost. No harm in it.
 VirtualHost "localhost"
  
@@ -67,8 +68,8 @@ VirtualHost "example.com"
 	-- use the global one.
 	ssl = { 
 		key = "certs/example.com.key";
-		certificate = "certs/example.com.crt";
-		}
+		certificate = "certs/example.com.cert";
+	}
  
 	enabled = false -- This will disable the host, preserving the config, but denying connections
  
