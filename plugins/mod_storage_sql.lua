@@ -357,17 +357,7 @@ end
 local list_store = {};
 list_store.__index = list_store;
 function list_store:scan(username, from, to, jid, typ)
-	user,store = username,self.store;
-	
-	local cols = {"from", "to", "jid", "typ"};
-	local vals = { from ,  to ,  jid ,  typ };
-	local stmt, err;
-	local query = "SELECT * FROM `metronomearchive` WHERE `host`=? AND `user`=? AND `store`=?";
-	
-	query = query.." ORDER BY time";
-	--local stmt, err = getsql("SELECT * FROM `metronome` WHERE `host`=? AND `user`=? AND `store`=? AND `key`=?", key or "");
-	
-	return nil, "not-implemented"
+	return nil, "not-implemented";
 end
 
 -- Store defs.
@@ -406,6 +396,16 @@ function driver:purge(username)
 	local changed, err = stmt:affected();
 	if not changed then return rollback(changed, err); end
 	return commit(true, changed);
+end
+
+function driver:users()
+	local stmt, err = dosql("SELECT `user` FROM `metronome` WHERE `store`=? AND `host`=?", "accounts", host);
+	if not stmt then return rollback(nil, err); end
+	local next = stmt:rows();
+	return commit(function()
+		local row = next();
+		return row and row[1];
+	end);
 end
 
 module:add_item("data-driver", driver);
