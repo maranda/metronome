@@ -30,6 +30,23 @@ module:hook("stream-features", function(event)
 	end
 end);
 
+local function roster_stanza_builder(stanza, roster)
+	for jid, item in pairs(roster) do
+		if jid ~= "pending" and jid ~= "__readonly" and jid then
+			stanza:tag("item", {
+				jid = jid,
+				subscription = item.subscription,
+				ask = item.ask,
+				name = item.name,
+			});
+			for group in pairs(item.groups) do
+				stanza:tag("group"):text(group):up();
+			end
+			stanza:up(); -- move out from item
+		end
+	end
+end
+
 module:hook("iq/self/jabber:iq:roster:query", function(event)
 	local session, stanza = event.origin, event.stanza;
 
@@ -40,22 +57,21 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 		local server_ver = tonumber(session.roster[false].version or 1);
 		
 		if not (client_ver and server_ver) or client_ver ~= server_ver then
-			roster:query("jabber:iq:roster");
 			-- Client does not support versioning, or has stale roster
-			for jid, item in pairs(session.roster) do
-				if jid ~= "pending" and jid then
-					roster:tag("item", {
-						jid = jid,
-						subscription = item.subscription,
-						ask = item.ask,
-						name = item.name,
-					});
-					for group in pairs(item.groups) do
-						roster:tag("group"):text(group):up();
-					end
-					roster:up(); -- move out from item
+			roster:query("jabber:iq:roster");
+			local session_roster = session.roster;
+
+			-- Append read-only rosters, if there.
+			local ro_rosters = session_roster.__readonly;
+			if ro_rosters then
+				for _, ro_roster in ipairs(ro_rosters) do
+					roster_stanza_builder(roster, ro_roster);
 				end
 			end
+
+			-- Now append the real one.
+			roster_stanza_builder(roster, session_roster);		
+
 			roster.tags[1].attr.ver = server_ver;
 		end
 		session.send(roster);
