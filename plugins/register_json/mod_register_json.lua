@@ -12,7 +12,8 @@ local jid_prep = require "util.jid".prep
 local jid_split = require "util.jid".split
 local json_decode = require "util.json".decode
 local nodeprep = require "util.encodings".stringprep.nodeprep
-local open, os_time, setmt = io.open, os.time, setmetatable
+local ipairs, pairs, pcall, open, os_time, setmt = 
+      ipairs, pairs, pcall, io.open, os.time, setmetatable
 local sha1 = require "util.hashes".sha1
 local urldecode = http.urldecode
 local usermanager = usermanager
