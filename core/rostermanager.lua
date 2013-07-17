@@ -117,6 +117,11 @@ function save_roster(username, host, roster)
 		roster = hosts[host] and hosts[host].sessions[username] and hosts[host].sessions[username].roster;
 	end
 	if roster then
+		local __readonly = roster.__readonly;
+		if __readonly then
+			roster.__readonly = nil;
+		end
+
 		local metadata = roster[false];
 		if not metadata then
 			metadata = {};
@@ -126,10 +131,23 @@ function save_roster(username, host, roster)
 			metadata.version = (metadata.version or 0) + 1;
 		end
 		if roster[false].broken then return nil, "Not saving broken roster" end
-		return datamanager.store(username, host, "roster", roster);
+		local ok, err = datamanager.store(username, host, "roster", roster);
+		roster.__readonly = __readonly;
+		return ok, err;
 	end
 	log("warn", "save_roster: user had no roster to save");
 	return nil;
+end
+
+function check_readonly_rosters(roster, jid)
+	local readonly = roster.__readonly;
+	if not readonly then return false; end
+	
+	for _, ro_roster in ipairs(readonly) do
+		if ro_roster[jid] then return true; end
+	end
+
+	return false;
 end
 
 function process_inbound_subscription_approval(username, host, jid)
