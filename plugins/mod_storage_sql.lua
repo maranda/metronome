@@ -399,7 +399,7 @@ function driver:purge(username)
 end
 
 function driver:users()
-	local stmt, err = dosql("SELECT `user` FROM `metronome` WHERE `store`=? AND `host`=?", "accounts", host);
+	local stmt, err = dosql("SELECT DISTINCT `user` FROM `metronome` WHERE `store`=? AND `host`=?", "accounts", host);
 	if not stmt then return rollback(nil, err); end
 	local next = stmt:rows();
 	return commit(function()
