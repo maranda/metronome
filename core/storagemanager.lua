@@ -59,7 +59,13 @@ function load_driver(host, driver_name)
 	end
 	local driver = stores_available:get(host, driver_name);
 	if driver then return driver; end
-	local ok, err = modulemanager.load(host, "storage_"..driver_name);
+
+	local ok, err;
+	ok, err = modulemanager.load(host, "storage_"..driver_name);
+	if err == "module-already-loaded" then -- force unload and reload;
+		modulemanager.unload(host, "storage_"..driver_name);
+		ok, err = modulemanager.load(host, "storage_"..driver_name);
+	end
 	if not ok then
 		log("error", "Failed to load storage driver plugin %s on %s: %s", driver_name, host, err);
 	end
