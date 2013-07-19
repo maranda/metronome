@@ -23,8 +23,8 @@ local function message_filter(event)
 							:tag("text", {xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas"}):text(bounce_message):up();
 
 	if body_text then
-		local host = ahosts:contains("fromhost") and hosts[fromhost];
-		if host and not host.modules.auth_anonymous then return; end
+		local host = ahosts:contains(fromhost) and hosts[fromhost];
+		if not host or not host.modules.auth_anonymous then return; end
 		
 		for _, pattern in ipairs(patterns) do
 			if body_text:match(pattern) then
