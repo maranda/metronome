@@ -85,13 +85,7 @@ local sessions, inactive_sessions = module:shared("sessions", "inactive_sessions
 local waiting_requests = {};
 
 local function jsonp_encode(callback, data)
-	if type(data) == "string" then
-		data = callback.."("..json_encode({ reply = data })..");";
-	elseif type(data) == "table" and data.body then
-		data = clone_table(data);
-		data.body = callback.."("..json_encode({ reply = data.body })..");";
-		data.headers["Content-Type"] = "text/javascript; charset=utf-8";
-	end
+	data = callback.."("..json_encode({ reply = data })..");";
 	return data;		
 end
 
@@ -120,14 +114,13 @@ function handle_OPTIONS(event)
 	local request = event.request;
 	if force_secure and not request.secure then return nil; end
 
-	local headers = {};
-	for k,v in pairs(default_headers) do headers[k] = v; end
+	local headers = clone_table(default_headers);
 	headers["Content-Type"] = nil;
 	return { headers = headers, body = "" };
 end
 
 function handle_POST(event)
-	local request, response = event.request, event.response;
+	local request, response, custom_headers = event.request, event.response, event.custom_headers;
 	if force_secure and not request.secure then
 		log("debug", "Discarding unsecure request %s: %s\n----------", tostring(request), tostring(no_raw_req_logging and "<filtered>" or request.body));
 		return nil;
@@ -138,7 +131,7 @@ function handle_POST(event)
 	response.on_destroy = on_destroy_request;
 	local body = request.body;
 
-	local context = { request = request, response = response, notopen = true };
+	local context = { request = request, response = response, custom_headers = custom_headers, notopen = true };
 	local stream = new_xmpp_stream(context, stream_callbacks);
 	response.context = context;
 	if not stream:feed(body) then
@@ -226,7 +219,7 @@ local function bosh_close_stream(session, reason)
 
 	local response_body = tostring(close_reply);
 	for _, held_request in ipairs(session.requests) do
-		held_request.headers = default_headers;
+		held_request.headers = session.headers or default_headers;
 		held_request:send(response_body);
 	end
 	sessions[session.sid]  = nil;
@@ -235,7 +228,7 @@ local function bosh_close_stream(session, reason)
 end
 
 function stream_callbacks.streamopened(context, attr)
-	local request, response = context.request, context.response;
+	local request, response, custom_headers = context.request, context.response, context.custom_headers;
 	local sid = attr.sid;
 	log("debug", "BOSH body open (sid: %s)", sid or "<none>");
 	if not sid then
@@ -258,7 +251,7 @@ function stream_callbacks.streamopened(context, attr)
 			requests = { }, send_buffer = {}, reset_stream = bosh_reset_stream,
 			close = bosh_close_stream, dispatch_stanza = core_process_stanza, notopen = true,
 			log = logger.init("bosh"..sid),	secure = consider_bosh_secure or request.secure,
-			ip = get_ip_from_request(request);
+			ip = get_ip_from_request(request), headers = custom_headers;
 		};
 		sessions[sid] = session;
 
@@ -281,7 +274,7 @@ function stream_callbacks.streamopened(context, attr)
 			local oldest_request = r[1];
 			if oldest_request and not session.bosh_processing then
 				log("debug", "We have an open request, so sending on that");
-				oldest_request.headers = default_headers;
+				oldest_request.headers = session.headers or default_headers;
 				local body_attr = { xmlns = "http://jabber.org/protocol/httpbind",
 					["xmlns:stream"] = "http://etherx.jabber.org/streams";
 					type = session.bosh_terminate and "terminate" or nil;
@@ -312,7 +305,7 @@ function stream_callbacks.streamopened(context, attr)
 	local session = sessions[sid];
 	if not session then
 		log("info", "Client tried to use sid '%s' which we don't know about", sid);
-		response.headers = default_headers;
+		response.headers = custom_headers or default_headers;
 		response:send(tostring(st.stanza("body", { xmlns = xmlns_bosh, type = "terminate", condition = "item-not-found" })));
 		context.notopen = nil;
 		return;
@@ -379,7 +372,7 @@ function stream_callbacks.error(context, error)
 	log("debug", "Error parsing BOSH request payload; %s", error);
 	if not context.sid then
 		local response = context.response;
-		response.headers = default_headers;
+		response.headers = context.custom_headers or default_headers;
 		response.status_code = 400;
 		response:send();
 		return;
@@ -448,16 +441,20 @@ local function handle_GET(event)
 
 	if callback and data then
 		local _send = response.send;
+		local custom_headers = clone_table(default_headers);
+		custom_headers["Content-Type"] = "application/javascript; charset=utf-8";
+
 		function response:send(data)
 			return _send(self, jsonp_encode(callback, data));
 		end
 
 		request.method = "POST";
 		request.body = data;
+		event.custom_headers = custom_headers;
 		return handle_POST(event);
 	end	
 
-	response.headers = { content_type = "text/html" };
+	response.headers = { ["Content-Type"] = "text/html; charset=utf-8" };
 	response.body = "<html><body><p>It works! Now point your BOSH client to this URL to connect to the XMPP Server.</p></body></html>";
 	return response:send();
 end
