@@ -12,8 +12,6 @@
 DB Tables:
 	Metronome - key-value, map
 		| host | user | store | key | type | value |
-	MetronomeArchive - list
-		| host | user | store | key | time | stanzatype | jsonvalue |
 
 Mapping:
 	Roster - Metronome
@@ -21,9 +19,6 @@ Mapping:
 		| host | user | "roster" | NULL | "json" | roster[false] data |
 	Account - Metronome
 		| host | user | "accounts" | "username" | type | value |
-
-	Offline - MetronomeArchive
-		| host | user | "offline" | "contactjid" | time | "message" | json|XML |
 
 ]]
 
@@ -55,7 +50,6 @@ local function db2uri(params)
 		path = params.database,
 	};
 end
-
 
 local resolve_relative_path = require "core.configmanager".resolve_relative_path;
 
@@ -123,27 +117,6 @@ local function create_table()
 			if not(ok and commit_ok) then
 				module:log("warn", "Failed to create index (%s), lookups may not be optimised", err or commit_err);
 			end
-		elseif params.driver == "MySQL" then  -- COMPAT: Upgrade tables from 0.8.0
-			-- Failed to create, but check existing MySQL table here
-			local stmt = connection:prepare("SHOW COLUMNS FROM metronome WHERE Field='value' and Type='text'");
-			local ok = stmt:execute();
-			local commit_ok = connection:commit();
-			if ok and commit_ok then
-				if stmt:rowcount() > 0 then
-					module:log("info", "Upgrading database schema...");
-					local stmt = connection:prepare("ALTER TABLE metronome MODIFY COLUMN `value` MEDIUMTEXT");
-					local ok, err = stmt:execute();
-					local commit_ok = connection:commit();
-					if ok and commit_ok then
-						module:log("info", "Database table automatically upgraded");
-					else
-						module:log("error", "Failed to upgrade database schema (%s)",
-							err or "unknown error");
-					end
-				end
-				repeat until not stmt:fetch();
-			end
-		end
 	elseif params.driver ~= "SQLite3" then -- SQLite normally fails to prepare for existing table
 		module:log("warn", "Metronome was not able to automatically check/create the database table (%)",
 			err or "unknown error");
@@ -225,9 +198,6 @@ local function setsql(sql, ...)
 	if not stmt then return stmt, err; end
 	return stmt:affected();
 end
-local function transact(...)
-	-- ...
-end
 local function rollback(...)
 	if connection then connection:rollback(); end -- FIXME check for rollback error?
 	return ...;
@@ -286,7 +256,7 @@ end
 local keyval_store = {};
 keyval_store.__index = keyval_store;
 function keyval_store:get(username)
-	user,store = username,self.store;
+	user, store = username, self.store;
 	if not connection and not connect() then return nil, "Unable to connect to database"; end
 	local success, ret, err = xpcall(keyval_store_get, debug.traceback);
 	if not connection and connect() then
@@ -295,69 +265,13 @@ function keyval_store:get(username)
 	if success then return ret, err; else return rollback(nil, ret); end
 end
 function keyval_store:set(username, data)
-	user,store = username,self.store;
+	user, store = username, self.store;
 	if not connection and not connect() then return nil, "Unable to connect to database"; end
 	local success, ret, err = xpcall(function() return keyval_store_set(data); end, debug.traceback);
 	if not connection and connect() then
 		success, ret, err = xpcall(function() return keyval_store_set(data); end, debug.traceback);
 	end
 	if success then return ret, err; else return rollback(nil, ret); end
-end
-
-local function map_store_get(key)
-	local stmt, err = getsql("SELECT * FROM `metronome` WHERE `host`=? AND `user`=? AND `store`=? AND `key`=?", key or "");
-	if not stmt then return rollback(nil, err); end
-	
-	local haveany;
-	local result = {};
-	for row in stmt:rows(true) do
-		haveany = true;
-		local k = row.key;
-		local v = deserialize(row.type, row.value);
-		if k and v then
-			if k ~= "" then result[k] = v; elseif type(v) == "table" then
-				for a,b in pairs(v) do
-					result[a] = b;
-				end
-			end
-		end
-	end
-	return commit(haveany and result[key] or nil);
-end
-local function map_store_set(key, data)
-	local affected, err = setsql("DELETE FROM `metronome` WHERE `host`=? AND `user`=? AND `store`=? AND `key`=?", key or "");
-	if not affected then return rollback(affected, err); end
-	
-	if data and next(data) ~= nil then
-		if type(key) == "string" and key ~= "" then
-			local t, value = serialize(data);
-			if not t then return rollback(t, value); end
-			local ok, err = setsql("INSERT INTO `metronome` (`host`,`user`,`store`,`key`,`type`,`value`) VALUES (?,?,?,?,?,?)", key, t, value);
-			if not ok then return rollback(ok, err); end
-		else
-			-- TODO non-string keys
-		end
-	end
-	return commit(true);
-end
-
-local map_store = {};
-map_store.__index = map_store;
-function map_store:get(username, key)
-	user,store = username,self.store;
-	local success, ret, err = xpcall(function() return map_store_get(key); end, debug.traceback);
-	if success then return ret, err; else return rollback(nil, ret); end
-end
-function map_store:set(username, key, data)
-	user,store = username,self.store;
-	local success, ret, err = xpcall(function() return map_store_set(key, data); end, debug.traceback);
-	if success then return ret, err; else return rollback(nil, ret); end
-end
-
-local list_store = {};
-list_store.__index = list_store;
-function list_store:scan(username, from, to, jid, typ)
-	return nil, "not-implemented";
 end
 
 -- Store defs.
