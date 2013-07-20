@@ -31,11 +31,9 @@ module "certmanager"
 
 local default_ssl_config = configmanager.get("*", "ssl");
 local default_capath = "/etc/ssl/certs";
-local default_ciphers;
+local default_ciphers = "HIGH:!aNULL:@STRENGTH";
 if openssl_version and openssl_version >= 101 then
 	default_ciphers = "HIGH:!CAMELLIA:!aNULL:@STRENGTH";
-else
-	dafault_ciphers = "HIGH:!aNULL:@STRENGTH";
 end
 local default_verify = (ssl and ssl.x509 and { "peer", "client_once" }) or "none";
 local default_options = { "no_sslv2", noticket and "no_ticket" or nil };
