@@ -117,6 +117,7 @@ local function create_table()
 			if not(ok and commit_ok) then
 				module:log("warn", "Failed to create index (%s), lookups may not be optimised", err or commit_err);
 			end
+		end
 	elseif params.driver ~= "SQLite3" then -- SQLite normally fails to prepare for existing table
 		module:log("warn", "Metronome was not able to automatically check/create the database table (%)",
 			err or "unknown error");
