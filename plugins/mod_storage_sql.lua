@@ -35,7 +35,7 @@ local build_url = require"socket.url".build;
 local DBI;
 local connection;
 local host,user,store = module.host;
-local params = module:get_option("sql");
+local params = module:get_option_table("sql");
 
 local dburi;
 local connections = module:shared "/*/sql/connection-cache";
