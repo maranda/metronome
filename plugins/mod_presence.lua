@@ -52,8 +52,9 @@ end
 local ignore_presence_priority = module:get_option("ignore_presence_priority");
 
 local function broadcast_to_interested_contacts(roster, origin, stanza)
+	local owner = origin.username .. "@" .. origin.host;
 	for jid, item in pairs(roster) do -- broadcast to all interested contacts
-		if item.subscription == "both" or item.subscription == "from" then
+		if jid ~= owner and item.subscription == "both" or item.subscription == "from" then
 			stanza.attr.to = jid;
 			core_post_stanza(origin, stanza, true);
 		end
@@ -61,8 +62,9 @@ local function broadcast_to_interested_contacts(roster, origin, stanza)
 end
 
 local function probe_interested_contacts(roster, origin, probe)
+	local owner = origin.username .. "@" .. origin.host;
 	for jid, item in pairs(roster) do -- probe all contacts we are subscribed to
-		if item.subscription == "both" or item.subscription == "to" then
+		if jid ~= owner and item.subscription == "both" or item.subscription == "to" then
 			probe.attr.to = jid;
 			core_post_stanza(origin, probe, true);
 		end
@@ -134,7 +136,6 @@ function handle_normal_presence(origin, stanza)
 		if readonly then
 			for _, ro_roster in pairs(readonly) do
 				probe_interested_contacts(ro_roster, origin, probe);
-				resend_outgoing_subscriptions(ro_roster, origin, request);
 			end
 		end
 		if priority >= 0 then
