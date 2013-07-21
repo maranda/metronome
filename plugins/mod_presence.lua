@@ -51,7 +51,7 @@ end
 
 local ignore_presence_priority = module:get_option("ignore_presence_priority");
 
-local function broadcast_to_interested_contacts(roster, stanza)
+local function broadcast_to_interested_contacts(roster, origin, stanza)
 	for jid, item in pairs(roster) do -- broadcast to all interested contacts
 		if item.subscription == "both" or item.subscription == "from" then
 			stanza.attr.to = jid;
@@ -60,7 +60,7 @@ local function broadcast_to_interested_contacts(roster, stanza)
 	end
 end
 
-local function probe_interested_contacts(roster, probe)
+local function probe_interested_contacts(roster, origin, probe)
 	for jid, item in pairs(roster) do -- probe all contacts we are subscribed to
 		if item.subscription == "both" or item.subscription == "to" then
 			probe.attr.to = jid;
@@ -69,7 +69,7 @@ local function probe_interested_contacts(roster, probe)
 	end
 end
 
-local function resend_outgoing_subscriptions(roster, request)
+local function resend_outgoing_subscriptions(roster, origin, request)
 	for jid, item in pairs(roster) do -- resend outgoing subscription requests
 		if item.ask then
 			request.attr.to = jid;
@@ -109,14 +109,14 @@ function handle_normal_presence(origin, stanza)
 			core_post_stanza(origin, stanza, true);
 		end
 	end
-	broadcast_to_interested_contacts(roster, stanza);
+	broadcast_to_interested_contacts(roster, origin, stanza);
 	if readonly then
-		for _, ro_roster in pairs(readonly) do broadcast_to_interested_contacts(ro_roster, stanza); end
+		for _, ro_roster in pairs(readonly) do broadcast_to_interested_contacts(ro_roster, origin, stanza); end
 	end
 	if stanza.attr.type == nil and not origin.presence then -- initial presence
 		origin.presence = stanza; -- FIXME repeated later
 		local probe = st.presence({from = origin.full_jid, type = "probe"});
-		probe_interested_contacts(roster, probe);
+		probe_interested_contacts(roster, origin, probe);
 		for _, res in pairs(user and user.sessions or NULL) do -- broadcast from all available resources
 			if res ~= origin and res.presence then
 				res.presence.attr.to = origin.full_jid;
@@ -130,11 +130,11 @@ function handle_normal_presence(origin, stanza)
 			end
 		end
 		local request = st.presence({type="subscribe", from=origin.username.."@"..origin.host});
-		resend_outgoing_subscriptions(roster, request);
+		resend_outgoing_subscriptions(roster, origin, request);
 		if readonly then
 			for _, ro_roster in pairs(readonly) do
-				probe_interested_contacts(ro_roster, probe);
-				resend_outgoing_subscriptions(ro_roster, request);
+				probe_interested_contacts(ro_roster, origin, probe);
+				resend_outgoing_subscriptions(ro_roster, origin, request);
 			end
 		end
 		if priority >= 0 then
