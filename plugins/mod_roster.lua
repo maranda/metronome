@@ -30,9 +30,11 @@ module:hook("stream-features", function(event)
 	end
 end);
 
-local function roster_stanza_builder(stanza, roster)
+local function roster_stanza_builder(stanza, roster, owner)
 	for jid, item in pairs(roster) do
-		if jid ~= "pending" and jid ~= "__readonly" and jid then
+		if jid ~= "pending" and 
+		   jid ~= "__readonly" and
+		   jid ~= owner and jid then
 			stanza:tag("item", {
 				jid = jid,
 				subscription = item.subscription,
@@ -51,6 +53,7 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 	local session, stanza = event.origin, event.stanza;
 
 	if stanza.attr.type == "get" then
+		local bare_jid = session.user .. "@" .. session.host;
 		local roster = st.reply(stanza);
 		
 		local client_ver = tonumber(stanza.tags[1].attr.ver);
@@ -65,12 +68,12 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 			local ro_rosters = session_roster.__readonly;
 			if ro_rosters then
 				for _, ro_roster in ipairs(ro_rosters) do
-					roster_stanza_builder(roster, ro_roster);
+					roster_stanza_builder(roster, ro_roster, bare_jid);
 				end
 			end
 
 			-- Now append the real one.
-			roster_stanza_builder(roster, session_roster);		
+			roster_stanza_builder(roster, session_roster, bare_jid);		
 
 			roster.tags[1].attr.ver = server_ver;
 		end
