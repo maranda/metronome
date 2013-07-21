@@ -53,7 +53,7 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 	local session, stanza = event.origin, event.stanza;
 
 	if stanza.attr.type == "get" then
-		local bare_jid = session.user .. "@" .. session.host;
+		local bare_jid = session.username .. "@" .. session.host;
 		local roster = st.reply(stanza);
 		
 		local client_ver = tonumber(stanza.tags[1].attr.ver);
