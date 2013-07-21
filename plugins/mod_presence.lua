@@ -302,7 +302,7 @@ local function check_directed_presence(roster, to_bare)
 	-- check readonly rosters;
 	local readonly = roster.__readonly;
 	if readonly then
-		for _, ro_roster in pairs(ro_roster) do
+		for _, ro_roster in pairs(roster) do
 			return is_directed(ro_roster[to_bare]);
 		end
 	end
