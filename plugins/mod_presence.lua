@@ -294,7 +294,7 @@ function handle_inbound_presence_subscriptions_and_probes(origin, stanza, from_b
 end
 
 local function is_directed(entry)
-	if entry and not(entry.subscription == "both" or entry.subscription == "from") then
+	if not entry or not(entry.subscription == "both" or entry.subscription == "from") then
 		return true;
 	end
 end
