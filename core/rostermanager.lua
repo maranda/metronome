@@ -210,6 +210,13 @@ end
 
 local function _get_online_roster_subscription(jidA, jidB)
 	local user = bare_sessions[jidA];
+	local roster = user and user.roster;
+	local readonly = roster and roster.__readonly;
+	if readonly then
+		for _, ro_roster in pairs(readonly) do
+			if ro_roster[jidB] then return ro_roster[jidB].subscription; end
+		end
+	end
 	local item = user and (user.roster[jidB] or { subscription = "none" });
 	return item and item.subscription;
 end
@@ -222,7 +229,18 @@ function is_contact_subscribed(username, host, jid)
 		if subscription then return (subscription == "both" or subscription == "to"); end
 	end
 	local roster, err = load_roster(username, host);
-	local item = roster[jid];
+	local readonly = roster and roster.__readonly;
+	local item;
+	if readonly then
+		for _, ro_roster in pairs(readonly) do
+			if ro_roster[jid] then
+				item = ro_roster[jid];
+				return (item.subscription == "from" or item.subscription == "both"), err;
+			end
+		end
+	end
+
+	item = roster[jid];
 	return item and (item.subscription == "from" or item.subscription == "both"), err;
 end
 
