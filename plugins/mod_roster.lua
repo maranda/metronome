@@ -102,7 +102,7 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 						local r_item = session_roster[jid];
 						if r_item then
 							local to_bare = node and (node.."@"..host) or host; -- bare JID
-							if r_item.subscription == "both" or r_item.subscription == "from" or (roster.pending and roster.pending[jid]) then
+							if r_item.subscription == "both" or r_item.subscription == "from" or (session_roster.pending and session_roster.pending[jid]) then
 								core_post_stanza(session, st.presence({type="unsubscribed", from=session.full_jid, to=to_bare}));
 							end
 							if r_item.subscription == "both" or r_item.subscription == "to" or r_item.ask then
