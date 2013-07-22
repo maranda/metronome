@@ -78,7 +78,7 @@ local function probe_interested_contacts(roster, origin, probe)
 	local owner = origin.username .. "@" .. origin.host;
 	for jid, item in pairs(roster) do -- probe all contacts we are subscribed to
 		if pre_process_probe(jid) == false then
-			log("debug", "not probing %s as he's not online", jid);
+			log("debug", "not probing %s since the local contact is not online", jid);
 		elseif jid ~= owner and (item.subscription == "both" or item.subscription == "to") then
 			probe.attr.to = jid;
 			core_post_stanza(origin, probe, true);
