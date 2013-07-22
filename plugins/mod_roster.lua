@@ -11,6 +11,7 @@ local st = require "util.stanza"
 
 local jid_split = require "util.jid".split;
 local jid_prep = require "util.jid".prep;
+local jid_bare = require "util.jid".bare;
 local t_concat = table.concat;
 local tonumber = tonumber;
 local pairs, ipairs = pairs, ipairs;
@@ -51,6 +52,8 @@ end
 
 module:hook("iq/self/jabber:iq:roster:query", function(event)
 	local session, stanza = event.origin, event.stanza;
+	local session_roster = session.roster;
+	local ro_rosters = session_roster.__readonly;
 
 	if stanza.attr.type == "get" then
 		local bare_jid = session.username .. "@" .. session.host;
@@ -62,10 +65,8 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 		if not (client_ver and server_ver) or client_ver ~= server_ver then
 			-- Client does not support versioning, or has stale roster
 			roster:query("jabber:iq:roster");
-			local session_roster = session.roster;
 
 			-- Append read-only rosters, if there.
-			local ro_rosters = session_roster.__readonly;
 			if ro_rosters then
 				for _, ro_roster in ipairs(ro_rosters) do
 					roster_stanza_builder(roster, ro_roster, bare_jid);
@@ -89,12 +90,16 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 			local from_node, from_host = jid_split(stanza.attr.from);
 			local from_bare = from_node and (from_node.."@"..from_host) or from_host; -- bare JID
 			local jid = jid_prep(item.attr.jid);
+			if ro_rosters and rostermanager.check_readonly_rosters(session_roster, jid_bare(jid)) then
+				module:log("debug", "%s attempted to remove a readonly roster entry (%s)", session.full_jid, jid);
+				return session.send(st.error_reply(stanza, "cancel", "forbidden",
+					"Modifying read-only roster entries is forbidden."));
+			end
 			local node, host, resource = jid_split(jid);
 			if not resource and host then
 				if jid ~= from_node.."@"..from_host then
 					if item.attr.subscription == "remove" then
-						local roster = session.roster;
-						local r_item = roster[jid];
+						local r_item = session_roster[jid];
 						if r_item then
 							local to_bare = node and (node.."@"..host) or host; -- bare JID
 							if r_item.subscription == "both" or r_item.subscription == "from" or (roster.pending and roster.pending[jid]) then
@@ -116,9 +121,9 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 					else
 						local r_item = {name = item.attr.name, groups = {}};
 						if r_item.name == "" then r_item.name = nil; end
-						if session.roster[jid] then
-							r_item.subscription = session.roster[jid].subscription;
-							r_item.ask = session.roster[jid].ask;
+						if session_roster[jid] then
+							r_item.subscription = session_roster[jid].subscription;
+							r_item.ask = session_roster[jid].ask;
 						else
 							r_item.subscription = "none";
 						end
