@@ -139,15 +139,27 @@ function save_roster(username, host, roster)
 	return nil;
 end
 
-function check_readonly_rosters(roster, jid)
+function get_readonly_rosters(user, host)
+	local bare_session = bare_sessions[user .. "@" .. host];
+	local roster = (bare_session and bare_session.roster) or load_roster(user, host);
 	local readonly = roster.__readonly;
-	if not readonly then return false; end
-	
-	for _, ro_roster in ipairs(readonly) do
-		if ro_roster[jid] then return true; end
+	if not readonly then 
+		return function() end
+	else
+		local i, n = 0, #readonly;
+		return function() 
+			i = i + 1;
+			if i <= n then return readonly[i]; end
+		end
+	end
+end
+
+function get_readonly_item(user, host, jid)
+	for ro_roster in get_readonly_rosters(user, host) do
+		if ro_roster[jid] then return ro_roster[jid]; end
 	end
 
-	return false;
+	return nil;
 end
 
 function process_inbound_subscription_approval(username, host, jid)
@@ -210,14 +222,13 @@ end
 
 local function _get_online_roster_subscription(jidA, jidB)
 	local user = bare_sessions[jidA];
-	local roster = user and user.roster;
-	local readonly = roster and roster.__readonly;
-	if readonly then
-		for _, ro_roster in pairs(readonly) do
-			if ro_roster[jidB] then return ro_roster[jidB].subscription; end
-		end
-	end
-	local item = user and (user.roster[jidB] or { subscription = "none" });
+	if not user then return nil; end
+	local username, host, roster = user.username, user.host, user.roster;
+
+	local readonly_item = get_readonly_item(username, host, jidB);
+	if readonly_item then return readonly_item.subscription; end
+
+	local item = roster[jidB] or { subscription = "none" };
 	return item and item.subscription;
 end
 function is_contact_subscribed(username, host, jid)
@@ -228,19 +239,13 @@ function is_contact_subscribed(username, host, jid)
 		local subscription = _get_online_roster_subscription(jid, selfjid);
 		if subscription then return (subscription == "both" or subscription == "to"); end
 	end
-	local roster, err = load_roster(username, host);
-	local readonly = roster and roster.__readonly;
-	local item;
-	if readonly then
-		for _, ro_roster in pairs(readonly) do
-			if ro_roster[jid] then
-				item = ro_roster[jid];
-				return (item.subscription == "from" or item.subscription == "both"), err;
-			end
-		end
+	local readonly_item = get_readonly_item(username, host, jid);
+	if readonly_item then
+		return (readonly_item.subscription == "from" or readonly_item.subscription == "both");
 	end
 
-	item = roster[jid];
+	local roster, err = load_roster(username, host);
+	local item = roster[jid];
 	return item and (item.subscription == "from" or item.subscription == "both"), err;
 end
 
