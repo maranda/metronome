@@ -140,12 +140,8 @@ function save_roster(username, host, roster)
 	return nil;
 end
 
-function get_readonly_rosters(user, host, online)
+function get_readonly_rosters(user, host)
 	local bare_session = bare_sessions[user .. "@" .. host];
-	if online and not bare_session then
-		return function() end
-	end
-
 	local roster = (bare_session and bare_session.roster) or load_roster(user, host);
 	local readonly = roster.__readonly;
 	if not readonly then 
@@ -159,8 +155,8 @@ function get_readonly_rosters(user, host, online)
 	end
 end
 
-function get_readonly_item(user, host, jid, online)
-	for ro_roster in get_readonly_rosters(user, host, online) do
+function get_readonly_item(user, host, jid)
+	for ro_roster in get_readonly_rosters(user, host) do
 		if ro_roster[jid] then return ro_roster[jid]; end
 	end
 
@@ -231,7 +227,7 @@ local function _get_online_roster_subscription(jidA, jidB)
 	local username, host = jid_split(jidA); 
 	local roster = user.roster;
 
-	local readonly_item = get_readonly_item(username, host, jidB, true);
+	local readonly_item = get_readonly_item(username, host, jidB);
 	if readonly_item then return readonly_item.subscription; end
 
 	local item = roster[jidB] or { subscription = "none" };
@@ -245,14 +241,16 @@ function is_contact_subscribed(username, host, jid)
 		local subscription = _get_online_roster_subscription(jid, selfjid);
 		if subscription then return (subscription == "both" or subscription == "to"); end
 	end
+	local roster, err = load_roster(username, host);
+	local item = roster[jid];
+	if item then
+		return (item.subscription == "from" or item.subscription == "both"), err;
+	end
+
 	local readonly_item = get_readonly_item(username, host, jid);
 	if readonly_item then
 		return (readonly_item.subscription == "from" or readonly_item.subscription == "both");
 	end
-
-	local roster, err = load_roster(username, host);
-	local item = roster[jid];
-	return item and (item.subscription == "from" or item.subscription == "both"), err;
 end
 
 function is_contact_pending_in(username, host, jid)
