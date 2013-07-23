@@ -117,6 +117,7 @@ function handle_normal_presence(origin, stanza)
 		origin.send(stanza); -- reflect their presence back to them
 	end
 	local roster = origin.roster;
+	local has_ro = roster.__readonly and true; -- check if user has readonly rosters.
 	local node, host = origin.username, origin.host;
 	local user = bare_sessions[node.."@"..host];
 	for _, res in pairs(user and user.sessions or NULL) do -- broadcast to all resources
@@ -126,8 +127,10 @@ function handle_normal_presence(origin, stanza)
 		end
 	end
 	broadcast_to_interested_contacts(roster, origin, stanza);
-	for ro_roster in rostermanager.get_readonly_rosters(node, host) do 
-		broadcast_to_interested_contacts(ro_roster, origin, stanza); 
+	if has_ro then
+		for ro_roster in rostermanager.get_readonly_rosters(node, host) do 
+			broadcast_to_interested_contacts(ro_roster, origin, stanza); 
+		end
 	end
 	if stanza.attr.type == nil and not origin.presence then -- initial presence
 		origin.presence = stanza; -- FIXME repeated later
@@ -147,8 +150,10 @@ function handle_normal_presence(origin, stanza)
 		end
 		local request = st.presence({type="subscribe", from=origin.username.."@"..origin.host});
 		resend_outgoing_subscriptions(roster, origin, request);
-		for ro_roster in rostermanager.get_readonly_rosters(node, host) do
-			probe_interested_contacts(ro_roster, origin, probe);
+		if has_ro then
+			for ro_roster in rostermanager.get_readonly_rosters(node, host) do
+				probe_interested_contacts(ro_roster, origin, probe);
+			end
 		end
 		if priority >= 0 then
                         local event = { origin = origin }
