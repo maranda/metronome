@@ -140,8 +140,12 @@ function save_roster(username, host, roster)
 	return nil;
 end
 
-function get_readonly_rosters(user, host)
+function get_readonly_rosters(user, host, online)
 	local bare_session = bare_sessions[user .. "@" .. host];
+	if online and not bare_session then
+		return function() end
+	end
+
 	local roster = (bare_session and bare_session.roster) or load_roster(user, host);
 	local readonly = roster.__readonly;
 	if not readonly then 
@@ -155,8 +159,8 @@ function get_readonly_rosters(user, host)
 	end
 end
 
-function get_readonly_item(user, host, jid)
-	for ro_roster in get_readonly_rosters(user, host) do
+function get_readonly_item(user, host, jid, online)
+	for ro_roster in get_readonly_rosters(user, host, online) do
 		if ro_roster[jid] then return ro_roster[jid]; end
 	end
 
@@ -227,7 +231,7 @@ local function _get_online_roster_subscription(jidA, jidB)
 	local username, host = jid_split(jidA); 
 	local roster = user.roster;
 
-	local readonly_item = get_readonly_item(username, host, jidB);
+	local readonly_item = get_readonly_item(username, host, jidB, true);
 	if readonly_item then return readonly_item.subscription; end
 
 	local item = roster[jidB] or { subscription = "none" };
