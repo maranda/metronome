@@ -66,7 +66,7 @@ function check_dependencies()
 		fatal = true;
 	end
 
-	local luaevent = softreq "luaevent"
+	local luaevent = softreq "luaevent" or softreq "luaevent.core"
 	if not luaevent then
 		missingdep("luaevent", {
 		 		["Debian/Ubuntu"] = "sudo apt-get install liblua5.1-event0";
