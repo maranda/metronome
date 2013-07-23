@@ -14,7 +14,7 @@ local st = require "util.stanza";
 local datamanager = require "util.datamanager";
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local jid_bare, jid_split, jid_join = require "util.jid".bare, require "util.jid".split, require "util.jid".join;
-local load_roster = require "core.rostermanager".load_roster;
+local rm = require "core.rostermanager";
 local to_number = tonumber;
 
 function is_list_used(origin, name, privacy_lists)
@@ -287,7 +287,8 @@ end);
 function check_stanza(e, session)
 	local origin, stanza = e.origin, e.stanza;
 	local privacy_lists = datamanager.load(session.username, session.host, "privacy") or {};
-	local bare_jid = session.username.."@"..session.host;
+	local session_username, session_host = session.username, session.host;
+	local bare_jid = session_username.."@"..session_host;
 	local to = stanza.attr.to or bare_jid;
 	local from = stanza.attr.from;
 	
@@ -337,8 +338,9 @@ function check_stanza(e, session)
 				apply = true;
 				block = (item.action == "deny");
 			elseif item.type == "group" then
-				local roster = load_roster(session.username, session.host);
-				local roster_entry = roster[jid_join(node, host)];
+				local roster = rm.load_roster(session_username, session_host);
+				local roster_entry = roster[jid_join(node, host)] or 
+						     rm.get_readonly_item(session_username, session_host, jid_join(node, host));
 				if roster_entry then
 					local groups = roster_entry.groups;
 					for group in pairs(groups) do
@@ -350,8 +352,9 @@ function check_stanza(e, session)
 					end
 				end
 			elseif item.type == "subscription" then -- we need a valid bare evil jid
-				local roster = load_roster(session.username, session.host);
-				local roster_entry = roster[jid_join(node, host)];
+				local roster = rm.load_roster(session_username, session_host);
+				local roster_entry = roster[jid_join(node, host)] or 
+						     rm.get_readonly_item(session_username, session_host, jid_join(node, host));
 				if (not(roster_entry) and item.value == "none")
 				   or (roster_entry and roster_entry.subscription == item.value) then
 					apply = true;

@@ -53,10 +53,10 @@ end
 module:hook("iq/self/jabber:iq:roster:query", function(event)
 	local session, stanza = event.origin, event.stanza;
 	local session_roster = session.roster;
-	local ro_rosters = session_roster.__readonly;
+	local session_username, session_host = session.username, session.host;
 
 	if stanza.attr.type == "get" then
-		local bare_jid = session.username .. "@" .. session.host;
+		local bare_jid = session_username .. "@" .. session_host;
 		local roster = st.reply(stanza);
 		
 		local client_ver = tonumber(stanza.tags[1].attr.ver);
@@ -67,10 +67,8 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 			roster:query("jabber:iq:roster");
 
 			-- Append read-only rosters, if there.
-			if ro_rosters then
-				for _, ro_roster in ipairs(ro_rosters) do
-					roster_stanza_builder(roster, ro_roster, bare_jid);
-				end
+			for ro_roster in rostermanager.get_readonly_rosters(session_username, session_host) do
+				roster_stanza_builder(roster, ro_roster, bare_jid);
 			end
 
 			-- Now append the real one.
@@ -90,7 +88,7 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 			local from_node, from_host = jid_split(stanza.attr.from);
 			local from_bare = from_node and (from_node.."@"..from_host) or from_host; -- bare JID
 			local jid = jid_prep(item.attr.jid);
-			if ro_rosters and rostermanager.check_readonly_rosters(session_roster, jid_bare(jid)) then
+			if rostermanager.get_readonly_item(session_username, session_host, jid_bare(jid)) then
 				module:log("debug", "%s attempted to remove a readonly roster entry (%s)", session.full_jid, jid);
 				return session.send(st.error_reply(stanza, "cancel", "forbidden",
 					"Modifying read-only roster entries is forbidden."));
