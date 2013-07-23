@@ -21,6 +21,7 @@ local bare_sessions = bare_sessions;
 local datamanager = require "util.datamanager";
 local um_user_exists = require "core.usermanager".user_exists;
 local st = require "util.stanza";
+local jid_split = require "util.jid".split;
 
 module "rostermanager"
 
@@ -223,7 +224,8 @@ end
 local function _get_online_roster_subscription(jidA, jidB)
 	local user = bare_sessions[jidA];
 	if not user then return nil; end
-	local username, host, roster = user.username, user.host, user.roster;
+	local username, host = jid_split(jidA); 
+	local roster = user.roster;
 
 	local readonly_item = get_readonly_item(username, host, jidB);
 	if readonly_item then return readonly_item.subscription; end
