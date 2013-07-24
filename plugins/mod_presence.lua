@@ -25,7 +25,7 @@ local NULL = {};
 local rostermanager = require "core.rostermanager";
 local sessionmanager = require "core.sessionmanager";
 
-local function pre_process_probe(bare_jid)
+local function pre_process(bare_jid)
 	local node, host = jid_split(bare_jid);
 	local host_obj = hosts[host];
 	if not host_obj then return nil; end -- if host doesn't exist already return
@@ -67,7 +67,8 @@ local ignore_presence_priority = module:get_option("ignore_presence_priority");
 local function broadcast_to_interested_contacts(roster, origin, stanza)
 	local owner = origin.username .. "@" .. origin.host;
 	for jid, item in pairs(roster) do -- broadcast to all interested contacts
-		if jid ~= owner and item.subscription == "both" or item.subscription == "from" then
+		if pre_process(jid) == false and
+		   jid ~= owner and (item.subscription == "both" or item.subscription == "from") then
 			stanza.attr.to = jid;
 			core_post_stanza(origin, stanza, true);
 		end
@@ -77,9 +78,8 @@ end
 local function probe_interested_contacts(roster, origin, probe)
 	local owner = origin.username .. "@" .. origin.host;
 	for jid, item in pairs(roster) do -- probe all contacts we are subscribed to
-		if pre_process_probe(jid) == false then
-			log("debug", "not probing %s since the local contact is not online", jid);
-		elseif jid ~= owner and (item.subscription == "both" or item.subscription == "to") then
+		if pre_process(jid) == false and
+		   jid ~= owner and (item.subscription == "both" or item.subscription == "to") then
 			probe.attr.to = jid;
 			core_post_stanza(origin, probe, true);
 		end
