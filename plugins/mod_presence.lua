@@ -27,6 +27,7 @@ local sessionmanager = require "core.sessionmanager";
 
 local function pre_process(bare_jid)
 	local node, host = jid_split(bare_jid);
+	if not node then return nil; end -- broadcasting to bare host jids should not be stopped
 	local host_obj = hosts[host];
 	if not host_obj then return nil; end -- if host doesn't exist already return
 
