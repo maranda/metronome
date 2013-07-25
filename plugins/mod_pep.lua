@@ -716,6 +716,8 @@ module:hook("presence/bare", function(event)
 					current = false;
 					recipients[recipient] = false;
 				end
+			else
+				recipients[recipient] = hash;
 			end
 				
 			if not hash_map[hash] then
@@ -775,10 +777,9 @@ module:hook("iq-result/bare/disco", function(event)
 			local recipients = service.recipients;
 			local contact = stanza.attr.from;
 			local current = recipients[contact];
-			if current == false then return true; end
+			if not current then return true; end
 
 			module:log("debug", "Processing disco response from %s", stanza.attr.from);
-			if current == nil then current = ""; end
 			local ver = current;
 			if not string.find(current, "#") then
 				ver = calculate_hash(disco.tags); -- calculate hash
@@ -792,7 +793,7 @@ module:hook("iq-result/bare/disco", function(event)
 				end
 			end
 			if not has_notify then 
-				if ver ~= "" then hash_map[ver] = notify; end
+				hash_map[ver] = notify;
 				recipients[contact] = false;
 				return true;
 			end
