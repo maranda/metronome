@@ -706,13 +706,23 @@ module:hook("presence/bare", function(event)
 			local recipient = stanza.attr.from;
 			local current = recipients and recipients[recipient];
 			local hash = get_caps_hash_from_presence(stanza);
-			if not hash then hash = current; end
+			if not hash then
+				if current then	
+					hash = current;
+				else
+					-- We shall drop sending disco infos to all clients which don't include caps
+					-- in their presence, it's not perfect, but it's the only way to get optimal
+					-- non-volatile states.
+					current = false;
+					recipients[recipient] = false;
+				end
+			end
 				
 			if not hash_map[hash] then
 				if current ~= false then
 					module:fire_event("pep-get-client-filters", 
 					{ user = user; to = stanza.attr.from or origin.full_jid,
-					  hash = hash, recipients = recipients });
+					  recipients = recipients });
 				
 					-- ignore filters once either because they aren't supported or because we don't have 'em yet
 					pep_send(recipient, user, true);
@@ -747,8 +757,7 @@ module:hook("presence/bare", function(event)
 end, 10);
 
 module:hook("pep-get-client-filters", function(event)
-	local user, to, hash, recipients = event.user, event.to, event.hash, event.recipients;
-	if hash then recipients[to] = hash; end -- could not obtain caps via presence
+	local user, to, recipients = event.user, event.to, event.hash, event.recipients;
 	disco_info_query(user, to);
 end, 100);
 
