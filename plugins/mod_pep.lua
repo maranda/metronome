@@ -792,7 +792,7 @@ module:hook("iq-result/bare/disco", function(event)
 				end
 			end
 			if not has_notify then 
-				if ver == "" then hash_map[ver] = notify; end
+				if ver ~= "" then hash_map[ver] = notify; end
 				recipients[contact] = false;
 				return true;
 			end
