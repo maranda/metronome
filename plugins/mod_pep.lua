@@ -95,62 +95,6 @@ local function idle_service_closer()
 	end
 end
 
--- define an item cache, useful to avoid event dupes
-local cache_limit = module:get_option_number("pep_max_cached_items", 10);
-if cache_limit > 30 then cache_limit = 30; end
-
-local item_cache_mt = {};
-item_cache_mt.__index = item_cache_mt;
-function item_cache_mt:add(item, node, target, force)
-	local _item = tostring(item);
-	if force and self[target] and self[target][node] and self[target][node].item == _item then
-		-- reset time for convenience...
-		self[target][node].time = os_time();
-		return true;
-	elseif force and self[target] and self[target][node] and self[target][node].item ~= _item then
-		-- pop old entry and reuse the table we already have
-		self[target][node].item = _item;
-		self[target][node].time = os_time();
-		return true;
-	end
-
-	if not self:timeup(_item, node, target) then return false; end
-
-	local _target_exists = self[target] and true;
-	if self._count >= cache_limit and not _target_exists then
-		-- pop an entry
-		for entry in pairs(self) do 
-			if entry ~= "_count" then self[entry] = nil; break; end
-		end
-		self._count = self._count - 1;
-	end
-	if not _target_exists then self._count = self._count + 1; end
-	local _node_exists = self[target] and self[target][node] and true;
-	self[target] = self[target] or { _count = 0 };
-	if self[target]._count >= 10 and not _node_exists then
-		for node in pairs(self[target]) do
-			if node ~= "_count" then self[target][node] = nil; break; end
-		end
-		self[target]._count = self._count - 1;
-	end
-	if not _node_exists then self[target]._count = self[target]._count + 1; end
-	self[target][node] = { item = _item, time = os_time() };
-
-	return true;
-end
-function item_cache_mt:timeup(item, node, target)
-	local _now = os_time();
-	if not self[target] or not self[target][node] then return true; end
-	if self[target][node] and 
-	   (self[target][node].item ~= item or _now - self[target][node].time >= 5) then
-		self[target][node] = nil;
-		self[target]._count = self[target]._count - 1;
-		return true;
-	else
-		return false;
-	end
-end
-
 local function subscription_presence(user_bare, recipient)
 	local recipient_bare = jid_bare(recipient);
 	if (recipient_bare == user_bare) then return true end
@@ -190,9 +134,7 @@ local function pep_broadcast_last(service, node, receiver)
 	local ok, items, orderly = service:get_items(node, receiver, nil, 1);
 	if items then
 		for _, id in ipairs(orderly) do
-			if service.item_cache:add(items[id], node, receiver) then 
-				service:broadcaster(node, receiver, items[id]);
-			end
+			service:broadcaster(node, receiver, items[id]);
 		end
 	end
 end
@@ -512,10 +454,6 @@ function handlers.set_publish(service, origin, stanza, publish)
 			:tag("pubsub", { xmlns = xmlns_pubsub })
 				:tag("publish", { node = node })
 					:tag("item", { id = id });
-
-		for target in pairs(service.nodes[node].subscribers) do
-			service.item_cache:add(item, node, target, true);
-		end		
 	else
 		reply = pep_error_reply(stanza, ret);
 	end
@@ -872,8 +810,6 @@ end
 
 function set_service(new_service, jid, restore)
 	services[jid] = new_service;
-	services[jid].item_cache = { _count = 0 };
-	setmetatable(services[jid].item_cache, item_cache_mt);
 	services[jid].last_used = os_time();
 	services[jid].name = jid;
 	services[jid].recipients = {};
@@ -1024,8 +960,6 @@ function module.restore(data)
 	for id, service in pairs(_services) do
 		username = jid_split(id);
 		services[id] = set_service(pubsub.new(pep_new(username)), id);
-		services[id].item_cache = service.item_cache or { _count = 0 };
-		setmetatable(services[id].item_cache, item_cache_mt);
 		services[id].last_used = service.last_used or time_now;
 		services[id].nodes = service.nodes or {};
 		services[id].recipients = service.recipients or {};
