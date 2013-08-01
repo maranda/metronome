@@ -618,7 +618,7 @@ end);
 module:hook("account-disco-items", function(event)
 	local stanza = event.stanza;
 	local bare = jid_bare(stanza.attr.to);
-	local user_data = services[bare].nodes;
+	local user_data = services[bare] and services[bare].nodes;
 
 	if user_data then
 		for node, _ in pairs(user_data) do
@@ -798,7 +798,7 @@ local function get_affiliation(self, jid, node)
 		return admin_aff;
 	else
 		local node = self.nodes[node];
-		local access_model = node.config.access_model;
+		local access_model = node and node.config.access_model;
 		if node and (not access_model or access_model == "presence") then
 			local user, host = jid_split(self.name);
 			if not is_contact_subscribed(user, host, bare_jid) then	return "no_access"; end
