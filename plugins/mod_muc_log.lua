@@ -51,7 +51,7 @@ function log_if_needed(e)
 	
 	if (stanza.name == "presence") or
 	   (stanza.name == "iq") or
-	   (stanza.name == "message" and tostring(stanza.attr.type) == "groupchat") then
+	   (stanza.name == "message" and stanza.attr.type == "groupchat") then
 		local to_room = stanza.attr.to;
 		local from_room = stanza.attr.from;
 		local node = split_jid(to_room);
@@ -94,12 +94,7 @@ function log_if_needed(e)
 					end
 				end
 			else
-				for jid, nick in pairs(room._jid_nick) do
-					if jid == from_room then
-						muc_from = nick;
-						break;
-					end
-				end
+				muc_from = room._jid_nick[from_room];
 			end
 
 			if (muc_from or muc_to) then
