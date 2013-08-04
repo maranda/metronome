@@ -181,12 +181,11 @@ local function dosql(sql, ...)
 		sql = sql:gsub("`", "\"");
 	end
 	-- do prepared statement stuff
+	if not connection and not connect() then return nil, "Unable to connect to database"; end
 	local stmt, err = connection:prepare(sql);
-	if not stmt and not test_connection() then error("connection failed"); end
 	if not stmt then module:log("error", "QUERY FAILED: %s %s", err, debug.traceback()); return nil, err; end
 	-- run query
 	local ok, err = stmt:execute(...);
-	if not ok and not test_connection() then error("connection failed"); end
 	if not ok then return nil, err; end
 	
 	return stmt;
@@ -258,20 +257,12 @@ local keyval_store = {};
 keyval_store.__index = keyval_store;
 function keyval_store:get(username)
 	user, store = username, self.store;
-	if not connection and not connect() then return nil, "Unable to connect to database"; end
 	local success, ret, err = xpcall(keyval_store_get, debug.traceback);
-	if not connection and connect() then
-		success, ret, err = xpcall(keyval_store_get, debug.traceback);
-	end
 	if success then return ret, err; else return rollback(nil, ret); end
 end
 function keyval_store:set(username, data)
 	user, store = username, self.store;
-	if not connection and not connect() then return nil, "Unable to connect to database"; end
 	local success, ret, err = xpcall(function() return keyval_store_set(data); end, debug.traceback);
-	if not connection and connect() then
-		success, ret, err = xpcall(function() return keyval_store_set(data); end, debug.traceback);
-	end
 	if success then return ret, err; else return rollback(nil, ret); end
 end
 
