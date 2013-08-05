@@ -183,7 +183,10 @@ local function dosql(sql, ...)
 	-- do prepared statement stuff
 	if not connection and not connect() then return nil, "Unable to connect to database"; end
 	local stmt, err = connection:prepare(sql);
-	if not stmt then module:log("error", "QUERY FAILED: %s %s", err, debug.traceback()); return nil, err; end
+	if err and err:match(".*MySQL server has gone away$") then
+		stmt, err = connect() and connection:prepare(sql); -- reconnect
+	end
+	if not stmt then module:log("error", "QUERY FAILED: %s -- %s", err or "Connection to database failed", debug.traceback()); return nil, err; end
 	-- run query
 	local ok, err = stmt:execute(...);
 	if not ok then return nil, err; end
