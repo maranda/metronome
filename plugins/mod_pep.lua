@@ -795,7 +795,7 @@ end, 100);
 local admin_aff = "owner";
 local function get_affiliation(self, jid, node)
 	local bare_jid = jid_bare(jid);
-	if bare_jid == self.name or um_is_admin(jid, module.host) then
+	if bare_jid == self.name or um_is_admin(bare_jid, module.host) then
 		return admin_aff;
 	else
 		local node = self.nodes[node];
