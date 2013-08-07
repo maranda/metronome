@@ -19,6 +19,7 @@ local set_new = require "util.set".new;
 local dataforms = require "util.dataforms";
 local encode_node = datamanager.path_encode;
 local get_path = datamanager.getpath;
+local um_is_admin = usermanager.is_admin;
 local um_user_exists = usermanager.user_exists;
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
@@ -794,14 +795,14 @@ end, 100);
 local admin_aff = "owner";
 local function get_affiliation(self, jid, node)
 	local bare_jid = jid_bare(jid);
-	if bare_jid == self.name then
+	if bare_jid == self.name or um_is_admin(jid, module.host) then
 		return admin_aff;
 	else
 		local node = self.nodes[node];
 		local access_model = node and node.config.access_model;
 		if node and (not access_model or access_model == "presence") then
 			local user, host = jid_split(self.name);
-			if not is_contact_subscribed(user, host, bare_jid) then	return "no_access"; end
+			if not is_contact_subscribed(user, host, bare_jid) then return "no_access"; end
 		end
 			
 		return "none";
