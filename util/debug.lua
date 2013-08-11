@@ -5,11 +5,12 @@
 -- information about copyright and licensing.
 --
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
--- ** Copyright (c) 2011-2012, Matthew Wild
+-- ** Copyright (c) 2011-2013, Matthew Wild
 
 -- Variables ending with these names will not
 -- have their values printed ('password' includes
 -- 'new_password', etc.)
+
 local censored_names = {
 	password = true;
 	passwd = true;
@@ -33,11 +34,15 @@ do
 end
 module("debugx", package.seeall);
 
-function get_locals_table(level)
-	level = level + 1; -- Skip this function itself
+function get_locals_table(thread, level)
 	local locals = {};
 	for local_num = 1, math.huge do
-		local name, value = debug.getlocal(level, local_num);
+		local name, value;
+		if thread then
+			name, value = debug.getlocal(thread, level, local_num);
+		else
+			name, value = debug.getlocal(level+1, local_num);
+		end
 		if not name then break; end
 		table.insert(locals, { name = name, value = value });
 	end
@@ -97,19 +102,19 @@ function get_traceback_table(thread, start_level)
 	for level = start_level, math.huge do
 		local info;
 		if thread then
-			info = debug.getinfo(thread, level+1);
+			info = debug.getinfo(thread, level);
 		else
 			info = debug.getinfo(level+1);
 		end
 		if not info then break; end
-		
+
 		levels[(level-start_level)+1] = {
 			level = level;
 			info = info;
-			locals = get_locals_table(level+1);
+			locals = get_locals_table(thread, level+(thread and 0 or 1));
 			upvalues = get_upvalues_table(info.func);
 		};
-	end	
+	end
 	return levels;
 end
 
@@ -143,15 +148,15 @@ function _traceback(thread, message, level)
 		return nil; -- debug.traceback() does this
 	end
 
-	level = level or 1;
+	level = level or 0;
 
 	message = message and (message.."\n") or "";
-	
-	-- +3 counts for this function, and the pcall() and wrapper above us
-	local levels = get_traceback_table(thread, level+3);
-	
+
+	-- +3 counts for this function, and the pcall() and wrapper above us, the +1... I don't know.
+	local levels = get_traceback_table(thread, level+(thread == nil and 4 or 0));
+
 	local last_source_desc;
-	
+
 	local lines = {};
 	for nlevel, level in ipairs(levels) do
 		local info = level.info;
@@ -180,17 +185,17 @@ function _traceback(thread, message, level)
 		nlevel = nlevel-1;
 		table.insert(lines, "\t"..(nlevel==0 and ">" or " ")..getstring(styles.level_num, "("..nlevel..") ")..line);
 		local npadding = (" "):rep(#tostring(nlevel));
-		local locals_str = string_from_var_table(level.locals, optimal_line_length, "\t            "..npadding);
-		if locals_str then
-			table.insert(lines, "\t    "..npadding.."Locals: "..locals_str);
+		if level.locals then
+			local locals_str = string_from_var_table(level.locals, optimal_line_length, "\t            "..npadding);
+			if locals_str then
+				table.insert(lines, "\t    "..npadding.."Locals: "..locals_str);
+			end
 		end
 		local upvalues_str = string_from_var_table(level.upvalues, optimal_line_length, "\t            "..npadding);
 		if upvalues_str then
 			table.insert(lines, "\t    "..npadding.."Upvals: "..upvalues_str);
 		end
 	end
-
---	table.insert(lines, "\t "..build_source_boundary_marker(last_source_desc));
 
 	return message.."stack traceback:\n"..table.concat(lines, "\n");
 end
