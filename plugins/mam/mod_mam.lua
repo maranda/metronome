@@ -20,6 +20,8 @@ local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
 local xmlns = "urn:xmpp:mam:0";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
+module:add_feature(xmlns);
+
 local forbid_purge = module:get_option_boolean("mam_forbid_purge", false);
 local max_results = module:get_option_number("mam_max_retrievable_results", 50);
 if max_results >= 100 then max_results = 100; end
