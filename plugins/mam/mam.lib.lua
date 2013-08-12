@@ -43,14 +43,15 @@ local function save_stores()
 	end
 end
 
-local function log_entry(session_archive, to, from, body)
-	local id = uuid();
+local function log_entry(session_archive, to, from, id, body)
+	local uid = uuid();
 	local entry = {
 		from = from,
-		id = id,
 		to = to,
-		timestamp = now(),
+		id = id,
 		body = body,
+		timestamp = now(),
+		uid = uid
 	};
 
 	local logs = session_archive.logs;
@@ -59,14 +60,16 @@ local function log_entry(session_archive, to, from, body)
 	logs[#logs + 1] = entry;
 
 	if now() - to_save > store_time then save_stores(); end
-	return id;
+	return uid;
 end
 
 local function append_stanzas(stanzas, entry, qid)
 	local to_forward = st.message()
 		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.id })
 			:tag("forwarded", { xmlns = xmlns_forward })
-				:tag("delay", { xmlns = xmlns_delay, stamp = dt(entry.timestamp) }):up();
+				:tag("delay", { xmlns = xmlns_delay, stamp = dt(entry.timestamp) }):up()
+				:tag("message", { to = entry.to, from = entry.from, id = entry.id })
+					:tag("body"):text(entry.body):up();
 	
 	stanzas[#stanzas + 1] = to_forward;
 end
@@ -193,7 +196,7 @@ local function process_message(event, outbound)
 	end
 
 	if archive and add_to_store(archive, user, to) then
-		local id = log_entry(archive, to, from, body);
+		local id = log_entry(archive, to, from, message.attr.id, body);
 		if not bare_session then storage:set(user, archive); end
 		if inbound_jid then message:tag("archived", { jid = inbound_jid, id = id }):up(); end
 	else
