@@ -19,15 +19,13 @@ local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
 
 local xmlns = "urn:xmpp:mam:tmp";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
-local delay_xmlns   = "urn:xmpp:delay";
-local forward_xmlns = "urn:xmpp:forward:0";
 
 local store_time = module:get_option_number("mam_save_time", 300);
 local max_results = module:get_option_number("mam_max_retrievable_results", 50);
 if max_results >= 100 then max_results = 100; end
 
 local mamlib = module:require "mam";
-local initialize_storage, save_stores = mamlib.initialize_storage, mamlib.save_stores;
+local initialize_storage, save_stores =	mamlib.initialize_storage, mamlib.save_stores;
 local get_prefs, set_prefs = mamlib.get_prefs, mamlib.set_prefs;
 local generate_stanzas, process_message = mamlib.generate_stanzas, mamlib.process_message;
 mamlib.store_time = store_time;

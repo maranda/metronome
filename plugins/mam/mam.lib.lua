@@ -15,6 +15,10 @@ local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
 local ipairs, next, now, pairs, ripairs, select, t_remove, tonumber, tostring =
       ipairs, next, os.time, pairs, ripairs, select, table.remove, tonumber, tostring;
+      
+local xmlns = "urn:xmpp:mam:tmp";
+local delay_xmlns = "urn:xmpp:delay";
+local forward_xmlns = "urn:xmpp:forward:0";
 
 local session_stores = {};
 local storage = {};
