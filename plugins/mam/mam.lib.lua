@@ -219,7 +219,7 @@ local function purge_messages(logs, id, jid, start, fin)
 			local timestamp = entry.timestamp;
 			if (start and not fin) and timestamp >= start then
 				pop_entry(logs, i, jid);
-			elseif and (not start and fin) and timestamp <= fin then
+			elseif (not start and fin) and timestamp <= fin then
 				pop_entry(logs, i, jid);
 			elseif (start and fin) and (timestamp >= start and timestamp <= fin) then
 				pop_entry(logs, i, jid);
