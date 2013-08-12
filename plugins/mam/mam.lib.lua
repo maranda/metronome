@@ -215,6 +215,7 @@ _M.get_prefs = get_prefs;
 _M.set_prefs = set_prefs;
 _M.generate_stanzas = generate_stanzas;
 _M.process_message = process_message;
+_M.purge_messages = purge_messages;
 _M.session_stores = session_stores;
 
 return _M;
