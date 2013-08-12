@@ -6,6 +6,7 @@
 
 -- MAM Module Library
 
+local module_host = module.host;
 local dt = require "util.datetime".datetime;
 local jid_bare = require "util.jid".bare;
 local jid_join = require "util.jid".join;
@@ -13,6 +14,7 @@ local jid_split = require "util.jid".split;
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
+local load_roster = rostermanager.load_roster;
 local ipairs, now, pairs, select, t_remove, = ipairs, os.time, pairs, select, table.remove;
       
 local xmlns = "urn:xmpp:mam:0";
@@ -42,9 +44,10 @@ local function save_stores()
 end
 
 local function log_entry(session_archive, to, from, body)
+	local id = uuid();
 	local entry = {
 		from = from,
-		id = uuid(),
+		id = id,
 		to = to,
 		timestamp = now(),
 		body = body,
@@ -56,6 +59,7 @@ local function log_entry(session_archive, to, from, body)
 	logs[#logs + 1] = entry;
 
 	if now() - to_save > store_time then save_stores(); end
+	return id;
 end
 
 local function append_stanzas(stanzas, entry, qid)
@@ -96,11 +100,18 @@ local function generate_stanzas(store, start, fin, with, max, qid)
 	return stanzas;
 end
 
-local function add_to_store(store, to)
+local function add_to_store(store, user, to)
 	local prefs = store.prefs
 	if prefs[to] and to ~= "default" then
 		return true;
 	else
+		if prefs.default == "always" then 
+			return true;
+		elseif prefs.default == "roster" then
+			local roster = load_roster(user, module_host);
+			if roster[to] then return true; end
+		end
+		
 		return false;
 	end
 end
@@ -155,7 +166,7 @@ local function process_message(event, outbound)
 		if body:len() > max_length then return; end
 	end
 	
-	local from, to, bare_session, user;
+	local from, to, bare_session, user, inbound_jid;
 
 	if outbound then
 		from = (message.attr.from or origin.full_jid)
@@ -165,7 +176,8 @@ local function process_message(event, outbound)
 	else
 		from = message.attr.from;
 		to = message.attr.to;
-		bare_session = bare_sessions[jid_bare(to)];
+		inbound_jid = jid_bare(to);
+		bare_session = bare_sessions[inbound_jid];
 		user = jid_split(to);
 	end
 	
@@ -176,9 +188,10 @@ local function process_message(event, outbound)
 		if not offline_overcap then archive = storage:get(user); end
 	end
 
-	if archive and add_to_store(archiving, to) then
-		log_entry(archive, to, from, body);
+	if archive and add_to_store(archiving, user, to) then
+		local id = log_entry(archive, to, from, body);
 		if not bare_session then storage:set(user, archive); end
+		if inbound_jid then message:tag("archived", { jid = inbound_jid, id = id }):up(); end
 	else
 		return;
 	end	
