@@ -129,14 +129,17 @@ local function query_handler(event)
 		return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Max retrievable results' count is 100"));
 	end
 	
-	local messages = generate_stanzas(archive, _start, _end, _with, max, qid);
+	local messages, rq = generate_stanzas(archive, _start, _end, _with, max, qid);
 	for _, message in ipairs(messages) do
 		message.attr.to = origin.full_jid;
 		origin.send(message);
 	end
 	
+	local reply = st.reply(stanza);
+	if rq then reply:add_child(rq); end
+	
 	module:log("debug", "MAM query %s completed", tostring(qid));
-	return origin.send(st.reply(stanza));
+	return origin.send(reply);
 end
 
 function module.save() return { storage = storage, session_stores = session_stores } end

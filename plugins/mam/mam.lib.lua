@@ -15,11 +15,12 @@ local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
 local load_roster = rostermanager.load_roster;
-local ipairs, now, pairs, select, t_remove = ipairs, os.time, pairs, select, table.remove;
+local ipairs, now, pairs, select, t_remove, tostring = ipairs, os.time, pairs, select, table.remove, tostring;
       
 local xmlns = "urn:xmpp:mam:0";
 local delay_xmlns = "urn:xmpp:delay";
 local forward_xmlns = "urn:xmpp:forward:0";
+local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
 local store_time = module:get_option_number("mam_save_time", 300);
 local stores_cap = module:get_option_number("mam_stores_cap", 5000);
@@ -76,11 +77,18 @@ local function append_stanzas(stanzas, entry, qid)
 end
 
 local function generate_stanzas(store, start, fin, with, max, qid)
-	local stanzas = {}
+	local stanzas = {};
+	local query;
+	
 	local count = 1;
+	local first, last;
 	
 	for _, entry in ipairs(store.logs) do
-		if max and count ~= 1 and count > max then break; end
+		if max and count ~= 1 and count > max then
+			break; 
+		elseif max and count == max then 
+			last = entry.uid;
+		end
 		
 		local timestamp = entry.timestamp;
 		local add = true;
@@ -95,13 +103,28 @@ local function generate_stanzas(store, start, fin, with, max, qid)
 			add = false;
 		end
 		
-		if add then 
+		if add then
 			append_stanzas(stanzas, entry, qid);
-			if max then count = count + 1; end
+			if max then
+				if count == 1 then first = entry.uid; end
+				count = count + 1; 
+			end
 		end
 	end
 	
-	return stanzas;
+	if start or fin or max then
+		query = st.stanza("query", { xmlns = xmlns });
+		if start then query:tag("start"):text(dt(start)):up(); end
+		if fin then query:tag("end"):text(dt(fin)):up(); end
+		if max then
+			query:tag("set", { xmlns = rsm_xmlns })
+				:tag("first", { index = 0 }):text(first):up()
+				:tag("last"):text(last):up()
+				:tag("count"):text(tostring(count - 1)):up();
+		end
+	end
+	
+	return stanzas, query;
 end
 
 local function add_to_store(store, user, to)
