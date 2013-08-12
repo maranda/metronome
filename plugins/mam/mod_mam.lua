@@ -77,7 +77,7 @@ local function purge_handler(event)
 	local bare_jid = jid_bare(origin.full_jid);
 	
 	local bare_session = bare_sessions[bare_jid];
-	local logs = bare_session.archiving.logs;
+	local archive = bare_session.archiving;
 	
 	if mam_forbid_purge then
 		return origin.send(st.error_reply(stanza, "cancel", "not-allowed", "Purging message archives is not allowed"));
@@ -89,7 +89,7 @@ local function purge_handler(event)
 		return origin.send(st.error_reply(stanza, "modify", "bad-request", "Supplied parameters failed verification"));
 	end
 	
-	purge_messages(logs, _id, vjid, vstart, vend);
+	purge_messages(archive, _id, vjid, vstart, vend);
 	module:log("debug", "%s purged Archives", bare_jid);
 	return origin.send(st.reply(stanza));
 end

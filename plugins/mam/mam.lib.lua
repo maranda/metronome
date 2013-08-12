@@ -241,11 +241,13 @@ local function pop_entry(logs, i, jid)
 	end
 end
 
-local function purge_messages(logs, id, jid, start, fin)
+local function purge_messages(archive, id, jid, start, fin)
 	if not id and not jid and not start and not fin then
-		logs = {};
+		archive.logs = {};
+		return;
 	end
 	
+	local logs = archive.logs;
 	if id then
 		for i, entry in ipairs(logs) do
 			if entry.id == id then t_remove(logs, i); break; end
