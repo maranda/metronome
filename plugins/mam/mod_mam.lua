@@ -135,7 +135,6 @@ local function query_handler(event)
 	module:log("debug", "MAM query %s completed", tostring(qid));
 end
 
-function module.load() initialize_storage(); end
 function module.save() return { storage = storage, session_stores = session_stores } end
 function module.reload(data) 
 	mamlib.storage = data.storage;
