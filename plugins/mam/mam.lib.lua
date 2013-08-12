@@ -188,7 +188,7 @@ local function process_message(event, outbound)
 		if not offline_overcap then archive = storage:get(user); end
 	end
 
-	if archive and add_to_store(archiving, user, to) then
+	if archive and add_to_store(archive, user, to) then
 		local id = log_entry(archive, to, from, body);
 		if not bare_session then storage:set(user, archive); end
 		if inbound_jid then message:tag("archived", { jid = inbound_jid, id = id }):up(); end
