@@ -81,16 +81,18 @@ local function generate_stanzas(store, start, fin, with, max, qid)
 	local query;
 	
 	local count = 1;
-	local first, last;
+	local first, last, _start, _end;
 	
 	for _, entry in ipairs(store.logs) do
+		local timestamp = entry.timestamp;
+
 		if max and count ~= 1 and count > max then
 			break; 
 		elseif max and count == max then 
 			last = entry.uid;
+			_end = timestamp;
 		end
 		
-		local timestamp = entry.timestamp;
 		local add = true;
 		
 		if with and not (entry.from == with or entry.to == with) then
@@ -106,7 +108,10 @@ local function generate_stanzas(store, start, fin, with, max, qid)
 		if add then
 			append_stanzas(stanzas, entry, qid);
 			if max then
-				if count == 1 then first = entry.uid; end
+				if count == 1 then 
+					first = entry.uid;
+					_start = timestamp;
+				end
 				count = count + 1; 
 			end
 		end
@@ -114,8 +119,8 @@ local function generate_stanzas(store, start, fin, with, max, qid)
 	
 	if start or fin or max then
 		query = st.stanza("query", { xmlns = xmlns });
-		if start then query:tag("start"):text(dt(start)):up(); end
-		if fin then query:tag("end"):text(dt(fin)):up(); end
+		query:tag("start"):text(dt(start or _start)):up(); end
+		query:tag("end"):text(dt(fin or _end)):up(); end
 		if max then
 			query:tag("set", { xmlns = rsm_xmlns })
 				:tag("first", { index = 0 }):text(first):up()
