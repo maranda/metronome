@@ -27,8 +27,8 @@ local max_results = module:get_option_number("mam_max_retrievable_results", 50);
 if max_results >= 100 then max_results = 100; end
 
 local mamlib = module:require "mam";
-local initialize_storage, save_stores, log_entry =	mamlib.initialize_storage, mamlib.save_stores, mamlib.log_entry;
-local add_to_store, get_prefs, set_prefs = mamlib.add_to_store, mamlib.get_prefs, mamlib.set_prefs;
+local initialize_storage, save_stores =	mamlib.initialize_storage, mamlib.save_stores;
+local get_prefs, set_prefs = mamlib.get_prefs, mamlib.set_prefs;
 local generate_stanzas, process_message = mamlib.generate_stanzas, mamlib.process_message;
 mamlib.store_time = store_time;
 

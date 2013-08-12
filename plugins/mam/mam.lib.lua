@@ -170,8 +170,7 @@ local function process_message(event, outbound)
 end
 
 _M.initialize_storage = initialize_storage;
-_M.log_entry = log_entry;
-_M.add_to_store = add_to_store;
+_M.save_stores = save_stores;
 _M.get_prefs = get_prefs;
 _M.set_prefs = set_prefs;
 _M.generate_stanzas = generate_stanzas;
