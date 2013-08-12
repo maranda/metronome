@@ -16,6 +16,19 @@ local limit = module:get_option_number("offline_store_limit", 40);
 
 module:add_feature("msgoffline");
 
+module:hook("message/offline/overcap", function(event)
+	local node = event.node;
+	local archive = datamanager.list_load(node, module.host, "offline");
+	
+	if not archive then
+		return false;
+	elseif #archive >= limit then
+		return true;
+	end
+	
+	return false;
+end);
+
 module:hook("message/offline/handle", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local to = stanza.attr.to;
