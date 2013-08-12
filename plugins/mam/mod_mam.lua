@@ -150,7 +150,7 @@ local function query_handler(event)
 end
 
 function module.save() return { storage = storage, session_stores = session_stores } end
-function module.reload(data) 
+function module.restore(data) 
 	mamlib.storage = data.storage;
 	mamlib.session_stores = data.session_stores or {};
 	storage, session_stores = mamlib.storage, mamlib.session_stores;
