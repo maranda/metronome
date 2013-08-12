@@ -132,16 +132,16 @@ local function generate_stanzas(store, start, fin, with, max, qid)
 	return stanzas, query;
 end
 
-local function add_to_store(store, user, to)
+local function add_to_store(store, user, recipient)
 	local prefs = store.prefs
-	if prefs[to] and to ~= "default" then
+	if prefs[recipient] and recipient ~= "default" then
 		return true;
 	else
 		if prefs.default == "always" then 
 			return true;
 		elseif prefs.default == "roster" then
 			local roster = load_roster(user, module_host);
-			if roster[to] then return true; end
+			if roster[recipient] then return true; end
 		end
 		
 		return false;
@@ -202,18 +202,20 @@ local function process_message(event, outbound)
 		if body:len() > max_length then return; end
 	end
 	
-	local from, to, bare_session, user, inbound_jid;
+	local from, to, bare_session, user;
+	local bare_from, bare_to; 
 
 	if outbound then
-		from = (message.attr.from or origin.full_jid)
+		from = (message.attr.from or origin.full_jid);
 		to = message.attr.to;
-		bare_session = bare_sessions[jid_bare(from)];
+		bare_from = jid_bare(from);
+		bare_session = bare_sessions[bare_from];
 		user = jid_split(from);
 	else
 		from = message.attr.from;
 		to = message.attr.to;
-		inbound_jid = jid_bare(to);
-		bare_session = bare_sessions[inbound_jid];
+		bare_to = jid_bare(to);
+		bare_session = bare_sessions[bare_to];
 		user = jid_split(to);
 	end
 	
@@ -224,10 +226,10 @@ local function process_message(event, outbound)
 		if not offline_overcap then archive = storage:get(user); end
 	end
 
-	if archive and add_to_store(archive, user, to) then
+	if archive and add_to_store(archive, user, (outbound and bare_to) or bare_from) then
 		local id = log_entry(archive, to, from, message.attr.id, body);
 		if not bare_session then storage:set(user, archive); end
-		if inbound_jid then message:tag("archived", { jid = inbound_jid, id = id }):up(); end
+		if not outbound then message:tag("archived", { jid = bare_to, id = id }):up(); end
 	else
 		return;
 	end	
