@@ -65,7 +65,7 @@ local function prefs_handler(event)
 		reply:add_child(get_prefs(bare_session.archiving));
 		return origin.send(reply);
 	else
-		local _prefs = stanza:get_child("prefs", xmlns_mam);
+		local _prefs = stanza:get_child("prefs", xmlns);
 		local reply = set_prefs(stanza, bare_session.archiving);
 		return origin.send(reply);
 	end

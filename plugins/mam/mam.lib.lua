@@ -66,8 +66,8 @@ end
 local function append_stanzas(stanzas, entry, qid)
 	local to_forward = st.message()
 		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.id })
-			:tag("forwarded", { xmlns = xmlns_forward })
-				:tag("delay", { xmlns = xmlns_delay, stamp = dt(entry.timestamp) }):up()
+			:tag("forwarded", { xmlns = forward_xmlns })
+				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id })
 					:tag("body"):text(entry.body):up();
 	
@@ -122,7 +122,7 @@ end
 local function get_prefs(store)
 	local _prefs = store.prefs;
 
-	local stanza = st.stanza("prefs", { xmlns = xmlns_mam, default = _prefs.default or "never" });
+	local stanza = st.stanza("prefs", { xmlns = xmlns, default = _prefs.default or "never" });
 	local always = st.stanza("always");
 	local never = st.stanza("never");
 	for jid, choice in pairs(_prefs) do
