@@ -91,6 +91,7 @@ local function purge_handler(event)
 	
 	purge_messages(logs, _id, vjid, vstart, vend);
 	module:log("debug", "%s purged Archives", bare_jid);
+	return origin.send(st.reply(stanza));
 end
 
 local function query_handler(event)
@@ -135,6 +136,7 @@ local function query_handler(event)
 	end
 	
 	module:log("debug", "MAM query %s completed", tostring(qid));
+	return origin.send(st.reply(stanza));
 end
 
 function module.save() return { storage = storage, session_stores = session_stores } end
@@ -154,6 +156,6 @@ module:hook("pre-message/full", process_outbound_messages, 30);
 
 module:hook("iq/self/"..xmlns..":prefs", prefs_handler);
 module:hook("iq-set/self/"..xmlns..":purge", purge_handler);
-module:hook("iq-set/self/"..xmlns..":query", query_handler);
+module:hook("iq-get/self/"..xmlns..":query", query_handler);
 
 module:hook_global("server-stopping", save_stores);
