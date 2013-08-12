@@ -74,7 +74,7 @@ local function purge_handler(event)
 	local purge = stanza:child_with_name("purge");
 	local bare_jid = jid_bare(origin.full_jid);
 	
-	local bare_session = bare_sessions[];
+	local bare_session = bare_sessions[bare_jid];
 	local logs = bare_session.archiving.logs;
 	
 	if mam_forbid_purge then
