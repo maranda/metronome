@@ -16,9 +16,12 @@ local storagemanager = storagemanager;
 local ipairs, next, now, pairs, ripairs, select, t_remove, tonumber, tostring =
       ipairs, next, os.time, pairs, ripairs, select, table.remove, tonumber, tostring;
       
-local xmlns = "urn:xmpp:mam:tmp";
+local xmlns = "urn:xmpp:mam:0";
 local delay_xmlns = "urn:xmpp:delay";
 local forward_xmlns = "urn:xmpp:forward:0";
+
+local store_time = module:get_option_number("mam_save_time", 300);
+local stores_cap = module:get_option_number("mam_stores_cap", 5000);
 
 local session_stores = {};
 local storage = {};
@@ -48,9 +51,11 @@ local function log_entry(session_archive, to, from, body)
 	};
 
 	local logs = session_archive.logs;
+	
+	if #logs > stores_cap then t_remove(logs, 1); end
 	logs[#logs + 1] = entry;
 
-	if now() - to_save > _M.store_time then save_stores(); end
+	if now() - to_save > store_time then save_stores(); end
 end
 
 local function append_stanzas(stanzas, entry, qid)
@@ -74,11 +79,11 @@ local function generate_stanzas(store, start, fin, with, max, qid)
 		
 		if with and not (entry.from == with or entry.to == with) then
 			add = false;
-		elseif add and (start and not fin) and not (timestamp >= start) then
+		elseif (start and not fin) and not (timestamp >= start) then
 			add = false;
-		elseif add and (fin and not start) and not (timestamp <= fin) then
+		elseif (fin and not start) and not (timestamp <= fin) then
 			add = false;
-		elseif add and (start and fin) and not (timestamp >= start and timestamp <= fin) then
+		elseif (start and fin) and not (timestamp >= start and timestamp <= fin) then
 			add = false;
 		end
 		
@@ -171,6 +176,37 @@ local function process_message(event, outbound)
 	else
 		return;
 	end	
+end
+
+local function pop_entry(logs, i, jid)
+	if jid then
+		if logs[i].jid == jid then t_remove(logs, i); end
+	else
+		t_remove(logs, i);
+	end
+end
+
+local function purge_messages(logs, id, jid, start, fin)
+	if not id and not jid and not start and not fin then
+		logs = {};
+	end
+	
+	if id then
+		for i, entry in ipairs(logs) do
+			if entry.id == id then t_remove(logs, i); break; end
+		end
+	elseif jid or start or fin then
+		for i, entry in ipairs(logs) do
+			local timestamp = entry.timestamp;
+			if (start and not fin) and timestamp >= start then
+				pop_entry(logs, i, jid);
+			elseif and (not start and fin) and timestamp <= fin then
+				pop_entry(logs, i, jid);
+			elseif (start and fin) and (timestamp >= start and timestamp <= fin) then
+				pop_entry(logs, i, jid);
+			end
+		end
+	end
 end
 
 _M.initialize_storage = initialize_storage;

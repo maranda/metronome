@@ -17,18 +17,18 @@ local jid_join = require "util.jid".join;
 local jid_prep = require "util.jid".prep;
 local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
 
-local xmlns = "urn:xmpp:mam:tmp";
+local xmlns = "urn:xmpp:mam:0";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
-local store_time = module:get_option_number("mam_save_time", 300);
+local forbid_purge = module:get_option_boolean("mam_forbid_purge", false);
 local max_results = module:get_option_number("mam_max_retrievable_results", 50);
 if max_results >= 100 then max_results = 100; end
 
 local mamlib = module:require "mam";
 local initialize_storage, save_stores =	mamlib.initialize_storage, mamlib.save_stores;
 local get_prefs, set_prefs = mamlib.get_prefs, mamlib.set_prefs;
-local generate_stanzas, process_message = mamlib.generate_stanzas, mamlib.process_message;
-mamlib.store_time = store_time;
+local generate_stanzas, process_message, purge_messages =
+	mamlib.generate_stanzas, mamlib.process_message, mamlib.purge_messages;
 
 local session_stores = mamlib.session_stores;
 local storage = initialize_storage();
@@ -59,7 +59,7 @@ local function prefs_handler(event)
 	local bare_session = bare_sessions[jid_bare(origin.full_jid)];
 
 	if stanza.attr.type == "get" then
-		local reply = 
+		local reply = st.reply(stanza);
 		reply:add_child(get_prefs(bare_session.archiving));
 		return origin.send(reply);
 	else
@@ -67,6 +67,28 @@ local function prefs_handler(event)
 		local reply = set_prefs(stanza, bare_session.archiving);
 		return origin.send(reply);
 	end
+end
+
+local function purge_handler(event)
+	local origin, stanza = event.origin, event.stanza;
+	local purge = stanza:child_with_name("purge");
+	local bare_jid = jid_bare(origin.full_jid);
+	
+	local bare_session = bare_sessions[];
+	local logs = bare_session.archiving.logs;
+	
+	if mam_forbid_purge then
+		return origin.send(st.error_reply(stanza, "cancel", "not-allowed", "Purging message archives is not allowed"));
+	end
+	
+	local _id, _jid, _start, _end = purge:get_child_text("id"), purge:get_child_text("jid"), purge:get_child_text("start"), purge:get_child_text("end");
+	local vjid, vstart, vend = (_jid and jid_prep(_jid)), (_start and dt_parse(_start)), (_end and dt_parse(_end));
+	if (_start and not vstart) or (_end not vend) or (_jid and not vjid) then
+		return origin.send(st.error_reply(stanza, "modify", "bad-request", "Supplied parameters failed verification));
+	end
+	
+	purge_messages(logs, _id, vjid, vstart, vend);
+	module:log("debug", "%s purged Archives", bare_jid);
 end
 
 local function query_handler(event)
@@ -83,11 +105,11 @@ local function query_handler(event)
 
 	-- Validate attributes
 	local vstart, vend, vwith = (_start and dt_parse(_start)), (_end and dt_parse(_end)), (_with and jid_prep(_with));
-	if (_start and not vstart) or (_end not vend) then
+	if (_start and not vstart) or (_end and not vend) then
 		return origin.send(st.error_reply(stanza, "modify", "bad-request", "Supplied timestamp is invalid"));
 	end
 	_start, _end = vstart, vend;
-	if _with not vwith then
+	if _with and not vwith then
 		return origin.send(st.error_reply(stanza, "modify", "bad-request", "Supplied JID is invalid"));
 	end
 	_with = jid_bare(vwith);
@@ -129,7 +151,8 @@ module:hook("pre-message/bare", process_outbound_messages, 30);
 module:hook("message/full", process_inbound_messages, 30);
 module:hook("pre-message/full", process_outbound_messages, 30);
 
-module:hook("iq-set/self/"..xmlns..":prefs", prefs_handler);
+module:hook("iq/self/"..xmlns..":prefs", prefs_handler);
+module:hook("iq-set/self/"..xmlns..":purge", purge_handler);
 module:hook("iq-set/self/"..xmlns..":query", query_handler);
 
 module:hook_global("server-stopping", save_stores);
