@@ -119,7 +119,7 @@ end
 local function get_prefs(store)
 	local _prefs = store.prefs;
 
-	local stanza = st.stanza("prefs", { xmlns = xmlns_mam, default = _prefs.default });
+	local stanza = st.stanza("prefs", { xmlns = xmlns_mam, default = (not _prefs.default and "never") or _prefs.default });
 	local always = st.stanza("always");
 	local never = st.stanza("never");
 	for jid, choice in pairs(_prefs) do
