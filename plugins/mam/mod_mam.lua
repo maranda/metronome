@@ -83,7 +83,7 @@ local function purge_handler(event)
 	
 	local _id, _jid, _start, _end = purge:get_child_text("id"), purge:get_child_text("jid"), purge:get_child_text("start"), purge:get_child_text("end");
 	local vjid, vstart, vend = (_jid and jid_prep(_jid)), (_start and dt_parse(_start)), (_end and dt_parse(_end));
-	if (_start and not vstart) or (_end not vend) or (_jid and not vjid) then
+	if (_start and not vstart) or (_end and not vend) or (_jid and not vjid) then
 		return origin.send(st.error_reply(stanza, "modify", "bad-request", "Supplied parameters failed verification));
 	end
 	
