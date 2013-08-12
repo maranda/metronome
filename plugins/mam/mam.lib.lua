@@ -119,8 +119,8 @@ local function generate_stanzas(store, start, fin, with, max, qid)
 	
 	if start or fin or max then
 		query = st.stanza("query", { xmlns = xmlns });
-		query:tag("start"):text(dt(start or _start)):up(); end
-		query:tag("end"):text(dt(fin or _end)):up(); end
+		query:tag("start"):text(dt(start or _start)):up();
+		query:tag("end"):text(dt(fin or _end)):up();
 		if max then
 			query:tag("set", { xmlns = rsm_xmlns })
 				:tag("first", { index = 0 }):text(first):up()
