@@ -95,7 +95,7 @@ local function generate_stanzas(store, start, fin, with, max, qid)
 		
 		local add = true;
 		
-		if with and not (entry.from == with or entry.to == with) then
+		if with and not (jid_bare(entry.from) == with or jid_bare(entry.to) == with) then
 			add = false;
 		elseif (start and not fin) and not (timestamp >= start) then
 			add = false;
