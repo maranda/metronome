@@ -38,7 +38,7 @@ local storage = initialize_storage();
 -- Handlers
 
 local function initialize_session_store(event)
-	local user, host = event.session.username, event.session.host
+	local user, host = event.session.username, event.session.host;
 	local bare_jid = jid_join(user, host);
 	
 	local bare_session = bare_sessions[bare_jid];
@@ -46,6 +46,13 @@ local function initialize_session_store(event)
 		session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = false } };
 		bare_session.archiving = session_stores[bare_jid];
 	end	
+end
+
+local function save_session_store(event)
+	local user, host = event.session.username, event.session.host;
+	local bare_jid = jid_join(user, host);
+	local user_archive = session_stores[bare_jid];
+	storage:set(user, user_archive);
 end
 
 local function process_inbound_messages(event)
@@ -150,6 +157,7 @@ function module.reload(data)
 	if not data.storage then storage = initialize_storage(); end
 end
 
+module:hook("pre-resource-unbind", save_session_store);
 module:hook("resource-bind", initialize_session_store);
 
 module:hook("message/bare", process_inbound_messages, 30);
