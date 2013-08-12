@@ -15,7 +15,7 @@ local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
 local load_roster = rostermanager.load_roster;
-local ipairs, now, pairs, select, t_remove, = ipairs, os.time, pairs, select, table.remove;
+local ipairs, now, pairs, select, t_remove = ipairs, os.time, pairs, select, table.remove;
       
 local xmlns = "urn:xmpp:mam:0";
 local delay_xmlns = "urn:xmpp:delay";
