@@ -134,17 +134,21 @@ end
 
 local function set_prefs(stanza, store)
 	local _prefs = store.prefs;
-	local default = stanza.attr.default;
-	if default then
-		_prefs.default= default;
+	local prefs = stanza:child_with_name("prefs");
+	
+	local default = prefs.attr.default;
+	if default and default ~= "always" and default ~= "never" and default ~= "roster" then
+		return st.error_reply(stanza, "modify", "bad-request", "Default can be either: always, never or roster");
 	end
+	
+	if default then _prefs.default= default; end
 
-	local always = stanza:get_child("always");
+	local always = prefs:get_child("always");
 	if always then
 		for jid in always:childtags("jid") do _prefs[jid:get_text()] = true; end
 	end
 
-	local never = stanza:get_child("never");
+	local never = prefs:get_child("never");
 	if never then
 		for jid in never:childtags("jid") do _prefs[jid:get_text()] = false; end
 	end
