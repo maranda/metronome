@@ -21,6 +21,7 @@ local forward_xmlns = "urn:xmpp:forward:0";
 
 local store_time = module:get_option_number("mam_save_time", 300);
 local stores_cap = module:get_option_number("mam_stores_cap", 5000);
+local max_length = module:get_option_number("mam_message_max_length", 3000);
 
 local session_stores = {};
 local storage = {};
@@ -147,7 +148,12 @@ local function process_message(event, outbound)
 	local message, origin = event.stanza, event.origin;
 	if message.attr.type ~= "chat" and message.attr.type ~= "normal" then return; end
 	local body = message:child_with_name("body");
-	if not body then return; end
+	if not body then 
+		return; 
+	else
+		body = body:get_text();
+		if body:len() > max_length then return; end
+	end
 	
 	local from, to, bare_session, user;
 
@@ -171,7 +177,7 @@ local function process_message(event, outbound)
 	end
 
 	if archive and add_to_store(archiving, to) then
-		log_entry(archive, to, from, body:get_text());
+		log_entry(archive, to, from, body);
 		if not bare_session then storage:set(user, archive); end
 	else
 		return;
