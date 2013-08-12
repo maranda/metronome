@@ -166,8 +166,9 @@ local function process_message(event, outbound)
 	
 	local archive = bare_session and bare_session.archiving;
 	
-	if not archive then
-		archive = storage:get(user);
+	if not archive then -- assume user is offline
+		local offline_overcap = module:fire_event("message/offline/overcap", { node = user });
+		if not offline_overcap then archive = storage:get(user); end
 	end
 
 	if archive and add_to_store(archiving, to) then
