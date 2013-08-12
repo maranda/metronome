@@ -37,10 +37,11 @@ local function initialize_storage()
 end
 
 local function save_stores()
+	to_save = now();
 	for bare, store in pairs(session_stores) do
 		local user = jid_split(bare);
 		storage:set(user, store);
-	end
+	end	
 end
 
 local function log_entry(session_archive, to, from, id, body)
