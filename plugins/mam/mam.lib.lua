@@ -13,8 +13,7 @@ local jid_split = require "util.jid".split;
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
-local ipairs, next, now, pairs, ripairs, select, t_remove, tonumber, tostring =
-      ipairs, next, os.time, pairs, ripairs, select, table.remove, tonumber, tostring;
+local ipairs, now, pairs, select, t_remove, = ipairs, os.time, pairs, select, table.remove;
       
 local xmlns = "urn:xmpp:mam:0";
 local delay_xmlns = "urn:xmpp:delay";
