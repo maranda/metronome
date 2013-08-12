@@ -127,7 +127,7 @@ local function query_handler(event)
 	end
 	
 	local messages = generate_stanzas(archive, _start, _end, _with, max, qid);
-	for_, message in ipairs(message) do
+	for _, message in ipairs(messages) do
 		message.attr.to = origin.full_jid;
 		origin.send(message);
 	end
