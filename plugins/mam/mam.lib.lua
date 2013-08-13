@@ -177,7 +177,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		end
 	end
 	
-	query =  generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last,
+	query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last,
 						(_wcount ~= 0 and _wcount) or #logs, count - 1);
 	return stanzas, query;
 end
