@@ -15,6 +15,7 @@ local st = require "util.stanza";
 local jid_bare = require "util.jid".bare;
 local jid_join = require "util.jid".join;
 local jid_prep = require "util.jid".prep;
+local jid_split = require "util.jid".split;
 local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
 
 local xmlns = "urn:xmpp:mam:0";
@@ -149,6 +150,14 @@ local function query_handler(event)
 	return origin.send(reply);
 end
 
+function module.load()
+	-- initialize on all existing bare sessions.
+	for bare_jid, bare_session in pairs(bare_sessions) do
+		local user = jid_split(bare_jid);
+		session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = false } };
+		bare_session.archiving = session_stores[bare_jid];
+	end
+end
 function module.save() return { storage = storage, session_stores = session_stores } end
 function module.restore(data) 
 	mamlib.storage = data.storage;
