@@ -77,15 +77,15 @@ local function append_stanzas(stanzas, entry, qid)
 	stanzas[#stanzas + 1] = to_forward;
 end
 
-local function generate_query(stanzas, start, fin, set, first, last, count)
+local function generate_query(stanzas, start, fin, set, first, last, all, count)
 	local query = st.stanza("query", { xmlns = xmlns });
 	if start then query:tag("start"):text(dt(start)):up(); end
 	if fin then query:tag("end"):text(dt(fin)):up(); end
 	if set and #stanzas ~= 0 then
 		query:tag("set", { xmlns = rsm_xmlns })
 			:tag("first", { index = 0 }):text(first):up()
-			:tag("last"):text(last):up()
-			:tag("count"):text(tostring(#stanzas - (count - 1))):up();
+			:tag("last"):text(last or first):up()
+			:tag("count"):text(tostring(all - count)):up();
 	end
 	
 	return (((start or fin) or (set and #stanzas ~= 0)) and query) or nil;
@@ -105,7 +105,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		
 		if to_fetch <= 0 then to_fetch = false; end
 		for i, entry in ipairs(logs) do
-			if to_fetch and i >= to_fetch then
+			if to_fetch and i > to_fetch then
 				if count == 1 then 
 					first = entry.uid;
 					_start = entry.timestamp;
@@ -126,7 +126,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 			_start, _end = first_e.timestamp, last_e.timestamp;
 		end
 
-		query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last, count);
+		query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last, #logs, count - 1);
 		return stanzas, query;
 	end
 	
@@ -171,7 +171,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		end
 	end
 	
-	query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last, count);
+	query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last, #logs, count - 1);
 	return stanzas, query;
 end
 
