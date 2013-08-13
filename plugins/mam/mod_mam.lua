@@ -156,6 +156,13 @@ function module.restore(data)
 	storage, session_stores = mamlib.storage, mamlib.session_stores;
 	if not data.storage then storage = initialize_storage(); end
 end
+function module.unload()
+	save_stores();
+	-- remove all caches from bare_sessions.
+	for _, bare_session in pairs(bare_sessions) do
+		bare_session.archiving = nil;
+	end
+end
 
 module:hook("pre-resource-unbind", save_session_store);
 module:hook("resource-bind", initialize_session_store);
