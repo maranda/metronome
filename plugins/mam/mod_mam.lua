@@ -127,10 +127,11 @@ local function query_handler(event)
 	
 	-- Get RSM set
 	local rsm = query:get_child("set", rsm_xmlns);
-	local max = rsm and rsm:child_with_name("max"):get_text();
-	local after = rsm and rsm:child_with_name("after"):get_text();
-	local before = rsm and (rsm:child_with_name("before"):get_text() or (rsm:child_with_name("before") and true));
-	if (before and after) or (before == true and not max) then
+	local max = rsm and rsm:get_child_text("max");
+	local after = rsm and rsm:get_child_text("after");
+	local before = rsm and rsm:get_child_text("before");
+	before = (before == "" and true) or before;
+	if (before and after) or (before == true and not max) or max == "" or after == "" then
 		return origin.send(st.error_reply(stanza, "modify", "bad-request"));
 	end
 	max = max and tonumber(max);
