@@ -46,11 +46,13 @@ local function save_stores()
 	end	
 end
 
-local function log_entry(session_archive, to, from, id, body)
+local function log_entry(session_archive, to, bare_to, from, bare_from, id, body)
 	local uid = uuid();
 	local entry = {
 		from = from,
+		bare_from = bare_from,
 		to = to,
+		bare_to = bare_to,
 		id = id,
 		body = body,
 		timestamp = now(),
@@ -91,12 +93,27 @@ local function generate_query(stanzas, start, fin, set, first, last, all, count)
 	return (((start or fin) or (set and #stanzas ~= 0)) and query) or nil;
 end
 
+local function dont_add(entry, with, start, fin, timestamp)
+	if with and not (entry.bare_from == with or entry.bare_to == with) then
+		return true;
+	elseif (start and not fin) and not (timestamp >= start) then
+		return true;
+	elseif (fin and not start) and not (timestamp <= fin) then
+		return true;
+	elseif (start and fin) and not (timestamp >= start and timestamp <= fin) then
+		return true;
+	end
+	
+	return false;
+end
+
 local function generate_stanzas(store, start, fin, with, max, after, before, qid)
 	local logs = store.logs;
 	local stanzas = {};
 	local query;
 	
 	local count = 1;
+	local _wcount = 0;
 	local first, last, _after, _start, _end;
 	local _before = true;
 	
@@ -105,7 +122,8 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		
 		if to_fetch <= 0 then to_fetch = false; end
 		for i, entry in ipairs(logs) do
-			if to_fetch and i > to_fetch then
+			if with and (entry.bare_from == with or entry.bare_to == with) then _wcount = _wcount + 1; end
+			if to_fetch and i > to_fetch and not dont_add(entry, with, start, fin, timestamp) then
 				if count == 1 then 
 					first = entry.uid;
 					_start = entry.timestamp;
@@ -115,7 +133,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 				end
 				append_stanzas(stanzas, entry, qid);
 				count = count + 1;
-			elseif not to_fetch then
+			elseif not to_fetch and not dont_add(entry, with, start, fin, timestamp) then
 				append_stanzas(stanzas, entry, qid);
 				count = count + 1;
 			end
@@ -126,35 +144,25 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 			_start, _end = first_e.timestamp, last_e.timestamp;
 		end
 
-		query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last, #logs, count - 1);
+		query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last,
+							(_wcount ~= 0 and _wcount) or #logs, count - 1);
 		return stanzas, query;
 	end
 	
 	for _, entry in ipairs(logs) do
 		local timestamp = entry.timestamp;
 		local add = true;
+		
+		if with and (entry.bare_from == with or entry.bare_to == with) then _wcount = _wcount + 1; end
 		if after and not _after then
 			if entry.uid == after then _after = true; else add = false; end
 		elseif before then
 			if entry.uid == before then _before = false; end
-			if not _before then break; end
+			if not _before then add = false; end
 		end
-
-		if add then
-			if max and count ~= 1 and count > max then break; end
-			
-			if with and not (jid_bare(entry.from) == with or jid_bare(entry.to) == with) then
-				add = false;
-			elseif (start and not fin) and not (timestamp >= start) then
-				add = false;
-			elseif (fin and not start) and not (timestamp <= fin) then
-				add = false;
-			elseif (start and fin) and not (timestamp >= start and timestamp <= fin) then
-				add = false;
-			end
-		end
+		if add and max and count ~= 1 and count > max then add = false; end
 		
-		if add then
+		if add and not dont_add(entry, with, start, fin, timestamp) then
 			append_stanzas(stanzas, entry, qid);
 			if max then
 				if count == 1 then 
@@ -169,7 +177,8 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		end
 	end
 	
-	query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last, #logs, count - 1);
+	query =  generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last,
+						(_wcount ~= 0 and _wcount) or #logs, count - 1);
 	return stanzas, query;
 end
 
@@ -265,7 +274,7 @@ local function process_message(event, outbound)
 	end
 
 	if archive and add_to_store(archive, user, (outbound and bare_to) or bare_from) then
-		local id = log_entry(archive, to, from, message.attr.id, body);
+		local id = log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body);
 		if not bare_session then storage:set(user, archive); end
 		if not outbound then message:tag("archived", { jid = bare_to, id = id }):up(); end
 	else
