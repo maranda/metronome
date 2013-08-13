@@ -19,6 +19,7 @@ local ipairs, now, pairs, select, t_remove, tostring = ipairs, os.time, pairs, s
       
 local xmlns = "urn:xmpp:mam:0";
 local delay_xmlns = "urn:xmpp:delay";
+local e2e_xmlns = "http://www.xmpp.org/extensions/xep-0200.html#ns";
 local forward_xmlns = "urn:xmpp:forward:0";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
@@ -200,21 +201,18 @@ local function process_message(event, outbound)
 	else
 		body = body:get_text();
 		if body:len() > max_length then return; end
+		-- Drop OTR/E2E messages
+		if message:get_child("c", e2e_xmlns) or body:find("^%?OTR.*") then return; end
 	end
 	
-	local from, to, bare_session, user;
-	local bare_from, bare_to; 
-
+	local from, to = (message.attr.from or origin.full_jid), message.attr.to;
+	local bare_from, bare_to = jid_bare(from), jid_bare(to);
+	local bare_session, user;
+	
 	if outbound then
-		from = (message.attr.from or origin.full_jid);
-		to = message.attr.to;
-		bare_from = jid_bare(from);
 		bare_session = bare_sessions[bare_from];
 		user = jid_split(from);
 	else
-		from = message.attr.from;
-		to = message.attr.to;
-		bare_to = jid_bare(to);
 		bare_session = bare_sessions[bare_to];
 		user = jid_split(to);
 	end
