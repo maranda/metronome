@@ -128,6 +128,11 @@ local function query_handler(event)
 	-- Get RSM set
 	local rsm = query:get_child("set", rsm_xmlns);
 	local max = rsm and rsm:child_with_name("max"):get_text();
+	local after = rsm and rsm:child_with_name("after"):get_text();
+	local before = rsm and (rsm:child_with_name("before"):get_text() or (rsm:child_with_name("before") and true));
+	if (before and after) or (before == true and not max) then
+		return origin.send(st.error_reply(stanza, "modify", "bad-request"));
+	end
 	max = max and tonumber(max);
 	
 	local logs = archive.logs;
@@ -137,7 +142,7 @@ local function query_handler(event)
 		return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Max retrievable results' count is 100"));
 	end
 	
-	local messages, rq = generate_stanzas(archive, _start, _end, _with, max, qid);
+	local messages, rq = generate_stanzas(archive, _start, _end, _with, max, after, before, qid);
 	for _, message in ipairs(messages) do
 		message.attr.to = origin.full_jid;
 		origin.send(message);
