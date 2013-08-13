@@ -250,7 +250,7 @@ local function purge_messages(archive, id, jid, start, fin)
 	local logs = archive.logs;
 	if id then
 		for i, entry in ipairs(logs) do
-			if entry.id == id then t_remove(logs, i); break; end
+			if entry.uid == id then t_remove(logs, i); break; end
 		end
 	elseif jid or start or fin then
 		for i, entry in ipairs(logs) do
