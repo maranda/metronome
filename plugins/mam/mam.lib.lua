@@ -141,12 +141,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		end
 
 		if add then
-			if max and count ~= 1 and count > max then
-				break; 
-			elseif max and count == max then 
-				last = entry.uid;
-				_end = timestamp;
-			end
+			if max and count ~= 1 and count > max then break; end
 			
 			if with and not (jid_bare(entry.from) == with or jid_bare(entry.to) == with) then
 				add = false;
@@ -165,6 +160,9 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 				if count == 1 then 
 					first = entry.uid;
 					_start = timestamp;
+				elseif count == max then
+					last = entry.uid;
+					_end = entry.timestamp;
 				end
 				count = count + 1; 
 			end
