@@ -8,7 +8,6 @@
 -- This implements a limited, simplified set of XEP-313.
 
 local bare_sessions = metronome.bare_sessions;
-local module_host = module.host;
 
 local dt_parse = require "util.datetime".parse;
 local st = require "util.stanza";
