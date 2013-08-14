@@ -164,7 +164,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 			to_fetch = entry_index - (max or entry_index);
 			-- we clone the table upto index
 			to_process = {};
-			for i in 1, entry_index do to_process[i] = logs[i]; end
+			for i = 1, entry_index do to_process[i] = logs[i]; end
 			_entries_count = count_relevant_entries(to_process, with, start, fin);
 		end
 		
