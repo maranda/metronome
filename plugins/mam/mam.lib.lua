@@ -170,14 +170,16 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		
 		if to_fetch <= 0 then to_fetch = false; end
 		for i, entry in ipairs(to_process) do
+			local timestamp = entry.timestamp;
+			local uid = entry.uid
 			if to_fetch and i > to_fetch and 
 			   not dont_add(entry, with, start, fin, timestamp) then
 				if _at == 1 then 
-					first = entry.uid;
-					_start = entry.timestamp;
+					first = uid;
+					_start = timestamp;
 				elseif _at == max then
-					last = entry.uid;
-					_end = entry.timestamp;
+					last = uid;
+					_end = timestamp;
 				end
 				_at = _at + 1;
 				append_stanzas(stanzas, entry, qid);
@@ -208,16 +210,16 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 
 	for i, entry in ipairs(to_process or logs) do
 		local timestamp = entry.timestamp;
-		
+		local uid = entry.uid;
 		if not dont_add(entry, with, start, fin, timestamp) then
 			append_stanzas(stanzas, entry, qid);
 			if max then
 				if _at == 1 then 
-					first = entry.uid;
+					first = uid;
 					_start = timestamp;
 				elseif _at == max then
-					last = entry.uid;
-					_end = entry.timestamp;
+					last = uid;
+					_end = timestamp;
 				end
 				_at = _at + 1;
 			end
