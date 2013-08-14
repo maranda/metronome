@@ -189,7 +189,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 			if max and _at ~= 1 and _at > max then break; end
 		end
 		if not to_fetch and #stanzas ~= 0 then
-			local first_e, last_e = logs[1], logs[#logs];
+			local first_e, last_e = to_process[1], to_process[#to_process];
 			first, last = first_e.uid, last_e.uid;
 			_start, _end = first_e.timestamp, last_e.timestamp;
 		end
