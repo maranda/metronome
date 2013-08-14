@@ -8,6 +8,7 @@
 -- This implements a limited, simplified set of XEP-313.
 
 local bare_sessions = metronome.bare_sessions;
+local module_host = module.host;
 
 local dt_parse = require "util.datetime".parse;
 local st = require "util.stanza";
@@ -163,9 +164,11 @@ end
 function module.load()
 	-- initialize on all existing bare sessions.
 	for bare_jid, bare_session in pairs(bare_sessions) do
-		local user = jid_split(bare_jid);
-		session_stores[bare_jid] = storage:get(user) or { logs = {}, logs_index = {}, prefs = { default = "never" } };
-		bare_session.archiving = session_stores[bare_jid];
+		local user, host = jid_split(bare_jid);
+		if host == module_host then
+			session_stores[bare_jid] = storage:get(user) or { logs = {}, logs_index = {}, prefs = { default = "never" } };
+			bare_session.archiving = session_stores[bare_jid];
+		end
 	end
 end
 function module.save() return { storage = storage, session_stores = session_stores } end
@@ -178,8 +181,9 @@ end
 function module.unload()
 	save_stores();
 	-- remove all caches from bare_sessions.
-	for _, bare_session in pairs(bare_sessions) do
-		bare_session.archiving = nil;
+	for bare_jid, bare_session in pairs(bare_sessions) do
+		local user, host = jid_split(bare_jid)
+		if host == module_host then bare_session.archiving = nil; end
 	end
 end
 
