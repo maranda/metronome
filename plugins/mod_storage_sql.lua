@@ -119,7 +119,7 @@ local function create_table()
 			end
 		end
 	elseif params.driver ~= "SQLite3" then -- SQLite normally fails to prepare for existing table
-		module:log("warn", "Metronome was not able to automatically check/create the database table (%)",
+		module:log("warn", "Metronome was not able to automatically check/create the database table (%s)",
 			err or "unknown error");
 	end
 end
