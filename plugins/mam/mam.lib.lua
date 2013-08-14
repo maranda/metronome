@@ -153,13 +153,12 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 	
 	-- handle paging
 	if before then
-		index = create_index(logs);
-		
 		if before == true then
 			to_fetch = #logs - (max or #logs);
 			to_process = logs;
 			_entries_count = count_relevant_entries(logs, with, start, fin);
 		else
+			index = create_index(logs);
 			entry_index = index[before];
 			if not entry_index then return nil; end
 			to_fetch = entry_index - (max or entry_index);
@@ -198,7 +197,6 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 	return stanzas, query;
 	elseif after then
 		index = create_index(logs);
-				
 		entry_index = index[after];
 		if not entry_index then return nil; end
 		to_process = {};
