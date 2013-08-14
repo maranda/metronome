@@ -44,7 +44,7 @@ local function initialize_session_store(event)
 	
 	local bare_session = bare_sessions[bare_jid];
 	if bare_session and not bare_session.archiving then
-		session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = false } };
+		session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = "never" } };
 		bare_session.archiving = session_stores[bare_jid];
 	end	
 end
@@ -160,7 +160,7 @@ function module.load()
 	-- initialize on all existing bare sessions.
 	for bare_jid, bare_session in pairs(bare_sessions) do
 		local user = jid_split(bare_jid);
-		session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = false } };
+		session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = "never" } };
 		bare_session.archiving = session_stores[bare_jid];
 	end
 end
