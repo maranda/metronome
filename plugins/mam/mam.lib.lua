@@ -79,7 +79,7 @@ local function append_stanzas(stanzas, entry, qid)
 	stanzas[#stanzas + 1] = to_forward;
 end
 
-local function generate_query(stanzas, start, fin, set, first, last, all, count)
+local function generate_query(stanzas, start, fin, set, first, last, count)
 	local query = st.stanza("query", { xmlns = xmlns });
 	if start then query:tag("start"):text(dt(start)):up(); end
 	if fin then query:tag("end"):text(dt(fin)):up(); end
@@ -87,7 +87,7 @@ local function generate_query(stanzas, start, fin, set, first, last, all, count)
 		query:tag("set", { xmlns = rsm_xmlns })
 			:tag("first", { index = 0 }):text(first):up()
 			:tag("last"):text(last or first):up()
-			:tag("count"):text(tostring(all - count)):up();
+			:tag("count"):text(tostring(count)):up();
 	end
 	
 	return (((start or fin) or (set and #stanzas ~= 0)) and query) or nil;
@@ -107,36 +107,85 @@ local function dont_add(entry, with, start, fin, timestamp)
 	return false;
 end
 
+local function create_index(logs)
+	local index = {};
+	for i, entry in ipairs(logs) do index[entry.uid] = i; end
+	return index;
+end
+
+local function count_relevant_entries(logs, with, start, fin)
+	local count = 0;
+	for i, e in ipairs(logs) do
+		local timestamp = e.timestamp;
+		if with and (start or fin) then
+			if (entry.bare_from == with or entry.bare_to == with) and (start and not fin) and (timestamp >= start) then
+				count = count + 1;
+			elseif (entry.bare_from == with or entry.bare_to == with) and (fin and not start) and (timestamp <= fin) then
+				count = count + 1;
+			elseif (entry.bare_from == with or entry.bare_to == with) and (start and fin) and 
+				(timestamp >= start and timestamp <= fin) then
+				count = count + 1;
+			end
+		elseif (start or fin) then
+			if (start and not fin) and (timestamp >= start) then
+				count = count + 1;
+			elseif (fin and not start) and (timestamp <= fin) then
+				count = count + 1;
+			elseif (start and fin) and (timestamp >= start and timestamp <= fin) then
+				count = count + 1;
+			end
+		else
+			count = count + 1;
+		end
+	end
+	
+	return count;
+end
+
 local function generate_stanzas(store, start, fin, with, max, after, before, qid)
 	local logs = store.logs;
 	local stanzas = {};
 	local query;
 	
-	local count = 1;
-	local _wcount = 0;
-	local first, last, _after, _start, _end;
-	local _before = true;
+	local _at = 1;
+	local first, last, _after, _start, _end, _entries_count, _count;
+	local index, to_fetch, entry_index, to_process;
 	
-	if before == true then
-		local to_fetch = #logs - max;
+	-- handle paging
+	if before then
+		index = create_index(logs);
+		
+		if before == true then
+			to_fetch = #logs - (max or #logs);
+			to_process = logs;
+			_entries_count = count_relevant_entries(logs, with, start, fin);
+		else
+			entry_index = index[before];
+			if not entry_index then return nil; end
+			to_fetch = entry_index - (max or entry_index);
+			-- we clone the table upto index
+			to_process = {};
+			for i in 1, entry_index do to_process[i] = logs[i]; end
+			_entries_count = count_relevant_entries(to_process, with, start, fin);
+		end
 		
 		if to_fetch <= 0 then to_fetch = false; end
-		for i, entry in ipairs(logs) do
-			if with and (entry.bare_from == with or entry.bare_to == with) then _wcount = _wcount + 1; end
-			if to_fetch and i > to_fetch and not dont_add(entry, with, start, fin, timestamp) then
-				if count == 1 then 
+		for i, entry in ipairs(to_process) do
+			if to_fetch and i > to_fetch and 
+			   not dont_add(entry, with, start, fin, timestamp) then
+				if _at == 1 then 
 					first = entry.uid;
 					_start = entry.timestamp;
-				elseif count == max then
+				elseif _at == max then
 					last = entry.uid;
 					_end = entry.timestamp;
 				end
+				_at = _at + 1;
 				append_stanzas(stanzas, entry, qid);
-				count = count + 1;
 			elseif not to_fetch and not dont_add(entry, with, start, fin, timestamp) then
 				append_stanzas(stanzas, entry, qid);
-				count = count + 1;
 			end
+			if max and _at ~= 1 and _at > max then break; end
 		end
 		if not to_fetch and #stanzas ~= 0 then
 			local first_e, last_e = logs[1], logs[#logs];
@@ -144,41 +193,42 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 			_start, _end = first_e.timestamp, last_e.timestamp;
 		end
 
-		query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last,
-							(_wcount ~= 0 and _wcount) or #logs, count - 1);
-		return stanzas, query;
+	_count = max and _entries_count - max or 0;
+	query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last, (_count < 0 and 0) or _count);
+	return stanzas, query;
+	elseif after then
+		index = create_index(logs);
+				
+		entry_index = index[after];
+		if not entry_index then return nil; end
+		to_process = {};
+		-- we clone table from index
+		for i = entry_index, #logs do to_process[i] = logs[i]; end
 	end
 	
-	for _, entry in ipairs(logs) do
+	_entries_count = count_relevant_entries(to_process or logs, with, start, fin);
+
+	for i, entry in ipairs(to_process or logs) do
 		local timestamp = entry.timestamp;
-		local add = true;
 		
-		if with and (entry.bare_from == with or entry.bare_to == with) then _wcount = _wcount + 1; end
-		if after and not _after then
-			if entry.uid == after then _after = true; else add = false; end
-		elseif before then
-			if entry.uid == before then _before = false; end
-			if not _before then add = false; end
-		end
-		if add and max and count ~= 1 and count > max then add = false; end
-		
-		if add and not dont_add(entry, with, start, fin, timestamp) then
+		if not dont_add(entry, with, start, fin, timestamp) then
 			append_stanzas(stanzas, entry, qid);
 			if max then
-				if count == 1 then 
+				if _at == 1 then 
 					first = entry.uid;
 					_start = timestamp;
-				elseif count == max then
+				elseif _at == max then
 					last = entry.uid;
 					_end = entry.timestamp;
 				end
-				count = count + 1; 
+				_at = _at + 1;
 			end
 		end
+		if max and _at ~= 1 and _at > max then break; end
 	end
 	
-	query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last,
-						(_wcount ~= 0 and _wcount) or #logs, count - 1);
+	_count = max and _entries_count - max or 0;
+	query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last, (_count < 0 and 0) or _count);
 	return stanzas, query;
 end
 

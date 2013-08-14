@@ -43,7 +43,7 @@ local function initialize_session_store(event)
 	
 	local bare_session = bare_sessions[bare_jid];
 	if bare_session and not bare_session.archiving then
-		session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = "never" } };
+		session_stores[bare_jid] = storage:get(user) or { logs = {}, logs_index = {}, prefs = { default = "never" } };
 		bare_session.archiving = session_stores[bare_jid];
 	end	
 end
@@ -143,6 +143,11 @@ local function query_handler(event)
 	end
 	
 	local messages, rq = generate_stanzas(archive, _start, _end, _with, max, after, before, qid);
+	if not messages then -- RSM item-not-found
+		local rsm_error = st.error_reply(stanza, "cancel", "item-not-found");
+		rsm_error:add_child(query);
+		return origin.send(rsm_error);
+	end
 	for _, message in ipairs(messages) do
 		message.attr.to = origin.full_jid;
 		origin.send(message);
@@ -159,7 +164,7 @@ function module.load()
 	-- initialize on all existing bare sessions.
 	for bare_jid, bare_session in pairs(bare_sessions) do
 		local user = jid_split(bare_jid);
-		session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = "never" } };
+		session_stores[bare_jid] = storage:get(user) or { logs = {}, logs_index = {}, prefs = { default = "never" } };
 		bare_session.archiving = session_stores[bare_jid];
 	end
 end
