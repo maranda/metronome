@@ -164,7 +164,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 			entry_index = index[before];
 			if not entry_index then return nil; end
 			to_process = {};
-			local sub = (max and entry_index - max);
+			local sub = (max and entry_index - max) or 1;
 			-- we clone the table upto index
 			for i = (sub < 0 and 1) or sub, entry_index do to_process[#to_process + 1] = logs[i]; end
 			_entries_count = count_relevant_entries(to_process, with, start, fin);
