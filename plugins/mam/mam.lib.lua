@@ -108,7 +108,9 @@ local function dont_add(entry, with, start, fin, timestamp)
 end
 
 local function get_index(logs, index)
-	for i, entry in ipairs(logs) do if entry.uid == index then return i; end
+	for i, entry in ipairs(logs) do 
+		if entry.uid == index then return i; end
+	end
 end
 
 local function count_relevant_entries(logs, with, start, fin)
