@@ -17,7 +17,7 @@ local tostring = tostring;
 
 local secure_auth_only = module:get_option_boolean("c2s_require_encryption", false) or module:get_option_boolean("require_encryption", false);
 local allow_unencrypted_plain_auth = module:get_option_boolean("allow_unencrypted_plain_auth", false);
-local blacklisted_mechanisms = module:get_option_set("disallow_sasl_mechanism");
+local blacklisted_mechanisms = module:get_option_set("blacklist_sasl_mechanisms");
 
 local log = module._log;
 
