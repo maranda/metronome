@@ -17,6 +17,7 @@ local tostring = tostring;
 
 local secure_auth_only = module:get_option_boolean("c2s_require_encryption", false) or module:get_option_boolean("require_encryption", false);
 local allow_unencrypted_plain_auth = module:get_option_boolean("allow_unencrypted_plain_auth", false);
+local blacklisted_mechanisms = module:get_option_set("disallow_sasl_mechanism");
 
 local log = module._log;
 
@@ -254,7 +255,8 @@ module:hook("stream-features", function(event)
 		origin.sasl_handler = usermanager_get_sasl_handler(module.host, origin);
 		local mechanisms = st.stanza("mechanisms", mechanisms_attr);
 		for mechanism in pairs(origin.sasl_handler:mechanisms()) do
-			if mechanism ~= "PLAIN" or origin.secure or allow_unencrypted_plain_auth then
+			if (not blacklisted_mechanisms or not blacklisted_mechanisms:contains(mechanism)) and
+			   (mechanism ~= "PLAIN" or origin.secure or allow_unencrypted_plain_auth) then
 				mechanisms:tag("mechanism"):text(mechanism):up();
 			end
 		end
