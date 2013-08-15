@@ -396,7 +396,7 @@ function service:publish(node, actor, id, item, jid)
 	if item then
 		local author = (actor == true and self.config.normalize_jid(jid)) or self.config.normalize_jid(actor);
 		if data[id] then -- this is a dupe
-			if self:get_affiliation((actor == true and jid) or actor, node) ~= "owner" and (actor ~= true and author ~= data_author[id]) then
+			if self:get_affiliation(author, node) ~= "owner" and (actor ~= true and author ~= data_author[id]) then
 				return false, "forbidden";
 			end
 			for i, _id in ipairs(data_id) do 
