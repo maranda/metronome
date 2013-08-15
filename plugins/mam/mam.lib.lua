@@ -107,10 +107,8 @@ local function dont_add(entry, with, start, fin, timestamp)
 	return false;
 end
 
-local function create_index(logs)
-	local index = {};
-	for i, entry in ipairs(logs) do index[entry.uid] = i; end
-	return index;
+local function get_index(logs, index)
+	for i, entry in ipairs(logs) do if entry.uid == index then return i; end
 end
 
 local function count_relevant_entries(logs, with, start, fin)
@@ -149,19 +147,17 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 	
 	local _at = 1;
 	local first, last, _after, _start, _end, _entries_count, _count;
-	local index, entry_index, to_process;
+	local entry_index, to_process;
 	
 	-- handle paging
 	if before then
-		index = create_index(logs);
-		
 		if before == true then
 			to_process = {};
 			-- we clone the table from the end backward count
 			for i = (max > #logs and 1) or max, #logs do to_process[#to_process +1] = logs[i]; end
 			_entries_count = count_relevant_entries(to_process, with, start, fin);
 		else
-			entry_index = index[before];
+			entry_index = get_index(logs, before);
 			if not entry_index then return nil; end
 			to_process = {};
 			local sub = (max and entry_index - max) or 1;
@@ -187,8 +183,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last, (_count < 0 and 0) or _count);
 		return stanzas, query;
 	elseif after then
-		index = create_index(logs);
-		entry_index = index[after];
+		entry_index = get_index(logs, after);
 		if not entry_index then return nil; end
 		to_process = {};
 		-- we clone table from index
