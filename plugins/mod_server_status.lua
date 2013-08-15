@@ -6,11 +6,14 @@
 
 module:depends("http")
 
+local ipairs, pairs, next = ipairs, pairs, next
+
 local base_path = module:get_option_string("server_status_basepath", "/server-status/")
 local show_hosts = module:get_option_array("server_status_show_hosts", nil)
 local show_comps = module:get_option_array("server_status_show_comps", nil)
 local json_output = module:get_option_boolean("server_status_json", false)
 local metronome = metronome
+local pposix = pposix
 local hosts = metronome.hosts
 local NULL = {}
 
@@ -22,6 +25,11 @@ local response_table = {}
 response_table.header = '<?xml version="1.0" encoding="UTF-8" ?>'
 response_table.doc_header = '<document>'
 response_table.doc_closure = '</document>'
+response_table.memory = {
+		elem_header = '  <memory>', elem_closure = '  </memory>',
+		allocated = '    <allocated bytes="%d" />', 
+		used = '    <used bytes="%d" />'
+}
 response_table.stanzas = {
 		elem_header = '  <stanzas>', elem_closure = '  </stanzas>',
 		incoming = '    <incoming iq="%d" message="%d" presence="%d" />', 
@@ -67,10 +75,12 @@ local function count_sessions()
 	return count_c2s, count_bosh, count_s2sin, count_s2sout
 end
 
-local function forge_response_xml()
-	local hosts_s, components, stats, hosts_stats, comps_stats, sessions_stats = {}, {}, {}, {}, {}, {}
+local function t_builder(t,r) 
+	for _, bstring in ipairs(t) do r[#r+1] = bstring end
+end
 
-	local function t_builder(t,r) for _, bstring in ipairs(t) do r[#r+1] = bstring end end
+local function forge_response_xml()
+	local hosts_s, components, stats, mem_stats, hosts_stats, comps_stats, sessions_stats = {}, {}, {}, {}, {}, {}, {}
 
 	if show_hosts then t_builder(show_hosts, hosts_s) end
 	if show_comps then t_builder(show_comps, components) end
@@ -85,11 +95,21 @@ local function forge_response_xml()
 	sessions_stats[4] = sessions.s2s:format(count_s2sin, count_s2sout)
 	sessions_stats[5] = sessions.elem_closure
 	
+	-- if pposix is there build memory stats
+	if pposix then
+		local info = pposix.meminfo()
+		local mem = response_table.memory
+		mem_stats[1] = mem.elem_header
+		mem_stats[2] = mem.allocated:format(info.allocated)
+		mem_stats[3] = mem.used:format(info.used)
+		mem_stats[4] = mem.elem_closure
+	end
+	
 	-- build stanza stats if there
-	local stanzas = response_table.stanzas
 	local stanza_counter = metronome.stanza_counter
 
 	if stanza_counter then
+		local stanzas = response_table.stanzas
 		stats[1] = stanzas.elem_header
 		stats[2] = stanzas.incoming:format(stanza_counter.iq.incoming,
 						   stanza_counter.message.incoming,
@@ -101,9 +121,9 @@ local function forge_response_xml()
 	end
 
 	-- build hosts stats if there
-	local rt_hosts = response_table.hosts
 
 	if hosts_s[1] then
+		local rt_hosts = response_table.hosts
 		hosts_stats[1] = rt_hosts.elem_header
 		for _, name in ipairs(hosts_s) do 
 			hosts_stats[#hosts_stats+1] = rt_hosts.status:format(
@@ -113,9 +133,9 @@ local function forge_response_xml()
 	end
 
 	-- build components stats if there
-	local comps = response_table.comps
 
 	if components[1] then
+		local comps = response_table.comps
 		comps_stats[1] = comps.elem_header
 		for _, name in ipairs(components) do
 			local component = hosts[name] and hosts[name].modules.component
@@ -129,7 +149,8 @@ local function forge_response_xml()
 	-- build xml document
 	local result = {}
 	result[#result+1] = response_table.header; result[#result+1] = response_table.doc_header -- start
-	t_builder(stats, result); t_builder(sessions_stats, result); t_builder(hosts_stats, result); t_builder(comps_stats, result);
+	t_builder(stats, result) ; t_builder(mem_stats, result) ; t_builder(sessions_stats, result)
+	t_builder(hosts_stats, result) ; t_builder(comps_stats, result)
 	result[#result+1] = response_table.doc_closure -- end
 
 	return table.concat(result, "\n")
@@ -144,6 +165,12 @@ local function forge_response_json()
 
 	result.sessions = {} ; local sessions = result.sessions
 	sessions.bosh = count_bosh ; sessions.c2s = count_c2s ; sessions.s2s = { incoming = count_s2sin, outgoing = count_s2sout }
+	
+	if pposix then
+		local info = pposix.meminfo()
+		result.memory = {} ; local memory = result.memory
+		memory.allocated = { bytes = info.allocated } ; memory.used = { bytes = info.used }
+	end
 
 	if show_hosts then
 		result.hosts = {}
