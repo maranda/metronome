@@ -385,45 +385,48 @@ function service:publish(node, actor, id, item, jid)
 		return false, "forbidden";
 	end
 
+	local data, data_id, data_author, config, subscribers = 
+		node_obj.data, node_obj.data_id, node_obj.data_author, node_obj.config, node_obj.subscribers;
+
 	if node_obj.delayed then
 		node_obj.data = deserialize_data(node_obj.data);
 		node_obj.delayed = nil;
 	end
 
 	if item then
-		node_obj.data[id] = item;
-		table.insert(node_obj.data_id, id);
-		node_obj.data_author[id] = (actor == true and self.config.normalize_jid(jid)) or self.config.normalize_jid(actor);
+		data[id] = item;
+		table.insert(data_id, id);
+		data_author[id] = (actor == true and self.config.normalize_jid(jid)) or self.config.normalize_jid(actor);
 
 		-- If max items ~= 0, discard exceeding older items
-		if node_obj.config.max_items and node_obj.config.max_items ~= 0 then
-			if #node_obj.data_id > node_obj.config.max_items then
-				local subtract = (#node_obj.data_id - node_obj.config.max_items <= 0) and
-						 (node_obj.config.max_items + (#node_obj.data_id - node_obj.config.max_items)) or
-						 #node_obj.data_id - node_obj.config.max_items;
-				for entry, i_id in ipairs(node_obj.data_id) do
+		if config.max_items and config.max_items ~= 0 then
+			if #data_id > config.max_items then
+				local subtract = (#data_id - config.max_items <= 0) and
+						 (config.max_items + (#data_id - config.max_items)) or
+						 #data_id - config.max_items;
+				for entry, i_id in ipairs(data_id) do
 					if entry <= subtract then
 						if id ~= i_id then -- check for id dupes
-							node_obj.data[i_id] = nil;
-							node_obj.data_author[i_id] = nil;
+							data[i_id] = nil;
+							data_author[i_id] = nil;
 						end
-						table.remove(node_obj.data_id, entry);
+						table.remove(data_id, entry);
 					end
 				end
 			end
 		end
 	end
 
-	if (node_obj.config.deliver_notifications or node_obj.config.deliver_notifications == nil) and
-	   (node_obj.config.deliver_payloads or node_obj.config.deliver_payloads == nil) then
-		self:broadcaster(node, node_obj.subscribers, item);
-	elseif (node_obj.config.deliver_notifications or node_obj.config.deliver_notifications == nil) then
+	if (config.deliver_notifications or config.deliver_notifications == nil) and
+	   (config.deliver_payloads or config.deliver_payloads == nil) then
+		self:broadcaster(node, subscribers, item);
+	elseif (config.deliver_notifications or config.deliver_notifications == nil) then
 		local item_copy = item and st.clone(item);
 		if item_copy then
 			for i=1,#item_copy do item_copy[i] = nil end -- reset tags;
 			item_copy.attr.xmlns = nil;
 		end
-		self:broadcaster(node, node_obj.subscribers, item_copy);
+		self:broadcaster(node, subscribers, item_copy);
 	end
 	self:save_node(node);	
 	return true;
@@ -460,29 +463,40 @@ function service:retract(node, actor, id, retract)
 		if not node_obj.data[id] then return false, "item-not-found"; end
 	end		
 
-	local open_publish = node_obj and node_obj.config and 
-			     node_obj.config.publish_model == "open" and true or false;
+	local affiliation, config, data, data_id, data_author, subscribers =
+		node_obj.affiliations, node_obj.config, node_obj.data, node_obj.data_id, 
+		node_obj.data_author, node_obj.subscribers;
+
+	local open_publish = node_obj and config and config.publish_model == "open" and true or false;
 
 	if not open_publish and not self:may(node, actor, "retract") then
 		return false, "forbidden";
 	end
 
-	local normalize_jid = self.config.normalize_jid;
-	if actor ~= true and node_obj.affiliations[normalize_jid(actor)] == "publisher" then
-		if node_obj.data_author[id] == normalize_jid(actor) then
+	local normalize_jid = config.normalize_jid;
+	if actor ~= true and affiliations[normalize_jid(actor)] == "publisher" then
+		if data_author[id] == normalize_jid(actor) then
 			return false, "forbidden";
 		end
 	end
 
-	node_obj.data[id] = nil;
-	node_obj.data_author[id] = nil;
-	for index, value in ipairs(node_obj.data_id) do
-		if value == id then table.remove(node_obj.data_id, index); end
+	data[id] = nil;
+	data_author[id] = nil;
+	for index, value in ipairs(data_id) do
+		if value == id then table.remove(data_id, index); end
 	end
 
-	if retract then	self:broadcaster(node, node_obj.subscribers, retract); end
+	if retract then self:broadcaster(node, subscribers, retract); end
 	self:save_node(node);
 	return true;
+end
+
+local function calculate_items_tosend(data_id, max)
+	local _data_id = {};
+	if max > #data_id then max = #data_id end
+	if max == 0 then return data_id end
+	for i = 1, max do table.insert(_data_id, data_id[#data_id - (i - 1)]) end
+	return _data_id;
 end
 
 function service:get_items(node, actor, id, max)
@@ -495,15 +509,18 @@ function service:get_items(node, actor, id, max)
 		node_obj.data = deserialize_data(node_obj.data);
 		node_obj.delayed = nil;
 	end
+	
+	local affiliations, config, data, data_id =
+		node_obj.affiliations, node_obj.config, node_obj.data, node_obj.data_id;
 
 	if not self:may(node, actor, "get_items") then
 		return false, "forbidden";
 	end
 
 	if actor ~= true
-	   and node_obj.config.access_model == "whitelist"
+	   and config.access_model == "whitelist"
 	   and self:get_affiliation(actor, node, action) ~= "owner" then
-		local is_whitelisted = node_obj.affiliations[actor] ~= nil and true;
+		local is_whitelisted = affiliations[actor] ~= nil and true;
 		if cap == "subscribe" and not is_whitelisted then return false, "forbidden"; end
 	end
 
@@ -511,31 +528,23 @@ function service:get_items(node, actor, id, max)
 		return false, "bad-request";
 	end
 
-	local function calculate_items_tosend(data_id, max)
-		local _data_id = {};
-		if max > #data_id then max = #data_id end
-		if max == 0 then return data_id end
-		for i = 1, max do table.insert(_data_id, data_id[#data_id - (i - 1)]) end
-		return _data_id;
-	end
-
 	local _data_id;
 	if id then -- Restrict results to a single specific item
-		return true, { [id] = node_obj.data[id] }, { [1] = id };
+		return true, { [id] = data[id] }, { [1] = id };
 	else
-		if node_obj.config.deliver_payloads or node_obj.config.deliver_payloads == nil then
-			if max then _data_id = calculate_items_tosend(node_obj.data_id, max); end	
-			return true, node_obj.data, _data_id or node_obj.data_id;
+		if config.deliver_payloads or config.deliver_payloads == nil then
+			if max then _data_id = calculate_items_tosend(data_id, max); end	
+			return true, data, _data_id or data_id;
 		else
 			local data_copy = {};
-			for id, stanza in pairs(node_obj.data) do -- reset objects tags
+			for id, stanza in pairs(data) do -- reset objects tags
 				local _stanza = st.clone(stanza);
 				for i=1,#_stanza do _stanza[i] = nil end
 				_stanza.attr.xmlns = nil;
 				data_copy[id] = _stanza;
 			end
-			if max then _data_id = calculate_items_tosend(node_obj.data_id, max); end
-			return true, data_copy, _data_id or node_obj.data_id;
+			if max then _data_id = calculate_items_tosend(data_id, max); end
+			return true, data_copy, _data_id or data_id;
 		end
 	end
 end
