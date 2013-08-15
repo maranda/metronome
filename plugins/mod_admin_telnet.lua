@@ -235,6 +235,7 @@ function commands.help(session, data)
 		print [[user:password(jid, password) - Set the password for the specified user account]]
 		print [[user:delete(jid) - Permanently remove the specified user account]]
 	elseif section == "server" then
+		print [[server:meminfo() - Show the server's memory usage]]
 		print [[server:version() - Show the server's version number]]
 		print [[server:uptime() - Show how long the server has been running]]
 		print [[server:shutdown(reason) - Shut down the server, with an optional reason to be broadcast to all connections]]
@@ -262,6 +263,17 @@ end
 -- Anything in def_env will be accessible within the session as a global variable
 
 def_env.server = {};
+
+function def_env.server:meminfo()
+	local info = pposix and pposix.meminfo();
+	if not info then -- fallback to GC count
+		return true, string.format("Posix library unavailable reporting only lua memory usage: %d bytes",
+							collectgarbage("count")*1024);
+	end
+	
+	return true, string.format("Used: %d bytes, Allocated: %d bytes, Unused: %d bytes",
+						info.used, info.allocated, info.unused);
+end
 
 function def_env.server:version()
 	return true, tostring(metronome.version or "unknown");
