@@ -394,9 +394,19 @@ function service:publish(node, actor, id, item, jid)
 	end
 
 	if item then
+		local author = (actor == true and self.config.normalize_jid(jid)) or self.config.normalize_jid(actor);
+		if data[id] then -- this is a dupe
+			if self:get_affiliation(actor, node) ~= "owner" and (actor ~= true and author ~= data_author[id]) then
+				return false, "forbidden";
+			end
+			for i, _id in ipairs(data_id) do 
+				if _id == id then table.remove(data_id, i); end
+			end
+		end
+				
 		data[id] = item;
 		table.insert(data_id, id);
-		data_author[id] = (actor == true and self.config.normalize_jid(jid)) or self.config.normalize_jid(actor);
+		data_author[id] = author;
 
 		-- If max items ~= 0, discard exceeding older items
 		if config.max_items and config.max_items ~= 0 then
@@ -404,13 +414,11 @@ function service:publish(node, actor, id, item, jid)
 				local subtract = (#data_id - config.max_items <= 0) and
 						 (config.max_items + (#data_id - config.max_items)) or
 						 #data_id - config.max_items;
-				for entry, i_id in ipairs(data_id) do
+				for entry, _id in ipairs(data_id) do
 					if entry <= subtract then
-						if id ~= i_id then -- check for id dupes
-							data[i_id] = nil;
-							data_author[i_id] = nil;
-						end
+						data[_id] = nil;
 						table.remove(data_id, entry);
+						data_author[_id] = nil;
 					end
 				end
 			end
