@@ -481,7 +481,7 @@ function service:retract(node, actor, id, retract)
 		return false, "forbidden";
 	end
 
-	local normalize_jid = config.normalize_jid;
+	local normalize_jid = self.config.normalize_jid;
 	if actor ~= true and affiliations[normalize_jid(actor)] == "publisher" then
 		if data_author[id] == normalize_jid(actor) then
 			return false, "forbidden";
