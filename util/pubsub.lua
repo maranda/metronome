@@ -471,7 +471,7 @@ function service:retract(node, actor, id, retract)
 		if not node_obj.data[id] then return false, "item-not-found"; end
 	end		
 
-	local affiliation, config, data, data_id, data_author, subscribers =
+	local affiliations, config, data, data_id, data_author, subscribers =
 		node_obj.affiliations, node_obj.config, node_obj.data, node_obj.data_id, 
 		node_obj.data_author, node_obj.subscribers;
 
