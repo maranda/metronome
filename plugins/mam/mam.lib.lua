@@ -320,7 +320,8 @@ end
 
 local function pop_entry(logs, i, jid)
 	if jid then
-		if logs[i].jid == jid then t_remove(logs, i); end
+		local entry = logs[i];
+		if (entry.bare_from == jid) or (entry.bare_to == jid) then t_remove(logs, i); end
 	else
 		t_remove(logs, i);
 	end
