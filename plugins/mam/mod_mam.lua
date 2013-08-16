@@ -5,7 +5,7 @@
 -- information about copyright and licensing.
 
 -- Message Archiving Management for Metronome,
--- This implements a limited, simplified set of XEP-313.
+-- This implements XEP-313.
 
 local bare_sessions = metronome.bare_sessions;
 local module_host = module.host;
