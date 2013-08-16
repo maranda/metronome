@@ -259,7 +259,7 @@ local function set_prefs(stanza, store)
 		return st.error_reply(stanza, "modify", "bad-request", "Default can be either: always, never or roster");
 	end
 	
-	if default then _prefs.default= default; end
+	if default then _prefs.default = default; end
 
 	local always = prefs:get_child("always");
 	if always then
