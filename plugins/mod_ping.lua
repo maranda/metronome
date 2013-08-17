@@ -8,14 +8,13 @@ local st = require "util.stanza";
 
 module:add_feature("urn:xmpp:ping");
 
-local function ping_handler(event)
-	if event.stanza.attr.type == "get" then
-		event.origin.send(st.reply(event.stanza));
-		return true;
-	end
-end
-
-module:hook("iq/host/urn:xmpp:ping:ping", ping_handler);
+module:hook("iq/bare/urn:xmpp:ping:ping", function(event)
+	return event.origin.send(st.error_reply(event.stanza, "cancel", "service-unavailable"));
+end);
+module:hook("iq/host/urn:xmpp:ping:ping", function(event)
+	local origin, stanza = event.origin, event.stanza;
+	if stanza.attr.type == "get" then return origin.send(st.reply(stanza)); end
+end);
 
 -- Ad-hoc command
 
