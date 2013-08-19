@@ -73,7 +73,7 @@ local function prefs_handler(event)
 		reply:add_child(get_prefs(bare_session.archiving));
 		return origin.send(reply);
 	else
-		local _prefs = stanza:get_child("prefs", xmlns);
+		local _prefs = stanza.tags[1];
 		local reply = set_prefs(stanza, bare_session.archiving);
 		return origin.send(reply);
 	end
@@ -81,7 +81,7 @@ end
 
 local function purge_handler(event)
 	local origin, stanza = event.origin, event.stanza;
-	local purge = stanza:child_with_name("purge");
+	local purge = stanza.tags[1];
 	local bare_jid = jid_bare(origin.full_jid);
 	
 	local bare_session = bare_sessions[bare_jid];
@@ -104,7 +104,7 @@ end
 
 local function query_handler(event)
 	local origin, stanza = event.origin, event.stanza;
-	local query = stanza:child_with_name("query");
+	local query = stanza.tags[1];
 	local qid = query.attr.queryid;
 	
 	local bare_session = bare_sessions[jid_bare(origin.full_jid)];
