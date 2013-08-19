@@ -22,7 +22,7 @@ module:hook("iq-set/self/urn:xmpp:sift:2:sift", function(event)
 	local iq = sift:child_with_name("iq");
 
 	if message or iq then
-		return session.send(st.error_reply(stanza, "cancel", "feature-not-implemented", "Only sifting presences is currently supported");
+		return session.send(st.error_reply(stanza, "cancel", "feature-not-implemented", "Only sifting presences is currently supported"));
 	elseif #sift.tags == 0 then
 		session.presence_block = nil;
 		session.to_block = nil;
@@ -30,7 +30,7 @@ module:hook("iq-set/self/urn:xmpp:sift:2:sift", function(event)
 	end
 	
 	if #presence.tags ~= 0 then
-		return session.send(st.error_reply(stanza, "cancel", "feature-not-implemented", "Only blocking all presences is supported not granular filtering");
+		return session.send(st.error_reply(stanza, "cancel", "feature-not-implemented", "Only blocking all presences is supported not granular filtering"));
 	else
 		session.presence_block = true;
 		session.to_block = {};
