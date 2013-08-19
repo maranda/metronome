@@ -372,7 +372,11 @@ module:hook("presence/bare", function(data)
 		if user then
 			for _, session in pairs(user.sessions) do
 				if session.presence then -- only send to available resources
-					session.send(stanza);
+					if session.to_block and session.to_block[stanza] then -- block it
+						session.to_block[stanza] = nil;
+					else
+						session.send(stanza);
+					end
 				end
 			end
 		end -- no resources not online, discard
