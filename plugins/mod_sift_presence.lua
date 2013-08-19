@@ -40,9 +40,8 @@ end);
 
 module:hook("presence/bare", function(event)
 	local stanza = event.stanza;
-	if stanza.attr.type == "probe" then -- do not drop probes, these will never reach the client
-		return;
-	end
+	local t = stanza.attr.type;
+	if not (t == nil or t == "unavailable") then return; end
 
 	local to_bare = bare_sessions[stanza.attr.to];
 	if not to_bare then
@@ -56,6 +55,9 @@ end, 100);
 
 module:hook("presence/full", function(event)
 	local stanza = event.stanza;
+	local t = stanza.attr.type;
+	if not (t == nil or t == "unavailable") then return; end
+	
 	local to_full = full_sessions[stanza.attr.to];
 	if to_full and to_full.presence_block then return true; end
 end, 100);
