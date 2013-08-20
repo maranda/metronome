@@ -21,6 +21,7 @@ local xmlns = "urn:xmpp:mam:0";
 local delay_xmlns = "urn:xmpp:delay";
 local e2e_xmlns = "http://www.xmpp.org/extensions/xep-0200.html#ns";
 local forward_xmlns = "urn:xmpp:forward:0";
+local hints_xmlns = "urn:xmpp:hints";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
 local store_time = module:get_option_number("mam_save_time", 300);
@@ -287,8 +288,11 @@ local function process_message(event, outbound)
 	else
 		body = body:get_text();
 		if body:len() > max_length then return; end
-		-- Drop OTR/E2E messages
-		if message:get_child("c", e2e_xmlns) or body:find("^%?OTR.*") then return; end
+		if message:get_child("no-store", hints_xmlns) or message:get_child("no-permanent-storage", hints_xmlns) then
+			return;
+		end
+		-- COMPAT, Drop OTR/E2E messages for clients not implementing XEP-334
+		if message:get_child("c", e2e_xmlns) or body:match("^%?OTR%:[^%s]*%.$") then return; end
 	end
 	
 	local from, to = (message.attr.from or origin.full_jid), message.attr.to;
