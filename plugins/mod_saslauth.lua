@@ -3,6 +3,9 @@
 -- This file is part of the Metronome XMPP server and is released under the
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
+--
+-- As per the sublicensing clause, this file is also MIT/X11 Licensed.
+-- ** Copyright (c) 2009-2011, Kim Alvefur, Matthew Wild, Nick Thomas, Paul Aurich, Waqas Hussain
 
 local st = require "util.stanza";
 local sm_bind_resource = require "core.sessionmanager".bind_resource;
