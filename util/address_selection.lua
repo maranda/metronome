@@ -7,13 +7,8 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2013, Florian Zeitz (rfc6724.lua)
 
-local ip_commonPrefixLength = require"util.ip".commonPrefixLength
-local new_ip = require"util.ip".new_ip;
-
-local function commonPrefixLength(ipA, ipB)
-	local len = ip_commonPrefixLength(ipA, ipB);
-	return len < 64 and len or 64;
-end
+local match_prefix = require"util.ip".match_prefix;
+local compare_sources = require"util.ip".compare_sources;
 
 local function t_sort(t, comp)
 	for i = 1, (#t - 1) do
@@ -27,45 +22,7 @@ local function t_sort(t, comp)
 end
 
 local function source(dest, candidates)
-	local function comp(ipA, ipB)
-		-- Rule 1: Prefer same address
-		if dest == ipA then
-			return true;
-		elseif dest == ipB then
-			return false;
-		end
-
-		-- Rule 2: Prefer appropriate scope
-		if ipA.scope < ipB.scope then
-			if ipA.scope < dest.scope then
-				return false;
-			else
-				return true;
-			end
-		elseif ipA.scope > ipB.scope then
-			if ipB.scope < dest.scope then
-				return true;
-			else
-				return false;
-			end
-		end
-
-		-- Rule 6: Prefer matching label
-		if ipA.label == dest.label and ipB.label ~= dest.label then
-			return true;
-		elseif ipB.label == dest.label and ipA.label ~= dest.label then
-			return false;
-		end
-
-		-- Rule 8: Use longest matching prefix
-		if commonPrefixLength(ipA, dest) > commonPrefixLength(ipB, dest) then
-			return true;
-		else
-			return false;
-		end
-	end
-
-	t_sort(candidates, comp);
+	t_sort(candidates, compare_sources);
 	return candidates[1];
 end
 
@@ -103,9 +60,9 @@ local function destination(candidates, sources)
 		end
 
 		-- Rule 9: Use longest matching prefix
-		if commonPrefixLength(ipA, ipAsource) > commonPrefixLength(ipB, ipBsource) then
+		if match_prefix(ipA, ipAsource) > match_prefix(ipB, ipBsource) then
 			return true;
-		elseif commonPrefixLength(ipA, ipAsource) < commonPrefixLength(ipB, ipBsource) then
+		elseif match_prefix(ipA, ipAsource) < match_prefix(ipB, ipBsource) then
 			return false;
 		end
 
@@ -120,5 +77,4 @@ local function destination(candidates, sources)
 	return candidates;
 end
 
-return {source = source,
-	destination = destination};
+return { source = source, destination = destination };

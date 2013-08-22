@@ -64,6 +64,11 @@ local function commonPrefixLength(ipA, ipB)
 	return 128;
 end
 
+local function match_prefix(ipA, ipB)
+	local len = commonPrefixLength(ipA, ipB);
+	return len < 64 and len or 64;
+end
+
 local function v4scope(ip)
 	local fields = {};
 	ip:gsub("([^.]*).?", function (c) fields[#fields + 1] = tonumber(c) end);
@@ -154,6 +159,46 @@ local function toV4mapped(ip)
 	return new_ip(ret, "IPv6");
 end
 
+local function compare_source(ipA, ipB)
+	-- Rule 1: Prefer same address
+	if dest == ipA then
+		return true;
+	elseif dest == ipB then
+		return false;
+	end
+
+	-- Rule 2: Prefer appropriate scope
+	if ipA.scope < ipB.scope then
+		if ipA.scope < dest.scope then
+			return false;
+		else
+			return true;
+		end
+	elseif ipA.scope > ipB.scope then
+		if ipB.scope < dest.scope then
+			return true;
+		else
+			return false;
+		end
+	end
+
+	-- Rule 6: Prefer matching label
+	if ipA.label == dest.label and ipB.label ~= dest.label then
+		return true;
+	elseif ipB.label == dest.label and ipA.label ~= dest.label then
+		return false;
+	end
+
+	-- Rule 8: Use longest matching prefix
+	if match_prefix(ipA, dest) > match_prefix(ipB, dest) then
+		return true;
+	else
+		return false;
+	end
+end
+
+-- Methods
+
 function ip_methods:toV4mapped()
 	if self.proto ~= "IPv4" then return nil, "No IPv4 address" end
 	local value = toV4mapped(self.addr);
@@ -194,5 +239,8 @@ function ip_methods:scope()
 	return value;
 end
 
-return {new_ip = new_ip,
-	commonPrefixLength = commonPrefixLength};
+return {
+	new_ip = new_ip,
+	compare_source = compare_source,
+	match_prefix = match_prefix
+};
