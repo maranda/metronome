@@ -79,6 +79,13 @@ local function connect()
 		module:log("debug", "Successfully connected to database");
 		dbh:autocommit(false); -- don't commit automatically
 		connection = dbh;
+		if params.driver == "MySQL" then
+			local stmt;
+			stmt = connection:prepare("SET collation_connection = utf8_general_ci;"); stmt:execute();
+			stmt = connection:prepare("SET collation_server = utf8_general_ci;"); stmt:execute();
+			stmt = connection:prepare("SET NAMES utf8;"); stmt:execute(); 
+			connection:commit();
+		end
 
 		connections[dburi] = dbh;
 	end
