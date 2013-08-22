@@ -93,7 +93,7 @@ local function create_table()
 	if params.driver == "PostgreSQL" then
 		create_sql = create_sql:gsub("`", "\"");
 	elseif params.driver == "MySQL" then
-		create_sql = create_sql:gsub("`value` TEXT", "`value` MEDIUMTEXT");
+		create_sql = create_sql:gsub("`value` TEXT", "`value` LONGTEXT");
 	end
 	
 	local stmt, err = connection:prepare(create_sql);
