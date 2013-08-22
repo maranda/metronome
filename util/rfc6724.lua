@@ -5,10 +5,15 @@
 -- information about copyright and licensing.
 --
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
--- ** Copyright (c) 2011-2012, Florian Zeitz, Kim Alvefur
+-- ** Copyright (c) 2013, Florian Zeitz (rfc6724.lua)
 
-local commonPrefixLength = require"util.ip".commonPrefixLength
+local ip_commonPrefixLength = require"util.ip".commonPrefixLength
 local new_ip = require"util.ip".new_ip;
+
+local function commonPrefixLength(ipA, ipB)
+	local len = ip_commonPrefixLength(ipA, ipB);
+	return len < 64 and len or 64;
+end
 
 local function t_sort(t, comp)
 	for i = 1, (#t - 1) do
@@ -45,12 +50,6 @@ local function source(dest, candidates)
 			end
 		end
 
-		-- Rule 3: Avoid deprecated addresses
-		-- XXX: No way to determine this
-		-- Rule 4: Prefer home addresses
-		-- XXX: Mobility Address related, no way to determine this
-		-- Rule 5: Prefer outgoing interface
-		-- XXX: Interface to address relation. No way to determine this
 		-- Rule 6: Prefer matching label
 		if ipA.label == dest.label and ipB.label ~= dest.label then
 			return true;
@@ -58,8 +57,6 @@ local function source(dest, candidates)
 			return false;
 		end
 
-		-- Rule 7: Prefer public addresses (over temporary ones)
-		-- XXX: No way to determine this
 		-- Rule 8: Use longest matching prefix
 		if commonPrefixLength(ipA, dest) > commonPrefixLength(ipB, dest) then
 			return true;
@@ -77,8 +74,6 @@ local function destination(candidates, sources)
 	local function comp(ipA, ipB)
 		local ipAsource = sourceAddrs[ipA];
 		local ipBsource = sourceAddrs[ipB];
-		-- Rule 1: Avoid unusable destinations
-		-- XXX: No such information
 		-- Rule 2: Prefer matching scope
 		if ipA.scope == ipAsource.scope and ipB.scope ~= ipBsource.scope then
 			return true;
@@ -86,10 +81,6 @@ local function destination(candidates, sources)
 			return false;
 		end
 
-		-- Rule 3: Avoid deprecated addresses
-		-- XXX: No way to determine this
-		-- Rule 4: Prefer home addresses
-		-- XXX: Mobility Address related, no way to determine this
 		-- Rule 5: Prefer matching label
 		if ipAsource.label == ipA.label and ipBsource.label ~= ipB.label then
 			return true;
@@ -104,8 +95,6 @@ local function destination(candidates, sources)
 			return false;
 		end
 
-		-- Rule 7: Prefer native transport
-		-- XXX: No way to determine this
 		-- Rule 8: Prefer smaller scope
 		if ipA.scope < ipB.scope then
 			return true;
