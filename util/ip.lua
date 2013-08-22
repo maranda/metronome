@@ -159,7 +159,7 @@ local function toV4mapped(ip)
 	return new_ip(ret, "IPv6");
 end
 
-local function compare_source(ipA, ipB)
+local function compare_sources(ipA, ipB)
 	-- Rule 1: Prefer same address
 	if dest == ipA then
 		return true;
@@ -241,6 +241,6 @@ end
 
 return {
 	new_ip = new_ip,
-	compare_source = compare_source,
+	compare_sources = compare_sources,
 	match_prefix = match_prefix
 };
