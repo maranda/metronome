@@ -74,7 +74,9 @@ function log_if_needed(e)
 				return;
 			end
 			
-			if stanza.name == "presence" and stanza.attr.type == nil then
+			if stanza.name == "message" and not stanza:child_with_name("body") then
+				return;
+			elseif stanza.name == "presence" and stanza.attr.type == nil then
 				muc_from = to_room;
 				if room._occupants and room._occupants[to_room] then
 					already_joined = true;
