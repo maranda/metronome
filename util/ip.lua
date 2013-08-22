@@ -159,7 +159,49 @@ local function toV4mapped(ip)
 	return new_ip(ret, "IPv6");
 end
 
-local function compare_sources(ipA, ipB)
+local function compare_destination(ipA, ipB, sourceAddrs)
+	local ipAsource = sourceAddrs[ipA];
+	local ipBsource = sourceAddrs[ipB];
+	-- Rule 2: Prefer matching scope
+	if ipA.scope == ipAsource.scope and ipB.scope ~= ipBsource.scope then
+		return true;
+	elseif ipA.scope ~= ipAsource.scope and ipB.scope == ipBsource.scope then
+		return false;
+	end
+
+	-- Rule 5: Prefer matching label
+	if ipAsource.label == ipA.label and ipBsource.label ~= ipB.label then
+		return true;
+	elseif ipBsource.label == ipB.label and ipAsource.label ~= ipA.label then
+		return false;
+	end
+
+	-- Rule 6: Prefer higher precedence
+	if ipA.precedence > ipB.precedence then
+		return true;
+	elseif ipA.precedence < ipB.precedence then
+		return false;
+	end
+
+	-- Rule 8: Prefer smaller scope
+	if ipA.scope < ipB.scope then
+		return true;
+	elseif ipA.scope > ipB.scope then
+		return false;
+	end
+
+	-- Rule 9: Use longest matching prefix
+	if match_prefix(ipA, ipAsource) > match_prefix(ipB, ipBsource) then
+		return true;
+	elseif match_prefix(ipA, ipAsource) < match_prefix(ipB, ipBsource) then
+		return false;
+	end
+
+		-- Rule 10: Otherwise, leave order unchanged
+	return true;
+end
+
+local function compare_source(ipA, ipB, dest)
 	-- Rule 1: Prefer same address
 	if dest == ipA then
 		return true;
@@ -241,6 +283,7 @@ end
 
 return {
 	new_ip = new_ip,
-	compare_sources = compare_sources,
+	compare_destination = compare_destination,
+	compare_source = compare_source,
 	match_prefix = match_prefix
 };
