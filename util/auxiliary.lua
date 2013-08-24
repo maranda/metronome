@@ -56,4 +56,22 @@ function clone_table(t)
 	return clone;
 end
 
+function escape_magic_chars(string)
+	-- escape magic characters
+	string = string:gsub("%(", "%%(")
+	string = string:gsub("%)", "%%)")
+	string = string:gsub("%.", "%%.")
+	string = string:gsub("%%", "%%")
+	string = string:gsub("%+", "%%+")
+	string = string:gsub("%-", "%%-")
+	string = string:gsub("%*", "%%*")
+	string = string:gsub("%?", "%%?")
+	string = string:gsub("%[", "%%[")
+	string = string:gsub("%]", "%%]")
+	string = string:gsub("%^", "%%^")
+	string = string:gsub("%$", "%%$")
+
+	return string
+end
+
 return _M;

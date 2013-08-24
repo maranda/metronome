@@ -6,14 +6,17 @@
 
 local datamanager = require "util.datamanager"
 local dataforms_new = require "util.dataforms".new
+local escape_magic = require "util.auxiliary".escape_magic_chars
 local jid_split = require "util.jid".split
 local jid_bare = require "util.jid".bare
+local st = require "util.stanza";
+
 local restrict_to_hosts = module:get_option_set("restrict_to_hosts")
 local synchronize_to_host = module:get_option_string("synchronize_to_host_vcards")
 local ud_disco_name = module:get_option_string("ud_disco_name", "Metronome User Directory")
-local st = require "util.stanza"
-local hosts = metronome.hosts;
-local metronome = metronome;
+
+local hosts = metronome.hosts
+local metronome = metronome
 
 module:depends("adhoc")
 
@@ -34,23 +37,6 @@ local function search_form_layout()
 		{ name = "country", type = "text-single", label = "Country name" };
 		{ name = "email", type = "text-single", label = "E-Mail address" };
 	}
-end
-local function escape_magic(string)
-	-- escape magic characters
-	string = string:gsub("%(", "%%(")
-	string = string:gsub("%)", "%%)")
-	string = string:gsub("%.", "%%.")
-	string = string:gsub("%%", "%%")
-	string = string:gsub("%+", "%%+")
-	string = string:gsub("%-", "%%-")
-	string = string:gsub("%*", "%%*")
-	string = string:gsub("%?", "%%?")
-	string = string:gsub("%[", "%%[")
-	string = string:gsub("%]", "%%]")
-	string = string:gsub("%^", "%%^")
-	string = string:gsub("%$", "%%$")
-
-	return string
 end
 
 local function vcard_parse(vcard)
