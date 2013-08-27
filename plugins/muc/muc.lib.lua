@@ -144,7 +144,7 @@ function room_mt:broadcast_message(stanza, historic, from)
 				end
 			end
 			removeElem(stanza, "replace");
-			removeElem(stanza.tags, "replace);
+			removeElem(stanza.tags, "replace");
 		end
 		t_insert(history, entry);
 		while #history > self._data.history_length do t_remove(history, 1) end
