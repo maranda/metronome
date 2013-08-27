@@ -136,9 +136,8 @@ end
 -- Define config methods
 
 local function config_field(self)
-	local ns = "muc#roomconfig_enablelogging";
 	local field = {
-		name = ns,
+		name = "muc#roomconfig_enablelogging",
 		type = "boolean",
 		label = "Enable room logging?",
 		value = self:get_option("logging");
