@@ -279,16 +279,29 @@ end
 -- custom config registry
 
 room_mt.cc_registry = {};
+room_mt.cc_index = {};
 function room_mt:register_cc(xmlns, params)
-	self.cc_registry[xmlns] = {
+	local registry, index = self.cc_registry, self.cc_index;
+	registry[xmlns] = {
 		name = params.name;
 		field = params.field;
 		check = params.check;
 		submitted = params.submitted;
 		onjoin = params.onjoin;
 	};
+	index[#index + 1] = xmlns;
 end
-function room_mt:custom_configs() return next, self.cc_registry end
+function room_mt:custom_configs()
+	local index, registry = self.cc_index, self.cc_registry;
+	local i, max = 0, #index;
+	return function()
+		i = i + 1;
+		if i <= max then
+			local xmlns = index[i];
+			return xmlns, registry[xmlns];
+		end
+	end
+end
 function room_mt:get_custom_config(xmlns, method, stanza, conf, changed)
 	if not self.cc_registry[xmlns] and method then
 		log("error", "attempting to call unexistant custom configuration: %s !!!", xmlns);
@@ -314,6 +327,8 @@ function room_mt:cc_has_method(xmlns, method)
 end
 function room_mt:deregister_cc(xmlns)
 	self.cc_registry[xmlns] = nil;
+	local index = self.cc_index;
+	for i, ns in ipairs(index) do if xmlns == ns then t_remove(index, i); break; end end
 end
 
 local function construct_stanza_id(room, stanza)
