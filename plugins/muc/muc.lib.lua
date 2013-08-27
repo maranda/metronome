@@ -136,7 +136,7 @@ function room_mt:broadcast_message(stanza, historic, from)
 			local rid = replace.attr.id;
 			if id ~= rid then
 				for i, entry in ipairs(history) do
-					if from == entry.from and id == entry.stanza.attr.id then t_remove(history, i); break; end
+					if from == entry.from and rid == entry.stanza.attr.id then t_remove(history, i); break; end
 				end
 			end
 		end
