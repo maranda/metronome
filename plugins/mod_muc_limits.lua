@@ -85,20 +85,22 @@ local function le_field(self)
 end
 
 local function lstanzas_field(self)
+	local value = self:get_option("limits_stanzas") or burst;
 	local field = {
 		name = "muc#roomconfig_limits_stanzas",
 		type = "text-single",
 		label = "Number of Stanzas",
-		value = self:get_option("limits_stanzas") or burst;
+		value = tostring(value)
 	};
 	return field;
 end
 local function lseconds_field(self)
+	local value = self:get_option("limits_seconds") or period;
 	local field = {
 		name = "muc#roomconfig_limits_seconds",
 		type = "text-single",
 		label = "Per how many seconds",
-		value = self:get_option("limits_seconds") or period;
+		value = tostring(value)
 	};
 	return field;
 end
