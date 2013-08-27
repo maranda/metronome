@@ -52,7 +52,7 @@ local function handle_stanza(event)
 	end
 	local throttle = room.throttle;
 	if not room.throttle then
-		local _period, _burst = room:get_option("limits_seconds"), room:get_option("limits_stanzas");
+		local _period, _burst = room:get_option("limits_seconds") or period, room:get_option("limits_stanzas") or burst;
 		throttle = new_throttle(_period*_burst, _burst);
 		room.throttle = throttle;
 	end
@@ -108,6 +108,7 @@ local function check(self, stanza, config)
 	if not tonumber(config) then
 		reply = error_reply(stanza, "cancel", "forbidden", "You need to submit valid number values for muc_limits fields.");
 	end
+	self.throttle = nil;
 	return reply;
 end
 local function stanzas(self, value) return math.max(tonumber(value), 1); end
