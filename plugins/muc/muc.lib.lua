@@ -132,9 +132,12 @@ function room_mt:broadcast_message(stanza, historic, from)
 		local entry = { stanza = stanza, stamp = stamp, from = from };
 		t_insert(history, entry);
 		if replace then -- XEP-308, so we wipe from history
-			local id = replace.attr.id;
-			for i, entry in ipairs(history) do
-				if from == entry.from and id == entry.stanza.attr.id then t_remove(history, i); break; end
+			local id = stanza.attr.id;
+			local rid = replace.attr.id;
+			if id ~= rid then
+				for i, entry in ipairs(history) do
+					if from == entry.from and id == entry.stanza.attr.id then t_remove(history, i); break; end
+				end
 			end
 		end
 		while #history > self._data.history_length do t_remove(history, 1) end
