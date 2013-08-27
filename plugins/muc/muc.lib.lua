@@ -77,7 +77,7 @@ end
 local function getTag(stanza, path) return getUsingPath(stanza, path); end
 local function getText(stanza, path) return getUsingPath(stanza, path, true); end
 local function removeElem(sub, name)
-	for i, tag in ipairs(sub)
+	for i, tag in ipairs(sub) do
 		if tag.name == name then t_remove(sub, i); end
 	end
 end
