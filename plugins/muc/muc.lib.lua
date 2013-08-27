@@ -110,7 +110,7 @@ function room_mt:broadcast_presence(stanza, sid, code, nick)
 		self:_route_stanza(stanza);
 	end
 end
-function room_mt:broadcast_message(stanza, historic)
+function room_mt:broadcast_message(stanza, historic, from)
 	local to = stanza.attr.to;
 	for occupant, o_data in pairs(self._occupants) do
 		for jid in pairs(o_data.sessions) do
@@ -125,11 +125,18 @@ function room_mt:broadcast_message(stanza, historic)
 		if not history then history = {}; self._data["history"] = history; end
 		stanza = st.clone(stanza);
 		stanza.attr.to = "";
+		local replace = stanza:get_child("replace", "urn:xmpp:message-correct:0");
 		local stamp = datetime.datetime();
 		stanza:tag("delay", {xmlns = "urn:xmpp:delay", from = muc_domain, stamp = stamp}):up(); -- XEP-0203
 		stanza:tag("x", {xmlns = "jabber:x:delay", from = muc_domain, stamp = datetime.legacy()}):up(); -- XEP-0091 (deprecated)
-		local entry = { stanza = stanza, stamp = stamp };
+		local entry = { stanza = stanza, stamp = stamp, from = from };
 		t_insert(history, entry);
+		if replace then -- XEP-308, so we wipe from history
+			local id = replace.attr.id;
+			for i, entry in ipairs(history) do
+				if from == entry.from and id == entry.stanza.attr.id then t_remove(history, i); break; end
+			end
+		end
 		while #history > self._data.history_length do t_remove(history, 1) end
 	end
 end
@@ -880,7 +887,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 					origin.send(st.error_reply(stanza, "auth", "forbidden"));
 				end
 			else
-				self:broadcast_message(stanza, self:get_option("history_length") > 0);
+				self:broadcast_message(stanza, self:get_option("history_length") > 0, from);
 			end
 			stanza.attr.from = from;
 		end
