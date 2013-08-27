@@ -76,6 +76,11 @@ local function getUsingPath(stanza, path, getText)
 end
 local function getTag(stanza, path) return getUsingPath(stanza, path); end
 local function getText(stanza, path) return getUsingPath(stanza, path, true); end
+local function removeElem(sub, name)
+	for i, tag in ipairs(sub)
+		if tag.name == name then t_remove(sub, i) end
+	end
+end
 -----------
 
 local room_mt = {};
@@ -130,7 +135,6 @@ function room_mt:broadcast_message(stanza, historic, from)
 		stanza:tag("delay", {xmlns = "urn:xmpp:delay", from = muc_domain, stamp = stamp}):up(); -- XEP-0203
 		stanza:tag("x", {xmlns = "jabber:x:delay", from = muc_domain, stamp = datetime.legacy()}):up(); -- XEP-0091 (deprecated)
 		local entry = { stanza = stanza, stamp = stamp, from = from };
-		t_insert(history, entry);
 		if replace then -- XEP-308, so we wipe from history
 			local id = stanza.attr.id;
 			local rid = replace.attr.id;
@@ -139,7 +143,10 @@ function room_mt:broadcast_message(stanza, historic, from)
 					if from == entry.from and rid == entry.stanza.attr.id then t_remove(history, i); break; end
 				end
 			end
+			removeElem(stanza, "replace");
+			removeElem(stanza.tags, "replace);
 		end
+		t_insert(history, entry);
 		while #history > self._data.history_length do t_remove(history, 1) end
 	end
 end
