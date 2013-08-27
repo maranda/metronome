@@ -679,6 +679,9 @@ function room_mt:process_form(origin, stanza)
 			local invalid = self:get_custom_config(ns, "check", stanza, value);
 			if invalid then return origin.send(invalid); end
 		end
+		if self:cc_has_method(ns, "process") then
+			value = self:get_custom_config(ns, "process", value);
+		end
 		if self:cc_has_method(ns, "submitted") then
 			submitted[ns] = true;	
 		end
