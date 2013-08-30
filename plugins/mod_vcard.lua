@@ -7,10 +7,14 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2012, Matthew Wild, Waqas Hussain
 
+local tostring = tostring;
+
 local st = require "util.stanza";
 local jid_split = require "util.jid".split;
 local datamanager = require "util.datamanager";
 local metronome = metronome;
+
+local vcard_max = module:get_option_number("vcard_max_size");
 
 module:add_feature("vcard-temp");
 
@@ -46,6 +50,10 @@ local function handle_vcard(event)
 	else
 		if not to then
 			local vCard = stanza.tags[1];
+			
+			if vcard_max and tostring(vCard):len() > vcard_max then
+				return session.send(st.error_reply(stanza, "modify", "policy-violation", "The vCard data exceeded the max allowed size!"));
+			end
 			
 			if datamanager.store(session.username, session.host, "vcard", st.preserialize(vCard)) then
 				session.send(st.reply(stanza));
