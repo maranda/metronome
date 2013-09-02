@@ -680,7 +680,7 @@ module:hook("presence/bare", function(event)
 			end
 			if self and not user_bare_session.initial_pep_broadcast then -- re-broadcast to all interested contacts on connect, shall we?
 				local our_jid = origin.full_jid;
-				module:log("debug", "%s - account service sending initial re-broadcast...", user);
+				module:log("debug", "%s -- account service sending initial re-broadcast...", user);
 				for jid in pairs(recipients) do
 					if jid ~= our_jid then pep_send(jid, user); end
 				end
