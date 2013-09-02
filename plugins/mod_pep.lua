@@ -642,6 +642,7 @@ module:hook("presence/bare", function(event)
 	local t = stanza.attr.type;
 	local self = not stanza.attr.to;
 	local service = services[user];
+	local user_bare_session = bare_sessions[user];
 	
 	if not service then return nil; end -- User Service doesn't exist
 	local nodes = service.nodes;
@@ -668,9 +669,7 @@ module:hook("presence/bare", function(event)
 				
 			if not hash_map[hash] then
 				if current ~= false then
-					module:fire_event("pep-get-client-filters", 
-					{ user = user; to = stanza.attr.from or origin.full_jid,
-					  recipients = recipients });
+					module:fire_event("pep-get-client-filters", { user = user, to = stanza.attr.from or origin.full_jid, recipients = recipients });
 				
 					-- ignore filters once either because they aren't supported or because we don't have 'em yet
 					pep_send(recipient, user, true);
@@ -678,6 +677,14 @@ module:hook("presence/bare", function(event)
 			else
 				recipients[recipient] = hash;
 				pep_send(recipient, user);
+			end
+			if self and not user_bare_session.initial_pep_broadcast then -- re-broadcast to all interested contacts on connect, shall we?
+				local our_jid = origin.full_jid;
+				module:log("debug", "%s - account service sending initial re-broadcast...", user);
+				for jid in pairs(recipients) do
+					if jid ~= our_jid then pep_send(jid, user); end
+				end
+				user_bare_session.initial_pep_broadcast = true;
 			end
 		end
 	elseif t == "unavailable" then
