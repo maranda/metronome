@@ -133,7 +133,7 @@ end
 
 local function pep_broadcast_last(service, node, receiver)
 	local ok, items, orderly = service:get_items(node, receiver, nil, 1);
-	if items then
+	if ok and items then
 		for _, id in ipairs(orderly) do
 			service:broadcaster(node, receiver, items[id]);
 		end
@@ -153,12 +153,21 @@ local function pep_mutual_recs(source, target, interested)
 	end
 end
 
+local function mutually_sub(jid, hash, nodes)
+	for node, obj in pairs(nodes) do
+		local is_private = node.config.access_model == "private" and true;
+		if hash_map[hash] and hash_map[hash][node] and (not is_private or service:get_affiliation(jid, node) ~= "no_access") then
+			obj.subscribers[jid] = true; 
+		end
+	end
+end
+
 local function pep_send(recipient, user, ignore)
 	local rec_srv = services[jid_bare(recipient)];
 	local user_srv = services[user];
+	local nodes = user_srv.nodes;
 
 	if ignore then -- fairly hacky...
-		local nodes = user_srv.nodes;
 		module:log("debug", "Ignoring notifications filtering for %s until we obtain 'em... if ever.", recipient);
 		for node, object in pairs(nodes) do
 			object.subscribers[recipient] = true;
@@ -166,7 +175,6 @@ local function pep_send(recipient, user, ignore)
 			object.subscribers[recipient] = nil;
 		end		
 	elseif not rec_srv then
-		local nodes = user_srv.nodes;
 		local rec_hash = user_srv.recipients[recipient];
 		for node, object in pairs(nodes) do
 			if hash_map[rec_hash] and hash_map[rec_hash][node] then
@@ -176,21 +184,16 @@ local function pep_send(recipient, user, ignore)
 		end
 	else
 		local rec_nodes = rec_srv.nodes;
-		local user_nodes = user_srv.nodes;
 		local interested = {};
 		pep_mutual_recs(user_srv, rec_srv, interested);
 
 		-- Mutually subscribe
 		for jid, hash in pairs(interested) do
-			for node, obj in pairs(rec_nodes) do
-				if hash_map[hash] and hash_map[hash][node] then obj.subscribers[jid] = true; end
-			end
-			for node, obj in pairs(user_nodes) do
-				if hash_map[hash] and hash_map[hash][node] then obj.subscribers[jid] = true; end
-			end			
+			mutually_sub(jid, hash, rec_nodes);
+			mutually_sub(jid, hash, nodes);
 		end
 
-		for node in pairs(user_nodes) do
+		for node in pairs(nodes) do
 			pep_broadcast_last(user_srv, node, recipient);
 		end
 	end
@@ -200,10 +203,13 @@ local function pep_autosubscribe_recs(service, node)
 	local recipients = service.recipients;
 	local _node = service.nodes[node];
 	if not _node then return; end
+	local is_private = _node.config.access_model == "private" and true;
 
 	for jid, hash in pairs(recipients) do
 		if type(hash) == "string" and hash_map[hash] and hash_map[hash][node] then
-			_node.subscribers[jid] = true;
+			if not is_private or service:get_affiliation(jid, node) ~= "no_access" then
+				_node.subscribers[jid] = true;
+			end
 		end
 	end
 end
@@ -240,9 +246,10 @@ function form_layout(service, name)
 		{
 			name = "pubsub#access_model",
 			type = "list-single",
-			label = "Access Model for the node, currently supported models are presence and open",
+			label = "Access Model for the node, currently supported models are presence, private and open",
 			value = {
 				{ value = "presence", default = (node.config.access_model == "presence" or node.config.access_model == nil) and true },
+				{ value = "private", default = node.config.access_model == "private" and true },
 				{ value = "open", default = node.config.access_model == "open" and true }
 			}
 		},
@@ -285,7 +292,7 @@ function process_config_form(service, name, form, new)
 			node_config.persist_items = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
 		elseif field.attr.var == "pubsub#access_model" then
 			local value = field:get_child_text("value");
-			if value == "presence" or value == "open" then node_config.access_model = value; end
+			if value == "presence" or value == "private" or value == "open" then node_config.access_model = value; end
 		elseif field.attr.var == "pubsub#publish_model" then
 			local value = field:get_child_text("value");
 			if value == "publisher" or value == "open" then node_config.publish_model = value; end
@@ -803,6 +810,8 @@ local function get_affiliation(self, jid, node)
 		if node and (not access_model or access_model == "presence") then
 			local user, host = jid_split(self.name);
 			if not is_contact_subscribed(user, host, bare_jid) then return "no_access"; end
+		elseif node and access_model == "private" then
+			return "no_access";
 		end
 			
 		return "none";
