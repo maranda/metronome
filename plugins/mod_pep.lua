@@ -155,7 +155,7 @@ end
 
 local function mutually_sub(jid, hash, nodes)
 	for node, obj in pairs(nodes) do
-		local is_private = node.config.access_model == "private" and true;
+		local is_private = obj.config.access_model == "private" and true;
 		if hash_map[hash] and hash_map[hash][node] and (not is_private or service:get_affiliation(jid, node) ~= "no_access") then
 			obj.subscribers[jid] = true; 
 		end
