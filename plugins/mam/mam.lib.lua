@@ -15,7 +15,7 @@ local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
 local load_roster = rostermanager.load_roster;
-local ipairs, now, pairs, select, t_remove, tostring = ipairs, os.time, pairs, select, table.remove, tostring;
+local ipairs, now, pairs, ripairs, select, t_remove, tostring = ipairs, os.time, pairs, ripairs, select, table.remove, tostring;
       
 local xmlns = "urn:xmpp:mam:0";
 local delay_xmlns = "urn:xmpp:delay";
@@ -67,6 +67,21 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, body
 
 	if now() - to_save > store_time then save_stores(); end
 	return uid;
+end
+
+local function log_entry_with_replace(session_archive, to, bare_to, from, bare_from, id, rid, body)
+	-- handle XEP-308 or try to...
+	local logs = session_archive.logs;
+	
+	if rid ~= id then
+		for i, entry in ripairs(logs) do
+			if entry.to == to and entry.from == from and entry.id == rid then 
+				t_remove(logs, i); break;
+			end
+		end
+	end
+	
+	return log_entry(session_archive, to, bare_to, from, bare_from, id, body);
 end
 
 local function append_stanzas(stanzas, entry, qid)
@@ -315,7 +330,13 @@ local function process_message(event, outbound)
 	end
 
 	if archive and add_to_store(archive, user, (outbound and bare_to) or bare_from) then
-		local id = log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body);
+		local replace = message:get_child("replace", "urn:xmpp:message-correct:0");
+		local id;
+		if replace then
+			id = log_entry_with_replace(archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, body);
+		else
+			id = log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body);
+		end
 		if not bare_session then storage:set(user, archive); end
 		if not outbound then message:tag("archived", { jid = bare_to, id = id }):up(); end
 	else
