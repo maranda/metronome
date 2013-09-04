@@ -80,8 +80,8 @@ function log_if_needed(e)
 					time = now,
 					from = muc_from,
 					id = stanza.attr.id,
-					body = body:get_text(),
-					subject = subject:get_text()
+					body = body and body:get_text(),
+					subject = subject and subject:get_text()
 				};
 				
 				data_store(node, mod_host, datastore .. "/" .. today, data);
