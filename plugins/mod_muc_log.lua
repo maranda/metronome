@@ -23,7 +23,7 @@ local data_load, data_store, data_getpath = datamanager.load, datamanager.store,
 local datastore = "muc_log";
 local error_reply = require "util.stanza".error_reply;
 local storagemanager = storagemanager;
-local ripairs = ripairs;
+local ripairs, t_remove = ripairs, table.remove;
 
 local mod_host = module:get_host();
 local muc = hosts[mod_host].muc;
@@ -77,11 +77,26 @@ function log_if_needed(e)
 
 			if muc_from then
 				local data = data_load(node, mod_host, datastore .. "/" .. today) or {};
+				local replace = stanza:child_with_name("replace");
+				local id = stanza.attr.id;
+				
+				if replace then -- implements XEP-308
+					local count = 0;
+					local rid = replace.attr.id;
+					if rid and id ~= rid then
+						for i, e in ripairs(data) do
+							count = count + 1; -- don't go back more then 100 entries, *sorry*.
+							if count < 100 and entry.resource == from_room and entry.id == rid then
+								t_remove(data, i); break; 
+							end
+						end
+					end
+				end
 				
 				data[#data + 1] = {
 					time = now,
 					from = muc_from,
-					from_resource = from_room,
+					resource = from_room,
 					id = stanza.attr.id,
 					body = body and body:get_text(),
 					subject = subject and subject:get_text()
