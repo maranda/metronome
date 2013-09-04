@@ -33,7 +33,6 @@ local str_format = string.format;
 local io_open = io.open;
 local themes_parent = (module.path and module.path:gsub("[/\\][^/\\]*$", "")  or (metronome.paths.plugins or "./plugins") .. "/muc_log_http") .. "/themes";
 
-local lom = require "lxp.lom";
 local lfs = require "lfs";
 local html = {};
 local theme;
@@ -294,106 +293,10 @@ local function generate_day_room_content(bare_room_jid)
 	return tmp:gsub("###JID###", bare_room_jid), "Chatroom logs for "..bare_room_jid;
 end
 
-local function parse_iq(stanza, time, nick)
-	local text = nil;
-	local victim = nil;
-	local html_day = html.day;
-	if(stanza.attr.type == "set") then
-		for _,tag in ipairs(stanza) do
-			if tag.tag == "query" then
-				for _,item in ipairs(tag) do
-					if item.tag == "item" and item.attr.nick ~= nil and item.attr.role == 'none' then
-						victim = item.attr.nick;
-						for _,reason in ipairs(item) do
-							if reason.tag == "reason" then
-								text = reason[1];
-								break;
-							end
-						end
-						break;
-					end
-				end
-				break;
-			end
-		end
-		if victim then
-			if text then
-				text = html_day.reason:gsub("###REASON###", html_escape(text));
-			else
-				text = "";
-			end
-			return html_day.kick:gsub("###TIME_STUFF###", time):gsub("###VICTIM###", victim):gsub("###REASON_STUFF###", text);
-		end
-	end
-	return;
-end
-
-local function parse_presence(stanza, time, nick)
+local function parse_message(body, title, time, nick)
 	local ret = "";
-	local show_join = "block";
-	local html_day_pre = html.day.presence;
-
-	if config and not config.show_join then
-		show_join = "none";
-	end
-
-	if stanza.attr.type == nil then
-		local show_status = "block"
-		if config and not config.show_status then
-			show_status = "none";
-		end
-		local show, status = nil, "";
-		local already_joined = false;
-		for _, tag in ipairs(stanza) do
-			if tag.tag == "alreadyJoined" then
-				already_joined = true;
-			elseif tag.tag == "show" then
-				show = tag[1];
-			elseif tag.tag == "status" and tag[1] ~= nil then
-				status = tag[1];
-			end
-		end
-		if already_joined == true then
-			if show == nil then
-				show = "online";
-			end
-			ret = html_day_pre.statusChange:gsub("###TIME_STUFF###", time);
-			if status ~= "" then
-				status = html_day_pre.statusText:gsub("###STATUS###", html_escape(status));
-			end
-			ret = ret:gsub("###SHOW###", show):gsub("###NICK###", nick):gsub("###SHOWHIDE###", show_status):gsub("###STATUS_STUFF###", status);
-		else
-			ret = html_day_pre.join:gsub("###TIME_STUFF###", time):gsub("###SHOWHIDE###", show_join):gsub("###NICK###", nick);
-		end
-	elseif stanza.attr.type == "unavailable" then
-
-		ret = html_day_pre.leave:gsub("###TIME_STUFF###", time):gsub("###SHOWHIDE###", show_join):gsub("###NICK###", nick);
-	end
-	return ret;
-end
-
-local function parse_message(stanza, time, nick)
-	local body, title, ret = nil, nil, "";
 	local html_day = html.day;
 
-	for _,tag in ipairs(stanza) do
-		if tag.tag == "body" then
-			body = tag[1];
-			if nick then
-				break;
-			end
-		elseif tag.tag == "nick" and nick == nil then
-			nick = html_escape(tag[1]);
-			if body or title then
-				break;
-			end
-		elseif tag.tag == "subject" then
-			title = tag[1];
-			if nick then
-				break;
-			end
-		end
-	end
 	if nick and body then
 		body = html_escape(body);
 		local me = body:find("^/me");
@@ -553,35 +456,16 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 	if bare_day then
 		local data = data_load(node, host, datastore .. "/" .. bare_day:match("^20(.*)"):gsub("-", ""));
 		if data then
-			for i=1, #data, 1 do
-				local stanza = lom.parse(data[i]);
-				if stanza and stanza.attr and stanza.attr.time then
-					local timeStuff = html_day.time:gsub("###TIME###", stanza.attr.time):gsub("###UTC###", stanza.attr.utc or stanza.attr.time);
-					if stanza[1] ~= nil then
-						local nick;
-						local tmp;
+			for i, entry in ipairs(data) do
+				local timeStuff = html_day.time:gsub("###TIME###", entry.time):gsub("###UTC###", entry.time);
+				local nick;
+				local tmp;
 
-						-- grep nick from "from" resource
-						if stanza[1].attr.from then -- presence and messages
-							nick = html_escape(stanza[1].attr.from:match("/(.+)$"));
-						elseif stanza[1].attr.to then -- iq
-							nick = html_escape(stanza[1].attr.to:match("/(.+)$"));
-						end
-
-						if stanza[1].tag == "presence" and nick then
-							tmp = parse_presence(stanza[1], timeStuff, nick);
-						elseif stanza[1].tag == "message" then
-							tmp = parse_message(stanza[1], timeStuff, nick);
-						elseif stanza[1].tag == "iq" then
-							tmp = parse_iq(stanza[1], timeStuff, nick);
-						else
-							module:log("info", "unknown stanza subtag in log found. room: %s; day: %s", bare_room_jid, year .. "/" .. month .. "/" .. day);
-						end
-						if tmp then
-							ret = ret .. tmp
-							tmp = nil;
-						end
-					end
+				nick = html_escape(entry.from:match("/(.+)$"));
+				tmp = parse_message(entry.body, entry.subject, timeStuff, nick);
+				if tmp then
+					ret = ret .. tmp
+					tmp = nil;
 				end
 			end
 		end
@@ -593,16 +477,10 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 				previous_day = html_day.dayLink:gsub("###DAY###", previous_day):gsub("###TEXT###", "&lt;");
 			end
 			ret = ret:gsub("%%", "%%%%");
-			if config.show_presences then
-				tmp = html_day.body:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
-			else
-				tmp = html_day.bodynp:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
-			end
+			tmp = html_day.body:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
 			tmp = tmp:gsub("###CALENDAR###", calendar);
 			tmp = tmp:gsub("###DATE###", tostring(os_date("%A, %B %d, %Y", os_time(temptime))));
 			tmp = tmp:gsub("###TITLE_STUFF###", html_day.title:gsub("###TITLE###", room_subject));
-			tmp = tmp:gsub("###STATUS_CHECKED###", config.show_status and "checked='checked'" or "");
-			tmp = tmp:gsub("###JOIN_CHECKED###", config.show_join and "checked='checked'" or "");
 			tmp = tmp:gsub("###NEXT_LINK###", next_day or "");
 			tmp = tmp:gsub("###PREVIOUS_LINK###", previous_day or "");
 
@@ -697,9 +575,6 @@ end
 
 function module.load()
 	config = module:get_option_table("muc_log_http_config", {});
-	if module:get_option_boolean("muc_log_presences", false) then config.show_presences = true end
-	if config.show_status == nil then config.show_status = true; end
-	if config.show_join == nil then config.show_join = true; end
 	if config.url_base and type(config.url_base) == "string" then url_base = config.url_base; end
 
 	theme = config.theme or "metronome";
