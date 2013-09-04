@@ -1,12 +1,9 @@
-Metronome IM Server
-===================
+![alt text](http://www.lightwitch.org/varlogos/metronome-banner.png)
+-
 
-This software codebase initiated as a fork of prosody trunk (to be 0.9) merged with LW.Org's custom,
-patches initiating from August 7th 2012 (see first commit).
+This software codebase initiated as a fork of prosody trunk (to be 0.9) merged with LW.Org's custom, patches initiating from August 7th 2012 (see first commit).
 
-Being mainly based on Prosody a lot of Metronome's code is backport compatible, but as
-development progressed a good portion of it completely diverged from mainstream's to
-better suit LW.Org IM's needs.
+Being mainly based on Prosody a lot of Metronome's code is backport compatible, but as development progressed a good portion of it completely diverged from mainstream's to better suit LW.Org IM's needs.
 
 The main differences from Prosody are:
 
