@@ -84,7 +84,7 @@ function log_if_needed(e)
 					local count = 0;
 					local rid = replace.attr.id;
 					if rid and id ~= rid then
-						for i, e in ripairs(data) do
+						for i, entry in ripairs(data) do
 							count = count + 1; -- don't go back more then 100 entries, *sorry*.
 							if count < 100 and entry.resource == from_room and entry.id == rid then
 								t_remove(data, i); break; 
