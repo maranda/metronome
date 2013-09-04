@@ -23,6 +23,7 @@ local data_load, data_store, data_getpath = datamanager.load, datamanager.store,
 local datastore = "muc_log";
 local error_reply = require "util.stanza".error_reply;
 local storagemanager = storagemanager;
+local ripairs = ripairs;
 
 local mod_host = module:get_host();
 local muc = hosts[mod_host].muc;
@@ -76,9 +77,11 @@ function log_if_needed(e)
 
 			if muc_from then
 				local data = data_load(node, mod_host, datastore .. "/" .. today) or {};
+				
 				data[#data + 1] = {
 					time = now,
 					from = muc_from,
+					from_resource = from_room,
 					id = stanza.attr.id,
 					body = body and body:get_text(),
 					subject = subject and subject:get_text()
