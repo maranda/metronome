@@ -73,7 +73,7 @@ local function log_entry_with_replace(session_archive, to, bare_to, from, bare_f
 	-- handle XEP-308 or try to...
 	local logs = session_archive.logs;
 	
-	if rid ~= id then
+	if rid and rid ~= id then
 		for i, entry in ripairs(logs) do
 			if entry.to == to and entry.from == from and entry.id == rid then 
 				t_remove(logs, i); break;

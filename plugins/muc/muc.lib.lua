@@ -138,7 +138,7 @@ function room_mt:broadcast_message(stanza, historic, from)
 		if replace then -- XEP-308, so we wipe from history
 			local id = stanza.attr.id;
 			local rid = replace.attr.id;
-			if id ~= rid then
+			if rid and id ~= rid then
 				for i, entry in ripairs(history) do
 					if from == entry.from and rid == entry.stanza.attr.id then t_remove(history, i); break; end
 				end
