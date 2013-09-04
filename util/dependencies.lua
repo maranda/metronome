@@ -37,7 +37,7 @@ end
 
 package.preload["util.ztact"] = function ()
 	if not package.loaded["core.loggingmanager"] then
-		error("util.ztact has been removed from Metronome and you need to fix your config file. More information can be found at http://prosody.im/doc/packagers#ztact", 0);
+		error("util.ztact has been removed from Metronome and you need to fix your config file.", 0);
 	else
 		error("module 'util.ztact' has been deprecated in Metronome.");
 	end
@@ -98,8 +98,8 @@ function check_dependencies()
 	local encodings, err = softreq "util.encodings"
 	if not encodings then
 		if err:match("not found") then
-			missingdep("util.encodings", { ["Windows"] = "Make sure you have encodings.dll from the Prosody distribution in util/";
-		 				["GNU/Linux"] = "Run './configure' and 'make' in the Prosody source directory to build util/encodings.so";
+			missingdep("util.encodings", { ["Windows"] = "Make sure you have encodings.dll from the Metronome distribution in util/";
+		 				["GNU/Linux"] = "Run './configure' and 'make' in the Metronome source directory to build util/encodings.so";
 		 			});
 		else
 			print "***********************************"
@@ -115,8 +115,8 @@ function check_dependencies()
 	local hashes, err = softreq "util.hashes"
 	if not hashes then
 		if err:match("not found") then
-			missingdep("util.hashes", { ["Windows"] = "Make sure you have hashes.dll from the Prosody distribution in util/";
-		 				["GNU/Linux"] = "Run './configure' and 'make' in the Prosody source directory to build util/hashes.so";
+			missingdep("util.hashes", { ["Windows"] = "Make sure you have hashes.dll from the Metronome distribution in util/";
+		 				["GNU/Linux"] = "Run './configure' and 'make' in the Metronome source directory to build util/hashes.so";
 		 			});
 	 	else
 			print "***********************************"
@@ -140,7 +140,7 @@ function log_warnings()
 	end
 	if lxp then
 		if not pcall(lxp.new, { StartDoctypeDecl = false }) then
-			log("error", "The version of LuaExpat on your system leaves Prosody "
+			log("error", "The version of LuaExpat on your system leaves Metronome "
 				.."vulnerable to denial-of-service attacks. You should upgrade to "
 				.."LuaExpat 1.1.1 or higher as soon as possible. See "
 				.."http://prosody.im/doc/depends#luaexpat for more information.");
