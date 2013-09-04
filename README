@@ -23,6 +23,7 @@ The main differences from Prosody are:
  * Included plugins, utils;
  * The HTTP API;
  * BOSH's JSON Padding and XEP-252 support.
+ * Extensive Microblogging over XMPP support.
  * Daemon Control Utility;
  * It does have _only_ one server backend being libevent and has a hard dep. on lua-event.
 
