@@ -8,7 +8,7 @@
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Marco Cirillo, Markus Kutter, Matthew Wild, Rob Hoelz, Waqas Hussain
 
 local select = select;
-local pairs, ipairs, next = pairs, ipairs, next;
+local pairs, ipairs, next, ripairs = pairs, ipairs, next, ripairs;
 
 local datetime = require "util.datetime";
 
@@ -139,7 +139,7 @@ function room_mt:broadcast_message(stanza, historic, from)
 			local id = stanza.attr.id;
 			local rid = replace.attr.id;
 			if id ~= rid then
-				for i, entry in ipairs(history) do
+				for i, entry in ripairs(history) do
 					if from == entry.from and rid == entry.stanza.attr.id then t_remove(history, i); break; end
 				end
 			end
