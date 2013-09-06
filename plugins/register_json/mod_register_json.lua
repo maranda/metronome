@@ -31,6 +31,7 @@ local throttle_time = module:get_option_number("reg_servlet_ttime", nil)
 local whitelist = module:get_option_set("reg_servlet_wl", {})
 local blacklist = module:get_option_set("reg_servlet_bl", {})
 local fm_patterns = module:get_option_table("reg_servlet_filtered_mails", {})
+local fn_patterns = module:get_option_table("reg_servlet_filtered_nodes", {})
 
 local files_base = module.path:gsub("/[^/]+$","") .. "/template/"
 
@@ -69,6 +70,13 @@ end
 local function check_mail(address)
 	for _, pattern in ipairs(fm_patterns) do 
 		if address:match(pattern) then return false end
+	end
+	return true
+end
+
+local function check_node(node)
+	for _, pattern in ipairs(fn_patterns) do
+		if node:match(pattern) then return false end
 	end
 	return true
 end
@@ -133,6 +141,11 @@ local function handle_req(event)
 				module:log("debug", "An username containing invalid characters was supplied: %s", req_body["username"])
 				return http_response(event, 406, "Supplied username contains invalid characters, see RFC 6122.")
 			else
+				if not check_node(username) then
+					module:log("warn", "%s attempted to use an username (%s) matching one of the forbidden patterns.", ip, username)
+					return http_response(event, 403, "Requesting to register using this Username is forbidden, sorry.")
+				end
+				
 				if pending_node[username] then
 					module:log("warn", "%s attempted to submit a registration request but another request for that user (%s) is pending", ip, username)
 					return http_response(event, 401, "Another user registration by that username is pending.")
