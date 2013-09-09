@@ -234,19 +234,17 @@ function init_global_state()
 	
 	function metronome.set_gc()
 		local settings = config.get("*", "metronome_gc");
-		if settings and type(settings) == "table" then
-			collectgarbage("setpause", settings.setpause or 200);
-			collectgarbage("setstepmul", settings.setstepmul or 200);
-			collectgarbage("restart");
-		end
+		settings = type(settings) ~= "table" and {};
+		collectgarbage("setpause", settings.setpause or 100);
+		collectgarbage("setstepmul", settings.setstepmul or 150);
+		collectgarbage("restart");
 	end
 	
-	if config.get("*", "metronome_gc") then metronome.set_gc(); end
-
 	local certmanager = require "core.certmanager";
 	local global_ssl_ctx = certmanager.create_context("*", "server");
 	metronome.global_ssl_ctx = global_ssl_ctx;
-	metronome.events.add_handler("config-reloaded", metronome.set_gc);
+	metronome.set_gc();
+	metronome.events.add_handler("config-reloaded", metronome.set_gc, 1000);
 end
 
 read_version = require "util.auxiliary".read_version;
