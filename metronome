@@ -180,8 +180,8 @@ function init_global_state()
 	metronome.full_sessions = full_sessions;
 	metronome.hosts = hosts;
 	
-	local data_path = config.get("*", "core", "data_path") or CFG_DATADIR or "data";
-	local custom_plugin_paths = config.get("*", "core", "plugin_paths");
+	local data_path = config.get("*", "data_path") or CFG_DATADIR or "data";
+	local custom_plugin_paths = config.get("*", "plugin_paths");
 	if custom_plugin_paths then
 		local path_sep = package.config:sub(3,3);
 		-- path1;path2;path3;defaultpath...
@@ -231,11 +231,19 @@ function init_global_state()
 		metronome.events.fire_event("server-stopping", {reason = reason});
 		server.setquitting(true);
 	end
+	
+	function metronome.set_gc_stepmul()
+		local multiplier = config.get("*", "metronome_gc_step_multiplier");
+		multiplier = multiplier ~= nil and tonumber(multiplier);
+		if multiplier then collectgarbage("setstepmul", multiplier); end
+	end
+	
+	if config.get("*", "metronome_gc_step_multiplier") then metronome.set_gc_stepmul(); end
 
 	local certmanager = require "core.certmanager";
 	local global_ssl_ctx = certmanager.create_context("*", "server");
 	metronome.global_ssl_ctx = global_ssl_ctx;
-
+	metronome.events.add_handler("config-reloaded", metronome.set_gc_stepmul);
 end
 
 read_version = require "util.auxiliary".read_version;
