@@ -4,10 +4,11 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
+local datetime = require "util.datetime".datetime;
 local events = require "util.events";
 local keys = require "util.iterators".keys;
 local st = require "util.stanza";
-local ipairs, next, pairs, table = ipairs, next, pairs, table;
+local ipairs, next, now, pairs, table = ipairs, next, os.time, pairs, table;
 
 module("pubsub", package.seeall);
 
@@ -345,7 +346,7 @@ function service:create(node, actor, config, jid)
 	local _node_default_config;
 	if self.config.node_default_config then
 		_node_default_config = {};
-		for option, value in pairs(self.config.node_default_config) do	_node_default_config[option] = value; end
+		for option, value in pairs(self.config.node_default_config) do _node_default_config[option] = value; end
 	end
 	
 	self.nodes[node] = {
@@ -363,6 +364,10 @@ function service:create(node, actor, config, jid)
 			self.nodes[node].config[entry] = value;
 		end
 	end
+	
+	local node_config = self.nodes[node].config;
+	node_config.creator = normalized_jid;
+	node_config.creation_date = datetime(now());
 
 	local ok, err = self:set_affiliation(node, true, normalized_jid, "owner");
 	if not ok then
