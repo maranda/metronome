@@ -232,6 +232,24 @@ function form_layout(service, name)
 			value = "http://jabber.org/protocol/pubsub#node_config"
 		},
 		{
+			name = "pubsub#title",
+			type = "text-single",
+			label = "A friendly name for this node (optional)",
+			value = node.config.title or ""
+		},
+		{
+			name = "pubsub#description",
+			type = "text-single",
+			label = "A description for this node (optional)",
+			value = node.config.description or ""
+		},
+		{
+			name = "pubsub#type",
+			type = "text-single",
+			label = "The data type of this node (optional)",
+			value = node.config.type or ""
+		},
+		{
 			name = "pubsub#max_items",
 			type = "text-single",
 			label = "Max number of items to persist",
@@ -286,9 +304,15 @@ function process_config_form(service, name, form, new)
 	if not form or form.attr.type ~= "submit" then return false, "bad-request" end
 
 	for _, field in ipairs(form.tags) do
-		if field.attr.var == "pubsub#max_items" then
+		if field.attr.var == "pubsub#title" then
+			node_config.title = (field:get_child_text("value") ~= "" and field:get_child_text("value")) or nil;
+		elseif field.attr.var == "pubsub#description" then
+			node_config.description = (field:get_child_text("value") ~= "" and field:get_child_text("value")) or nil;
+		elseif field.attr.var == "pubsub#type" then
+			node_config.type = (field:get_child_text("value") ~= "" and field:get_child_text("value")) or nil;
+		elseif field.attr.var == "pubsub#max_items" then
 			node_config.max_items = tonumber(field:get_child_text("value")) or 20;
-		elseif field.attr.var == "pubsub#persist_items" and (field:get_child_text("value") == "0" or field:get_child_text("value") == "1") then
+		elseif field.attr.var == "pubsub#persist_items" then
 			node_config.persist_items = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
 		elseif field.attr.var == "pubsub#access_model" then
 			local value = field:get_child_text("value");
@@ -619,8 +643,31 @@ local function append_disco_features(stanza)
 end
 
 module:hook("account-disco-info", function(event)
-	local stanza = event.stanza;
-	append_disco_features(stanza);
+	local origin, stanza, node = event.origin, event.stanza, event.node;
+	if node then
+		local user = jid_bare(stanza.attr.to) or origin.username .. "@" .. origin.host;
+		local service = services[user];
+		if not service then
+			stanza[false] = true; 
+			stanza.type = "cancel"; stanza.condition = "service-unavailable";
+			stanza.description = "User service not found or currently deactivated";
+			return; 
+		end
+		
+		local ok, ret = service:get_nodes(stanza.attr.from or user);
+		if ok and ret[node] then
+			stanza:tag("identity", { category = "pubsub", type = "leaf" }):up();
+			service:append_metadata(node, stanza);
+			return;
+		end
+		
+		stanza[false] = true;
+		stanza.error = (not ok and ret) or "item-not-found";
+		stanza.callback = pep_error_reply;
+		return true;
+	else
+		append_disco_features(stanza);
+	end
 end);
 
 module:hook("account-disco-items", function(event)
