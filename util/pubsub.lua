@@ -75,7 +75,7 @@ function service:append_metadata(node, stanza)
 			:tag("value"):text(node_obj.config.title):up():up();	
 	end
 	
-	stanza:child_with_ns("jabber:x:data"):up(); -- close x tag
+	stanza.tags[1]:get_child("x", "jabber:x:data"):up(); -- close x tag
 end
 
 function service:may(node, actor, action)
