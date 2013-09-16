@@ -43,6 +43,7 @@ module:add_feature("http://jabber.org/protocol/pubsub#config-node");
 module:add_feature("http://jabber.org/protocol/pubsub#delete-items");
 module:add_feature("http://jabber.org/protocol/pubsub#delete-nodes");
 module:add_feature("http://jabber.org/protocol/pubsub#filtered-notifications");
+module:add_feature("http://jabber.org/protocol/pubsub#meta-data");
 module:add_feature("http://jabber.org/protocol/pubsub#persistent-items");
 module:add_feature("http://jabber.org/protocol/pubsub#publish");
 module:add_feature("http://jabber.org/protocol/pubsub#purge-nodes");
@@ -636,6 +637,7 @@ local function append_disco_features(stanza)
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#delete-items"}):up();
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#delete-nodes"}):up();
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#filtered-notifications"}):up();
+	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#meta-data"}):up();
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#persistent-items"}):up();
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#publish"}):up();
 	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#purge-nodes"}):up();
