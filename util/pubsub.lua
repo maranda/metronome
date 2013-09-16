@@ -46,6 +46,37 @@ function service:jids_equal(jid1, jid2)
 	return normalize(jid1) == normalize(jid2);
 end
 
+function service:append_metadata(node, stanza)
+	local node_obj = self.nodes[node]
+	if not node_obj then return; end
+	
+	stanza:tag("x", { xmlns = "jabber:x:data", type = "result" });
+	stanza:tag("field", { var = "FORM_TYPE", type = "hidden" })
+		:tag("value"):text("http://jabber.org/protocol/pubsub#meta-data"):up():up();
+	if node_obj.config.type then
+		stanza:tag("field", { var = "pubsub#type", type = "text-single" })
+			:tag("value"):text(node_obj.config.type):up():up();	
+	end
+	if node_obj.config.creator then
+		stanza:tag("field", { var = "pubsub#creator", type = "text-single" })
+			:tag("value"):text(node_obj.config.creator):up():up();	
+	end
+	if node_obj.config.creation_date then
+		stanza:tag("field", { var = "pubsub#creation_date", type = "text-single" })
+			:tag("value"):text(node_obj.config.creation_date):up():up();	
+	end
+	if node_obj.config.title then
+		stanza:tag("field", { var = "pubsub#title", type = "text-single" })
+			:tag("value"):text(node_obj.config.title):up():up();	
+	end
+	if node_obj.config.description then
+		stanza:tag("field", { var = "pubsub#description", type = "text-single" })
+			:tag("value"):text(node_obj.config.title):up():up();	
+	end
+	
+	stanza:child_with_ns("jabber:x:data"):up(); -- close x tag
+end
+
 function service:may(node, actor, action)
 	-- Employ normalization
 	if actor ~= true then actor = self.config.normalize_jid(actor); end
