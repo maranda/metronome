@@ -72,7 +72,7 @@ function service:append_metadata(node, stanza)
 	end
 	if node_obj.config.description then
 		stanza:tag("field", { var = "pubsub#description", type = "text-single" })
-			:tag("value"):text(node_obj.config.title):up():up();	
+			:tag("value"):text(node_obj.config.description):up():up();	
 	end
 	
 	stanza.tags[1]:get_child("x", "jabber:x:data"):up(); -- close x tag
