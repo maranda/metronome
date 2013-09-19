@@ -35,9 +35,9 @@ local default_ciphers = "HIGH:!aNULL:@STRENGTH";
 if openssl_version and openssl_version >= 101 then
 	default_ciphers = "HIGH:!CAMELLIA:!aNULL:@STRENGTH";
 end
-local supports_ecdh = false;
-if openssl_version and openssl_version >= 100 then
-	supports_ecdh = true;
+local supports_ecdh = true;
+if openssl_version and openssl_version < 100 then
+	supports_ecdh = false;
 	noticket = false;
 end
 local default_verify = (ssl and ssl.x509 and { "peer", "client_once" }) or "none";
