@@ -400,8 +400,6 @@ end
 
 function service:publish(node, actor, id, item, jid)
 	local node_obj = self.nodes[node];
-	local open_publish = node_obj and node_obj.config and 
-			     node_obj.config.publish_model == "open" and true or false;
 
 	if not node_obj and self.config.autocreate_on_publish then
 		if not self:may(node, actor, "publish") then
@@ -416,13 +414,22 @@ function service:publish(node, actor, id, item, jid)
 	end
 
 	if not node_obj then return false, "item-not-found" end
-
-	if not open_publish and not self:may(node, actor, "publish") then
+	
+	local config = node_obj.config;
+	local _publish;
+	
+	if config.publish_model == "open" then
+		_publish = true;
+	elseif config.publish_model == "subscribers" then
+		if self:get_subscription(node, true, actor) then _publish = true; end
+	end
+	
+	if not _publish and not self:may(node, actor, "publish") then
 		return false, "forbidden";
 	end
 
-	local data, data_id, data_author, config, subscribers = 
-		node_obj.data, node_obj.data_id, node_obj.data_author, node_obj.config, node_obj.subscribers;
+	local data, data_id, data_author, subscribers = 
+		node_obj.data, node_obj.data_id, node_obj.data_author, node_obj.subscribers;
 
 	if node_obj.delayed then
 		node_obj.data = deserialize_data(node_obj.data);

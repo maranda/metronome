@@ -277,7 +277,7 @@ function form_layout(service, name)
 			type = "list-single",
 			label = "Publisher Model for the node, currently supported models are publisher and open",
 			value = {
-				{ value = "publisher", default = (node.config.publish_model == "publisher" or node.config.publish_model == nil) and true },
+				{ value = "publishers", default = (node.config.publish_model == "publishers" or node.config.publish_model == nil) and true },
 				{ value = "open", default = node.config.publish_model == "open" and true }
 			}
 		},				
@@ -320,7 +320,7 @@ function process_config_form(service, name, form, new)
 			if value == "presence" or value == "private" or value == "open" then node_config.access_model = value; end
 		elseif field.attr.var == "pubsub#publish_model" then
 			local value = field:get_child_text("value");
-			if value == "publisher" or value == "open" then node_config.publish_model = value; end
+			if value == "publishers" or value == "open" then node_config.publish_model = value; end
 		end
 	end
 
