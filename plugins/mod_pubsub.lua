@@ -119,7 +119,7 @@ function form_layout(service, name)
 			value = {
 				{ value = "publishers", default = (node.config.publish_model == "publishers" or node.config.publish_model == nil) and true },
 				{ value = "open", default = node.config.publish_model == "open" and true },
-				{ value = "subscribers", default = (node.config.publish_model == "subscribers" and true }
+				{ value = "subscribers", default = node.config.publish_model == "subscribers" and true }
 			}
 		},				
 	});
