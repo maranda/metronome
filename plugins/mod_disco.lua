@@ -104,7 +104,7 @@ local function build_cached_children_data()
 	end
 	for _, item in ipairs(disco_items) do
 		local jid = item[1];
-		if not hidden_entities:contains(jid) then _cached_children_data[jid] = item[2]; end
+		if not hidden_entities:contains(jid) then _cached_children_data[jid] = item[2] or true; end
 	end
 end
 
