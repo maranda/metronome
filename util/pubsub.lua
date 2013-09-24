@@ -415,21 +415,21 @@ function service:publish(node, actor, id, item, jid)
 
 	if not node_obj then return false, "item-not-found" end
 	
-	local config = node_obj.config;
+	local config, subscribers = node_obj.config, node_obj.subscribers;
 	local _publish;
 	
 	if config.publish_model == "open" then
 		_publish = true;
-	elseif config.publish_model == "subscribers" then
-		if self:get_subscription(node, true, actor) then _publish = true; end
+	elseif config.publish_model == "subscribers" and subscribers[jid] then
+		_publish = true;
 	end
 	
 	if not _publish and not self:may(node, actor, "publish") then
 		return false, "forbidden";
 	end
 
-	local data, data_id, data_author, subscribers = 
-		node_obj.data, node_obj.data_id, node_obj.data_author, node_obj.subscribers;
+	local data, data_id, data_author = 
+		node_obj.data, node_obj.data_id, node_obj.data_author;
 
 	if node_obj.delayed then
 		node_obj.data = deserialize_data(node_obj.data);
