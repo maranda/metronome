@@ -17,6 +17,7 @@ local ipairs, pairs = ipairs, pairs;
 local hosts, my_host = hosts, module.host;
 
 local show_hosts = module:get_option_boolean("disco_show_hosts", false);
+local hidden_entities = module:get_option_set("disco_hidden_entities", {});
 local disco_items = module:get_option_table("disco_items", {});
 do -- validate disco_items
 	for _, item in ipairs(disco_items) do
@@ -92,10 +93,14 @@ local function build_cached_children_data()
 	_cached_children_data = {};
 	if not show_hosts then
 		for jid, name in pairs(get_children(my_host)) do
-			if hosts[jid].type == "component" then _cached_children_data[jid] = name; end
+			if hosts[jid].type == "component" and not hidden_entities:contains(jid) then 
+				_cached_children_data[jid] = name; 
+			end
 		end
 	else
-		for jid, name in pairs(get_children(my_host)) do _cached_children_data[jid] = name; end
+		for jid, name in pairs(get_children(my_host)) do 
+			if not hidden_entities:contains(jid) then _cached_children_data[jid] = name; end
+		end
 	end
 end
 
