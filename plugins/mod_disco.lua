@@ -102,6 +102,10 @@ local function build_cached_children_data()
 			if not hidden_entities:contains(jid) then _cached_children_data[jid] = name; end
 		end
 	end
+	for _, item in ipairs(disco_items) do
+		local jid = item[1];
+		if not hidden_entities:contains(jid) then _cached_children_data[jid] = item[2]; end
+	end
 end
 
 module:hook("item-added/identity", clear_disco_cache);
@@ -131,9 +135,6 @@ module:hook("iq/host/http://jabber.org/protocol/disco#items:query", function(eve
 	local reply = st.reply(stanza):query("http://jabber.org/protocol/disco#items");
 	for jid, name in pairs(_cached_children_data) do
 		reply:tag("item", {jid = jid, name = name~=true and name or nil}):up();
-	end
-	for _, item in ipairs(disco_items) do
-		reply:tag("item", {jid=item[1], name=item[2]}):up();
 	end
 	return origin.send(reply);
 end);
