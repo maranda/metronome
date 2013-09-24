@@ -92,7 +92,7 @@ local function build_cached_children_data()
 	_cached_children_data = {};
 	if not show_hosts then
 		for jid, name in pairs(get_children(my_host)) do
-			if hosts[jid].type ~= "component" then _cached_children_data[jid] = name; end
+			if hosts[jid].type == "component" then _cached_children_data[jid] = name; end
 		end
 	else
 		for jid, name in pairs(get_children(my_host)) do _cached_children_data[jid] = name; end
