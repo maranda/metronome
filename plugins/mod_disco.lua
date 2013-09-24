@@ -14,7 +14,7 @@ local jid_bare = require "util.jid".bare;
 local st = require "util.stanza"
 local calculate_hash = require "util.caps".calculate_hash;
 local ipairs, pairs = ipairs, pairs;
-local hosts, metronome_events, my_host = hosts, metronome.events, module.host;
+local hosts, my_host = hosts, module.host;
 
 local show_hosts = module:get_option_boolean("disco_show_hosts", false);
 local disco_items = module:get_option_table("disco_items", {});
