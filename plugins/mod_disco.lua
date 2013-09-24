@@ -178,3 +178,4 @@ local function rebuild_children_data(host)
 end
 module:hook_global("host-activated", rebuild_children_data);
 module:hook_global("host-deactivated", rebuild_children_data);
+function module.load() build_cached_children_data(); end
