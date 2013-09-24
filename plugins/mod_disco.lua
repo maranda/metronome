@@ -172,9 +172,9 @@ module:hook("iq/bare/http://jabber.org/protocol/disco#items:query", function(eve
 		return origin.send(reply);
 	end
 end);
-module:hook_global("host-activated", function(host)
+
+local function rebuild_children_data(host)
 	if host:match("%.(.*)") == my_host then build_cached_children_data(); end
-end);
-module:hook_global("host-deactivated", function(host)
-	if host:match("%.(.*)") == my_host then build_cached_children_data(); end
-end);
+end
+module:hook_global("host-activated", rebuild_children_data);
+module:hook_global("host-deactivated", rebuild_children_data);
