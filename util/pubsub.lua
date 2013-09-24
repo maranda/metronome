@@ -8,7 +8,7 @@ local datetime = require "util.datetime".datetime;
 local events = require "util.events";
 local keys = require "util.iterators".keys;
 local st = require "util.stanza";
-local ipairs, next, now, pairs, select, table = ipairs, next, os.time, pairs, select, table;
+local ipairs, next, now, pairs, table = ipairs, next, os.time, pairs, table;
 
 module("pubsub", package.seeall);
 
@@ -421,7 +421,7 @@ function service:publish(node, actor, id, item, jid)
 	if config.publish_model == "open" then
 		_publish = true;
 	elseif config.publish_model == "subscribers" then
-		if select(2, self:get_subscription(node, true, actor)) then _publish = true; end
+		if self:get_subscription(node, true, actor) then _publish = true; end
 	end
 	
 	if not _publish and not self:may(node, actor, "publish") then
