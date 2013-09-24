@@ -701,7 +701,7 @@ local pubsub_admins = module:get_option_set("pubsub_admins", {});
 local function get_affiliation(self, jid, name, action)
 	local bare_jid = jid_bare(jid);
 	local service_host = module.host;
-	if use_parents_creds then service_host = service_host:match("^[%w+]*%.(.*)"); end
+	if use_parents_creds then service_host = service_host:match("%.(.*)"); end
 	local is_server_admin;
 
 	if bare_jid == module.host or usermanager.is_admin(bare_jid, service_host) or pubsub_admins:contains(bare_jid) then
@@ -710,7 +710,7 @@ local function get_affiliation(self, jid, name, action)
 
 	if action == "create" and (not is_server_admin or self.affiliations[bare_jid]) then
 		local _, host = jid_split(jid);
-		if unrestricted_node_creation or host == module.host:match("^[%w+]*%.(.*)") then 
+		if unrestricted_node_creation or host == module.host:match("%.(.*)") then 
 			return "local_user"; 
 		end
 	end 
