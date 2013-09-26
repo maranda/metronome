@@ -115,6 +115,7 @@ local function pending_command_handler(self, data, state)
 				module:send(st_subscribed);
 				subscribed[jid], _changed = true, true;
 				pending[jid] = nil;
+				module:fire_event("peer-subscription-completed", jid);
 			else
 				st_unsubscribed.attr.to = jid;
 				module:send(st_unsubscribed);
@@ -144,6 +145,7 @@ local function remove_command_handler(self, data, state)
 				st_unsubscribed.attr.to = jid;
 				module:send(st_unsubscribed);
 				subscribed[jid], _changed = nil, true;
+				module:fire_event("peer-subscription-removed", jid);
 			end
 		end
 
@@ -181,7 +183,9 @@ module:hook("presence/host", function(event)
 			st_subscribed.attr.to = host;
 			module:send(st_subscribed);
 			outbound[host] = nil;
+			subscribed[host] = true;
 			datamanager.save("outbound", my_host, "server_presence", outbound);
+			module:fire_event("peer-subscription-completed", host);
 		end
 	elseif t == "unsubscribed" then
 		local _pending, _subscribed;
@@ -192,6 +196,7 @@ module:hook("presence/host", function(event)
 			module:send(st_unsubscribed);
 			if _pending then datamanager.save("pending", my_host, "server_presence", pending); end
 			if _subscribed then datamanager.save("subscribed", my_host, "server_presence", subscribed); end
+			module:fire_event("peer-subscription-removed", host);
 		end
 	end
 
