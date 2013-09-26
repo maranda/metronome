@@ -11,6 +11,7 @@ local dataforms = require "util.dataforms";
 local datamanager = require "util.datamanager";
 local jid_split = require "util.jid".split;
 local my_host = module.host;
+local NULL = {};
 
 local ipairs, pairs, t_insert = ipairs, pairs, table.insert;
 
@@ -200,9 +201,12 @@ end, 30);
 -- Module Methods
 
 module.load = function()
-	if datamanager.load("outbound", my_host, "server_presence") then pending = datamanager.load("outbound", my_host, "server_presence") end
+	if datamanager.load("outbound", my_host, "server_presence") then outbound = datamanager.load("outbound", my_host, "server_presence") end
 	if datamanager.load("pending", my_host, "server_presence") then pending = datamanager.load("pending", my_host, "server_presence") end
-	if datamanager.load("subscribed", my_host, "server_presence") then pending = datamanager.load("subscribed", my_host, "server_presence") end
+	if datamanager.load("subscribed", my_host, "server_presence") then 
+		local _subscribed = datamanager.load("subscribed", my_host, "server_presence");
+		for jid in pairs(_subscribed) do subscribed[jid] = true; end
+	end
 end
 
 module.save = function()
@@ -212,5 +216,6 @@ end
 module.restore = function(data)
 	outbound = data.outbound or {};
 	pending = data.pending or {};
-	subscribed = data.subscribed or module:shared("approved_peer_servers");
+	subscribed = module:shared("approved_peer_servers");
+	for jid in pairs(data.subscribed or NULL) do subscribed[jid] = true; end		
 end
