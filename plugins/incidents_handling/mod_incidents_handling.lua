@@ -349,5 +349,5 @@ end
 
 module.restore = function(data)
 	incidents = data.incidents or {}
-	setmetatable(incidents, _inc_mt) ; incidents:init()		
+	setmetatable(incidents, _inc_mt) ; incidents:init()
 end
