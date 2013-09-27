@@ -12,7 +12,6 @@ local st = require "util.stanza";
 local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
-local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
 local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
 local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
 
