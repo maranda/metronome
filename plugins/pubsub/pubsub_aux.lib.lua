@@ -16,6 +16,10 @@ local dataforms = require "util.dataforms";
 
 local service;
 
+local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
+local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
+local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
+
 -- Util functions and mappings
 
 local function set_service(srv) service = srv; end
