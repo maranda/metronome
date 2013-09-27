@@ -535,6 +535,7 @@ return {
 	pubsub_error_reply = pubsub_error_reply,
 	form_layout = form_layout,
 	send_config_form = send_config_form,
-	process_config_form = process_config_form
+	process_config_form = process_config_form,
+	set_service = set_service
 }
 	
