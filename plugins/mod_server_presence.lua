@@ -164,7 +164,7 @@ module:provides("adhoc", subscribe_descriptor);
 module:provides("adhoc", pending_descriptor);
 module:provides("adhoc", remove_descriptor);
 
--- Presence Handlers
+-- Hooks
 
 module:hook("presence/host", function(event)
 	local stanza, origin = event.stanza, event.origin;
@@ -202,6 +202,10 @@ module:hook("presence/host", function(event)
 
 	return true;
 end, 30);
+
+module:hook("peer-is-subscribed", function(host)
+	if subscribed[host] then return true; else return false; end
+end);
 
 -- Module Methods
 
