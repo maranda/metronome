@@ -19,7 +19,7 @@ module:add_feature("urn:xmpp:server-presence")
 
 local outbound = {};
 local pending = {};
-local subscribed = module:shared("approved_peer_servers");
+local subscribed = {};
 
 local s_xmlns = "http://jabber.org/protocol/admin#server-buddy";
 local p_xmlns = "http://lightwitch.org/metronome/admin#server-buddy-pending";
@@ -206,12 +206,9 @@ end, 30);
 -- Module Methods
 
 module.load = function()
-	if datamanager.load("outbound", my_host, "server_presence") then outbound = datamanager.load("outbound", my_host, "server_presence") end
-	if datamanager.load("pending", my_host, "server_presence") then pending = datamanager.load("pending", my_host, "server_presence") end
-	if datamanager.load("subscribed", my_host, "server_presence") then 
-		local _subscribed = datamanager.load("subscribed", my_host, "server_presence");
-		for jid in pairs(_subscribed) do subscribed[jid] = true; end
-	end
+	if datamanager.load("outbound", my_host, "server_presence") then outbound = datamanager.load("outbound", my_host, "server_presence"); end
+	if datamanager.load("pending", my_host, "server_presence") then pending = datamanager.load("pending", my_host, "server_presence"); end
+	if datamanager.load("subscribed", my_host, "server_presence") then subscribed = datamanager.load("subscribed", my_host, "server_presence"); end
 end
 
 module.save = function()
@@ -221,6 +218,5 @@ end
 module.restore = function(data)
 	outbound = data.outbound or {};
 	pending = data.pending or {};
-	subscribed = module:shared("approved_peer_servers");
-	for jid in pairs(data.subscribed or NULL) do subscribed[jid] = true; end		
+	subscribed = data.subscribed or {};		
 end
