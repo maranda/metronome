@@ -21,14 +21,33 @@ local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
 module:depends("server_presence");
 module:add_identity("directory", "server");
 
+-- Util. functions.
+
+local function publish_item(host, vcard)
+	local item = st.stanza("item", { id = host });
+	local _vcard = st.clone(vcard);
+
+	item:add_child(_vcard);
+	local ok, err = service:publish("urn:xmpp:contacts", true, host, item, host);
+end
+
 -- Module Handlers.
 
 local function handle_subscribed_peer(host)
 	-- send disco info request.
-	module:log("debug", "Sending disco info request to peer server %s", host);
-	local disco_get = st.iq({ from = my_host, to = host, type = "get", id = "directory_probe:disco" })
-		:query("http://jabber.org/protocol/disco#info");
-	module:send(disco_get);
+	if not hosts[host] then
+		module:log("debug", "Sending disco info request to peer server %s", host);
+		local disco_get = st.iq({ from = my_host, to = host, type = "get", id = "directory_probe:disco" })
+			:query("http://jabber.org/protocol/disco#info");
+		module:send(disco_get);
+	else
+		-- Querying locally, as IQ routing is not very viable... (yet).
+		local public_service_vcard = hosts[host].public_service_vcard;
+		if public_service_vcard then
+			module:log("debug", "Setting directory item for local host %s", host);
+			publish_item(host, public_service_vcard);
+		end
+	end
 end
 
 local function handle_removed_peer(host)
@@ -41,9 +60,10 @@ local function process_disco_response(event)
 	local node, remote = jid_split(stanza.attr.from);
 	
 	if node then return; end -- correct?
-	local is_subscribed = module:fire_event("is-peer-subscribed", remote);
+	local is_subscribed = module:fire_event("peer-is-subscribed", remote);
 	local is_public;
 	if is_subscribed then
+		module:log("debug", "Processing disco info response from peer server %s", remote);
 		local query = stanza:get_child("query", "http://jabber.org/protocol/disco#info")
 		if not query then return; end
 		
@@ -68,15 +88,13 @@ local function process_vcard_response(event)
 	local node, remote = jid_split(stanza.attr.from);
 	
 	if node then return; end -- correct?	
-	local is_subscribed = module:fire_event("is-peer-subscribed", remote);
+	local is_subscribed = module:fire_event("peer-is-subscribed", remote);
 	if is_subscribed then
+		module:log("debug", "Processing vcard from peer server %s", remote);
 		local vcard =  stanza:get_child("vcard", "urn:ietf:params:xml:ns:vcard-4.0");
 		if vcard then
-			local item = st.stanza("item", { id = remote });
-			local _vcard = st.clone(vcard);
-			
-			item:tag(_vcard);
-			service:publish("urn:xmpp:contacts", true, remote, item);
+			module:log("info", "processing server vcard from %s", remote);
+			publish_item(remote, vcard);
 		else
 			return;
 		end
@@ -233,6 +251,8 @@ set_service(pubsub.new({
 		persistent = true;
 	};
 	
+	autocreate_on_publish = true;
+	
 	broadcaster = broadcast;
 	get_affiliation = get_affiliation;
 	
@@ -246,3 +266,5 @@ set_service(pubsub.new({
 module:hook("iq-get/host/http://jabber.org/protocol/pubsub:pubsub", handle_pubsub_iq);
 module:hook("iq-result/host/directory_probe:disco", process_disco_response);
 module:hook("iq-result/host/directory_probe:vcard", process_vcard_response);
+module:hook("peer-subscription-completed", handle_subscribed_peer);
+module:hook("peer-subscription-removed", handle_removed_peer);
