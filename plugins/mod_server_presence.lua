@@ -189,6 +189,7 @@ module:hook("presence/host", function(event)
 			outbound[host] = nil;
 			subscribed[host] = true;
 			datamanager.store("outbound", my_host, "server_presence", outbound);
+			datamanager.store("subscribed", my_host, "server_presence", subscribed);
 			module:fire_event("peer-subscription-completed", host);
 		end
 	elseif t == "unsubscribed" then
