@@ -1000,7 +1000,6 @@ function pep_new(node)
 			};
 
 			autocreate_on_publish = true;
-			autocreate_on_subscribe = true;
 
 			broadcaster = broadcast;
 			get_affiliation = get_affiliation;
