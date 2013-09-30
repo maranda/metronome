@@ -40,7 +40,7 @@ local function build_vcard()
 			:tag("uri"):text(ca.url):up():up();
 	end
 	if server_vcard.oob_registration_uri then
-		vcard:tag("urn:xmpp:vcard:registration:1"):tag("uri"):text(server_vcard.oob_registration_uri):up():up();
+		vcard:tag("registration", { xmlns = "urn:xmpp:vcard:registration:1" }):tag("uri"):text(server_vcard.oob_registration_uri):up():up();
 	end
 	
 	hosts[my_host].public_service_vcard = vcard;
