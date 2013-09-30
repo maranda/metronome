@@ -54,7 +54,7 @@ local function handle_vcard(event)
 end
 
 local function handle_reload()
-	server_vcard = module:get_option_table("public_service_vcard");
+	server_vcard = module:get_option_table("public_service_vcard", {});
 	build_vcard();
 end
 
