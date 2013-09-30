@@ -76,7 +76,7 @@ local function process_disco_response(event)
 			module:log("debug", "Processing disco info response from peer server %s", remote);
 			local vcard_get = st.iq({ from = my_host, to = remote, type = "get", id = "directory_probe:vcard" })
 				:tag("vcard", { xmlns = "urn:ietf:params:xml:ns:vcard-4.0" });
-			module:send(stanza);
+			module:send(vcard_get);
 			return true;
 		else
 			return true;
