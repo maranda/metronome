@@ -22,9 +22,9 @@ local vcard;
 
 local function build_vcard()
 	vcard = st.stanza("vcard", { xmlns = vcard4_xmlns });
-	vcard:tag("kind"):tag("text"):text("application"):up():up(); end
-	vcard:tag("name"):tag("text"):text("Metronome"):up():up(); end
-	vcard:tag("fn"):tag("text"):text(my_host):up():up(); end
+	vcard:tag("kind"):tag("text"):text("application"):up():up();
+	vcard:tag("name"):tag("text"):text("Metronome"):up():up();
+	vcard:tag("fn"):tag("text"):text(my_host):up():up();
 	
 	if not server_vcard then return; end
 
