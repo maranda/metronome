@@ -11,6 +11,7 @@ local service;
 local my_host = module.host;
 local jid_bare = require "util.jid".bare;
 local jid_split = require "util.jid".split;
+local pubsub = require "util.pubsub";
 local st = require "util.stanza";
 local type = type;
 
