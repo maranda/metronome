@@ -25,6 +25,8 @@ local s_xmlns = "http://jabber.org/protocol/admin#server-buddy";
 local p_xmlns = "http://lightwitch.org/metronome/admin#server-buddy-pending";
 local r_xmlns = "http://lightwitch.org/metronome/admin#server-buddy-remove";
 
+local st_subscribe = st.presence({ from = my_host, type = "subscribe" });
+local st_unsubscribe = st.presence({ from = my_host, type = "unsubscribe" });
 local st_subscribed = st.presence({ from = my_host, type = "subscribed" });
 local st_unsubscribed = st.presence({ from = my_host, type = "unsubscribed" });
 
@@ -145,8 +147,8 @@ local function remove_command_handler(self, data, state)
 		local _changed;
 		for jid, remove in pairs(fields) do
 			if remove then
-				st_unsubscribed.attr.to = jid;
-				module:send(st_unsubscribed);
+				st_unsubscribe.attr.to = jid;
+				module:send(st_unsubscribe);
 				subscribed[jid], _changed = nil, true;
 				module:fire_event("peer-subscription-removed", jid);
 			end
@@ -179,27 +181,35 @@ module:hook("presence/host", function(event)
 	local t = stanza.attr.type;
 	
 	if t == "subscribe" then
-		pending[host] = true;
-		datamanager.store("pending", my_host, "server_presence", pending);
-	elseif t == "subscribed" then
-		if outbound[host] then
-			module:log("info", "%s has accepted the peer subscription", host);
+		if subscribed[host] then
+			module:log("info", "auto accepting %s peer subscription", host);
 			st_subscribed.attr.to = host;
 			module:send(st_subscribed);
+		else
+			pending[host] = true;
+			datamanager.store("pending", my_host, "server_presence", pending);
+		end
+	elseif t == "subscribed" then
+		if outbound[host] then
+			module:log("info", "%s has accepted the peer subscription, sending request as well", host);
+			st_subscribe.attr.to = host;
+			module:send(st_subscribe);
 			outbound[host] = nil;
 			subscribed[host] = true;
 			datamanager.store("outbound", my_host, "server_presence", outbound);
 			datamanager.store("subscribed", my_host, "server_presence", subscribed);
 			module:fire_event("peer-subscription-completed", host);
 		end
-	elseif t == "unsubscribed" then
+	elseif t == "unsubscribe" or t == "unsubscribed" then
 		local _pending, _subscribed;
 		if pending[host] then pending[host] = nil; _pending = true; end
 		if subscribed[host] then subscribed[host] = nil; _subscribed = true; end
 		if _pending or _subscribed then
 			module:log("info", "%s has removed the peer subscription to us", host);
-			st_unsubscribed.attr.to = host;
-			module:send(st_unsubscribed);
+			if t == "unsubscribe" then 
+				st_unsubscribed.attr.to = host;
+				module:send(st_unsubscribed);
+			end
 			if _pending then datamanager.store("pending", my_host, "server_presence", pending); end
 			if _subscribed then datamanager.store("subscribed", my_host, "server_presence", subscribed); end
 			module:fire_event("peer-subscription-removed", host);
