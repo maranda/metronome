@@ -406,7 +406,8 @@ function service:publish(node, actor, id, item, jid)
 			return false, "forbidden";
 		end
 
-		local ok, err = self:create(node, true, nil, actor);
+		local _actor = jid and jid or actor;
+		local ok, err = self:create(node, true, nil, _actor);
 		if not ok then
 			return ok, err;
 		end
