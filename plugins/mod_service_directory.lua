@@ -116,14 +116,10 @@ function handle_pubsub_iq(event)
 	if not action then return origin.send(pubsub_error_reply(stanza, "bad-request")); end
 	local handler;
 	
-	if (action == "items" or action == "subscribe" or action == "unsubscribe") and
+	if (action.name == "items" or action.name == "subscribe" or action.name == "unsubscribe") and
 	   action.attr.node == "urn:xmpp:contacts" then
 		handler = handlers[stanza.attr.type.."_"..action.name];
-		if not config then 
-			return handler(origin, stanza, action); 
-		else 
-			return handler(origin, stanza, action, config); 
-		end
+		return handler(origin, stanza, action); 
 	else
 		return origin.send(pubsub_error_reply(stanza, "forbidden"));
 	end
