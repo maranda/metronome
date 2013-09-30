@@ -28,7 +28,7 @@ local function publish_item(host, vcard)
 	local _vcard = st.clone(vcard);
 
 	item:add_child(_vcard);
-	local ok, err = service:publish("urn:xmpp:contacts", true, host, item, my_host);
+	service:publish("urn:xmpp:contacts", true, host, item, my_host);
 end
 
 -- Module Handlers.
