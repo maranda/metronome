@@ -19,7 +19,7 @@ local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
 
 module:depends("server_presence");
-module:add_identity("directory", "server");
+module:add_identity("directory", "server", "Metronome");
 
 -- Util. functions.
 
