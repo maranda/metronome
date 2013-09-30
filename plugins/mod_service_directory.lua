@@ -28,7 +28,7 @@ local function publish_item(host, vcard)
 	local _vcard = st.clone(vcard);
 
 	item:add_child(_vcard);
-	local ok, err = service:publish("urn:xmpp:contacts", true, host, item, host);
+	local ok, err = service:publish("urn:xmpp:contacts", true, host, item, my_host);
 end
 
 -- Module Handlers.
@@ -241,7 +241,7 @@ set_service(pubsub.new({
 	node_default_config = {
 		deliver_notifications = true;
 		deliver_payloads = true;
-		persistent = true;
+		persist_items = true;
 	};
 	
 	autocreate_on_publish = true;
