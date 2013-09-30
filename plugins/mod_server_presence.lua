@@ -93,6 +93,8 @@ local function subscribe_command_handler(self, data, state)
 		else
 			if peer == my_host then
 				return { status = "completed", error = { message = "I can't subscribe to myself!!! *rolls eyes*" } };
+			elseif subscribed[peer] then
+				return { status = "completed", error = { message = "I'm already subscribed to this entity." } };
 			end
 			local subscribe = st.presence({ to = peer, from = my_host, type = "subscribe" });
 			outbound[peer] = true;
