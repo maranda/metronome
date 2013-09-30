@@ -115,10 +115,6 @@ function handle_pubsub_iq(event)
 	if not action then return origin.send(pubsub_error_reply(stanza, "bad-request")); end
 	local handler;
 	
-	if pubsub.attr.xmlns ~= xmlns_pubsub then
-		return origin.send(pubsub_error_reply(stanza, "bad-request"));
-	end
-
 	if (action == "items" or action == "subscribe" or action == "unsubscribe") and
 	   action.attr.node == "urn:xmpp:contacts" then
 		handler = handlers[stanza.attr.type.."_"..action.name];
@@ -263,7 +259,7 @@ set_service(pubsub.new({
 
 -- Hooks
 
-module:hook("iq-get/host/http://jabber.org/protocol/pubsub:pubsub", handle_pubsub_iq);
+module:hook("iq/host/http://jabber.org/protocol/pubsub:pubsub", handle_pubsub_iq);
 module:hook("iq-result/host/directory_probe:disco", process_disco_response);
 module:hook("iq-result/host/directory_probe:vcard", process_vcard_response);
 module:hook("peer-subscription-completed", handle_subscribed_peer);
