@@ -38,7 +38,7 @@ local function build_vcard()
 	if server_vcard.ca then
 		local ca = server_vcard.ca;
 		vcard:tag("ca")
-			:tag("name"):text(ca.name):up();
+			:tag("name"):text(ca.name):up()
 			:tag("uri"):text(ca.url):up():up();
 	end
 	if server_vcard.oob_registration_uri then
