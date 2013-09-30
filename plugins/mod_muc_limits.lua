@@ -24,8 +24,10 @@ local xmlns_muc = "http://jabber.org/protocol/muc";
 local period = math.max(module:get_option_number("muc_event_rate", 0.5), 0);
 local burst = math.max(module:get_option_number("muc_burst_factor", 6), 1);
 local exclusion_list = module:get_option_set("muc_throttle_host_exclusion");
+local parent_host = module:get_option_boolean("muc_whitelist_parent_peers") == true and module.host:match("%.(.*)");
 
 local rooms = metronome.hosts[module.host].modules.muc.rooms;
+local hosts = metronome.hosts;
 
 -- Handlers
 
@@ -38,6 +40,9 @@ local function handle_stanza(event)
 
 	local node, domain = jid_split(stanza.attr.from);
 	if exclusion_list and exclusion_list:contains(domain) then
+		return;
+	end
+	if parent_host and hosts[parent_host].events.fire_event("peer-is-subscribed", domain) then
 		return;
 	end
 
