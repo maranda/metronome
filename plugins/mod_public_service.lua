@@ -14,7 +14,7 @@ module:depends("server_presence");
 module:add_feature("urn:xmpp:public-server");
 
 local vcard4_xmlns = "urn:ietf:params:xml:ns:vcard-4.0";
-local server_vcard = module:get_option_table("public_service_vcard");
+local server_vcard = module:get_option_table("public_service_vcard", {});
 
 -- Build Service vCard4
 
@@ -26,8 +26,6 @@ local function build_vcard()
 	vcard:tag("name"):tag("text"):text("Metronome"):up():up();
 	vcard:tag("fn"):tag("text"):text(my_host):up():up();
 	
-	if not server_vcard then return; end
-
 	if server_vcard.name then vcard:tag("note"):tag("text"):text(server_vcard.name):up():up(); end
 	if server_vcard.url then vcard:tag("url"):tag("uri"):text(server_vcard.url):up():up(); end
 	if server_vcard.foundation_year then vcard:tag("bday"):tag("date"):text(server_vcard.foundation_year):up():up(); end
@@ -44,6 +42,8 @@ local function build_vcard()
 	if server_vcard.oob_registration_uri then
 		vcard:tag("urn:xmpp:vcard:registration:1"):tag("uri"):text(server_vcard.oob_registration_uri):up():up();
 	end
+	
+	hosts[my_host].public_service_vcard = vcard;
 end
 
 local function handle_vcard(event)
