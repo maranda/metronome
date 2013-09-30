@@ -63,7 +63,6 @@ local function process_disco_response(event)
 	local is_subscribed = module:fire_event("peer-is-subscribed", remote);
 	local is_public;
 	if is_subscribed then
-		module:log("debug", "Processing disco info response from peer server %s", remote);
 		local query = stanza:get_child("query", "http://jabber.org/protocol/disco#info")
 		if not query then return; end
 		
@@ -74,11 +73,13 @@ local function process_disco_response(event)
 		end
 
 		if is_public then
+			module:log("debug", "Processing disco info response from peer server %s", remote);
 			local vcard_get = st.iq({ from = my_host, to = remote, type = "get", id = "directory_probe:vcard" })
 				:tag("vcard", { xmlns = "urn:ietf:params:xml:ns:vcard-4.0" });
 			module:send(stanza);
+			return true;
 		else
-			return;
+			return true;
 		end
 	end
 end
@@ -90,13 +91,13 @@ local function process_vcard_response(event)
 	if node then return; end -- correct?	
 	local is_subscribed = module:fire_event("peer-is-subscribed", remote);
 	if is_subscribed then
-		module:log("debug", "Processing vcard from peer server %s", remote);
 		local vcard =  stanza:get_child("vcard", "urn:ietf:params:xml:ns:vcard-4.0");
 		if vcard then
-			module:log("info", "processing server vcard from %s", remote);
+			module:log("info", "Processing server vcard from %s", remote);
 			publish_item(remote, vcard);
+			return true;
 		else
-			return;
+			return true;
 		end
 	end
 end
