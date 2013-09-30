@@ -89,10 +89,13 @@ local function subscribe_command_handler(self, data, state)
 		if not peer or peer == "" then 
 			return { status = "completed", error = { message = "You need to supply the server QDN." } };
 		else
+			if peer == my_host then
+				return { status = "completed", error = { message = "I can't subscribe to myself!!! *rolls eyes*" } };
+			end
 			local subscribe = st.presence({ to = peer, from = my_host, type = "subscribe" });
 			outbound[peer] = true;
 			module:send(subscribe);
-			datamanager.save("outbound", my_host, "server_presence", outbound);
+			datamanager.store("outbound", my_host, "server_presence", outbound);
 			return { status = "completed", info = "Subscription request sent." };
 		end
 	else
@@ -123,8 +126,8 @@ local function pending_command_handler(self, data, state)
 			end
 		end
 		
-		if _changed then datamanager.save("subscribed", my_host, "server_presence", subscribed); end
-		datamanager.save("pending", my_host, "server_presence", pending);
+		if _changed then datamanager.store("subscribed", my_host, "server_presence", subscribed); end
+		datamanager.store("pending", my_host, "server_presence", pending);
 		return { status = "completed", info = "Done." };
 	else
 		return { status = "executing", form = layout }, "executing"
@@ -149,7 +152,7 @@ local function remove_command_handler(self, data, state)
 			end
 		end
 
-		if _changed then datamanager.save("subscribed", my_host, "server_presence", subscribed); end
+		if _changed then datamanager.store("subscribed", my_host, "server_presence", subscribed); end
 		return { status = "completed", info = "Done." };
 	else
 		return { status = "executing", form = layout }, "executing"
@@ -177,14 +180,15 @@ module:hook("presence/host", function(event)
 	
 	if t == "subscribe" then
 		pending[host] = true;
-		datamanager.save("pending", my_host, "server_presence", pending);
+		datamanager.store("pending", my_host, "server_presence", pending);
 	elseif t == "subscribed" then
 		if outbound[host] then
+			module:log("info", "%s has accepted the peer subscription", host);
 			st_subscribed.attr.to = host;
 			module:send(st_subscribed);
 			outbound[host] = nil;
 			subscribed[host] = true;
-			datamanager.save("outbound", my_host, "server_presence", outbound);
+			datamanager.store("outbound", my_host, "server_presence", outbound);
 			module:fire_event("peer-subscription-completed", host);
 		end
 	elseif t == "unsubscribed" then
@@ -192,10 +196,11 @@ module:hook("presence/host", function(event)
 		if pending[host] then pending[host] = nil; _pending = true; end
 		if subscribed[host] then subscribed[host] = nil; _subscribed = true; end
 		if _pending or _subscribed then
+			module:log("info", "%s has removed the peer subscription to us", host);
 			st_unsubscribed.attr.to = host;
 			module:send(st_unsubscribed);
-			if _pending then datamanager.save("pending", my_host, "server_presence", pending); end
-			if _subscribed then datamanager.save("subscribed", my_host, "server_presence", subscribed); end
+			if _pending then datamanager.store("pending", my_host, "server_presence", pending); end
+			if _subscribed then datamanager.store("subscribed", my_host, "server_presence", subscribed); end
 			module:fire_event("peer-subscription-removed", host);
 		end
 	end
