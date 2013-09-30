@@ -205,7 +205,11 @@ function service:set_affiliation(node, actor, jid, affiliation)
 end
 
 function service:add_subscription(node, actor, jid, options)
-	local cap;
+	local cap;	
+	if actor == true and not jid then
+		return false, "bad-request";
+	end
+	
 	if actor == true or jid == actor or self:jids_equal(actor, jid) then
 		cap = "subscribe";
 	else
@@ -258,6 +262,10 @@ function service:add_subscription(node, actor, jid, options)
 end
 
 function service:remove_subscription(node, actor, jid)
+	if actor == true and not jid then
+		return false, "bad-request";
+	end
+
 	local node_obj = self.nodes[node];
 	if not node_obj then
 		return false, "item-not-found";
