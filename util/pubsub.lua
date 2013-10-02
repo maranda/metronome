@@ -437,13 +437,13 @@ function service:publish(node, actor, id, item, jid)
 		return false, "forbidden";
 	end
 
-	local data, data_id, data_author = 
-		node_obj.data, node_obj.data_id, node_obj.data_author;
-
 	if node_obj.delayed then
 		node_obj.data = deserialize_data(node_obj.data);
 		node_obj.delayed = nil;
 	end
+	
+	local data, data_id, data_author =
+		node_obj.data, node_obj.data_id, node_obj.data_author;
 
 	if item then
 		local author = (actor == true and self.config.normalize_jid(jid)) or self.config.normalize_jid(actor);
