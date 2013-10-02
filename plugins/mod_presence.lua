@@ -439,3 +439,24 @@ module:hook("resource-unbind", function(event)
 		session.directed = nil;
 	end
 end);
+
+module:hook_global("server-stopping", function()
+	local full_sessions = full_sessions;
+	local module_host = module.host;
+	module:log("debug", "%s -- broadcasting unavailable status to all non-self directed presences...", module_host);
+	local pres = st.presence({ type = "unavailable" }):tag("status"):text("Disconnected: Server is shutting down."):up();
+
+	for jid, session in pairs(full_sessions) do
+		if session.host == module_host then
+			local directed = session.directed;
+			if directed then
+				local self_jid = jid_bare(jid);
+				for to_jid in pairs(directed) do
+					if jid_bare(to_jid) ~= self_jid then
+						pres.attr.to = to_jid; module:send(pres);
+					end
+				end
+			end
+		end
+	end
+end);
