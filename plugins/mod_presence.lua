@@ -453,6 +453,7 @@ module:hook_global("server-stopping", function()
 				local self_jid = jid_bare(jid);
 				for to_jid in pairs(directed) do
 					if jid_bare(to_jid) ~= self_jid then
+						pres.attr.from = session.full_jid;
 						pres.attr.to = to_jid;
 						core_post_stanza(session, pres, true);
 						directed[to_jid] = nil;
