@@ -8,7 +8,7 @@
 
 local log = require "util.logger".init("mod_pep");
 local jid_bare = require "util.jid".bare;
-local jid_split = require "util.jid".bare;
+local jid_split = require "util.jid".split;
 local set_new = require "util.set".new;
 local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed;
 local dataforms = require "util.dataforms";
