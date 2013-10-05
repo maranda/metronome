@@ -471,6 +471,7 @@ end
 return {
 	features = features,
 	singleton_nodes = singleton_nodes,
+	set_closures = set_closures,
 	pep_error_reply = pep_error_reply,
 	subscription_presence = subscription_presence,
 	get_caps_hash_from_presence = get_caps_hash_from_presence,
