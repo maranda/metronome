@@ -12,6 +12,7 @@ local jid_split = require "util.jid".bare;
 local set_new = require "util.set".new;
 local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed;
 local dataforms = require "util.dataforms";
+local encode_node = datamanager.path_encode;
 local um_is_admin = usermanager.is_admin;
 local core_post_stanza = metronome.core_post_stanza;
 
