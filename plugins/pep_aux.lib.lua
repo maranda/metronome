@@ -63,8 +63,8 @@ local pep_errors = {
 
 -- Functions
 
-local function set_closures(services, hash_map)
-	services = services; hash_map = hash_map;
+local function set_closures(s, h)
+	services = s; hash_map = h;
 end
 
 local function pep_error_reply(stanza, error)
