@@ -27,27 +27,28 @@ local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
 local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
 local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
 
+local features = {
+	"http://jabber.org/protocol/pubsub#access-presence",
+	"http://jabber.org/protocol/pubsub#auto-create",
+	"http://jabber.org/protocol/pubsub#create-and-configure",
+	"http://jabber.org/protocol/pubsub#create-nodes",
+	"http://jabber.org/protocol/pubsub#config-node",
+	"http://jabber.org/protocol/pubsub#delete-items",
+	"http://jabber.org/protocol/pubsub#delete-nodes",
+	"http://jabber.org/protocol/pubsub#filtered-notifications",
+	"http://jabber.org/protocol/pubsub#meta-data",
+	"http://jabber.org/protocol/pubsub#persistent-items",
+	"http://jabber.org/protocol/pubsub#publish",
+	"http://jabber.org/protocol/pubsub#purge-nodes",
+	"http://jabber.org/protocol/pubsub#retrieve-items"
+};
+
 hash_map = {};
 services = {};
 local last_idle_cleanup = os_time();
 local handlers = {};
 local handlers_owner = {};
 local NULL = {};
-
-module:add_identity("pubsub", "pep", "Metronome");
-module:add_feature("http://jabber.org/protocol/pubsub#access-presence");
-module:add_feature("http://jabber.org/protocol/pubsub#auto-create");
-module:add_feature("http://jabber.org/protocol/pubsub#create-and-configure");
-module:add_feature("http://jabber.org/protocol/pubsub#create-nodes");
-module:add_feature("http://jabber.org/protocol/pubsub#config-node");
-module:add_feature("http://jabber.org/protocol/pubsub#delete-items");
-module:add_feature("http://jabber.org/protocol/pubsub#delete-nodes");
-module:add_feature("http://jabber.org/protocol/pubsub#filtered-notifications");
-module:add_feature("http://jabber.org/protocol/pubsub#meta-data");
-module:add_feature("http://jabber.org/protocol/pubsub#persistent-items");
-module:add_feature("http://jabber.org/protocol/pubsub#publish");
-module:add_feature("http://jabber.org/protocol/pubsub#purge-nodes");
-module:add_feature("http://jabber.org/protocol/pubsub#retrieve-items");
 
 -- Helpers.
 
@@ -630,18 +631,7 @@ module:hook("iq/bare/http://jabber.org/protocol/pubsub#owner:pubsub", handle_pub
 
 local function append_disco_features(stanza)
 	stanza:tag("identity", {category = "pubsub", type = "pep"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#access-presence"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#auto-create"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#create-and-configure"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#create-nodes"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#delete-items"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#delete-nodes"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#filtered-notifications"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#meta-data"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#persistent-items"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#publish"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#purge-nodes"}):up();
-	stanza:tag("feature", {var = "http://jabber.org/protocol/pubsub#retrieve-items"}):up();
+	for _, feature in ipairs(features) do stanza:tag("feature", { var = feature }):up(); end
 end
 
 module:hook("account-disco-info", function(event)
@@ -1010,6 +1000,11 @@ function pep_new(node)
 		};
 
 	return new_service;
+end
+
+function module.load()
+	module:add_identity("pubsub", "pep", "Metronome");
+	for _, feature in ipairs(features) do module:add_feature(feature); end
 end
 
 function module.save()
