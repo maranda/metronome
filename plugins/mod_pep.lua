@@ -32,13 +32,13 @@ local NULL = {};
 
 local pep_lib = module:require "pep_aux";
 pep_lib.set_closures(services, hash_map);
-local features = pep_lib.features,
-local singleton_nodes = pep_lib.singleton_nodes,
-local pep_error_reply = pep_lib.pep_error_reply,
-local subscription_presence = pep_lib.subscription_presence,
-local get_caps_hash_from_presence = pep_lib.get_caps_hash_from_presence,
-local pep_send = pep_lib.pep_send,
-local pep_autosubscribe_recs = pep_lib.pep_autosubscribe_recs,
+local features = pep_lib.features;
+local singleton_nodes = pep_lib.singleton_nodes;
+local pep_error_reply = pep_lib.pep_error_reply;
+local subscription_presence = pep_lib.subscription_presence;
+local get_caps_hash_from_presence = pep_lib.get_caps_hash_from_presence;
+local pep_send = pep_lib.pep_send;
+local pep_autosubscribe_recs = pep_lib.pep_autosubscribe_recs;
 local form_layout = pep_lib.form_layout;
 local send_config_form = pep_lib.send_config_form;
 local process_config_form = pep_lib.process_config_form;
