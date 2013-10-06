@@ -250,7 +250,7 @@ function stream_callbacks.streamopened(context, attr)
 			bosh_hold = BOSH_DEFAULT_HOLD, bosh_max_inactive = BOSH_DEFAULT_INACTIVITY,
 			requests = { }, send_buffer = {}, reset_stream = bosh_reset_stream,
 			close = bosh_close_stream, dispatch_stanza = core_process_stanza, notopen = true,
-			log = logger.init("bosh"..sid),	secure = consider_bosh_secure or request.secure,
+			log = logger.init("bosh"..sid), secure = consider_bosh_secure or request.secure,
 			ip = get_ip_from_request(request), headers = custom_headers;
 		};
 		sessions[sid] = session;
@@ -317,7 +317,7 @@ function stream_callbacks.streamopened(context, attr)
 		if diff > 1 then
 			session.log("warn", "rid too large (means a request was lost). Last rid: %d New rid: %s", session.rid, attr.rid);
 		elseif diff <= 0 then
-			session.log("debug", "rid repeated (on request %s), ignoring: %s (diff %d)", request.id, session.rid, diff);
+			session.log("debug", "rid repeated (on request %s), ignoring: %d (diff %d)", tostring(request), session.rid, diff);
 			context.notopen = nil;
 			context.ignore = true;
 			context.sid = sid;
