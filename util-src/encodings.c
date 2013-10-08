@@ -14,9 +14,6 @@
 * Lua library for base64, stringprep and idna encodings
 */
 
-/* Newer MSVC compilers deprecate strcpy as unsafe, but we use it in a safe way */
-#define _CRT_SECURE_NO_DEPRECATE
-
 #include <string.h>
 #include <stdlib.h>
 #include "lua.h"
