@@ -115,11 +115,13 @@ local function digest(self, message)
 
 	self.step = self.step + 1;
 	if (self.step == 1) then
-		local challenge = serialize({	nonce = self.nonce,
-										qop = "auth",
-										charset = "utf-8",
-										algorithm = "md5-sess",
-										realm = self.realm});
+		local challenge = serialize({
+			nonce = self.nonce,
+			qop = "auth",
+			charset = "utf-8",
+			algorithm = "md5-sess",
+			realm = self.realm
+		});
 		return "challenge", challenge;
 	elseif (self.step == 2) then
 		local response = parse(message);
