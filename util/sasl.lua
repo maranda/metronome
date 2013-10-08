@@ -76,9 +76,9 @@ function method:process(message)
 end
 
 -- load the mechanisms
-require "util.sasl.plain"     .init(registerMechanism);
+require "util.sasl.plain".init(registerMechanism);
 require "util.sasl.digest-md5".init(registerMechanism);
-require "util.sasl.anonymous" .init(registerMechanism);
-require "util.sasl.scram"     .init(registerMechanism);
+require "util.sasl.anonymous".init(registerMechanism);
+require "util.sasl.scram".init(registerMechanism);
 
 return _M;
