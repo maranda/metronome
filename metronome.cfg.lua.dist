@@ -43,7 +43,7 @@ modules_enabled = {
 			-- Other specific functionality
 			--"posix"; -- POSIX functionality, sends server to background, enables syslog, etc.
 		  	--"admin_telnet"; -- administration console, telnet to port 5582
-			--"bosh"; -- Enable BOSH clients, aka "Jabber over HTTP"
+			--"bosh"; -- Enable BOSH clients, aka "XMPP over Bidirectional Streams over Synchronous HTTP"
 };
  
 -- Disable account creation by default, for security
