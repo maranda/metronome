@@ -184,8 +184,6 @@ local function atomic_store(filename, data)
 end
 
 if metronome.platform ~= "posix" then
-	-- os.rename does not overwrite existing files on Windows
-	-- TODO We could use Transactional NTFS on Vista and above
 	function atomic_store(filename, data)
 		local f, err = io_open(filename, "w");
 		if not f then return f, err; end

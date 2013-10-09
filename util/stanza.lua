@@ -7,29 +7,16 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2012, Kim Alvefur, Matthew Wild, Waqas Hussain
 
-local t_insert      =  table.insert;
-local t_remove      =  table.remove;
-local t_concat      =  table.concat;
-local s_format      = string.format;
-local s_match       =  string.match;
-local tostring      =      tostring;
-local setmetatable  =  setmetatable;
-local pairs         =         pairs;
-local ipairs        =        ipairs;
-local type          =          type;
-local s_gsub        =   string.gsub;
-local s_find        =   string.find;
-local os            =            os;
+local t_insert, t_remove, t_concat, = table.insert, table.remove, table.concat;
+local s_format, s_match, s_gsub, s_find = string.format, string.match, string.gsub, string.find;
+local tostring, setmetatable, pairs, ipairs, type, os =
+	tostring, setmetatable, pairs, ipairs, type, os;
 
-local do_pretty_printing = not os.getenv("WINDIR");
-local getstyle, getstring;
-if do_pretty_printing then
-	local ok, termcolours = pcall(require, "util.termcolours");
-	if ok then
-		getstyle, getstring = termcolours.getstyle, termcolours.getstring;
-	else
-		do_pretty_printing = nil;
-	end
+local getstyle, getstring, do_pretty_printing;
+local ok, termcolours = pcall(require, "util.termcolours");
+if ok then
+	do_pretty_printing = true;
+	getstyle, getstring = termcolours.getstyle, termcolours.getstring;
 end
 
 local xmlns_stanzas = "urn:ietf:params:xml:ns:xmpp-stanzas";

@@ -98,7 +98,7 @@ function check_dependencies()
 	local encodings, err = softreq "util.encodings"
 	if not encodings then
 		if err:match("not found") then
-			missingdep("util.encodings", { ["Windows"] = "Make sure you have encodings.dll from the Metronome distribution in util/";
+			missingdep("util.encodings", {
 		 				["GNU/Linux"] = "Run './configure' and 'make' in the Metronome source directory to build util/encodings.so";
 		 			});
 		else
@@ -115,7 +115,7 @@ function check_dependencies()
 	local hashes, err = softreq "util.hashes"
 	if not hashes then
 		if err:match("not found") then
-			missingdep("util.hashes", { ["Windows"] = "Make sure you have hashes.dll from the Metronome distribution in util/";
+			missingdep("util.hashes", {
 		 				["GNU/Linux"] = "Run './configure' and 'make' in the Metronome source directory to build util/hashes.so";
 		 			});
 	 	else
