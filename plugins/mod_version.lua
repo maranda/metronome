@@ -19,21 +19,17 @@ local random_osv_cmd = module:get_option_string("refresh_random_osv_cmd");
 local log_requests = module:get_option_boolean("log_version_requests", true);
 
 if not module:get_option_boolean("hide_os_type") and not random_osv_cmd then
-	if os_getenv("WINDIR") then
-		version = "Windows";
-	else
-		local os_version_command = module:get_option_string("os_version_command");
-		local ok, pposix = pcall(require, "util.pposix");
-		if not os_version_command and (ok and pposix and pposix.uname) then
-			version = pposix.uname().sysname;
+	local os_version_command = module:get_option_string("os_version_command");
+	local ok, pposix = pcall(require, "util.pposix");
+	if not os_version_command and (ok and pposix and pposix.uname) then
+		version = pposix.uname().sysname;
+	end
+	if not version then
+		local uname = io.popen(os_version_command or "uname");
+		if uname then
+			version = uname:read("*a");
 		end
-		if not version then
-			local uname = io.popen(os_version_command or "uname");
-			if uname then
-				version = uname:read("*a");
-			end
-			uname:close();
-		end
+		uname:close();
 	end
 	if version then
 		version = version:match("^%s*(.-)%s*$") or version;
