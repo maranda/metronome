@@ -252,29 +252,29 @@ read_version = require "util.auxiliary".read_version;
 ripairs = require "util.auxiliary".ripairs;
 
 function load_secondary_libraries()
-	require "util.import"
-	require "util.xmppstream"
-	require "core.stanza_router"
-	require "core.hostmanager"
-	require "core.portmanager"
-	require "core.modulemanager"
-	require "core.usermanager"
-	require "core.rostermanager"
-	require "core.sessionmanager"
+	require "util.import";
+	require "util.xmppstream";
+	require "core.stanza_router";
+	require "core.hostmanager";
+	require "core.portmanager";
+	require "core.modulemanager";
+	require "core.usermanager";
+	require "core.rostermanager";
+	require "core.sessionmanager";
 	package.loaded['core.componentmanager'] = setmetatable({},{__index=function()
 		log("warn", "componentmanager is deprecated: %s", debug.traceback():match("\n[^\n]*\n[ \t]*([^\n]*)"));
 		return function() end
 	end});
 
-	require "net.http"
+	require "net.http";
 	
-	require "util.array"
-	require "util.datetime"
-	require "util.iterators"
-	require "util.timer"
-	require "util.helpers"
+	require "util.array";
+	require "util.datetime";
+	require "util.iterators";
+	require "util.timer";
+	require "util.helpers";
 	
-	pcall(require, "util.signal")
+	pcall(require, "util.signal");
 	
 	-- Commented to protect us from 
 	-- the second kind of people
@@ -283,8 +283,8 @@ function load_secondary_libraries()
 	if remdebug then remdebug.engine.start() end
 	]]
 
-	require "util.stanza"
-	require "util.jid"
+	require "util.stanza";
+	require "util.jid";
 end
 
 function init_data_store()
