@@ -7,7 +7,7 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2012, Kim Alvefur, Matthew Wild, Waqas Hussain
 
-local t_insert, t_remove, t_concat, = table.insert, table.remove, table.concat;
+local t_insert, t_remove, t_concat = table.insert, table.remove, table.concat;
 local s_format, s_match, s_gsub, s_find = string.format, string.match, string.gsub, string.find;
 local tostring, setmetatable, pairs, ipairs, type, os =
 	tostring, setmetatable, pairs, ipairs, type, os;
