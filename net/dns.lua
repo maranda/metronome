@@ -17,9 +17,6 @@
 local socket = require "socket";
 local timer = require "util.timer";
 
-local _, windows = pcall(require, "util.windows");
-local is_windows = (_ and windows) or os.getenv("WINDIR");
-
 local coroutine, io, math, string, table =
       coroutine, io, math, string, table;
 
@@ -582,34 +579,21 @@ end
 
 
 function resolver:adddefaultnameservers()    -- - - - -  adddefaultnameservers
-	if is_windows then
-		if windows and windows.get_nameservers then
-			for _, server in ipairs(windows.get_nameservers()) do
-				self:addnameserver(server);
+	local resolv_conf = io.open("/etc/resolv.conf");
+	if resolv_conf then
+		for line in resolv_conf:lines() do
+			line = line:gsub("#.*$", "")
+				:match('^%s*nameserver%s+(.*)%s*$');
+			if line then
+				line:gsub("%f[%d.](%d+%.%d+%.%d+%.%d+)%f[^%d.]", function (address)
+					self:addnameserver(address)
+				end);
 			end
 		end
-		if not self.server or #self.server == 0 then
-			-- TODO log warning about no nameservers, adding opendns servers as fallback
-			self:addnameserver("208.67.222.222");
-			self:addnameserver("208.67.220.220");
-		end
-	else -- posix
-		local resolv_conf = io.open("/etc/resolv.conf");
-		if resolv_conf then
-			for line in resolv_conf:lines() do
-				line = line:gsub("#.*$", "")
-					:match('^%s*nameserver%s+(.*)%s*$');
-				if line then
-					line:gsub("%f[%d.](%d+%.%d+%.%d+%.%d+)%f[^%d.]", function (address)
-						self:addnameserver(address)
-					end);
-				end
-			end
-		end
-		if not self.server or #self.server == 0 then
-			-- TODO log warning about no nameservers, adding localhost as the default nameserver
-			self:addnameserver("127.0.0.1");
-		end
+	end
+	if not self.server or #self.server == 0 then
+		-- TODO log warning about no nameservers, adding localhost as the default nameserver
+		self:addnameserver("127.0.0.1");
 	end
 end
 
