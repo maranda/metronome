@@ -200,16 +200,10 @@ function init_global_state()
 	metronome.arg = _G.arg;
 
 	metronome.platform = "unknown";
-	if os.getenv("WINDIR") then
-		metronome.platform = "windows";
-	elseif package.config:sub(1,1) == "/" then
-		metronome.platform = "posix";
-	end
+	if package.config:sub(1,1) == "/" then metronome.platform = "posix"; end
 	
 	metronome.installed = nil;
-	if CFG_SOURCEDIR and (metronome.platform == "windows" or CFG_SOURCEDIR:match("^/")) then
-		metronome.installed = true;
-	end
+	if CFG_SOURCEDIR and CFG_SOURCEDIR:match("^/") then metronome.installed = true; end
 
 	if metronome.installed then require "lfs".chdir(data_path); end
 	
@@ -280,7 +274,7 @@ function load_secondary_libraries()
 	require "util.timer"
 	require "util.helpers"
 	
-	pcall(require, "util.signal") -- Not on Windows
+	pcall(require, "util.signal")
 	
 	-- Commented to protect us from 
 	-- the second kind of people
