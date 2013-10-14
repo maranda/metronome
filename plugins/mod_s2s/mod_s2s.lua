@@ -54,12 +54,9 @@ local function time_and_clean(_session, now)
 			if now - session.last_receive > max_inactivity then session:close(); end
 		end
 		module:log("debug", "checking outgoing streams for inactivity...");
-		for host in pairs(hosts) do
-			local s2sout = host.s2sout;
-			if s2sout then
-				for domain, session in pairs(s2sout) do
-					if now - session.last_send > max_inactivity then session:close(); end
-				end
+		for _, host in pairs(hosts) do
+			for domain, session in pairs(host.s2sout) do
+				if now - session.last_send > max_inactivity then session:close(); end
 			end
 		end
 		last_inactive_clean = now;
