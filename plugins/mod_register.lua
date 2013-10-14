@@ -97,13 +97,6 @@ local function handle_registration_stanza(event)
 		if query.tags[1] and query.tags[1].name == "remove" then
 			local username, host = session.username, session.host;
 
-			local bare = username.."@"..host;
-			local roster = {};
-
-			for key, value in pairs(session.roster or roster) do
-				roster[key] = value;
-			end
-
 			local _close_session = session.close;
 			session.close = function(session, ...)
 				session.send(st.reply(stanza));
@@ -119,21 +112,7 @@ local function handle_registration_stanza(event)
 				return true;
 			end
 
-			for jid, item in pairs(roster) do
-				if jid and jid ~= "pending" then
-					if item.subscription == "both" or item.subscription == "from" or (roster.pending and roster.pending[jid]) then
-						module:send(st.presence({type="unsubscribed", from=bare, to=jid}));
-					end
-					if item.subscription == "both" or item.subscription == "to" or item.ask then
-						module:send(st.presence({type="unsubscribe", from=bare, to=jid}));
-					end
-				end
-			end
-
-			roster = nil;
-
 			module:log("info", "User removed their account: %s@%s", username, host);
-			module:fire_event("user-deregistered", { username = username, host = host, source = "mod_register", session = session });
 		else
 			local username = nodeprep(query:get_child("username"):get_text());
 			local password = query:get_child("password"):get_text();
