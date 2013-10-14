@@ -136,11 +136,12 @@ local function count_relevant_entries(logs, with, start, fin)
 	for i, e in ipairs(logs) do
 		local timestamp = e.timestamp;
 		if with and (start or fin) then
-			if (entry.bare_from == with or entry.bare_to == with) and (start and not fin) and (timestamp >= start) then
+			local bare_from, bare_to = e.bare_from, e.bare_to;
+			if (bare_from == with or bare_to == with) and (start and not fin) and (timestamp >= start) then
 				count = count + 1;
-			elseif (entry.bare_from == with or entry.bare_to == with) and (fin and not start) and (timestamp <= fin) then
+			elseif (bare_from == with or bare_to == with) and (fin and not start) and (timestamp <= fin) then
 				count = count + 1;
-			elseif (entry.bare_from == with or entry.bare_to == with) and (start and fin) and 
+			elseif (bare_from == with or bare_to == with) and (start and fin) and 
 				(timestamp >= start and timestamp <= fin) then
 				count = count + 1;
 			end
