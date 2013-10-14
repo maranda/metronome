@@ -159,3 +159,26 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 	end
 	return true;
 end);
+
+module:hook("user-pre-delete", function(event)
+	local session = event.session;
+	local username, host = session.username, session.host;
+	local bare = username.."@"..host;
+	local roster = {};
+
+	for key, value in pairs(session.roster or roster) do
+		roster[key] = value;
+	end
+
+	module:log("info", "Broadcasting unsubscription stanzas to %s contacts as the account is getting deleted", bare);
+	for jid, item in pairs(roster) do
+		if jid and jid ~= "pending" then
+			if item.subscription == "both" or item.subscription == "from" or (roster.pending and roster.pending[jid]) then
+				module:send(st.presence({type="unsubscribed", from=bare, to=jid}));
+			end
+			if item.subscription == "both" or item.subscription == "to" or item.ask then
+				module:send(st.presence({type="unsubscribe", from=bare, to=jid}));
+			end
+		end
+	end
+end);
