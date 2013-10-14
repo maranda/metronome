@@ -46,8 +46,8 @@ local last_inactive_clean = now();
 
 --- Handle stanzas to remote domains
 
-local function time_and_clean(session, now)
-	session["last_"..((session.direction == "outgoing" and "send") or "receive")] = now;
+local function time_and_clean(_session, now)
+	_session["last_"..((session.direction == "outgoing" and "send") or "receive")] = now;
 	if now - last_inactive_clean > check_inactivity then
 		module:log("debug", "checking incoming streams for inactivity...");
 		for session in pairs(metronome.incoming_s2s) do
