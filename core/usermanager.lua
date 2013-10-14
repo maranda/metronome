@@ -97,6 +97,7 @@ function delete_user(username, host, source)
 	local ok, err = hostname.users.delete_user(username);
 	if not ok then return nil, err; end
 
+	hostname.events.fire_event("user-pre-delete", { username = username, host = host, session = session, source = source });
 	metronome.events.fire_event("user-deleted", { username = username, host = host, session = session, source = source });
 	return storagemanager.purge(username, host);
 end
