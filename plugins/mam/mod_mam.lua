@@ -157,7 +157,7 @@ local function query_handler(event)
 	local reply = st.reply(stanza);
 	if rq then reply:add_child(rq); end
 	
-	module:log("debug", "MAM query %s completed", tostring(qid));
+	module:log("debug", "MAM query %scompleted", qid and tostring(qid).." " or "");
 	return origin.send(reply);
 end
 
