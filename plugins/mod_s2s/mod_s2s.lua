@@ -49,7 +49,6 @@ local last_inactive_clean = now();
 local function time_and_clean(session, now)
 	session.last_send = now;
 	if now - last_inactive_clean > check_inactivity then
-		-- check incoming streams...
 		module:log("debug", "checking incoming streams for inactivity...");
 		for session in pairs(metronome.incoming_s2s) do
 			if now - session.last_send > max_inactivity then session:close() end
