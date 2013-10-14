@@ -111,8 +111,8 @@ local function query_handler(event)
 	local archive = bare_session.archiving;
 	
 	local _start, _end, _with = query:get_child_text("start"), query:get_child_text("end"), query:get_child_text("with");
-	module:log("debug", "MAM query received, id %s with %s from %s until %s)", 
-		tostring(qid), _with or "anyone", _start or "epoch", _end or "now");
+	module:log("debug", "MAM query received, %s with %s from %s until %s", 
+		(qid and "id "..tostring(qid)) or "idless,", _with or "anyone", _start or "epoch", _end or "now");
 
 	-- Validate attributes
 	local vstart, vend, vwith = (_start and dt_parse(_start)), (_end and dt_parse(_end)), (_with and jid_prep(_with));
