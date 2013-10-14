@@ -19,6 +19,7 @@ local pairs, ipairs = pairs, ipairs;
 local rm_remove_from_roster = require "core.rostermanager".remove_from_roster;
 local rm_add_to_roster = require "core.rostermanager".add_to_roster;
 local rm_roster_push = require "core.rostermanager".roster_push;
+local rm_load_roster = require "core.rostermanager".load_roster;
 local core_post_stanza = metronome.core_post_stanza;
 
 module:add_feature("jabber:iq:roster");
@@ -161,12 +162,11 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 end);
 
 module:hook("user-pre-delete", function(event)
-	local session = event.session;
-	local username, host = session.username, session.host;
+	local username, host, _roster = event.username, event.host, event.session and event.session.roster;
 	local bare = username.."@"..host;
 	local roster = {};
 
-	for key, value in pairs(session.roster or roster) do
+	for key, value in pairs(_roster or rm_load_roster(username, host) or roster) do
 		roster[key] = value;
 	end
 
