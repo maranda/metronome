@@ -137,14 +137,14 @@ local function query_handler(event)
 	max = max and tonumber(max);
 	
 	local logs = archive.logs;
-	if #logs > 30 and not max then
-		return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Too many results"));
-	elseif max and max > max_results then
+	if max and max > max_results then
 		return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Max retrievable results' count is "..max_results));
 	end
 	
 	local messages, rq = generate_stanzas(archive, _start, _end, _with, max, after, before, qid);
-	if not messages then -- RSM item-not-found
+	if messages == false then -- Exceeded limit
+		return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Too many results"));
+	elseif not messages then -- RSM item-not-found
 		local rsm_error = st.error_reply(stanza, "cancel", "item-not-found");
 		rsm_error:add_child(query);
 		return origin.send(rsm_error);
