@@ -51,14 +51,14 @@ local function time_and_clean(_session, now)
 	if now - last_inactive_clean > check_inactivity then
 		module:log("debug", "checking incoming streams for inactivity...");
 		for session in pairs(metronome.incoming_s2s) do
-			if now - session.last_receive > max_inactivity then session:close() end
+			if now - session.last_receive > max_inactivity then session:close(); end
 		end
 		module:log("debug", "checking outgoing streams for inactivity...");
 		for host in pairs(hosts) do
 			local s2sout = host.s2sout;
 			if s2sout then
 				for domain, session in pairs(s2sout) do
-					if now - session.last_send > max_inactivity then session:close() end
+					if now - session.last_send > max_inactivity then session:close(); end
 				end
 			end
 		end
