@@ -132,6 +132,40 @@ if ok and pposix then
 
 		local desired_user = config.get("*", "metronome_user") or "metronome";
 		local desired_group = config.get("*", "metronome_group") or desired_user;
+		local pid_file = config.get("*", "pidfile");
+		
+		if pid_file then -- attempt creating the pid file path
+			local _path = pid_file:match("(.*)/.+$");
+			local _group = (desired_group == "metronome" and "adm") or desired_group;
+			local _chown = "chown " .. desired_user .. ":" .. _group .. " ";
+			
+			local function recursive_create(path)
+				local _last;
+				for directory in path:gmatch("[^/]+") do
+					if not _last then
+						local ok, err = pposix.mkdir("/"..directory);
+						if ok or err == "File exists" then
+							_last = "/"..directory;
+							if not err then os.execute(_chown .. _last); end
+						else
+							return false;
+						end
+					else
+						local ok, err = pposix.mkdir(_last .. "/" .. directory);
+						if ok or err == "File exists" then
+							_last = _last .. "/" .. directory;
+							if not err then os.execute(_chown .. _last); end
+						else
+							return false;
+						end
+					end
+				end
+				return true;
+			end
+			
+			if not recursive_create(_path) then print("Warning: Couldn't create the pid file path(s)."); end
+		end
+		
 		local ok, err = pposix.setgid(desired_group);
 		if ok then
 			ok, err = pposix.initgroups(desired_user);
