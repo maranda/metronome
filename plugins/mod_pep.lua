@@ -439,7 +439,7 @@ module:hook("presence/bare", function(event)
 			if nodes[name] then nodes[name].subscribers[from] = nil; end
 		end
 		recipients[from] = nil;
-	elseif not self and t == "unsubscribe" then
+	elseif not self and (t == "unsubscribe" or t == "unsubscribed") then
 		local from = jid_bare(stanza.attr.from);
 		local subscriptions = recipients;
 		if subscriptions then
