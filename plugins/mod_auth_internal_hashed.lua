@@ -13,6 +13,7 @@ local getAuthenticationDatabaseSHA1 = require "util.sasl.scram".getAuthenticatio
 local usermanager = require "core.usermanager";
 local generate_uuid = require "util.uuid".generate;
 local new_sasl = require "util.sasl".new;
+local external_backend = require "util.sasl.external".backend;
 
 local to_hex;
 do
@@ -114,7 +115,7 @@ function new_hashpass_provider(host)
 		return datamanager.store(username, host, "accounts", nil);
 	end
 
-	function provider.get_sasl_handler()
+	function provider.get_sasl_handler(session)
 		local testpass_authentication_profile = {
 			plain_test = function(sasl, username, password, realm)
 				return usermanager.test_password(username, realm, password), true;
@@ -132,7 +133,10 @@ function new_hashpass_provider(host)
 				stored_key = stored_key and from_hex(stored_key);
 				server_key = server_key and from_hex(server_key);
 				return stored_key, server_key, iteration_count, salt, true;
-			end
+			end,
+			external = session.secure and external_backend,
+			host = module.host,
+			session = session
 		};
 		return new_sasl(module.host, testpass_authentication_profile);
 	end
