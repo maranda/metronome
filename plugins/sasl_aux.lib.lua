@@ -8,7 +8,7 @@
 
 local user_exists = require "core.usermanager".user_exists;
 local log = require "util.logger".init("sasl");
-local ipairs, t_concat = ipairs, t_concat;
+local ipairs, t_concat = ipairs, table.concat;
 
 -- Util functions
 
