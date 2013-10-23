@@ -68,10 +68,10 @@ function backend(sasl, session, authid) -- default exportable backend
 		log("error", "LuaSec 0.5+ is required in order to perform SASL external");
 		return nil, "Unable to perform external certificate authentications at this time";
 	end
-	
+
+	local _log = session.log or log;
 	local chain, errors = socket:getpeerverification();
 	if not chain then
-		local _log = session.log or log;
 		_log("warn", "Invalid client certificate chain detected");
 		return false, "Invalid client certificate chain";
 	end
