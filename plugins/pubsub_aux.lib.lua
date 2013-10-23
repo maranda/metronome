@@ -541,5 +541,5 @@ return {
 	send_config_form = send_config_form,
 	process_config_form = process_config_form,
 	set_service = set_service
-}
+};
 	
