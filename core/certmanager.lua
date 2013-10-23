@@ -42,11 +42,10 @@ if openssl_version and openssl_version < 100 then
 end
 local default_verify = (ssl and ssl.x509 and { "peer", "client_once" }) or "none";
 local default_options = { "no_sslv2", noticket and "no_ticket" or nil };
-local default_verifyext = { "lsec_continue", "lsec_ignore_purpose" };
+local default_verifyext = { "lsec_continue" };
 
 if not verifyext and ssl and ssl.x509 then
 	default_verify[#default_verify + 1] = "continue";
-	default_verify[#default_verify + 1] = "ignore_purpose";
 end
 
 if no_compression and configmanager.get("*", "ssl_compression") ~= true then
