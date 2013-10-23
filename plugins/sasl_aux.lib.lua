@@ -59,7 +59,7 @@ local function external_backend(sasl, session, authid)
 	for _, address in ipairs(data) do
 		if authid == "" or jid_compare(authid, address) then
 			local username, host = jid_split(address);
-			if host == self.host and user_exists(username, host) then	return username; end
+			if host == self.host and user_exists(username, host) then return username; end
 		end
 	end
 	
