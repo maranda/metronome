@@ -78,6 +78,7 @@ end
 -- load the mechanisms
 require "util.sasl.plain".init(registerMechanism);
 require "util.sasl.digest-md5".init(registerMechanism);
+require "util.sasl.external".init(registerMechanism);
 require "util.sasl.anonymous".init(registerMechanism);
 require "util.sasl.scram".init(registerMechanism);
 
