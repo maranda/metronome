@@ -13,7 +13,7 @@ local getAuthenticationDatabaseSHA1 = require "util.sasl.scram".getAuthenticatio
 local usermanager = require "core.usermanager";
 local generate_uuid = require "util.uuid".generate;
 local new_sasl = require "util.sasl".new;
-local external_backend = require "util.sasl.external".backend;
+local external_backend = module:require "sasl_aux".external_backend;
 
 local to_hex;
 do

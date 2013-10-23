@@ -12,7 +12,7 @@ local datamanager = require "util.datamanager";
 local usermanager = require "core.usermanager";
 local new_sasl = require "util.sasl".new;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
-local external_backend = require "util.sasl.external".backend;
+local external_backend = module:require "sasl_aux".external_backend;
 
 local log = module._log;
 
