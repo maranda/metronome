@@ -35,6 +35,7 @@ end
 -- Backends
 
 local function external_backend(sasl, session, authid)
+	local sasl_host = sasl.profile.host;
 	local socket = session.conn:socket();
 	if not socket.getpeercertificate or not socket.getpeerverification then
 		log("error", "LuaSec 0.5+ is required in order to perform SASL external");
@@ -63,7 +64,7 @@ local function external_backend(sasl, session, authid)
 	for _, address in ipairs(data) do
 		if authid == "" or jid_compare(authid, address) then
 			local username, host = jid_split(address);
-			if host == sasl.host and user_exists(username, host) then return username; end
+			if host == sasl_host and user_exists(username, host) then return username; end
 		end
 	end
 	
