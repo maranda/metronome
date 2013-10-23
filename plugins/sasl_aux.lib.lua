@@ -7,6 +7,8 @@
 -- Exportable SASL backends.
 
 local user_exists = require "core.usermanager".user_exists;
+local jid_compare = require "util.jid".compare;
+local jid_split = require "util.jid".prepped_split;
 local log = require "util.logger".init("sasl");
 local get_time, ipairs, t_concat = os.time, ipairs, table.concat;
 

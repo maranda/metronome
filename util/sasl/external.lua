@@ -5,8 +5,6 @@
 -- information about copyright and licensing.
 
 local log = require "util.logger".init("sasl");
-local jid_compare = require "util.jid".compare;
-local jid_split = require "util.jid".prepped_split;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local ipairs = ipairs;
 
