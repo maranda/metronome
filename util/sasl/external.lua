@@ -68,6 +68,8 @@ local function external(self, authid)
 			end
 		end
 	end
+	
+	return "failure", "not-authorized";
 end
 
 function init(registerMechanism)
