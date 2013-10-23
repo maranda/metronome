@@ -8,6 +8,7 @@
 
 local user_exists = require "core.usermanager".user_exists;
 local log = require "util.logger".init("sasl");
+local ipairs, t_concat = ipairs, t_concat;
 
 -- Util functions
 
@@ -42,6 +43,7 @@ local function external_backend(sasl, session, authid)
 	local chain, errors = socket:getpeerverification();
 	if not chain then
 		_log("warn", "Invalid client certificate chain detected");
+		for i, error in ipairs(errors) do _log("debug", "%d: %s", i, t_concat(error, ", ")); end
 		return false, "Invalid client certificate chain";
 	end
 
