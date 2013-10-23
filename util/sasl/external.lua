@@ -7,6 +7,7 @@
 local log = require "util.logger".init("sasl");
 local jid_compare = require "util.jid".compare;
 local jid_split = require "util.jid".prepped_split;
+local nodeprep = require "util.encodings".stringprep.nodeprep;
 local get_time = os.time;
 local ipairs = ipairs;
 
@@ -53,7 +54,7 @@ local function external(self, authid)
 	end
 	
 	if not cert:validat(get_time()) then
-		(_log or log)("debug", "The certificate supplied is expired")
+		(_log or log)("debug", "The certificate supplied is expired");
 		return "failure", "not-authorized", "Supplied certificate is expired";
 	end
 	
@@ -61,7 +62,10 @@ local function external(self, authid)
 	for _, address in ipairs(data) do
 		if authid == "" or jid_compare(authid, address) then
 			local username, host = jid_split(address);
-			if host == self.host then return "success"; end
+			if host == self.host then
+				self.username = nodeprep(username);
+				return "success";
+			end
 		end
 	end
 end
@@ -87,5 +91,3 @@ function backend(sasl, session)
 end
 
 return _M;
-
-
