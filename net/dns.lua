@@ -17,10 +17,13 @@
 local socket = require "socket";
 local timer = require "util.timer";
 
-local coroutine, io, math, string, table =
-      coroutine, io, math, string, table;
+local coroutine, io, math, string =
+      coroutine, io, math, string;
 
-local ipairs, next, pairs, print, setmetatable, tostring, assert, error, unpack, select, type=
+local t_concat, t_insert, t_remove, t_sort =
+      table.concat, table.insert, table.remove, table.sort;
+
+local ipairs, next, pairs, print, setmetatable, tostring, assert, error, unpack, select, type =
       ipairs, next, pairs, print, setmetatable, tostring, assert, error, unpack, select, type;
 
 local ztact = { -- public domain 20080404 lua@ztact.com
@@ -74,9 +77,6 @@ local dns = _M;
 
 
 -- dns type & class codes ------------------------------ dns type & class codes
-
-
-local append = table.insert
 
 
 local function highbyte(i)    -- - - - - - - - - - - - - - - - - - -  highbyte
@@ -138,7 +138,7 @@ local function prune(rrs, time, soft)    -- - - - - - - - - - - - - - -  prune
 			-- rr.tod = rr.tod - 50    -- accelerated decripitude
 			rr.ttl = math.floor(rr.tod - time);
 			if rr.ttl <= 0 then
-				table.remove(rrs, i);
+				t_remove(rrs, i);
 				return prune(rrs, time, soft); -- Re-iterate
 			end
 		elseif soft == 'soft' then    -- What is this?  I forget!
@@ -187,9 +187,9 @@ local rrs_metatable = {};    -- - - - - - - - - - - - - - - - - -  rrs_metatable
 function rrs_metatable.__tostring(rrs)
 	local t = {};
 	for i,rr in pairs(rrs) do
-		append(t, tostring(rr)..'\n');
+		t_insert(t, tostring(rr)..'\n');
 	end
-	return table.concat(t);
+	return t_concat(t);
 end
 
 
@@ -201,11 +201,11 @@ function cache_metatable.__tostring(cache)
 		for type,names in pairs(types) do
 			for name,rrs in pairs(names) do
 				prune(rrs, time);
-				append(t, tostring(rrs));
+				t_insert(t, tostring(rrs));
 			end
 		end
 	end
-	return table.concat(t);
+	return t_concat(t);
 end
 
 
@@ -274,11 +274,11 @@ end
 local function encodeName(name)    -- - - - - - - - - - - - - - - - encodeName
 	local t = {};
 	for part in string.gmatch(name, '[^.]+') do
-		append(t, string.char(string.len(part)));
-		append(t, part);
+		t_insert(t, string.char(string.len(part)));
+		t_insert(t, part);
 	end
-	append(t, string.char(0));
-	return table.concat(t);
+	t_insert(t, string.char(0));
+	return t_concat(t);
 end
 
 
@@ -366,12 +366,12 @@ function resolver:name()    -- - - - - - - - - - - - - - - - - - - - - -  name
 			remember = remember or self.offset;
 			self.offset = offset + 1;    -- +1 for lua
 		else    -- name is not compressed
-			append(n, self:sub(len)..'.');
+			t_insert(n, self:sub(len)..'.');
 		end
 		len = self:byte();
 	end
 	self.offset = remember or self.offset;
-	return table.concat(n);
+	return t_concat(n);
 end
 
 
@@ -393,18 +393,18 @@ function resolver:AAAA(rr)
 	local addr = {};
 	for i = 1, rr.rdlength, 2 do
 		local b1, b2 = self:byte(2);
-		table.insert(addr, ("%02x%02x"):format(b1, b2));
+		t_insert(addr, ("%02x%02x"):format(b1, b2));
 	end
-	addr = table.concat(addr, ":"):gsub("%f[%x]0+(%x)","%1");
+	addr = t_concat(addr, ":"):gsub("%f[%x]0+(%x)","%1");
 	local zeros = {};
 	for item in addr:gmatch(":[0:]+:") do
-		table.insert(zeros, item)
+		t_insert(zeros, item)
 	end
 	if #zeros == 0 then
 		rr.aaaa = addr;
 		return
 	elseif #zeros > 1 then
-		table.sort(zeros, function(a, b) return #a > #b end);
+		t_sort(zeros, function(a, b) return #a > #b end);
 	end
 	rr.aaaa = addr:gsub(zeros[1], "::", 1):gsub("^0::", "::"):gsub("::0$", "::");
 end
@@ -458,11 +458,11 @@ function resolver.LOC_tostring(rr)    -- - - - - - - - - - - - -  LOC_tostring
 
 	--[[
 	for k,name in pairs { 'size', 'horiz_pre', 'vert_pre', 'latitude', 'longitude', 'altitude' } do
-		append(t, string.format('%4s%-10s: %12.0f\n', '', name, rr.loc[name]));
+		t_insert(t, string.format('%4s%-10s: %12.0f\n', '', name, rr.loc[name]));
 	end
 	--]]
 
-	append(t, string.format(
+	t_insert(t, string.format(
 		'%s    %s    %.2fm %.2fm %.2fm %.2fm',
 		LOC_tostring_degrees (rr.loc.latitude, 'N', 'S'),
 		LOC_tostring_degrees (rr.loc.longitude, 'E', 'W'),
@@ -472,7 +472,7 @@ function resolver.LOC_tostring(rr)    -- - - - - - - - - - - - -  LOC_tostring
 		rr.loc.vert_pre / 100
 	));
 
-	return table.concat(t);
+	return t_concat(t);
 end
 
 
@@ -528,7 +528,7 @@ end
 
 function resolver:rrs (count)    -- - - - - - - - - - - - - - - - - - - - - rrs
 	local rrs = {};
-	for i = 1,count do append(rrs, self:rr()); end
+	for i = 1,count do t_insert(rrs, self:rr()); end
 	return rrs;
 end
 
@@ -542,7 +542,7 @@ function resolver:decode(packet, force)    -- - - - - - - - - - - - - - decode
 	response.question = {};
 	local offset = self.offset;
 	for i = 1,response.header.qdcount do
-		append(response.question, self:question());
+		t_insert(response.question, self:question());
 	end
 	response.question.raw = string.sub(self.packet, offset, self.offset - 1);
 
@@ -568,7 +568,7 @@ resolver.delays = { 1, 3 };
 
 function resolver:addnameserver(address)    -- - - - - - - - - - addnameserver
 	self.server = self.server or {};
-	append(self.server, address);
+	t_insert(self.server, address);
 end
 
 
@@ -652,13 +652,13 @@ function resolver:remember(rr, type)    -- - - - - - - - - - - - - -  remember
 		type = qtype;
 		local all = get(self.cache, qclass, '*', qname);
 		--print('remember all', all);
-		if all then append(all, rr); end
+		if all then t_insert(all, rr); end
 	end
 
 	self.cache = self.cache or setmetatable({}, cache_metatable);
 	local rrs = get(self.cache, qclass, type, qname) or
 		set(self.cache, qclass, type, qname, setmetatable({}, rrs_metatable));
-	append(rrs, rr);
+	t_insert(rrs, rr);
 
 	if type == 'MX' then self.unsorted[rrs] = true; end
 end
@@ -677,7 +677,7 @@ function resolver:peek (qname, qtype, qclass)    -- - - - - - - - - - - -  peek
 		set(self.cache, qclass, qtype, qname, nil);
 		return nil;
 	end
-	if self.unsorted[rrs] then table.sort (rrs, comp_mx); end
+	if self.unsorted[rrs] then t_sort (rrs, comp_mx); end
 	return rrs;
 end
 

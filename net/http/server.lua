@@ -51,7 +51,7 @@ setmetatable(events._handlers, {
 			is_wildcard_event(event) and is_wildcard_match(event, curr_event) then
 				for handler, priority in pairs(handlers_set) do
 					matching_handlers_set[handler] = { (select(2, event:gsub("/", "%1"))), is_wildcard_event(event) and 0 or 1, priority };
-					table.insert(handlers_array, handler);
+					t_insert(handlers_array, handler);
 				end
 			end
 		end
@@ -70,9 +70,9 @@ setmetatable(events._handlers, {
 		end
 		rawset(handlers, curr_event, handlers_array);
 		if not event_map[curr_event] then
-			table.insert(recent_wildcard_events, curr_event);
+			t_insert(recent_wildcard_events, curr_event);
 			if #recent_wildcard_events > max_cached_wildcard_events then
-				rawset(handlers, table.remove(recent_wildcard_events, 1), nil);
+				rawset(handlers, t_remove(recent_wildcard_events, 1), nil);
 			end
 		end	
 		return handlers_array;
