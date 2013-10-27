@@ -9,8 +9,6 @@
 
 local st, jid = require "util.stanza", require "util.jid";
 
-local is_admin = require "core.usermanager".is_admin;
-
 function send_to_online(message, host)
 	local sessions;
 	if host then
@@ -33,30 +31,6 @@ function send_to_online(message, host)
 
 	return c;
 end
-
-function handle_announcement(event)
-	local origin, stanza = event.origin, event.stanza;
-	local node, host, resource = jid.split(stanza.attr.to);
-	
-	if resource ~= "announce/online" then
-		return;
-	end
-	
-	if not is_admin(stanza.attr.from) then
-		module:log("warn", "Non-admin '%s' tried to send server announcement", stanza.attr.from);
-		return;
-	end
-	
-	module:log("info", "Sending server announcement to all online users");
-	local message = st.clone(stanza);
-	message.attr.type = "headline";
-	message.attr.from = host;
-	
-	local c = send_to_online(message, host);
-	module:log("info", "Announcement sent to %d online users", c);
-	return true;
-end
-module:hook("message/host", handle_announcement);
 
 -- Ad-hoc command (XEP-0133)
 local dataforms_new = require "util.dataforms".new;
