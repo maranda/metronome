@@ -20,7 +20,6 @@ local usermanager_create_user = require "core.usermanager".create_user;
 local usermanager_delete_user = require "core.usermanager".delete_user;
 local usermanager_get_password = require "core.usermanager".get_password;
 local usermanager_set_password = require "core.usermanager".set_password;
-local is_admin = require "core.usermanager".is_admin;
 local rm_load_roster = require "core.rostermanager".load_roster;
 local st, jid, uuid = require "util.stanza", require "util.jid", require "util.uuid";
 local timer_add_task = require "util.timer".add_task;
