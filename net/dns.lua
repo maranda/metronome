@@ -18,13 +18,16 @@ local socket = require "socket";
 local timer = require "util.timer";
 
 local coroutine, io, math, string =
-      coroutine, io, math, string;
+	coroutine, io, math, string;
 
 local t_concat, t_insert, t_remove, t_sort =
-      table.concat, table.insert, table.remove, table.sort;
+	table.concat, table.insert, table.remove, table.sort;
+
+local s_byte, s_char, s_format, s_gmatch, s_len, s_lower, s_sub =
+	string.byte, string.char, string.format, string.gmatch, string.len, string.lower, string.sub;
 
 local ipairs, next, pairs, print, setmetatable, tostring, assert, error, unpack, select, type =
-      ipairs, next, pairs, print, setmetatable, tostring, assert, error, unpack, select, type;
+	ipairs, next, pairs, print, setmetatable, tostring, assert, error, unpack, select, type;
 
 local ztact = { -- public domain 20080404 lua@ztact.com
 	get = function(parent, ...)
@@ -89,7 +92,7 @@ local function augment (t)    -- - - - - - - - - - - - - - - - - - - -  augment
 	for i,s in pairs(t) do
 		a[i] = s;
 		a[s] = s;
-		a[string.lower(s)] = s;
+		a[s_lower(s)] = s;
 	end
 	return a;
 end
@@ -98,10 +101,10 @@ end
 local function encode (t)    -- - - - - - - - - - - - - - - - - - - - -  encode
 	local code = {};
 	for i,s in pairs(t) do
-		local word = string.char(highbyte(i), i%0x100);
+		local word = s_char(highbyte(i), i%0x100);
 		code[i] = word;
 		code[s] = word;
-		code[string.lower(s)] = word;
+		code[s_lower(s)] = word;
 	end
 	return code;
 end
@@ -125,8 +128,8 @@ dns.classcode = encode  (dns.classes);
 
 
 local function standardize(qname, qtype, qclass)    -- - - - - - - standardize
-	if string.byte(qname, -1) ~= 0x2E then qname = qname..'.';  end
-	qname = string.lower(qname);
+	if s_byte(qname, -1) ~= 0x2E then qname = qname..'.';  end
+	qname = s_lower(qname);
 	return qname, dns.type[qtype or 'A'], dns.class[qclass or 'IN'];
 end
 
@@ -168,18 +171,18 @@ end
 local special_tostrings = {
 	LOC = resolver.LOC_tostring;
 	MX  = function (rr)
-		return string.format('%2i %s', rr.pref, rr.mx);
+		return s_format('%2i %s', rr.pref, rr.mx);
 	end;
 	SRV = function (rr)
 		local s = rr.srv;
-		return string.format('%5d %5d %5d %s', s.priority, s.weight, s.port, s.target);
+		return s_format('%5d %5d %5d %s', s.priority, s.weight, s.port, s.target);
 	end;
 };
 
 local rr_metatable = {};   -- - - - - - - - - - - - - - - - - - -  rr_metatable
 function rr_metatable.__tostring(rr)
 	local rr_string = (special_tostrings[rr.type] or default_rr_tostring)(rr);
-	return string.format('%2s %-5s %6i %-28s %s', rr.class, rr.type, rr.ttl, rr.name, rr_string);
+	return s_format('%2s %-5s %6i %-28s %s', rr.class, rr.type, rr.ttl, rr.name, rr_string);
 end
 
 
@@ -256,8 +259,8 @@ local function encodeHeader(o)    -- - - - - - - - - - - - - - -  encodeHeader
 	o.nscount = o.nscount or 0;	-- 16b	number of nameservers RRs
 	o.arcount = o.arcount or 0;	-- 16b  number of additional RRs
 
-	-- string.char() rounds, so prevent roundup with -0.4999
-	local header = string.char(
+	-- s_char() rounds, so prevent roundup with -0.4999
+	local header = s_char(
 		highbyte(o.id), o.id %0x100,
 		o.rd + 2*o.tc + 4*o.aa + 8*o.opcode + 128*o.qr,
 		o.rcode + 16*o.z + 128*o.ra,
@@ -273,11 +276,11 @@ end
 
 local function encodeName(name)    -- - - - - - - - - - - - - - - - encodeName
 	local t = {};
-	for part in string.gmatch(name, '[^.]+') do
-		t_insert(t, string.char(string.len(part)));
+	for part in s_gmatch(name, '[^.]+') do
+		t_insert(t, s_char(s_len(part)));
 		t_insert(t, part);
 	end
-	t_insert(t, string.char(0));
+	t_insert(t, s_char(0));
 	return t_concat(t);
 end
 
@@ -295,10 +298,10 @@ function resolver:byte(len)    -- - - - - - - - - - - - - - - - - - - - - byte
 	local offset = self.offset;
 	local last = offset + len - 1;
 	if last > #self.packet then
-		error(string.format('out of bounds: %i>%i', last, #self.packet));
+		error(s_format('out of bounds: %i>%i', last, #self.packet));
 	end
 	self.offset = offset + len;
-	return string.byte(self.packet, offset, last);
+	return s_byte(self.packet, offset, last);
 end
 
 
@@ -317,7 +320,7 @@ end
 
 function resolver:sub(len)    -- - - - - - - - - - - - - - - - - - - - - - sub
 	len = len or 1;
-	local s = string.sub(self.packet, self.offset, self.offset + len - 1);
+	local s = s_sub(self.packet, self.offset, self.offset + len - 1);
 	self.offset = self.offset + len;
 	return s;
 end
@@ -325,7 +328,7 @@ end
 
 function resolver:header(force)    -- - - - - - - - - - - - - - - - - - header
 	local id = self:word();
-	--print(string.format(':header  id  %x', id));
+	--print(s_format(':header  id  %x', id));
 	if not self.active[id] and not force then return nil; end
 
 	local h = { id = id };
@@ -386,7 +389,7 @@ end
 
 function resolver:A(rr)    -- - - - - - - - - - - - - - - - - - - - - - - -  A
 	local b1, b2, b3, b4 = self:byte(4);
-	rr.a = string.format('%i.%i.%i.%i', b1, b2, b3, b4);
+	rr.a = s_format('%i.%i.%i.%i', b1, b2, b3, b4);
 end
 
 function resolver:AAAA(rr)
@@ -449,7 +452,7 @@ local function LOC_tostring_degrees(f, pos, neg)    -- - - - - - - - - - - - -
 	f    = (f-msec)/60000;
 	min  = f%60;
 	deg = (f-min)/60;
-	return string.format('%3d %2d %2.3f %s', deg, min, msec/1000, pos);
+	return s_format('%3d %2d %2.3f %s', deg, min, msec/1000, pos);
 end
 
 
@@ -458,11 +461,11 @@ function resolver.LOC_tostring(rr)    -- - - - - - - - - - - - -  LOC_tostring
 
 	--[[
 	for k,name in pairs { 'size', 'horiz_pre', 'vert_pre', 'latitude', 'longitude', 'altitude' } do
-		t_insert(t, string.format('%4s%-10s: %12.0f\n', '', name, rr.loc[name]));
+		t_insert(t, s_format('%4s%-10s: %12.0f\n', '', name, rr.loc[name]));
 	end
 	--]]
 
-	t_insert(t, string.format(
+	t_insert(t, s_format(
 		'%s    %s    %.2fm %.2fm %.2fm %.2fm',
 		LOC_tostring_degrees (rr.loc.latitude, 'N', 'S'),
 		LOC_tostring_degrees (rr.loc.longitude, 'E', 'W'),
@@ -544,7 +547,7 @@ function resolver:decode(packet, force)    -- - - - - - - - - - - - - - decode
 	for i = 1,response.header.qdcount do
 		t_insert(response.question, self:question());
 	end
-	response.question.raw = string.sub(self.packet, offset, self.offset - 1);
+	response.question.raw = s_sub(self.packet, offset, self.offset - 1);
 
 	if not force then
 		if not self.active[response.header.id] or not self.active[response.header.id][response.question.raw] then
@@ -976,13 +979,13 @@ end
 function resolver.print(response)    -- - - - - - - - - - - - - resolver.print
 	for s,s in pairs { 'id', 'qr', 'opcode', 'aa', 'tc', 'rd', 'ra', 'z',
 						'rcode', 'qdcount', 'ancount', 'nscount', 'arcount' } do
-		print( string.format('%-30s', 'header.'..s), response.header[s], hint(response.header, s) );
+		print( s_format('%-30s', 'header.'..s), response.header[s], hint(response.header, s) );
 	end
 
 	for i,question in ipairs(response.question) do
-		print(string.format ('question[%i].name         ', i), question.name);
-		print(string.format ('question[%i].type         ', i), question.type);
-		print(string.format ('question[%i].class        ', i), question.class);
+		print(s_format ('question[%i].name         ', i), question.name);
+		print(s_format ('question[%i].type         ', i), question.type);
+		print(s_format ('question[%i].class        ', i), question.class);
 	end
 
 	local common = { name=1, type=1, class=1, ttl=1, rdlength=1, rdata=1 };
@@ -990,13 +993,13 @@ function resolver.print(response)    -- - - - - - - - - - - - - resolver.print
 	for s,s in pairs({'answer', 'authority', 'additional'}) do
 		for i,rr in pairs(response[s]) do
 			for j,t in pairs({ 'name', 'type', 'class', 'ttl', 'rdlength' }) do
-				tmp = string.format('%s[%i].%s', s, i, t);
-				print(string.format('%-30s', tmp), rr[t], hint(rr, t));
+				tmp = s_format('%s[%i].%s', s, i, t);
+				print(s_format('%-30s', tmp), rr[t], hint(rr, t));
 			end
 			for j,t in pairs(rr) do
 				if not common[j] then
-					tmp = string.format('%s[%i].%s', s, i, j);
-					print(string.format('%-30s  %s', tostring(tmp), tostring(t)));
+					tmp = s_format('%s[%i].%s', s, i, j);
+					print(s_format('%-30s  %s', tostring(tmp), tostring(t)));
 				end
 			end
 		end
