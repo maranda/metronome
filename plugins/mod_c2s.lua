@@ -266,12 +266,3 @@ module:add_item("net-provider", {
 		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:client%1.*>";
 	};
 });
-
-module:add_item("net-provider", {
-	name = "legacy_ssl";
-	listener = listener;
-	encryption = "ssl";
-	multiplex = {
-		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:client%1.*>";
-	};
-});
