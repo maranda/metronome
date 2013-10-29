@@ -19,7 +19,7 @@ local metronome = metronome;
 local resolve_path = configmanager.resolve_relative_path;
 local config_path = metronome.paths.config;
 
-local noticket, verifyext, no_compression;
+local noticket, verifyext, no_compression, disable_sslv3;
 if ssl then
 	local luasec_major, luasec_minor = ssl._VERSION:match("^(%d+)%.(%d+)");
 	noticket = tonumber(luasec_major)>0 or tonumber(luasec_minor)>=4;
@@ -34,6 +34,7 @@ local default_capath = "/etc/ssl/certs";
 local default_ciphers = "HIGH:!aNULL:@STRENGTH";
 if openssl_version and openssl_version >= 101 then
 	default_ciphers = "HIGH:!CAMELLIA:!DES:!3DES:!aNULL:@STRENGTH";
+	disable_sslv3 = true;
 end
 local supports_ecdh = true;
 if openssl_version and openssl_version < 100 then
@@ -41,7 +42,7 @@ if openssl_version and openssl_version < 100 then
 	noticket = false;
 end
 local default_verify = (ssl and ssl.x509 and { "peer", "client_once" }) or "none";
-local default_options = { "no_sslv2", noticket and "no_ticket" or nil };
+local default_options = { "no_sslv2", disable_sslv3 and "no_sslv3", noticket and "no_ticket" or nil };
 local default_verifyext = { "lsec_continue" };
 
 if not verifyext and ssl and ssl.x509 then
