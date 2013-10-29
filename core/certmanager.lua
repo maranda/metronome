@@ -33,7 +33,7 @@ local default_ssl_config = configmanager.get("*", "ssl");
 local default_capath = "/etc/ssl/certs";
 local default_ciphers = "HIGH:!aNULL:@STRENGTH";
 if openssl_version and openssl_version >= 101 then
-	default_ciphers = "HIGH:!CAMELLIA:!aNULL:@STRENGTH";
+	default_ciphers = "HIGH:!CAMELLIA:!DES:!3DES:!aNULL:@STRENGTH";
 end
 local supports_ecdh = true;
 if openssl_version and openssl_version < 100 then
