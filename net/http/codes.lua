@@ -71,5 +71,5 @@ local response_codes = {
 	[510] = "Not Extended";
 };
 
-for k,v in pairs(response_codes) do response_codes[k] = k.." "..v; end
+for k, v in pairs(response_codes) do response_codes[k] = k.." "..v; end
 return setmetatable(response_codes, { __index = function(t, k) return k.." Unassigned"; end })

@@ -163,7 +163,7 @@ function _M.hijack_response(response, listener)
 end
 function handle_request(conn, request, finish_cb)
 	local headers = {};
-	for k,v in pairs(request.headers) do headers[k:gsub("-", "_")] = v; end
+	for k, v in pairs(request.headers) do headers[k:gsub("-", "_")] = v; end
 	request.headers = headers;
 	request.conn = conn;
 
@@ -246,7 +246,7 @@ function _M.send_response(response, body)
 	headers.connection = response.keep_alive and "Keep-Alive" or "close";
 
 	local output = { status_line };
-	for k,v in pairs(headers) do
+	for k, v in pairs(headers) do
 		t_insert(output, headerfix[k]..v);
 	end
 	t_insert(output, "\r\n\r\n");
