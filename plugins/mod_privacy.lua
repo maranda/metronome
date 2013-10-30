@@ -15,7 +15,7 @@ local datamanager = require "util.datamanager";
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local jid_bare, jid_split, jid_join = require "util.jid".bare, require "util.jid".split, require "util.jid".join;
 local rm = require "core.rostermanager";
-local to_number = tonumber;
+local tonumber, t_sort = tonumber, table.sort;
 
 function is_list_used(origin, name, privacy_lists)
 	local user = bare_sessions[origin.username.."@"..origin.host];
@@ -118,8 +118,8 @@ function create_list(privacy_lists, origin, stanza, name, entries)
 	list.name = name;
 	list.items = {};
 
-	for _,item in ipairs(entries) do
-		if to_number(item.attr.order) == nil or to_number(item.attr.order) < 0 or order_check[item.attr.order] then
+	for _, item in ipairs(entries) do
+		if tonumber(item.attr.order) == nil or tonumber(item.attr.order) < 0 or order_check[item.attr.order] then
 			return {"modify", "bad-request", "Order attribute not valid."};
 		end
 		
@@ -133,14 +133,14 @@ function create_list(privacy_lists, origin, stanza, name, entries)
 		tmp["type"] = item.attr.type;
 		tmp["value"] = item.attr.value;
 		tmp["action"] = item.attr.action;
-		tmp["order"] = to_number(item.attr.order);
+		tmp["order"] = tonumber(item.attr.order);
 		tmp["presence-in"] = false;
 		tmp["presence-out"] = false;
 		tmp["message"] = false;
 		tmp["iq"] = false;
 		
 		if #item.tags > 0 then
-			for _,tag in ipairs(item.tags) do
+			for _, tag in ipairs(item.tags) do
 				tmp[tag.name] = true;
 			end
 		end
@@ -160,14 +160,14 @@ function create_list(privacy_lists, origin, stanza, name, entries)
 		list.items[#list.items + 1] = tmp;
 	end
 	
-	table.sort(list, function(a, b) return a.order < b.order; end);
+	t_sort(list, function(a, b) return a.order < b.order; end);
 
 	origin.send(st.reply(stanza));
 	if bare_sessions[bare_jid] then
-		local iq = st.iq ( { type = "set", id="push1" } );
-		iq:tag ("query", { xmlns = "jabber:iq:privacy" } );
-		iq:tag ("list", { name = list.name } ):up();
-		iq:up();
+		local iq = st.iq({ type = "set", id="push1" });
+				:tag ("query", { xmlns = "jabber:iq:privacy" })
+					:tag ("list", { name = list.name }):up():up();
+
 		for resource, session in pairs(bare_sessions[bare_jid].sessions) do
 			iq.attr.to = bare_jid.."/"..resource
 			session.send(iq);
@@ -199,7 +199,7 @@ function get_list(privacy_lists, origin, stanza, name)
 		local list = privacy_lists.lists[name];
 		if list then
 			reply = reply:tag("list", {name=list.name});
-			for _,item in ipairs(list.items) do
+			for _, item in ipairs(list.items) do
 				reply:tag("item", {type=item.type, value=item.value, action=item.action, order=item.order});
 				if item["message"] then reply:tag("message"):up(); end
 				if item["iq"] then reply:tag("iq"):up(); end
@@ -255,7 +255,7 @@ module:hook("iq/bare/jabber:iq:privacy:query", function(data)
 			local name = nil;
 			local _to_retrieve = 0;
 			if #query.tags >= 1 then
-				for _,tag in ipairs(query.tags) do
+				for _, tag in ipairs(query.tags) do
 					if tag.name == "list" then -- Client requests a privacy list from server
 						name = tag.attr.name;
 						_to_retrieve = _to_retrieve + 1;
@@ -312,7 +312,7 @@ function check_stanza(e, session)
 		module:log("warn", "given privacy list not found. name: %s for user %s", listname, bare_jid);
 		return;
 	end
-	for _,item in ipairs(list.items) do
+	for _, item in ipairs(list.items) do
 		local apply = false;
 		local block = false;
 		if ((stanza.name == "message" and item.message) or
@@ -410,9 +410,9 @@ end
 function check_outgoing(e)
 	local session = e.origin;
 	if e.stanza.attr.from == nil then
-		e.stanza.attr.from = session.username .. "@" .. session.host;
+		e.stanza.attr.from = session.username.."@".. session.host;
 		if session.resource then
-		 	e.stanza.attr.from = e.stanza.attr.from .. "/" .. session.resource;
+		 	e.stanza.attr.from = e.stanza.attr.from.."/".. session.resource;
 		end
 	end
 	if session.username then -- FIXME do properly
