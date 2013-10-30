@@ -164,7 +164,7 @@ function create_list(privacy_lists, origin, stanza, name, entries)
 
 	origin.send(st.reply(stanza));
 	if bare_sessions[bare_jid] then
-		local iq = st.iq({ type = "set", id="push1" });
+		local iq = st.iq({ type = "set", id="push1" })
 				:tag ("query", { xmlns = "jabber:iq:privacy" })
 					:tag ("list", { name = list.name }):up():up();
 
