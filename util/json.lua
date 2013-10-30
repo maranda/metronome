@@ -73,7 +73,7 @@ end
 function arraysave(o, buffer)
 	t_insert(buffer, "[");
 	if next(o) then
-		for i,v in ipairs(o) do
+		for i, v in ipairs(o) do
 			simplesave(v, buffer);
 			t_insert(buffer, ",");
 		end
@@ -86,10 +86,10 @@ function tablesave(o, buffer)
 	local __array = {};
 	local __hash = {};
 	local hash = {};
-	for i,v in ipairs(o) do
+	for i, v in ipairs(o) do
 		__array[i] = v;
 	end
-	for k,v in pairs(o) do
+	for k, v in pairs(o) do
 		local ktype, vtype = type(k), type(v);
 		if valid_types[vtype] or v == null then
 			if ktype == "string" and not special_keys[k] then
@@ -108,14 +108,14 @@ function tablesave(o, buffer)
 				t_insert(keys, k);
 			end
 			t_sort(keys);
-			for _,k in ipairs(keys) do
+			for _, k in ipairs(keys) do
 				stringsave(k, buffer);
 				t_insert(buffer, ":");
 				simplesave(hash[k], buffer);
 				t_insert(buffer, ",");
 			end
 		else
-			for k,v in pairs(hash) do
+			for k, v in pairs(hash) do
 				stringsave(k, buffer);
 				t_insert(buffer, ":");
 				simplesave(v, buffer);
@@ -124,7 +124,7 @@ function tablesave(o, buffer)
 		end
 		if next(__hash) ~= nil then
 			t_insert(buffer, "\"__hash\":[");
-			for k,v in pairs(__hash) do
+			for k, v in pairs(__hash) do
 				simplesave(k, buffer);
 				t_insert(buffer, ",");
 				simplesave(v, buffer);
@@ -191,7 +191,7 @@ local function _fixobject(obj)
 	local __array = obj.__array;
 	if __array then
 		obj.__array = nil;
-		for i,v in ipairs(__array) do
+		for i, v in ipairs(__array) do
 			t_insert(obj, v);
 		end
 	end
@@ -199,7 +199,7 @@ local function _fixobject(obj)
 	if __hash then
 		obj.__hash = nil;
 		local k;
-		for i,v in ipairs(__hash) do
+		for i, v in ipairs(__hash) do
 			if k ~= nil then
 				obj[k] = v; k = nil;
 			else

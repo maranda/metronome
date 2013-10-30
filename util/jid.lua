@@ -20,7 +20,7 @@ local escapes = {
 	["@"] = "\\40"; ["\\"] = "\\5c";
 };
 local unescapes = {};
-for k,v in pairs(escapes) do unescapes[v] = k; end
+for k, v in pairs(escapes) do unescapes[v] = k; end
 
 module "jid"
 

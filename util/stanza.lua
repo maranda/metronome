@@ -272,7 +272,7 @@ function deserialize(stanza)
 				attr[att] = nil;
 			end
 		end
-		for a,v in pairs(attrx) do
+		for a, v in pairs(attrx) do
 			attr[a] = v;
 		end
 		setmetatable(stanza, stanza_mt);
@@ -298,7 +298,7 @@ end
 
 local function _clone(stanza)
 	local attr, tags = {}, {};
-	for k,v in pairs(stanza.attr) do attr[k] = v; end
+	for k, v in pairs(stanza.attr) do attr[k] = v; end
 	local new = { name = stanza.name, attr = attr, tags = tags };
 	for i=1,#stanza do
 		local child = stanza[i];
