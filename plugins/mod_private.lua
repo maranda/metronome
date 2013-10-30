@@ -39,7 +39,6 @@ module:hook("iq/self/jabber:iq:private:query", function(event)
 			else
 				data[key] = st.preserialize(tag);
 			end
-			-- TODO delete datastore if empty
 			if datamanager.store(origin.username, origin.host, "private", data) then
 				origin.send(st.reply(stanza));
 			else
