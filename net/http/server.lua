@@ -167,7 +167,7 @@ function handle_request(conn, request, finish_cb)
 	request.headers = headers;
 	request.conn = conn;
 
-	local date_header = os_date('!%a, %d %b %Y %H:%M:%S GMT'); -- FIXME use
+	local date_header = os_date('!%a, %d %b %Y %H:%M:%S GMT');
 	local conn_header = request.headers.connection;
 	local keep_alive = conn_header == "Keep-Alive" or (request.httpversion == "1.1" and conn_header ~= "close");
 
