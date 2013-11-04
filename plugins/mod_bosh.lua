@@ -240,7 +240,7 @@ function stream_callbacks.streamopened(context, attr)
 				["xmlns:stream"] = xmlns_streams, condition = "host-unknown" })));
 			return;
 		elseif hosts[attr.to].type == "component" then
-			log("debug", "BOSH client tried to connect to a component host: %s" tostring(attr.to));
+			log("debug", "BOSH client tried to connect to a component host: %s", tostring(attr.to));
 			response:send(tostring(st.stanza("body", { xmlns = xmlns_bosh, type = "terminate",
 				["xmlns:stream"] = xmlns_streams, condition = "not-allowed" })));
 			return;
