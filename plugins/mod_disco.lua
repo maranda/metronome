@@ -179,6 +179,12 @@ module:hook("iq/bare/http://jabber.org/protocol/disco#items:query", function(eve
 	end
 end);
 
+-- Rebuild cache on configuration reload
+module:hook("config-reloaded", function()
+	module:log("debug", "Rebuilding disco info cache...");
+	build_cached_children_data();
+end);
+
 local function rebuild_children_data(host)
 	if host:match("%.(.*)") == my_host then build_cached_children_data(); end
 end
