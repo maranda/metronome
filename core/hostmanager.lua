@@ -10,7 +10,8 @@
 local configmanager = require "core.configmanager";
 local modulemanager = require "core.modulemanager";
 local events_new = require "util.events".new;
-local disco_items = require "util.multitable".new();
+local mt_new = require "util.multitable".new;
+local disco_items = mt_new();
 local NULL = {};
 
 local jid_split = require "util.jid".split;
@@ -55,6 +56,18 @@ local function load_enabled_hosts()
 end
 
 metronome_events.add_handler("server-starting", load_enabled_hosts);
+
+local function rebuild_disco_data()
+	disco_items = mt_new(); --reset
+	for name in pairs(hosts) do
+		local config = configmanager.getconfig()[name];
+		if not name:match("[@/]") then
+			disco_items:set(name:match("%.(.*)") or "*", name, config.name or true);
+		end		
+	end
+end
+
+metronome_events.add_handler("config-reloaded", rebuild_disco_data);
 
 local function host_send(stanza)
 	local name, type = stanza.name, stanza.attr.type;
