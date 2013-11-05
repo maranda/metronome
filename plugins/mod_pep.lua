@@ -11,6 +11,7 @@ local ripairs, tonumber, type, os_remove, os_time, select = ripairs, tonumber, t
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
 local jid_bare = require "util.jid".bare;
+local jid_join = require "util.jid".join;
 local jid_split = require "util.jid".split;
 local uuid_generate = require "util.uuid".generate;
 local calculate_hash = require "util.caps".calculate_hash;
@@ -521,6 +522,19 @@ module:hook("iq-result/bare/disco", function(event)
 		end
 	end
 end, -1);
+
+module:hook("resource-unbind", function(event)
+	local session = event.session;
+	local user = jid_join(session.username, session.host);
+	local has_sessions = bare_sessions[user];
+	local service = services[user];
+
+	if not has_sessions and service then -- wipe recipients
+		service.recipients = {};
+		local nodes = service.nodes;
+		for _, node in pairs(nodes) do node.subscribers = {}; end
+	end
+end);
 
 module:hook_global("user-deleted", function(event)
 	local username, host = event.username, event.host;
