@@ -126,7 +126,7 @@ function handle_pubsub_iq(event)
 			handler(user_service, origin, stanza, action, config); 
 		end
 		
-		if is_new and host == module.host then -- a "little" creative.
+		if is_new and host == module.host and origin.presence then -- a "little" creative.
 			presence_handler({ origin = origin, stanza = origin.presence });
 		end
 		
