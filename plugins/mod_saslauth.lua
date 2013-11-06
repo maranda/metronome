@@ -32,7 +32,7 @@ local function reload()
 	secure_auth_only = module:get_option_boolean("c2s_require_encryption", false) or module:get_option_boolean("require_encryption", false);
 	allow_unencrypted_plain_auth = module:get_option_boolean("allow_unencrypted_plain_auth", false);
 end
-module:hook ("config-reloaded", reload);
+module:hook_global("config-reloaded", reload);
 
 local function build_reply(status, ret, err_msg)
 	local reply = st.stanza(status, {xmlns = xmlns_sasl});

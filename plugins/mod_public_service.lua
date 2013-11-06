@@ -60,6 +60,6 @@ end
 
 function module.load() build_vcard(); end
 
-module:hook("config-reloaded", handle_reload);
+module:hook_global("config-reloaded", handle_reload);
 module:hook("iq-get/host/"..vcard4_xmlns..":vcard", handle_vcard, 30);
 	
