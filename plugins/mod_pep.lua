@@ -64,7 +64,6 @@ local function idle_service_closer()
 end
 
 local function disco_info_query(user, from)
-	-- COMPAT from ~= stanza.attr.to because OneTeam can"t deal with missing from attribute
 	core_post_stanza(hosts[module.host], 
 		st.stanza("iq", { from = user, to = from, id = "disco", type = "get" })
 			:query("http://jabber.org/protocol/disco#info")
@@ -92,7 +91,7 @@ function handle_pubsub_iq(event)
 		is_new = true;
 	end
 
-	if not user_service then return; end
+	if not user_service then return;	end
 
 	user_service.last_used = time_now;
 
