@@ -13,7 +13,6 @@ local setmetatable, rawget, rawset, io, error, dofile, type, pairs, table =
 local format, math_max = string.format, math.max;
 
 local fire_event = metronome and metronome.events.fire_event or function () end;
-local metronome = metronome;
 
 local envload = require"util.envload".envload;
 local lfs = require "lfs";
@@ -115,15 +114,7 @@ function load(filename, format)
 			f:close();
 			if ok then
 				config = new_config;
-				local event = { filename = filename, format = format, config = config };
-				fire_event("config-reloaded", event);
-				-- reflect config-reloaded event also on the hosts
-				local hosts = metronome and metronome.hosts;
-				if hosts then
-					for _, host in pairs(hosts) do
-						host.events.fire_event("config-reloaded", event);
-					end
-				end
+				fire_event("config-reloaded", { filename = filename, format = format, config = config });
 			end
 			return ok, "parser", err;
 		end
