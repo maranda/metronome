@@ -28,7 +28,6 @@ local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
 local xmlns_bind = "urn:ietf:params:xml:ns:xmpp-bind";
 
 local function reload()
-	module:log("info", "server configuration is being reloaded, refreshing options.");
 	secure_auth_only = module:get_option_boolean("c2s_require_encryption", false) or module:get_option_boolean("require_encryption", false);
 	allow_unencrypted_plain_auth = module:get_option_boolean("allow_unencrypted_plain_auth", false);
 end
