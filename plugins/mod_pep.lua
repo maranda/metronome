@@ -86,22 +86,13 @@ function handle_pubsub_iq(event)
 	local username, host = jid_split(user);
 	local time_now = os_time();
 	local user_service = services[user];
+	local is_new;
 	if not user_service and um_user_exists(username, host) then -- create service on demand.
-		-- check if the creating user is the owner or someone requesting its pep service,
-		-- required for certain crawling bots, e.g. Jappix Me
-		if hosts[host].sessions[username] and (full_jid and jid_bare(full_jid) == username) then
-			set_service(pubsub.new(pep_new(username)), user, true);
-
-			-- discover the creating resource immediatly.
-			module:fire_event("pep-get-client-filters", { user = user, to = full_jid });
-		else
-			set_service(pubsub.new(pep_new(username)), user, true);
-		end
+		user_service = set_service(pubsub.new(pep_new(username)), user, true);
+		is_new = true;
 	end
 
-	if not user_service then -- we should double check it's created,
-		return;            -- it does not if the user doesn't exist.
-	end
+	if not user_service then return;	end
 
 	user_service.last_used = time_now;
 
@@ -131,10 +122,16 @@ function handle_pubsub_iq(event)
 
 	if handler then
 		if not config then 
-			return handler(user_service, origin, stanza, action); 
+			handler(user_service, origin, stanza, action); 
 		else 
-			return handler(user_service, origin, stanza, action, config); 
+			handler(user_service, origin, stanza, action, config); 
 		end
+		
+		if is_new and host == module.host then -- a "little" creative.
+			presence_handler({ origin = origin, stanza = origin.presence });
+		end
+		
+		return true;
 	else
 		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
 	end
@@ -381,7 +378,7 @@ module:hook("account-disco-items", function(event)
 	end
 end);
 
-module:hook("presence/bare", function(event)
+function presence_handler(event)
 	-- inbound presence to bare JID recieved           
 	local origin, stanza = event.origin, event.stanza;
 	local user = stanza.attr.to or (origin.username.."@"..origin.host);
@@ -452,7 +449,9 @@ module:hook("presence/bare", function(event)
 			end
 		end
 	end
-end, 10);
+end
+
+module:hook("presence/bare", presence_handler, 10);
 
 module:hook("pep-get-client-filters", function(event)
 	local user, to = event.user, event.to;
@@ -512,9 +511,7 @@ module:hook("iq-result/bare/disco", function(event)
 					end
 				end
 			end
-			for node, object in pairs(nodes) do
-				pep_send(contact, user);
-			end
+			pep_send(contact, user);
 			return true; -- end cb processing.
 		end
 	end
