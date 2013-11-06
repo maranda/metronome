@@ -180,7 +180,7 @@ module:hook("iq/bare/http://jabber.org/protocol/disco#items:query", function(eve
 end);
 
 -- Rebuild cache on configuration reload
-module:hook("config-reloaded", function()
+module:hook_global("config-reloaded", function()
 	module:log("debug", "Rebuilding disco info cache...");
 	build_cached_children_data();
 end);
