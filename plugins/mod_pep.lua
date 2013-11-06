@@ -66,7 +66,7 @@ end
 local function disco_info_query(user, from)
 	-- COMPAT from ~= stanza.attr.to because OneTeam can"t deal with missing from attribute
 	core_post_stanza(hosts[module.host], 
-		st.stanza("iq", {from=user, to=from, id="disco", type="get"})
+		st.stanza("iq", { from = user, to = from, id = "disco", type = "get" })
 			:query("http://jabber.org/protocol/disco#info")
 	);
 	module:log("debug", "Sending disco info query to: %s", from);
@@ -415,10 +415,7 @@ module:hook("presence/bare", function(event)
 				
 			if not hash_map[hash] then
 				if current ~= false then
-					module:fire_event("pep-get-client-filters", { user = user, to = stanza.attr.from or origin.full_jid, recipients = recipients });
-				
-					-- ignore filters once either because they aren't supported or because we don't have 'em yet
-					pep_send(recipient, user, true);
+					module:fire_event("pep-get-client-filters", { user = user, to = stanza.attr.from or origin.full_jid });
 				end
 			else
 				recipients[recipient] = hash;
@@ -458,7 +455,7 @@ module:hook("presence/bare", function(event)
 end, 10);
 
 module:hook("pep-get-client-filters", function(event)
-	local user, to, recipients = event.user, event.to, event.hash, event.recipients;
+	local user, to = event.user, event.to;
 	disco_info_query(user, to);
 end, 100);
 

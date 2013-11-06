@@ -133,19 +133,12 @@ local function mutually_sub(jid, hash, nodes)
 	end
 end
 
-local function pep_send(recipient, user, ignore)
+local function pep_send(recipient, user)
 	local rec_srv = services[jid_bare(recipient)];
 	local user_srv = services[user];
 	local nodes = user_srv.nodes;
 
-	if ignore then -- fairly hacky...
-		log("debug", "Ignoring notifications filtering for %s until we obtain 'em... if ever.", recipient);
-		for node, object in pairs(nodes) do
-			object.subscribers[recipient] = true;
-			pep_broadcast_last(user_srv, node, recipient);
-			object.subscribers[recipient] = nil;
-		end		
-	elseif not rec_srv then
+	if not rec_srv then
 		local rec_hash = user_srv.recipients[recipient];
 		for node, object in pairs(nodes) do
 			if hash_map[rec_hash] and hash_map[rec_hash][node] then
