@@ -113,4 +113,4 @@ local function reload()
 	allow_s2s_tls = module:get_option_boolean("s2s_allow_encryption", true);
 	module.load();
 end
-module:hook ("config-reloaded", reload);
+module:hook_global("config-reloaded", reload);

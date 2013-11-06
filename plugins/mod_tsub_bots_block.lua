@@ -11,7 +11,7 @@ local function reload_config()
 	jid_list = module:get_option_set("tsub_block_jidlist", {});
 	block_pattern = module:get_option_string("tsub_block_pattern", "");
 end
-module:hook("config-reloaded", reload_config);
+module:hook_global("config-reloaded", reload_config);
 reload_config();
 
 local function block_transports_sub_to_bots(data)
