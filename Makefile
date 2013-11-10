@@ -16,6 +16,13 @@ INSTALLEDDATA = $(DATADIR)
 all: metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
 	$(MAKE) -C util-src install
 
+clean:
+	rm -f metronome.install
+	rm -f metronomectl.install
+	rm -f metronome.cfg.lua.install
+	rm -f metronome.version
+	$(MAKE) clean -C util-src
+
 install: metronome.install metronomectl.install metronome.cfg.lua.install metronome.version util/encodings.so util/encodings.so util/pposix.so util/signal.so
 	install -d $(BIN) $(CONFIG) $(MODULES) $(SOURCE)
 	install -m750 -d $(DATA)
@@ -37,25 +44,7 @@ install: metronome.install metronomectl.install metronome.cfg.lua.install metron
 	test -e metronome.version && install metronome.version $(SOURCE)/metronome.version || true
 	$(MAKE) install -C util-src
 
-clean:
-	rm -f metronome.install
-	rm -f metronomectl.install
-	rm -f metronome.cfg.lua.install
-	rm -f metronome.version
-	$(MAKE) clean -C util-src
-
-uninstall:
-	rm -rf $(SOURCE)
-	rm -rf $(MODULES)
-	rm -f $(BIN)/bin/metronome
-	rm -f $(BIN)/bin/metronomectl
-
 git-upgrade:
-	@echo "*************************************************************************************"
-	@echo "* This target calls git stash, git pull, make clean, make all and sudo make install."
-	@echo "* Please remember that you may have to reload the changed modules and / or"
-	@echo "* restart Metronome after."
-	@echo "*************************************************************************************"
 	@sleep 5
 	git stash
 	git pull
@@ -64,16 +53,24 @@ git-upgrade:
 	sudo $(MAKE) install
 
 hg-upgrade:
-	@echo "****************************************************************************"
-	@echo "* This target calls hg pull -u, make clean, make all and sudo make install."
-	@echo "* Please remember that you may have to reload the changed modules and / or"
-	@echo "* restart Metronome after."
-	@echo "****************************************************************************"
 	@sleep 5
 	hg pull -u
 	$(MAKE) clean
 	$(MAKE) all
 	sudo $(MAKE) install
+
+uninstall:
+	rm -rf $(SOURCE)
+	rm -rf $(MODULES)
+	rm -f $(BIN)/bin/metronome
+	rm -f $(BIN)/bin/metronomectl
+
+upgrade:
+	@echo "****************************************************************************"
+	@echo "* Please remember that you may have to reload the changed modules and / or"
+	@echo "* restart Metronome after."
+	@echo "****************************************************************************"
+	@if [ -d .git ]; then $(MAKE) git-upgrade; else $(MAKE) hg-upgrade; fi
 
 util/%.so:
 	$(MAKE) install -C util-src
