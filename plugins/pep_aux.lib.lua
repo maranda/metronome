@@ -285,6 +285,7 @@ local function process_config_form(service, name, form, new)
 	if new then return true, node_config end
 
 	service:save_node(name);
+	service:save();
 	return true;
 end
 
