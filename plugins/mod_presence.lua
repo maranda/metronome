@@ -452,14 +452,11 @@ module:hook_global("server-stopping", function()
 			if session.presence then
 				session:dispatch_stanza(unavailable);
 			elseif directed then
-				local self_jid = jid_bare(jid);
 				for to_jid in pairs(directed) do
-					if jid_bare(to_jid) ~= self_jid then
-						unavailable.attr.from = session.full_jid;
-						unavailable.attr.to = to_jid;
-						core_post_stanza(session, unavailable, true);
-						directed[to_jid] = nil;
-					end
+					unavailable.attr.from = session.full_jid;
+					unavailable.attr.to = to_jid;
+					core_post_stanza(session, unavailable, true);
+					directed[to_jid] = nil;
 				end
 			end
 		end
