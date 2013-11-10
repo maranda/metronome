@@ -272,7 +272,8 @@ local function process_config_form(service, name, form, new)
 		elseif field.attr.var == "pubsub#max_items" then
 			node_config.max_items = tonumber(field:get_child_text("value")) or 20;
 		elseif field.attr.var == "pubsub#persist_items" then
-			node_config.persist_items = (field:get_child_text("value") == "0" and false) or (field:get_child_text("value") == "1" and true);
+			local persist = field:get_child_text("value");
+			node_config.deliver_payloads = ((persist == 0 or persist == "false") and false) or ((persist == "1" or persist == "true") and true);
 		elseif field.attr.var == "pubsub#access_model" then
 			local value = field:get_child_text("value");
 			if value == "presence" or value == "private" or value == "open" then node_config.access_model = value; end
