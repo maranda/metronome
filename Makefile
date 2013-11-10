@@ -50,7 +50,20 @@ uninstall:
 	rm -f $(BIN)/bin/metronome
 	rm -f $(BIN)/bin/metronomectl
 
-upgrade:
+git-upgrade:
+	@echo "*************************************************************************************"
+	@echo "* This target calls git stash, git pull, make clean, make all and sudo make install."
+	@echo "* Please remember that you may have to reload the changed modules and / or"
+	@echo "* restart Metronome after."
+	@echo "*************************************************************************************"
+	@sleep 5
+	git stash
+	git pull
+	$(MAKE) clean
+	$(MAKE) all
+	sudo $(MAKE) install
+
+hg-upgrade:
 	@echo "****************************************************************************"
 	@echo "* This target calls hg pull -u, make clean, make all and sudo make install."
 	@echo "* Please remember that you may have to reload the changed modules and / or"
