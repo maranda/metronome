@@ -443,7 +443,7 @@ end);
 module:hook_global("server-stopping", function()
 	local full_sessions = full_sessions;
 	local module_host = module.host;
-	module:log("debug", "%s -- broadcasting unavailable presence to local and remote entities...", module_host);
+	module:log("debug", "%s -- broadcasting unavailable presences to local and remote entities...", module_host);
 	local unavailable = st.presence({ type = "unavailable" }):tag("status"):text("Disconnected: Server is shutting down."):up();
 
 	for jid, session in pairs(full_sessions) do
