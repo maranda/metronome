@@ -443,19 +443,21 @@ end);
 module:hook_global("server-stopping", function()
 	local full_sessions = full_sessions;
 	local module_host = module.host;
-	module:log("debug", "%s -- broadcasting unavailable status to all non-self directed presences...", module_host);
-	local pres = st.presence({ type = "unavailable" }):tag("status"):text("Disconnected: Server is shutting down."):up();
+	module:log("debug", "%s -- broadcasting unavailable presence to local and remote entities...", module_host);
+	local unavailable = st.presence({ type = "unavailable" }):tag("status"):text("Disconnected: Server is shutting down."):up();
 
 	for jid, session in pairs(full_sessions) do
 		if session.host == module_host then
 			local directed = session.directed;
-			if directed then
+			if session.presence then
+				session:dispatch_stanza(unavailable);
+			elseif directed then
 				local self_jid = jid_bare(jid);
 				for to_jid in pairs(directed) do
 					if jid_bare(to_jid) ~= self_jid then
-						pres.attr.from = session.full_jid;
-						pres.attr.to = to_jid;
-						core_post_stanza(session, pres, true);
+						unavailable.attr.from = session.full_jid;
+						unavailable.attr.to = to_jid;
+						core_post_stanza(session, unavailable, true);
 						directed[to_jid] = nil;
 					end
 				end
