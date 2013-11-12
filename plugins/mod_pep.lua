@@ -91,7 +91,7 @@ function handle_pubsub_iq(event)
 		is_new = true;
 	end
 
-	if not user_service then return;	end
+	if not user_service then return; end
 
 	user_service.last_used = time_now;
 
