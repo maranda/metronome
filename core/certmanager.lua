@@ -42,8 +42,10 @@ if openssl_version and openssl_version < 100 then
 	noticket = false;
 end
 local default_verify = (ssl and ssl.x509 and { "peer", "client_once" }) or "none";
-local default_options = { "no_sslv2", disable_sslv3 and "no_sslv3", noticket and "no_ticket" or nil };
+local default_options = { "no_sslv2", noticket and "no_ticket" };
 local default_verifyext = { "lsec_continue" };
+
+if disable_sslv3 then default_options[#default_options + 1] = "disable_sslv3"; end
 
 if not verifyext and ssl and ssl.x509 then
 	default_verify[#default_verify + 1] = "continue";
