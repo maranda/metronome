@@ -213,7 +213,6 @@ function listener.onconnect(conn)
 			session:close("not-well-formed");
 		end
 	end
-
 	
 	if c2s_timeout then
 		add_task(c2s_timeout, function ()
