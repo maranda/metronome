@@ -10,7 +10,8 @@
 local ipairs, min, now, t_insert, t_remove, tonumber, tostring =
 	ipairs, math.min, os.time, table.insert, table.remove, tonumber, tostring;
 	
-local st_clone, st_stanza, st_reply = st.clone, st.stanza, st.reply;
+local st_clone, st_stanza, st_reply = 
+	require "util.stanza".clone, require "util.stanza".stanza, require "util.stanza".reply;
 
 local add_filter = require "util.filters".add_filter;
 local add_timer = require "util.timer".add_timer;
