@@ -167,7 +167,7 @@ module:hook_stanza("xmlns_sm", "enable", function(session, stanza)
 end, 100);
 
 module:hook_stanza(xmlns_sm, "enabled", function (session, stanza)
-	local session_type == session.type;
+	local session_type = session.type;
 	if session_type == "s2sin" or session_type == "s2sout" then
 		session.sm = true;
 		wrap(session);
