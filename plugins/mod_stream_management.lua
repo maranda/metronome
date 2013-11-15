@@ -34,8 +34,12 @@ local function verify(session)
 	if session.sm then return false, "unexpected-request", "Already enabled"; end
 	
 	local session_type = session.type;
-	if session_type == "c2s" and not session.resource then
-		return false, "unexpected-request", "A resource must be bound to use Stream Management";
+	if session_type == "c2s" then
+		if not session.resource then
+			return false, "unexpected-request", "A resource must be bound to use Stream Management";
+		else
+			return true;
+		end
 	elseif session_type == "s2sin" or session_type == "s2sout" then
 		return true;
 	end
