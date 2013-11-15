@@ -184,7 +184,7 @@ end);
 module:hook_stanza(xmlns_sm, "r", function(session, stanza)
 	if session.sm then
 		session.log("debug", "Received ack request for %d", session.sm_handled);
-		(session.sends2s or session.send)(st_stanza("a", { xmlns = xmlns_sm, h = tostring(origin.handled_stanza_count) }));
+		(session.sends2s or session.send)(st_stanza("a", { xmlns = xmlns_sm, h = tostring(session.sm_handled) }));
 	end
 	return true;
 end);
