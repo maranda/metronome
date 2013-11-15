@@ -76,7 +76,7 @@ end
 
 function destroy_session(session, err)
 	if session.destroyed then return; end
-	if not session.suppress_dlog then
+	if not session.detached then
 		(session.log or log)("debug", "Destroying session for %s (%s@%s)%s", session.full_jid or "(unknown)", session.username or "(unknown)", session.host or "(unknown)", err and (": "..err) or "");
 	end
 	
@@ -126,7 +126,7 @@ function bind_resource(session, resource)
 		bare_sessions[session.username..'@'..session.host] = sessions;
 	else
 		local sessions = hosts[session.host].sessions[session.username].sessions;
-		if sessions[resource] then
+		if sessions[resource] and not sessions[resource].detached then
 			-- Resource conflict
 			local policy = config_get(session.host, "conflict_resolve");
 			local increment;
