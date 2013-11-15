@@ -21,7 +21,7 @@ local uuid = require "util.uuid".generate;
 
 local process_stanza = metronome.core_process_stanza;
 
-local xmlns_sm = "urn:xmpp:sm:2";
+local xmlns_sm = "urn:xmpp:sm:2"; -- COMPAT: move down to :2 as most clients don't seem to support the latest NS
 local xmlns_e = "urn:ietf:params:xml:ns:xmpp-stanzas";
 local xmlns_d = "urn:xmpp:delay";
 
@@ -139,7 +139,7 @@ end);
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function (session, stanza)
 	if verify(session) and stanza:get_child("sm", xmlns_sm) then
-		session.sends2s(st.stanza("enable", { xmlns = xmlns_sm }));
+		session.sends2s(st_stanza("enable", { xmlns = xmlns_sm }));
 	end
 end);
 
@@ -149,7 +149,7 @@ module:hook_stanza(xmlns_sm, "enable", function(session, stanza)
 	local ok, err, text = verify(session);
 	if not ok then
                 session.log("warn", "Failed to enable Stream Management reason is: %s", text);
-               (session.sends2s or session.send)(st.stanza("failed", { xmlns = xmlns_sm }));
+               (session.sends2s or session.send)(st_stanza("failed", { xmlns = xmlns_sm }));
                 return true;
         end
 	
