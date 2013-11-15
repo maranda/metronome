@@ -173,7 +173,9 @@ module:hook_stanza(xmlns_sm, "enable", function(session, stanza)
 		token = uuid();
 		handled_sessions[token], session.token = session, token;
 	end
-	(session.sends2s or session.send)(st_stanza("enabled", { xmlns = xmlns_sm, id = token, max = c2s and tostring(timeout), resume = c2s and resume }));
+	(session.sends2s or session.send)(
+		st_stanza("enabled", { xmlns = xmlns_sm, id = token, max = (c2s and tostring(timeout)) or nil, resume = (c2s and resume) or nil })
+	);
 	return true;
 end, 100);
 
