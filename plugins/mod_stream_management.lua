@@ -14,7 +14,7 @@ local st_clone, st_stanza, st_reply =
 	require "util.stanza".clone, require "util.stanza".stanza, require "util.stanza".reply;
 
 local add_filter = require "util.filters".add_filter;
-local add_timer = require "util.timer".add_timer;
+local add_timer = require "util.timer".add_task;
 local dt = require "util.datetime".datetime;
 local destroy = sessionmanager.destroy_session;
 local uuid = require "util.uuid".generate;
