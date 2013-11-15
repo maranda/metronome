@@ -71,14 +71,15 @@ local function replace_session(session, new)
 end
 
 local function wrap(session, _r) -- SM session wrapper
-	local session_type = session.type;
 	local _q = (_r and session.sm_queue) or {};
 	if not _r then
 		session.sm_queue, session.sm_last_ack, session.sm_handled = _q, 0, 0;
+		local session_type = session.type;
 		add_filter(session, (session_type == "s2sout" and "stanzas/out") or "stanzas/in", function(stanza)
 			if not stanza.attr.xmlns then
 				session.sm_handled = session.sm_handled + 1;
-				session.log("debug", "Handled incoming stanzas: %d", session.sm_handled);
+				session.log("debug", "Handled %s stanzas: %d", 
+					(session_type == "s2sout" and "outgoing") or "incoming", session.sm_handled);
 			end
 			return stanza;
 		end);
