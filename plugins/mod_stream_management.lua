@@ -300,3 +300,13 @@ module:hook("pre-resource-unbind", function(event)
 		end
 	end
 end, 10);
+
+-- Module Methods
+
+function module.save()
+	return { handled_sessions = handled_sessions };
+end
+
+function module.restore(data)
+	handled_sessions = data.handled_sessions or {};
+end
