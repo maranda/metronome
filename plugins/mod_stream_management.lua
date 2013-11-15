@@ -21,7 +21,7 @@ local uuid = require "util.uuid".generate;
 
 local process_stanza = metronome.core_process_stanza;
 
-local xmlns_sm = "urn:xmpp:sm:3";
+local xmlns_sm = "urn:xmpp:sm:2";
 local xmlns_e = "urn:ietf:params:xml:ns:xmpp-stanzas";
 local xmlns_d = "urn:xmpp:delay";
 
@@ -145,11 +145,11 @@ end);
 
 -- SM Handlers
 
-module:hook_stanza("xmlns_sm", "enable", function(session, stanza)
+module:hook_stanza(xmlns_sm, "enable", function(session, stanza)
 	local ok, err, text = verify(session);
 	if not ok then
                 session.log("warn", "Failed to enable Stream Management reason is: %s", text);
-                session.send(st.stanza("failed", { xmlns = xmlns_sm }));
+               (session.sends2s or session.send)(st.stanza("failed", { xmlns = xmlns_sm }));
                 return true;
         end
 	
@@ -163,7 +163,8 @@ module:hook_stanza("xmlns_sm", "enable", function(session, stanza)
 		token = uuid();
 		handled_sessions[token], session.token = session, token;
 	end
-	return (session.sends2s or session.send)(st_stanza("enabled", { xmlns = xmlns_sm, id = token, resume = resume }));
+	(session.sends2s or session.send)(st_stanza("enabled", { xmlns = xmlns_sm, id = token, max = tostring(timeout), resume = resume }));
+	return true;
 end, 100);
 
 module:hook_stanza(xmlns_sm, "enabled", function (session, stanza)
@@ -171,16 +172,17 @@ module:hook_stanza(xmlns_sm, "enabled", function (session, stanza)
 	if session_type == "s2sin" or session_type == "s2sout" then
 		session.sm = true;
 		wrap(session);
-		return true;
 	end
+	return true;
 	-- TODO: Stream resumption for s2s streams.
 end);
 
 module:hook_stanza(xmlns_sm, "r", function(session, stanza)
 	if session.sm then
 		session.log("debug", "Received ack request for %d", session.sm_handled);
-		return (session.sends2s or session.send)(st_stanza("a", { xmlns = xmlns_sm, h = tostring(origin.handled_stanza_count) }));
+		(session.sends2s or session.send)(st_stanza("a", { xmlns = xmlns_sm, h = tostring(origin.handled_stanza_count) }));
 	end
+	return true;
 end);
 
 module:hook_stanza(xmlns_sm, "a", function(session, stanza)
@@ -192,8 +194,8 @@ module:hook_stanza(xmlns_sm, "a", function(session, stanza)
 		if _count > #_q then module:log("warn", "Client says it handled %d stanzas, but only %d were sent", _count, #_q); end
 		for i=1, min(_count, #_q) do t_remove(_q, 1); end
 		session.sm_last_ack = session.sm_last_ack + _count;
-		return true;
 	end
+	return true;
 end);
 
 module:hook_stanza(xmlns_sm, "resume", function(session, stanza)
