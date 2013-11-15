@@ -168,11 +168,12 @@ module:hook_stanza(xmlns_sm, "enable", function(session, stanza)
 	
 	local token;
 	local resume = stanza.attr.resume;
-	if resume == "1" or resume == "true" then
+	local c2s = session.type == "c2s" and true;
+	if (resume == "1" or resume == "true") and c2s then
 		token = uuid();
 		handled_sessions[token], session.token = session, token;
 	end
-	(session.sends2s or session.send)(st_stanza("enabled", { xmlns = xmlns_sm, id = token, max = tostring(timeout), resume = resume }));
+	(session.sends2s or session.send)(st_stanza("enabled", { xmlns = xmlns_sm, id = token, max = c2s and tostring(timeout), resume = c2s and resume }));
 	return true;
 end, 100);
 
@@ -183,7 +184,6 @@ module:hook_stanza(xmlns_sm, "enabled", function (session, stanza)
 		wrap(session);
 	end
 	return true;
-	-- TODO: Stream resumption for s2s streams.
 end);
 
 module:hook_stanza(xmlns_sm, "r", function(session, stanza)
@@ -208,9 +208,18 @@ module:hook_stanza(xmlns_sm, "a", function(session, stanza)
 end);
 
 module:hook_stanza(xmlns_sm, "resume", function(session, stanza)
+	local _type = session.type;
+	if _type == "s2sin" or _type == "s2sout" then
+		-- properly bounce resumption requests for s2s streams
+		session.sends2s(st_stanza("failed", { xmlns = xmlns_sm }):tag("service-unavailable", { xmlns = xmlns_e }));
+	elseif _type ~= "c2s" then
+		-- bounce all the unauthed ones
+		(session.sends2s or session.send)(st_stanza("failed", { xmlns = xmlns_sm }):tag("unexpected-request", { xmlns = xmlns_e }));
+	end
+
 	if session.full_jid then
 		session.log("warn", "Attempted to resume session after it bound a resource");
-		session.send(st_stanza("failed", { xmlns = xmlns_sm }):tag("unexpexted-request", { xmlns = xmlns_e }));
+		session.send(st_stanza("failed", { xmlns = xmlns_sm }):tag("unexpected-request", { xmlns = xmlns_e }));
 		return true;
 	end
 	
