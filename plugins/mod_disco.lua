@@ -144,7 +144,7 @@ module:hook("stream-features", function (event)
 	if event.origin.type == "c2s" then
 		event.features:add_child(get_server_caps_feature());
 	end
-end, 96);
+end, -2);
 
 -- Handle disco requests to user accounts
 module:hook("iq/bare/http://jabber.org/protocol/disco#info:query", function(event)

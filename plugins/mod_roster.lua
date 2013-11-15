@@ -30,7 +30,7 @@ module:hook("stream-features", function(event)
 	if origin.username then
 		features:add_child(rosterver_stream_feature);
 	end
-end, 95);
+end, -1);
 
 local function roster_stanza_builder(stanza, roster, owner)
 	for jid, item in pairs(roster) do
