@@ -170,10 +170,10 @@ end);
 module:hook_stanza(xmlns_sm, "enable", function(session, stanza)
 	local ok, err, text = verify(session);
 	if not ok then
-                session.log("warn", "Failed to enable Stream Management reason is: %s", text);
-               (session.sends2s or session.send)(st_stanza("failed", { xmlns = xmlns_sm }));
-                return true;
-        end
+		session.log("warn", "Failed to enable Stream Management reason is: %s", text);
+		(session.sends2s or session.send)(st_stanza("failed", { xmlns = xmlns_sm }));
+		return true;
+	end
 	
 	session.log("debug", "Attempting to enable Stream Management...");
 	session.sm = true;
