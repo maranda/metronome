@@ -54,7 +54,7 @@ local function replace_session(session, new)
 	session.stream = new.stream;
 	session.secure = new.secure;
 	session.halted = nil;
-	session.suppress_dlog = nil;
+	session.detached = nil;
 	local filter = session.filter;
 	local log = session.log;
 	function session.data(data)
@@ -246,7 +246,7 @@ module:hook("pre-resource-unbind", function(event)
 		if session.token then
 			session.log("debug", "Session is being halted for up to %d seconds", timeout);
 			local _now, token = now(), session.token;
-			session.halted, session.suppress_dlog = _now, true;
+			session.halted, session.detached = _now, true;
 			add_timer(timeout, function()
 				local current = full_sessions[session.full_jid];
 				if session.destroyed then
