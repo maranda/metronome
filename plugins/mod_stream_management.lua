@@ -147,7 +147,18 @@ module:hook("s2s-stream-features", function (event)
 end);
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function (session, stanza)
-	if verify(session) and stanza:get_child("sm", xmlns_sm) then
+	local session_type = session.type;
+	if not session.can_do_sm and 
+	   (session_type == "s2sout_unauthed" or session_type == "s2sout") and
+	   stanza:get_child("sm", xmlns_sm) then
+		session.can_do_sm = true;
+	end
+end);
+
+module:hook("s2sout-established", function(event)
+	local session = event.session
+	if session.can_do_sm then
+		session.log("debug", "Attempting to enable Stanza Acknowledgement on s2sout...");
 		session.sends2s(st_stanza("enable", { xmlns = xmlns_sm }));
 	end
 end);
