@@ -75,8 +75,10 @@ function retire_session(session)
 end
 
 function destroy_session(session, err)
-	(session.log or log)("debug", "Destroying session for %s (%s@%s)%s", session.full_jid or "(unknown)", session.username or "(unknown)", session.host or "(unknown)", err and (": "..err) or "");
 	if session.destroyed then return; end
+	if not session.suppress_dlog then
+		(session.log or log)("debug", "Destroying session for %s (%s@%s)%s", session.full_jid or "(unknown)", session.username or "(unknown)", session.host or "(unknown)", err and (": "..err) or "");
+	end
 	
 	if session.full_jid then
 		local host_session = hosts[session.host];
