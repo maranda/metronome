@@ -240,7 +240,7 @@ end);
 
 module:hook("pre-resource-unbind", function(event)
 	local session, _error = event.session, event.error;
-	if session.sm then
+	if session.sm and not session.halted then
 		if session.token then
 			session.log("debug", "Session is being halted for up to %d seconds", timeout);
 			local _now, token = now(), session.token;
