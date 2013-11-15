@@ -55,8 +55,10 @@ local function replace_session(session, new)
 	session.secure = new.secure;
 	session.halted = nil;
 	session.detached = nil;
+
 	local filter = session.filter;
 	local log = session.log;
+	local stream = session.stream;
 	function session.data(data)
 		data = filter("bytes/in", data);
 		if data then
