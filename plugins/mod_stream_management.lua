@@ -222,6 +222,12 @@ module:hook_stanza(xmlns_sm, "resume", function(session, stanza)
 		session.send(st_stanza("failed", { xmlns = xmlns_sm }):tag("item-not-found", { xmlns = xmlns_e }));
 	elseif session.host == original.host and session.username == original.username then
 		session.log("debug", "Session is being resumed...");
+		if original.conn then
+			local conn = original.conn;
+			c2s_sessions[conn] = nil;
+			conn:close();
+			session.log("debug", "Closed the old session's connection...");
+		end
 		replace_session(original, session);
 		wrap(original, true);
 		session.stream:set_session(original);
