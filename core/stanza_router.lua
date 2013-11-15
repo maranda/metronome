@@ -54,7 +54,9 @@ end
 
 local iq_types = { set=true, get=true, result=true, error=true };
 function core_process_stanza(origin, stanza)
-	(origin.log or log)("debug", "Received[%s]: %s", origin.type, stanza:top_tag());
+	local _type = origin.type;
+	(origin.log or log)("debug", "Received[%s]: %s", _type, 
+		((_type == "s2sin_unauthed" or _type == "s2sout_unauthed") and tostring(stanza)) or stanza:top_tag());
 
 	-- TODO verify validity of stanza (as well as JID validity)
 	if stanza.attr.type == "error" and #stanza.tags == 0 then
