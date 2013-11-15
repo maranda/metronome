@@ -214,8 +214,12 @@ module:hook_stanza(xmlns_sm, "a", function(session, stanza)
 		session.waiting_ack = nil;
 		local _count = tonumber(stanza.attr.h) - session.sm_last_ack;
 		local _q = session.sm_queue;
+		local _type = session.type;
 		
-		if _count > #_q then module:log("warn", "Client says it handled %d stanzas, but only %d were sent", _count, #_q); end
+		if _count > #_q then
+			module:log("warn", "%s says it handled %d stanzas, but only %d were sent", 
+				(_type == "s2sin" or _type == "s2sout") and "Remote server" or "Client", _count, #_q); 
+		end
 		for i=1, min(_count, #_q) do t_remove(_q, 1); end
 		session.sm_last_ack = session.sm_last_ack + _count;
 	end
