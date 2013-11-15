@@ -272,7 +272,7 @@ module:hook("stream-features", function(event)
 		features:tag("bind", bind_attr):tag("required"):up():up();
 		features:tag("session", xmpp_session_attr):tag("optional"):up():up();
 	end
-end, 97);
+end, 96);
 
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;

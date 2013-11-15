@@ -179,7 +179,7 @@ end, 100);
 
 module:hook("s2s-stream-features", function (data)
 	data.features:tag("dialback", { xmlns = "urn:xmpp:features:dialback" }):up();
-end);
+end, 98);
 
 function module.unload()
 	if not s2s_strict_mode then

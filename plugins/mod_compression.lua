@@ -32,7 +32,7 @@ module:hook("stream-features", function(event)
 		-- FIXME only advertise compression support when TLS layer has no compression enabled
 		features:add_child(compression_stream_feature);
 	end
-end, 98);
+end, 97);
 
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;
@@ -40,7 +40,7 @@ module:hook("s2s-stream-features", function(event)
 	if not origin.compressed and (origin.type == "c2s" or origin.type == "s2sin" or origin.type == "s2sout") then
 		features:add_child(compression_stream_feature);
 	end
-end, 98);
+end, 97);
 
 -- Hook to activate compression if remote server supports it.
 module:hook_stanza(xmlns_stream, "features", function(session, stanza)
