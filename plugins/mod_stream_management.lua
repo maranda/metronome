@@ -256,7 +256,7 @@ module:hook_stanza(xmlns_sm, "resume", function(session, stanza)
 		wrap(original, true);
 		session.stream:set_session(original);
 		c2s_sessions[session.conn] = original;
-		session.send(st_stanza("resumed", { xmlns = xmlns_sm, h = session.sm_handled, previd = id }));
+		session.send(st_stanza("resumed", { xmlns = xmlns_sm, h = original.sm_handled, previd = id }));
 		original:dispatch_stanza(st_stanza("a", { xmlns = xmlns_sm, h = stanza.attr.h }));
 		
 		-- Send all originally queued stanzas
