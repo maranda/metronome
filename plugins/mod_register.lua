@@ -76,11 +76,11 @@ module:hook("stream-features", function(event)
 
 	-- Advertise registration to unauthorized clients only.
 	if not(allow_registration) or session.type ~= "c2s_unauthed" then
-		return
+		return;
 	end
 
 	features:add_child(register_stream_feature);
-end);
+end, 100);
 
 local function handle_registration_stanza(event)
 	local session, stanza = event.origin, event.stanza;

@@ -64,13 +64,13 @@ module:hook("stream-features", function(event)
 	if can_do_tls(origin) then
 		features:add_child(c2s_feature);
 	end
-end);
+end, 101);
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;
 	if can_do_tls(origin) then
 		features:add_child(s2s_feature);
 	end
-end);
+end, 101);
 
 -- For s2sout connections, start TLS if we can
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function (session, stanza)

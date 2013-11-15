@@ -32,7 +32,7 @@ module:hook("stream-features", function(event)
 		-- FIXME only advertise compression support when TLS layer has no compression enabled
 		features:add_child(compression_stream_feature);
 	end
-end);
+end, 98);
 
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;
@@ -40,27 +40,25 @@ module:hook("s2s-stream-features", function(event)
 	if not origin.compressed and (origin.type == "c2s" or origin.type == "s2sin" or origin.type == "s2sout") then
 		features:add_child(compression_stream_feature);
 	end
-end);
+end, 98);
 
 -- Hook to activate compression if remote server supports it.
-module:hook_stanza(xmlns_stream, "features",
-		function (session, stanza)
-			if not session.compressed and (session.type == "c2s" or session.type == "s2sin" or session.type == "s2sout") then
-				local comp_st = stanza:child_with_name("compression");
-				if comp_st then
-					for a in comp_st:children() do
-						local algorithm = a[1]
-						if algorithm == "zlib" then
-							session.sends2s(st.stanza("compress", {xmlns = xmlns_compression_protocol}):tag("method"):text("zlib"))
-							session.log("debug", "Enabled compression using zlib.")
-							return true;
-						end
-					end
-					session.log("debug", "Remote server supports no compression algorithm we support.")
+module:hook_stanza(xmlns_stream, "features", function(session, stanza)
+	if not session.compressed and (session.type == "c2s" or session.type == "s2sin" or session.type == "s2sout") then
+		local comp_st = stanza:child_with_name("compression");
+		if comp_st then
+			for a in comp_st:children() do
+				local algorithm = a[1]
+				if algorithm == "zlib" then
+					session.sends2s(st.stanza("compress", {xmlns = xmlns_compression_protocol}):tag("method"):text("zlib"))
+					session.log("debug", "Enabled compression using zlib.")
+					return true;
 				end
 			end
+			session.log("debug", "Remote server supports no compression algorithm we support.")
 		end
-, 250);
+	end
+end, 250);
 
 
 -- returns either nil or a fully functional ready to use inflate stream

@@ -263,11 +263,16 @@ module:hook("stream-features", function(event)
 			end
 		end
 		if mechanisms[1] then features:add_child(mechanisms); end
-	else
+	end
+end, 99);
+
+module:hook("stream-features", function(event)
+	local origin, features = event.origin, event.features;
+	if origin.username then
 		features:tag("bind", bind_attr):tag("required"):up():up();
 		features:tag("session", xmpp_session_attr):tag("optional"):up():up();
 	end
-end);
+end, 97);
 
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;
@@ -281,7 +286,7 @@ module:hook("s2s-stream-features", function(event)
 			:up():up();
 		end
 	end
-end);
+end, 99);
 
 module:hook("iq/self/urn:ietf:params:xml:ns:xmpp-bind:bind", function(event)
 	local origin, stanza = event.origin, event.stanza;
