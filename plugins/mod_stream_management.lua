@@ -132,28 +132,28 @@ end
 
 -- Features Handlers
 
-module:hook("stream-features", function (event)
+module:hook("stream-features", function(event)
 	local session = event.origin;
 	if session.type == "c2s" and not session.sm then 
 		event.features:tag("sm", { xmlns = xmlns_sm }):tag("optional"):up():up(); 
 	end
 end);
 
-module:hook("s2s-stream-features", function (event)
+module:hook("s2s-stream-features", function(event)
 	local session = event.origin;
 	if verify(event.origin) then 
 		event.features:tag("sm", { xmlns = xmlns_sm }):tag("optional"):up():up(); 
 	end
 end);
 
-module:hook_stanza("http://etherx.jabber.org/streams", "features", function (session, stanza)
+module:hook_stanza("http://etherx.jabber.org/streams", "features", function(session, stanza)
 	local session_type = session.type;
 	if not session.can_do_sm and 
 	   (session_type == "s2sout_unauthed" or session_type == "s2sout") and
 	   stanza:get_child("sm", xmlns_sm) then
 		session.can_do_sm = true;
 	end
-end);
+end, 501);
 
 module:hook("s2sout-established", function(event)
 	local session = event.session
