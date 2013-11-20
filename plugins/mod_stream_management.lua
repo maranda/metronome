@@ -115,7 +115,7 @@ local function wrap(session, _r) -- SM session wrapper
 		return close(...);
 	end
 	
-	local function handle_unacked(session)
+	function session.handle_unacked(session)
 		local attr = { type = "cancel" };
 		for _, queued in ipairs(_q) do
 			local reply = st_reply(queued);
@@ -127,7 +127,6 @@ local function wrap(session, _r) -- SM session wrapper
 		end
 		_q, session.sm_queue = {}, {};
 	end
-	session.handle_unacked = handle_unacked;
 	
 	return session;
 end
