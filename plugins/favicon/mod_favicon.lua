@@ -14,12 +14,12 @@ local function serve_icon(event)
         local file = open(favicon, "rb") ; local icon
 	if file then icon = file:read("*a") ; file:close() else module:log("error","Couldn't find favicon in %s", favicon) end
 
-        if not icon then 
+	if not icon then
 		return 404
 	else
 		response.headers.content_type = "image/x-icon"
-        	return response:send(icon)
-	end	
+		return response:send(icon)
+	end
 end
 
 module:provides("http", {
