@@ -4,7 +4,9 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-module:depends("http")
+module:set_global()
+
+local server = require "net.http.server"
 
 local favicon = module:get_option_string("favicon_path", (metronome.paths.plugins or "./").."favicon/favicon.ico")
 local open = io.open
@@ -22,9 +24,6 @@ local function serve_icon(event)
 	end
 end
 
-module:provides("http", {
-	default_path = "/favicon.ico",
-        route = {
-                ["GET"] = serve_icon
-        }
-})
+function module.add_host(module)
+	module:hook_object_event(server, "GET "..module.host.."/favicon.ico", serve_icon, -1)
+end
