@@ -7,26 +7,15 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Florian Zeitz, Matthew Wild, Waqas Hussain
 
-local st, jid = require "util.stanza", require "util.jid";
+local st, jid, bare_sessions = require "util.stanza", require "util.jid", bare_sessions;
 
 function send_to_online(message, host)
-	local sessions;
-	if host then
-		sessions = { [host] = hosts[host] };
-	else
-		sessions = hosts;
-	end
-
 	local c = 0;
-	for hostname, host_session in pairs(sessions) do
-		if host_session.sessions then
-			message.attr.from = hostname;
-			for username in pairs(host_session.sessions) do
-				c = c + 1;
-				message.attr.to = username.."@"..hostname;
-				module:send(message);
-			end
-		end
+	
+	for jid in pairs(bare_sessions) do
+		c = c + 1;
+		message.attr.to = jid;
+		module:send(message);
 	end
 
 	return c;
