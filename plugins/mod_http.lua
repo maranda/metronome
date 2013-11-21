@@ -9,6 +9,7 @@
 
 module:set_global();
 module:depends("http_errors");
+module:depends("favicon");
 
 local moduleapi = require "core.moduleapi";
 local url_parse = require "socket.url".parse;
