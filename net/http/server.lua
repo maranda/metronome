@@ -158,9 +158,6 @@ local headerfix = setmetatable({}, {
 	end
 });
 
-function _M.hijack_response(response, listener)
-	error("TODO");
-end
 function handle_request(conn, request, finish_cb)
 	local headers = {};
 	for k, v in pairs(request.headers) do headers[k:gsub("-", "_")] = v; end
