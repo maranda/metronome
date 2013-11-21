@@ -7,12 +7,14 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Florian Zeitz, Matthew Wild, Waqas Hussain
 
-local st, jid, bare_sessions = require "util.stanza", require "util.jid", bare_sessions;
+local st = require "util.stanza";
 
 function send_to_online(message, host)
 	local c = 0;
+	local host_sessions = hosts[host].sessions;
+	message.attr.from = host;
 	
-	for jid in pairs(bare_sessions) do
+	for node in pairs(host_sessions) do
 		c = c + 1;
 		message.attr.to = jid;
 		module:send(message);
@@ -58,4 +60,3 @@ end
 local adhoc_new = module:require "adhoc".new;
 local announce_desc = adhoc_new("Send Announcement to Online Users", "http://jabber.org/protocol/admin#announce", announce_handler, "admin");
 module:provides("adhoc", announce_desc);
-
