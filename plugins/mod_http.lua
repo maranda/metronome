@@ -9,7 +9,6 @@
 
 module:set_global();
 module:depends("http_errors");
-module:depends("favicon");
 
 local moduleapi = require "core.moduleapi";
 local url_parse = require "socket.url".parse;
@@ -71,6 +70,8 @@ function moduleapi.http_url(module, app_name, default_path)
 end
 
 function module.add_host(module)
+	module:depends("favicon");
+
 	local host = module.host;
 	local apps = {};
 	module.environment.apps = apps;
