@@ -41,6 +41,10 @@ function announce_handler(self, data, state)
 		end
 
 		local fields = announce_layout:data(data.form);
+		
+		if fields.announcement == "" then
+			return { status = "completed", error = { message = "Please supply a message to broadcast" } };
+		end
 
 		module:log("info", "Sending server announcement to all online users");
 		local message = st.message({type = "headline"}, fields.announcement):up()
