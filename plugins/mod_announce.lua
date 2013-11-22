@@ -16,7 +16,7 @@ function send_to_online(message, host)
 	
 	for node in pairs(host_sessions) do
 		c = c + 1;
-		message.attr.to = jid;
+		message.attr.to = node .. "@" .. host;
 		module:send(message);
 	end
 
