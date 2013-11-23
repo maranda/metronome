@@ -377,7 +377,6 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 	local room = jid_bare(to);
 	local current_nick = self._jid_nick[from];
 	local type = stanza.attr.type;
-	log("debug", "room: %s, current_nick: %s, stanza: %s", room or "nil", current_nick or "nil", stanza:top_tag());
 	if (select(2, jid_split(from)) == muc_domain) then error("Presence from the MUC itself!!!"); end
 	if stanza.name == "presence" then
 		local pr = get_filtered_presence(stanza);
