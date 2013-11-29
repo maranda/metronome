@@ -174,9 +174,20 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 	if before then
 		if before == true then
 			to_process = {};
+			local _logs_with;
+			if with then
+				_logs_with = {};
+				for i, e in ipairs(logs) do
+					if e.bare_to == with or e.bare_from == with then
+						_logs_with[#_logs_with + 1] = e;
+					end
+				end
+			end
+						
 			-- we clone the table from the end backward count
-			local total = #logs;
-			for i = (max > total and 1) or total - max, total do to_process[#to_process +1] = logs[i]; end
+			local total = (_logs_with and #_logs_with) or #logs;
+			local _logs = (_logs_with and _logs_with) or logs;
+			for i = (max > total and 1) or total - max, total do to_process[#to_process + 1] = _logs[i]; end
 			_entries_count = total;
 		else
 			entry_index = get_index(logs, before);
