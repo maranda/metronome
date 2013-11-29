@@ -49,6 +49,13 @@ local function initialize_session_store(event)
 	end	
 end
 
+local function remove_session_store(event)
+	local user, host = event.session.username, event.session.host;
+	local bare_jid = jid_join(user, host);
+	local bare_session = bare_sessions[bare_jid];
+	if not bare_session then session_stores[bare_jid] = nil; end -- dereference session store.
+end
+
 local function save_session_store(event)
 	local user, host = event.session.username, event.session.host;
 	local bare_jid = jid_join(user, host);
@@ -189,6 +196,7 @@ end
 
 module:hook("pre-resource-unbind", save_session_store, 30);
 module:hook("resource-bind", initialize_session_store);
+module:hook("resource-unbind", remove_session_store, 30);
 
 module:hook("message/bare", process_inbound_messages, 30);
 module:hook("pre-message/bare", process_outbound_messages, 30);
