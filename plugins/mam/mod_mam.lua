@@ -187,7 +187,7 @@ function module.unload()
 	end
 end
 
-module:hook("pre-resource-unbind", save_session_store);
+module:hook("pre-resource-unbind", save_session_store, 30);
 module:hook("resource-bind", initialize_session_store);
 
 module:hook("message/bare", process_inbound_messages, 30);
