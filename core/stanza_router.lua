@@ -12,6 +12,7 @@ local log = require "util.logger".init("stanzarouter")
 local hosts = _G.metronome.hosts;
 local tostring = tostring;
 local st = require "util.stanza";
+local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local jid_prepped_split = require "util.jid".prepped_split;
 
@@ -19,16 +20,6 @@ local full_sessions = _G.metronome.full_sessions;
 local bare_sessions = _G.metronome.bare_sessions;
 
 local core_post_stanza, core_process_stanza, core_route_stanza;
-
-function deprecated_warning(f)
-	_G[f] = function(...)
-		log("warn", "Using the global %s() is deprecated, use module:send() or metronome.%s(). %s", f, f, debug.traceback());
-		return metronome[f](...);
-	end
-end
-deprecated_warning"core_post_stanza";
-deprecated_warning"core_process_stanza";
-deprecated_warning"core_route_stanza";
 
 local function handle_unhandled_stanza(host, origin, stanza)
 	local name, xmlns, origin_type = stanza.name, stanza.attr.xmlns or "jabber:client", origin.type;
@@ -91,7 +82,7 @@ function core_process_stanza(origin, stanza)
 	local to_bare, from_bare;
 	if to then
 		if full_sessions[to] or bare_sessions[to] or hosts[to] then
-			node, host = jid_split(to); -- TODO only the host is needed, optimize
+			host = jid_section(to, "host");
 		else
 			node, host, resource = jid_prepped_split(to);
 			if not host then
