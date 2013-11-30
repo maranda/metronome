@@ -26,11 +26,12 @@ module "jid"
 
 local function _split(jid)
 	if not jid then return; end
-	local node, nodepos = match(jid, "^([^@/]+)@()");
-	local host, hostpos = match(jid, "^([^@/]+)()", nodepos)
+	local node, host, resource, pos;
+	node, pos = match(jid, "^([^@/]+)@()");
+	host, pos = match(jid, "^([^@/]+)()", pos);
 	if node and not host then return nil, nil, nil; end
-	local resource = match(jid, "^/(.+)$", hostpos);
-	if (not host) or ((not resource) and #jid >= hostpos) then return nil, nil, nil; end
+	resource = match(jid, "^/(.+)$", pos);
+	if (not host) or ((not resource) and #jid >= pos) then return nil, nil, nil; end
 	return node, host, resource;
 end
 split = _split;
@@ -41,6 +42,17 @@ function bare(jid)
 		return node.."@"..host;
 	end
 	return host;
+end
+
+function section(jid, type)
+	if not jid then return; end
+	local node, host, resource, pos;
+	node, pos = match(jid, "^([^@/]+)@()");
+	host, pos = match(jid, "^([^@/]+)()", pos);
+	if host then resource = match(jid, "^/(.+)$", pos); end
+	if type == "node" then return node; end
+	if type == "host" then return host; end
+	if type == "resource" then return resource; end
 end
 
 local function _prepped_split(jid)
