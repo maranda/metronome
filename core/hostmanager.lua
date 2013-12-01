@@ -14,7 +14,7 @@ local mt_new = require "util.multitable".new;
 local disco_items = mt_new();
 local NULL = {};
 
-local jid_split = require "util.jid".split;
+local jid_section = require "util.jid".section;
 local uuid_gen = require "util.uuid".generate;
 
 local log = require "util.logger".init("hostmanager");
@@ -27,8 +27,7 @@ end
 local incoming_s2s = _G.metronome.incoming_s2s;
 local core_route_stanza = _G.metronome.core_route_stanza;
 
-local pairs, select = pairs, select;
-local tostring, type = tostring, type;
+local pairs, tostring, type = pairs, tostring, type;
 
 module "hostmanager"
 
@@ -72,7 +71,7 @@ metronome_events.add_handler("config-reloaded", rebuild_disco_data);
 local function host_send(stanza)
 	local name, type = stanza.name, stanza.attr.type;
 	if type == "error" or (name == "iq" and type == "result") then
-		local dest_host_name = select(2, jid_split(stanza.attr.to));
+		local dest_host_name = jid_section(stanza.attr.to, "host");
 		local dest_host = hosts[dest_host_name] or { type = "unknown" };
 		log("warn", "Unhandled response sent to %s host %s: %s", dest_host.type, dest_host_name, tostring(stanza));
 		return;
