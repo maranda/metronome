@@ -7,13 +7,13 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Marco Cirillo, Markus Kutter, Matthew Wild, Rob Hoelz, Waqas Hussain
 
-local select = select;
 local pairs, ipairs, next, ripairs = pairs, ipairs, next, ripairs;
 
 local datetime = require "util.datetime";
 
 local dataform = require "util.dataforms";
 
+local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local jid_bare = require "util.jid".bare;
 local jid_prep = require "util.jid".prep;
@@ -271,7 +271,7 @@ end
 
 -- config handlers
 function room_mt:get_name()
-	return self._data.name or jid_split(self.jid);
+	return self._data.name or jid_section(self.jid, "node");
 end
 
 function room_mt:get_option(name)
@@ -377,7 +377,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 	local room = jid_bare(to);
 	local current_nick = self._jid_nick[from];
 	local type = stanza.attr.type;
-	if (select(2, jid_split(from)) == muc_domain) then error("Presence from the MUC itself!!!"); end
+	if (jid_section(from, "host") == muc_domain) then error("Presence from the MUC itself!!!"); end
 	if stanza.name == "presence" then
 		local pr = get_filtered_presence(stanza);
 		pr.attr.from = current_nick;
@@ -432,7 +432,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 							origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 						else
 							local data = self._occupants[current_nick];
-							local to_nick = select(3, jid_split(to));
+							local to_nick = jid_section(to, "resource");
 							if to_nick then
 								log("debug", "%s (%s) changing nick to %s", current_nick, data.jid, to);
 								local p = st.presence({type = "unavailable", from = current_nick});
@@ -459,7 +459,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 				local new_nick = to;
 				local is_merge;
 				if self._occupants[to] then
-					local host = select(2, jid_split(from));
+					local host = jid_section(from, "host");
 					local is_local_anonuser = (hosts[host] and hosts[host].modules.auth_anonymous and true) or false;
 					if jid_bare(from) ~= jid_bare(self._occupants[to].jid) or is_local_anonuser then
 						new_nick = nil;
@@ -677,7 +677,7 @@ function room_mt:process_form(origin, stanza)
 
 	-- Process default entries
 	local name = fields["muc#roomconfig_roomname"];
-	if name == (jid_split(self.jid)) then name = nil; end
+	if name == jid_section(self.jid, "node") then name = nil; end
 
 	local history_length = tonumber(fields["muc#roomconfig_historylength"]);
 	if history_length and history_length > max_history_length then
@@ -794,7 +794,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 						if occupant then item.attr.jid = occupant.jid; end
 					elseif not item.attr.nick and item.attr.jid then
 						local nick = self._jid_nick[item.attr.jid];
-						if nick then item.attr.nick = select(3, jid_split(nick)); end
+						if nick then item.attr.nick = jid_section(nick, "resource"); end
 					end
 					local reason = item.tags[1] and item.tags[1].name == "reason" and #item.tags[1] == 1 and item.tags[1][1];
 					if item.attr.affiliation and item.attr.jid and not item.attr.role then
@@ -829,7 +829,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 							for occupant_jid, occupant in pairs(self._occupants) do
 								if occupant.role == _rol then
 									reply:tag("item", {
-										nick = select(3, jid_split(occupant_jid)),
+										nick = jid_section(occupant_jid, "resource"),
 										role = _rol or "none",
 										affiliation = occupant.affiliation or "none",
 										jid = occupant.jid
@@ -1102,7 +1102,7 @@ function room_mt:set_role(actor, occupant_jid, role, callback, reason)
 	if not allowed then return allowed, err_type, err_condition; end
 	local occupant = self._occupants[occupant_jid];
 	local x = st.stanza("x", {xmlns = "http://jabber.org/protocol/muc#user"})
-			:tag("item", {affiliation=occupant.affiliation or "none", nick=select(3, jid_split(occupant_jid)), role=role or "none"})
+			:tag("item", {affiliation=occupant.affiliation or "none", nick=jid_section(occupant_jid, "resource"), role=role or "none"})
 				:tag("reason"):text(reason or ""):up()
 			:up();
 	local presence_type = nil;

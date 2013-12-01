@@ -24,14 +24,14 @@ if restrict_room_creation then
 end
 local muclib = module:require "muc";
 local muc_new_room = muclib.new_room;
-local jid_split = require "util.jid".split;
+local jid_section = require "util.jid".section;
 local jid_bare = require "util.jid".bare;
 local st = require "util.stanza";
 local uuid_gen = require "util.uuid".generate;
 local datamanager = require "util.datamanager";
 local um_is_admin = require "core.usermanager".is_admin;
 local hosts = hosts;
-local pairs, select = pairs, select;
+local pairs = pairs;
 
 rooms = {};
 local rooms = rooms;
@@ -90,7 +90,7 @@ end
 
 local function room_route_stanza(room, stanza) module:send(stanza); end
 local function room_save(room, forced)
-	local node = jid_split(room.jid);
+	local node = jid_section(room.jid, "node");
 	persistent_rooms[room.jid] = room._data.persistent;
 	if room._data.persistent then
 		local history = room._data.history;
@@ -113,7 +113,7 @@ end
 
 local persistent_errors = false;
 for jid in pairs(persistent_rooms) do
-	local node = jid_split(jid);
+	local node = jid_section(jid, "node");
 	local data = datamanager.load(node, muc_host, "config");
 	if data then
 		local history_length = data._data.history_length;
@@ -185,7 +185,7 @@ function stanza_handler(event)
 			origin.send(st.error_reply(stanza, "cancel", "item-not-found"));
 			return true;
 		end
-		local from_host = select(2, jid_split(stanza.attr.from));
+		local from_host = jid_section(stanza.attr.from, "host");
 		if not ((hosts[from_host] and hosts[from_host].modules.auth_anonymous and true) or false) and
 		   (not restrict_room_creation or (restrict_room_creation == "admin" and is_admin(stanza.attr.from)) or
 		   (restrict_room_creation == "local" and from_host == module.host:gsub("^[^%.]+%.", ""))) then
