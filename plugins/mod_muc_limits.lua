@@ -16,6 +16,7 @@ end
 local st = require "util.stanza";
 local new_throttle = require "util.throttle".create;
 local jid_bare = require "util.jid".bare;
+local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local math, tonumber = math, tonumber;
 
@@ -38,7 +39,7 @@ local function handle_stanza(event)
 		return;
 	end
 
-	local node, domain = jid_split(stanza.attr.from);
+	local domain = jid_section(stanza.attr.from, "host");
 	if exclusion_list and exclusion_list:contains(domain) then
 		return;
 	end
@@ -46,7 +47,7 @@ local function handle_stanza(event)
 		return;
 	end
 
-	local dest_room, dest_host, dest_nick = jid.split(stanza.attr.to);
+	local dest_room, dest_host, dest_nick = jid_split(stanza.attr.to);
 	local room = rooms[dest_room.."@"..dest_host];
 	if not room or not room:get_option("limits_enabled") then return; end
 	local from_jid = stanza.attr.from;
