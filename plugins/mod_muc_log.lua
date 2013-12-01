@@ -16,7 +16,7 @@ local metronome = metronome;
 local hosts = metronome.hosts;
 local tostring = tostring;
 local jid_bare = require "util.jid".bare;
-local split_jid = require "util.jid".split;
+local jid_section = require "util.jid".section;
 local cm = require "core.configmanager";
 local datamanager = require "util.datamanager";
 local data_load, data_store, data_getpath = datamanager.load, datamanager.store, datamanager.getpath;
@@ -52,7 +52,7 @@ function log_if_needed(e)
 	if (stanza.name == "message" and stanza.attr.type == "groupchat") then
 		local to_room = stanza.attr.to;
 		local from_room = stanza.attr.from;
-		local node = split_jid(to_room);
+		local node = jid_section(to_room, "node");
 		
 		if not node then return; end
 

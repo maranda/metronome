@@ -19,6 +19,7 @@ local hosts = metronome.hosts;
 local my_host = module:get_host();
 local strchar = string.char;
 local strformat = string.format;
+local section_jid = require "util.jid".section;
 local split_jid = require "util.jid".split;
 local config_get = require "core.configmanager".get;
 local urldecode = require "net.http".urldecode;
@@ -82,7 +83,7 @@ local function generate_room_list()
 	local rooms = "";
 	local html_rooms = html.rooms;
 	for jid, room in pairs(muc_rooms) do
-		local node = split_jid(jid);
+		local node = section_jid(jid, "node");
 		if not room._data.hidden and room._data.logging and node then
 			rooms = rooms .. html_rooms.bit:gsub("###ROOM###", node):gsub("###COMPONENT###", my_host);
 		end
@@ -239,16 +240,16 @@ local function generate_day_room_content(bare_room_jid)
 	do
 		local found = 0;
 		for jid, room in pairs(muc_rooms) do
-			local node = split_jid(jid)
+			local node = section_jid(jid, "node");
 			if not room._data.hidden and room._data.logging and node then
 				if found == 0 then
-					previous_room = node
+					previous_room = node;
 				elseif found == 1 then
-					next_room = node
-					found = -1
+					next_room = node;
+					found = -1;
 				end
 				if jid == bare_room_jid then
-					found = 1
+					found = 1;
 				end
 
 				rooms = rooms .. html_days.rooms.bit:gsub("###ROOM###", node);
@@ -262,9 +263,9 @@ local function generate_day_room_content(bare_room_jid)
 	end
 	if attributes and room then
 		local already_done_years = {};
-		topic = room._data.subject or "(no subject)"
+		topic = room._data.subject or "(no subject)";
 		if topic:len() > 135 then
-			topic = topic:sub(1, topic:find(" ", 120)) .. " ..."
+			topic = topic:sub(1, topic:find(" ", 120)) .. " ...";
 		end
 		local folders = {};
 		for folder in lfs.dir(path) do table.insert(folders, folder); end

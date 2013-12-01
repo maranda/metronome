@@ -9,7 +9,7 @@ local type = type;
 
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
-local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
+local jid_bare, jid_section = require "util.jid".bare, require "util.jid".section;
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
@@ -207,7 +207,7 @@ local function get_affiliation(self, jid, name, action)
 	end
 
 	if action == "create" and (not is_server_admin or self.affiliations[bare_jid]) then
-		local _, host = jid_split(jid);
+		local host = jid_section(jid, "host");
 		if unrestricted_node_creation or host == module.host:match("%.(.*)") then 
 			return "local_user"; 
 		end

@@ -10,7 +10,7 @@
 local st = require "util.stanza";
 local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed;
 local jid_bare = require "util.jid".bare;
-local jid_split = require "util.jid".split;
+local jid_section = require "util.jid".section;
 
 module:add_feature("jabber:iq:last");
 
@@ -29,7 +29,7 @@ end, 10);
 module:hook("iq/bare/jabber:iq:last:query", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	if stanza.attr.type == "get" then
-		local username = jid_split(stanza.attr.to) or origin.username;
+		local username = jid_section(stanza.attr.to, "node") or origin.username;
 		if not stanza.attr.to or is_contact_subscribed(username, module.host, jid_bare(stanza.attr.from)) then
 			local seconds, text = "0", "";
 			if map[username] then

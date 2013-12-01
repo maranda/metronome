@@ -5,7 +5,7 @@
 -- information about copyright and licensing.
 
 local st = require "util.stanza";
-local split = require "util.jid".split;
+local section = require "util.jid".section;
 local hosts = metronome.hosts;
 
 local patterns = module:get_option_table("messagefilter_patterns", {});
@@ -15,7 +15,7 @@ local bounce_message = module:get_option_string("messagefilter_bmsg", "Message r
 local function message_filter(event)
 	local origin, stanza = event.origin, event.stanza;
 	local body_text = stanza:child_with_name("body") and stanza:child_with_name("body"):get_text();
-	local fromnode, fromhost = split(stanza.attr.from);
+	local fromhost = section(stanza.attr.from, "host");
 
 	local error_reply = st.message{ type = "error", from = stanza.attr.to }
 					:tag("error", {type = "modify"})

@@ -15,13 +15,11 @@ local logger = require "util.logger";
 local sha1 = require "util.hashes".sha1;
 local st = require "util.stanza";
 
-local jid_split = require "util.jid".split;
+local jid_section = require "util.jid".section;
 local new_xmpp_stream = require "util.xmppstream".new;
 local uuid_gen = require "util.uuid".generate;
 
 local core_process_stanza = metronome.core_process_stanza;
-
-
 local log = module._log;
 
 local sessions = module:shared("sessions");
@@ -190,7 +188,7 @@ function stream_callbacks.handlestanza(session, stanza)
 		local from = stanza.attr.from;
 		if from then
 			if session.component_validate_from then
-				local _, domain = jid_split(stanza.attr.from);
+				local domain = jid_section(stanza.attr.from, "host");
 				if domain ~= session.host then
 					-- Return error
 					session.log("warn", "Component sent stanza with missing or invalid 'from' address");
