@@ -9,7 +9,6 @@ local b64_decode = require "util.encodings".base64.decode
 local b64_encode = require "util.encodings".base64.encode
 local http_event = require "net.http.server".fire_server_event
 local jid_prep = require "util.jid".prep
-local jid_split = require "util.jid".split
 local json_decode = require "util.json".decode
 local nodeprep = require "util.encodings".stringprep.nodeprep
 local ipairs, pairs, pcall, open, os_time, setmt = 

@@ -10,7 +10,6 @@ local hosts = hosts;
 local ripairs, tonumber, type = ripairs, tonumber, type;
 
 local st = require "util.stanza";
-local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
 local uuid_generate = require "util.uuid".generate;
 local dataforms = require "util.dataforms";
 
