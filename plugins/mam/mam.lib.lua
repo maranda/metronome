@@ -10,7 +10,7 @@ local module_host = module.host;
 local dt = require "util.datetime".datetime;
 local jid_bare = require "util.jid".bare;
 local jid_join = require "util.jid".join;
-local jid_split = require "util.jid".split;
+local jid_section = require "util.jid".section;
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
@@ -42,7 +42,7 @@ end
 local function save_stores()
 	to_save = now();
 	for bare, store in pairs(session_stores) do
-		local user = jid_split(bare);
+		local user = jid_section(bare, "node");
 		storage:set(user, store);
 	end	
 end
@@ -332,10 +332,10 @@ local function process_message(event, outbound)
 	
 	if outbound then
 		bare_session = bare_sessions[bare_from];
-		user = jid_split(from);
+		user = jid_section(from, "node");
 	else
 		bare_session = bare_sessions[bare_to];
-		user = jid_split(to);
+		user = jid_section(to, "node");
 	end
 	
 	local archive = bare_session and bare_session.archiving;

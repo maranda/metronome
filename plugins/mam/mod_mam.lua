@@ -15,6 +15,7 @@ local st = require "util.stanza";
 local jid_bare = require "util.jid".bare;
 local jid_join = require "util.jid".join;
 local jid_prep = require "util.jid".prep;
+local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
 
@@ -189,7 +190,7 @@ function module.unload()
 	save_stores();
 	-- remove all caches from bare_sessions.
 	for bare_jid, bare_session in pairs(bare_sessions) do
-		local user, host = jid_split(bare_jid)
+		local host = jid_section(bare_jid, "host");
 		if host == module_host then bare_session.archiving = nil; end
 	end
 end
