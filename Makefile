@@ -62,8 +62,8 @@ hg-upgrade:
 uninstall:
 	rm -rf $(SOURCE)
 	rm -rf $(MODULES)
-	rm -f $(BIN)/bin/metronome
-	rm -f $(BIN)/bin/metronomectl
+	rm -f $(BIN)/metronome
+	rm -f $(BIN)/metronomectl
 
 upgrade:
 	@echo "****************************************************************************"
