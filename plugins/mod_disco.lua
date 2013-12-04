@@ -9,7 +9,7 @@
 
 local get_children = require "core.hostmanager".get_children;
 local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed;
-local jid_split = require "util.jid".section;
+local jid_section = require "util.jid".section;
 local jid_bare = require "util.jid".bare;
 local st = require "util.stanza"
 local calculate_hash = require "util.caps".calculate_hash;
@@ -170,7 +170,7 @@ module:hook("iq/bare/http://jabber.org/protocol/disco#items:query", function(eve
 	local origin, stanza = event.origin, event.stanza;
 	if stanza.attr.type ~= "get" then return; end
 	local node = stanza.tags[1].attr.node;
-	local username = jid_split(stanza.attr.to) or origin.username;
+	local username = jid_section(stanza.attr.to, "node") or origin.username;
 	if not stanza.attr.to or is_contact_subscribed(username, my_host, jid_bare(stanza.attr.from)) then
 		local reply = st.reply(stanza):tag("query", {xmlns = "http://jabber.org/protocol/disco#items"});
 		if not reply.attr.from then reply.attr.from = origin.username.."@"..origin.host; end -- COMPAT To satisfy Psi when querying own account
