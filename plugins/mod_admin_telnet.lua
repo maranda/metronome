@@ -429,8 +429,7 @@ end
 
 def_env.config = {};
 function def_env.config:dns_reload()
-	dns._resolver.server = {};
-	dns._resolver:adddefaultnameservers();
+	dns._resolver:resetnameservers();
 
 	return true, "Resolvers configuration reloaded.";
 end

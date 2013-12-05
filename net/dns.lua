@@ -601,6 +601,12 @@ function resolver:adddefaultnameservers()    -- - - - -  adddefaultnameservers
 end
 
 
+function resolver:resetnameservers()    -- - - - - - - - - - resetnameservers
+	self.server = {};
+	self:adddefaultnameservers();
+end
+
+
 function resolver:getsocket(servernum)    -- - - - - - - - - - - - - getsocket
 	self.socket = self.socket or {};
 	self.socketset = self.socketset or {};
