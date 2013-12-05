@@ -602,6 +602,7 @@ end
 
 
 function resolver:resetnameservers()    -- - - - - - - - - - resetnameservers
+	self:closeall(); -- pre-emptively close all active sockets.
 	self.best_server = 1;
 	self.server = nil;
 	self.socket = nil;
