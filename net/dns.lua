@@ -602,7 +602,10 @@ end
 
 
 function resolver:resetnameservers()    -- - - - - - - - - - resetnameservers
-	self.server = {};
+	self.best_server = 1;
+	self.server = nil;
+	self.socket = nil;
+	self.socketset = nil;
 	self:adddefaultnameservers();
 end
 
