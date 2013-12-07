@@ -951,7 +951,7 @@ end
 
 -- API functions
 
-function dns.resolver = resolver.new;
+dns.resolver = resolver.new;
 
 local _resolver = dns.resolver();
 dns._resolver = _resolver;
