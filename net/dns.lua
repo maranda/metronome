@@ -142,6 +142,7 @@ local function prune(rrs, time, soft)
 	end
 end
 
+
 -- Metatables definitions
 
 local resolver = {};
@@ -205,6 +206,7 @@ function resolver.new() -- Defines a new resolver object and sets metatables
 	setmetatable(r.unsorted, { __mode = 'kv' });
 	return r;
 end
+
 
 -- Packet related functions
 
