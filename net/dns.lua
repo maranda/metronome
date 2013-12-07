@@ -44,7 +44,7 @@ local ztact = { -- public domain 20080404 lua@ztact.com
 		local cutpoint, cutkey;
 
 		for i=1,len-2 do
-			local key = select (i, ...)
+			local key = select(i, ...)
 			local child = parent[key]
 
 			if value == nil then
@@ -74,20 +74,17 @@ local get, set = ztact.get, ztact.set;
 
 local default_timeout = 15;
 
--------------------------------------------------- module dns
 module('dns')
 local dns = _M;
 
 
--- dns type & class codes ------------------------------ dns type & class codes
+-- Utility functions, types definition and class codes
 
-
-local function highbyte(i)    -- - - - - - - - - - - - - - - - - - -  highbyte
+local function highbyte(i)
 	return (i-(i%0x100))/0x100;
 end
 
-
-local function augment (t)    -- - - - - - - - - - - - - - - - - - - -  augment
+local function augment(t)
 	local a = {};
 	for i,s in pairs(t) do
 		a[i] = s;
@@ -97,8 +94,7 @@ local function augment (t)    -- - - - - - - - - - - - - - - - - - - -  augment
 	return a;
 end
 
-
-local function encode (t)    -- - - - - - - - - - - - - - - - - - - - -  encode
+local function encode(t)
 	local code = {};
 	for i,s in pairs(t) do
 		local word = s_char(highbyte(i), i%0x100);
@@ -109,32 +105,27 @@ local function encode (t)    -- - - - - - - - - - - - - - - - - - - - -  encode
 	return code;
 end
 
-
 dns.types = {
 	'A', 'NS', 'MD', 'MF', 'CNAME', 'SOA', 'MB', 'MG', 'MR', 'NULL', 'WKS',
 	'PTR', 'HINFO', 'MINFO', 'MX', 'TXT',
 	[ 28] = 'AAAA', [ 29] = 'LOC',   [ 33] = 'SRV',
-	[252] = 'AXFR', [253] = 'MAILB', [254] = 'MAILA', [255] = '*' };
-
+	[252] = 'AXFR', [253] = 'MAILB', [254] = 'MAILA', [255] = '*' 
+};
 
 dns.classes = { 'IN', 'CS', 'CH', 'HS', [255] = '*' };
 
+dns.type = augment(dns.types);
+dns.class = augment(dns.classes);
+dns.typecode = encode(dns.types);
+dns.classcode = encode(dns.classes);
 
-dns.type      = augment (dns.types);
-dns.class     = augment (dns.classes);
-dns.typecode  = encode  (dns.types);
-dns.classcode = encode  (dns.classes);
-
-
-
-local function standardize(qname, qtype, qclass)    -- - - - - - - standardize
+local function standardize(qname, qtype, qclass)
 	if s_byte(qname, -1) ~= 0x2E then qname = qname..'.';  end
 	qname = s_lower(qname);
 	return qname, dns.type[qtype or 'A'], dns.class[qclass or 'IN'];
 end
 
-
-local function prune(rrs, time, soft)    -- - - - - - - - - - - - - - -  prune
+local function prune(rrs, time, soft)
 	time = time or socket.gettime();
 	for i,rr in pairs(rrs) do
 		if rr.tod then
@@ -144,16 +135,14 @@ local function prune(rrs, time, soft)    -- - - - - - - - - - - - - - -  prune
 				t_remove(rrs, i);
 				return prune(rrs, time, soft); -- Re-iterate
 			end
-		elseif soft == 'soft' then    -- What is this?  I forget!
+		elseif soft == 'soft' then
 			assert(rr.ttl == 0);
 			rrs[i] = nil;
 		end
 	end
 end
 
-
--- metatables & co. ------------------------------------------ metatables & co.
-
+-- Metatables definitions
 
 local resolver = {};
 resolver.__index = resolver;
@@ -170,23 +159,22 @@ end
 
 local special_tostrings = {
 	LOC = resolver.LOC_tostring;
-	MX  = function (rr)
+	MX  = function(rr)
 		return s_format('%2i %s', rr.pref, rr.mx);
 	end;
-	SRV = function (rr)
+	SRV = function(rr)
 		local s = rr.srv;
 		return s_format('%5d %5d %5d %s', s.priority, s.weight, s.port, s.target);
 	end;
 };
 
-local rr_metatable = {};   -- - - - - - - - - - - - - - - - - - -  rr_metatable
+local rr_metatable = {};
 function rr_metatable.__tostring(rr)
 	local rr_string = (special_tostrings[rr.type] or default_rr_tostring)(rr);
 	return s_format('%2s %-5s %6i %-28s %s', rr.class, rr.type, rr.ttl, rr.name, rr_string);
 end
 
-
-local rrs_metatable = {};    -- - - - - - - - - - - - - - - - - -  rrs_metatable
+local rrs_metatable = {};
 function rrs_metatable.__tostring(rrs)
 	local t = {};
 	for i,rr in pairs(rrs) do
@@ -195,8 +183,7 @@ function rrs_metatable.__tostring(rrs)
 	return t_concat(t);
 end
 
-
-local cache_metatable = {};    -- - - - - - - - - - - - - - - -  cache_metatable
+local cache_metatable = {};
 function cache_metatable.__tostring(cache)
 	local time = socket.gettime();
 	local t = {};
@@ -211,37 +198,33 @@ function cache_metatable.__tostring(cache)
 	return t_concat(t);
 end
 
-
-function resolver:new()    -- - - - - - - - - - - - - - - - - - - - - resolver
-	local r = { active = {}, cache = {}, unsorted = {} };
+function resolver.new() -- Defines a new resolver object and sets metatables
+	local r = { active = {}, cache = {}, unsorted = {}, wanted = {}, yielded = {}, best_server = 1 };
 	setmetatable(r, resolver);
 	setmetatable(r.cache, cache_metatable);
 	setmetatable(r.unsorted, { __mode = 'kv' });
 	return r;
 end
 
+-- Packet related functions
 
--- packet layer -------------------------------------------------- packet layer
-
-
-function dns.random(...)    -- - - - - - - - - - - - - - - - - - -  dns.random
+function dns.random(...)
 	math.randomseed(math.floor(10000*socket.gettime()));
 	dns.random = math.random;
 	return dns.random(...);
 end
 
-
-local function encodeHeader(o)    -- - - - - - - - - - - - - - -  encodeHeader
+local function encodeHeader(o)
 	o = o or {};
 	o.id = o.id or dns.random(0, 0xffff); -- 16b	(random) id
 
-	o.rd = o.rd or 1;		--  1b  1 recursion desired
-	o.tc = o.tc or 0;		--  1b	1 truncated response
-	o.aa = o.aa or 0;		--  1b	1 authoritative response
-	o.opcode = o.opcode or 0;	--  4b	0 query
+	o.rd = o.rd or 1;		--  1b 1 recursion desired
+	o.tc = o.tc or 0;		--  1b 1 truncated response
+	o.aa = o.aa or 0;		--  1b 1 authoritative response
+	o.opcode = o.opcode or 0;	--  4b 0 query
 				--  1 inverse query
-				--	2 server status request
-				--	3-15 reserved
+				--  2 server status request
+				--  3-15 reserved
 	o.qr = o.qr or 0;		--  1b	0 query, 1 response
 
 	o.rcode = o.rcode or 0;	--  4b  0 no error
@@ -254,10 +237,10 @@ local function encodeHeader(o)    -- - - - - - - - - - - - - - -  encodeHeader
 	o.z = o.z  or 0;		--  3b  0 resvered
 	o.ra = o.ra or 0;		--  1b  1 recursion available
 
-	o.qdcount = o.qdcount or 1;	-- 16b	number of question RRs
-	o.ancount = o.ancount or 0;	-- 16b	number of answers RRs
-	o.nscount = o.nscount or 0;	-- 16b	number of nameservers RRs
-	o.arcount = o.arcount or 0;	-- 16b  number of additional RRs
+	o.qdcount = o.qdcount or 1;	-- 16b number of question RRs
+	o.ancount = o.ancount or 0;	-- 16b number of answers RRs
+	o.nscount = o.nscount or 0;	-- 16b number of nameservers RRs
+	o.arcount = o.arcount or 0;	-- 16b number of additional RRs
 
 	-- s_char() rounds, so prevent roundup with -0.4999
 	local header = s_char(
@@ -273,8 +256,7 @@ local function encodeHeader(o)    -- - - - - - - - - - - - - - -  encodeHeader
 	return header, o.id;
 end
 
-
-local function encodeName(name)    -- - - - - - - - - - - - - - - - encodeName
+local function encodeName(name)
 	local t = {};
 	for part in s_gmatch(name, '[^.]+') do
 		t_insert(t, s_char(s_len(part)));
@@ -284,16 +266,14 @@ local function encodeName(name)    -- - - - - - - - - - - - - - - - encodeName
 	return t_concat(t);
 end
 
-
-local function encodeQuestion(qname, qtype, qclass)    -- - - - encodeQuestion
+local function encodeQuestion(qname, qtype, qclass)
 	qname  = encodeName(qname);
 	qtype  = dns.typecode[qtype or 'a'];
 	qclass = dns.classcode[qclass or 'in'];
 	return qname..qtype..qclass;
 end
 
-
-function resolver:byte(len)    -- - - - - - - - - - - - - - - - - - - - - byte
+function resolver:byte(len)
 	len = len or 1;
 	local offset = self.offset;
 	local last = offset + len - 1;
@@ -304,46 +284,40 @@ function resolver:byte(len)    -- - - - - - - - - - - - - - - - - - - - - byte
 	return s_byte(self.packet, offset, last);
 end
 
-
-function resolver:word()    -- - - - - - - - - - - - - - - - - - - - - -  word
+function resolver:word()
 	local b1, b2 = self:byte(2);
 	return 0x100*b1 + b2;
 end
 
-
-function resolver:dword ()    -- - - - - - - - - - - - - - - - - - - - -  dword
+function resolver:dword()
 	local b1, b2, b3, b4 = self:byte(4);
-	--print('dword', b1, b2, b3, b4);
 	return 0x1000000*b1 + 0x10000*b2 + 0x100*b3 + b4;
 end
 
-
-function resolver:sub(len)    -- - - - - - - - - - - - - - - - - - - - - - sub
+function resolver:sub(len)
 	len = len or 1;
 	local s = s_sub(self.packet, self.offset, self.offset + len - 1);
 	self.offset = self.offset + len;
 	return s;
 end
 
-
-function resolver:header(force)    -- - - - - - - - - - - - - - - - - - header
+function resolver:header(force)
 	local id = self:word();
-	--print(s_format(':header  id  %x', id));
 	if not self.active[id] and not force then return nil; end
 
 	local h = { id = id };
 
 	local b1, b2 = self:byte(2);
 
-	h.rd      = b1 %2;
-	h.tc      = b1 /2%2;
-	h.aa      = b1 /4%2;
-	h.opcode  = b1 /8%16;
-	h.qr      = b1 /128;
+	h.rd = b1 %2;
+	h.tc = b1 /2%2;
+	h.aa = b1 /4%2;
+	h.opcode = b1 /8%16;
+	h.qr = b1 /128;
 
-	h.rcode   = b2 %16;
-	h.z       = b2 /16%8;
-	h.ra      = b2 /128;
+	h.rcode = b2 %16;
+	h.z = b2 /16%8;
+	h.ra = b2 /128;
 
 	h.qdcount = self:word();
 	h.ancount = self:word();
@@ -355,8 +329,7 @@ function resolver:header(force)    -- - - - - - - - - - - - - - - - - - header
 	return h;
 end
 
-
-function resolver:name()    -- - - - - - - - - - - - - - - - - - - - - -  name
+function resolver:name()
 	local remember, pointers = nil, 0;
 	local len = self:byte();
 	local n = {};
@@ -377,8 +350,7 @@ function resolver:name()    -- - - - - - - - - - - - - - - - - - - - - -  name
 	return t_concat(n);
 end
 
-
-function resolver:question()    -- - - - - - - - - - - - - - - - - -  question
+function resolver:question()
 	local q = {};
 	q.name  = self:name();
 	q.type  = dns.type[self:word()];
@@ -386,8 +358,9 @@ function resolver:question()    -- - - - - - - - - - - - - - - - - -  question
 	return q;
 end
 
+-- Record types
 
-function resolver:A(rr)    -- - - - - - - - - - - - - - - - - - - - - - - -  A
+function resolver:A(rr)
 	local b1, b2, b3, b4 = self:byte(4);
 	rr.a = s_format('%i.%i.%i.%i', b1, b2, b3, b4);
 end
@@ -412,63 +385,51 @@ function resolver:AAAA(rr)
 	rr.aaaa = addr:gsub(zeros[1], "::", 1):gsub("^0::", "::"):gsub("::0$", "::");
 end
 
-function resolver:CNAME(rr)    -- - - - - - - - - - - - - - - - - - - -  CNAME
+function resolver:CNAME(rr)
 	rr.cname = self:name();
 end
 
-
-function resolver:MX(rr)    -- - - - - - - - - - - - - - - - - - - - - - -  MX
+function resolver:MX(rr)
 	rr.pref = self:word();
 	rr.mx   = self:name();
 end
 
-
-function resolver:LOC_nibble_power()    -- - - - - - - - - -  LOC_nibble_power
+function resolver:LOC_nibble_power()
 	local b = self:byte();
-	--print('nibbles', ((b-(b%0x10))/0x10), (b%0x10));
 	return ((b-(b%0x10))/0x10) * (10^(b%0x10));
 end
 
-
-function resolver:LOC(rr)    -- - - - - - - - - - - - - - - - - - - - - -  LOC
+function resolver:LOC(rr)
 	rr.version = self:byte();
 	if rr.version == 0 then
-		rr.loc           = rr.loc or {};
-		rr.loc.size      = self:LOC_nibble_power();
+		rr.loc = rr.loc or {};
+		rr.loc.size = self:LOC_nibble_power();
 		rr.loc.horiz_pre = self:LOC_nibble_power();
-		rr.loc.vert_pre  = self:LOC_nibble_power();
-		rr.loc.latitude  = self:dword();
+		rr.loc.vert_pre = self:LOC_nibble_power();
+		rr.loc.latitude = self:dword();
 		rr.loc.longitude = self:dword();
-		rr.loc.altitude  = self:dword();
+		rr.loc.altitude = self:dword();
 	end
 end
 
-
-local function LOC_tostring_degrees(f, pos, neg)    -- - - - - - - - - - - - -
+local function LOC_tostring_degrees(f, pos, neg)
 	f = f - 0x80000000;
 	if f < 0 then pos = neg; f = -f; end
 	local deg, min, msec;
 	msec = f%60000;
-	f    = (f-msec)/60000;
-	min  = f%60;
+	f = (f-msec)/60000;
+	min = f%60;
 	deg = (f-min)/60;
 	return s_format('%3d %2d %2.3f %s', deg, min, msec/1000, pos);
 end
 
-
-function resolver.LOC_tostring(rr)    -- - - - - - - - - - - - -  LOC_tostring
+function resolver.LOC_tostring(rr)
 	local t = {};
-
-	--[[
-	for k,name in pairs { 'size', 'horiz_pre', 'vert_pre', 'latitude', 'longitude', 'altitude' } do
-		t_insert(t, s_format('%4s%-10s: %12.0f\n', '', name, rr.loc[name]));
-	end
-	--]]
 
 	t_insert(t, s_format(
 		'%s    %s    %.2fm %.2fm %.2fm %.2fm',
-		LOC_tostring_degrees (rr.loc.latitude, 'N', 'S'),
-		LOC_tostring_degrees (rr.loc.longitude, 'E', 'W'),
+		LOC_tostring_degrees(rr.loc.latitude, 'N', 'S'),
+		LOC_tostring_degrees(rr.loc.longitude, 'E', 'W'),
 		(rr.loc.altitude - 10000000) / 100,
 		rr.loc.size / 100,
 		rr.loc.horiz_pre / 100,
@@ -478,40 +439,36 @@ function resolver.LOC_tostring(rr)    -- - - - - - - - - - - - -  LOC_tostring
 	return t_concat(t);
 end
 
-
-function resolver:NS(rr)    -- - - - - - - - - - - - - - - - - - - - - - -  NS
+function resolver:NS(rr)
 	rr.ns = self:name();
 end
 
-
-function resolver:SOA(rr)    -- - - - - - - - - - - - - - - - - - - - - -  SOA
+function resolver:SOA(rr)
 end
 
-
-function resolver:SRV(rr)    -- - - - - - - - - - - - - - - - - - - - - -  SRV
+function resolver:SRV(rr)
 	  rr.srv = {};
 	  rr.srv.priority = self:word();
-	  rr.srv.weight   = self:word();
-	  rr.srv.port     = self:word();
-	  rr.srv.target   = self:name();
+	  rr.srv.weight = self:word();
+	  rr.srv.port = self:word();
+	  rr.srv.target = self:name();
 end
 
 function resolver:PTR(rr)
 	rr.ptr = self:name();
 end
 
-function resolver:TXT(rr)    -- - - - - - - - - - - - - - - - - - - - - -  TXT
-	rr.txt = self:sub (self:byte());
+function resolver:TXT(rr)
+	rr.txt = self:sub(self:byte());
 end
 
-
-function resolver:rr()    -- - - - - - - - - - - - - - - - - - - - - - - -  rr
+function resolver:rr()
 	local rr = {};
 	setmetatable(rr, rr_metatable);
-	rr.name     = self:name(self);
-	rr.type     = dns.type[self:word()] or rr.type;
-	rr.class    = dns.class[self:word()] or rr.class;
-	rr.ttl      = 0x10000*self:word() + self:word();
+	rr.name = self:name(self);
+	rr.type = dns.type[self:word()] or rr.type;
+	rr.class = dns.class[self:word()] or rr.class;
+	rr.ttl = 0x10000*self:word() + self:word();
 	rr.rdlength = self:word();
 
 	if rr.ttl <= 0 then
@@ -528,15 +485,15 @@ function resolver:rr()    -- - - - - - - - - - - - - - - - - - - - - - - -  rr
 	return rr;
 end
 
-
-function resolver:rrs (count)    -- - - - - - - - - - - - - - - - - - - - - rrs
+function resolver:rrs(count)
 	local rrs = {};
 	for i = 1,count do t_insert(rrs, self:rr()); end
 	return rrs;
 end
 
+-- Record types end
 
-function resolver:decode(packet, force)    -- - - - - - - - - - - - - - decode
+function resolver:decode(packet, force)
 	self.packet, self.offset = packet, 1;
 	local header = self:header(force);
 	if not header then return nil; end
@@ -555,53 +512,54 @@ function resolver:decode(packet, force)    -- - - - - - - - - - - - - - decode
 		end
 	end
 
-	response.answer     = self:rrs(response.header.ancount);
-	response.authority  = self:rrs(response.header.nscount);
+	response.answer = self:rrs(response.header.ancount);
+	response.authority = self:rrs(response.header.nscount);
 	response.additional = self:rrs(response.header.arcount);
 
 	return response;
 end
 
 
--- socket layer -------------------------------------------------- socket layer
-
+-- Socket related functions
 
 resolver.delays = { 1, 3 };
 
-
-function resolver:addnameserver(address)    -- - - - - - - - - - addnameserver
+function resolver:addnameserver(address)
 	self.server = self.server or {};
 	t_insert(self.server, address);
 end
 
-
-function resolver:setnameserver(address)    -- - - - - - - - - - setnameserver
-	self.server = {};
-	self:addnameserver(address);
+function resolver:setnameservers(addr)
+	self.server = nil;
+	if type(addr) == "table" then
+		for i, server in ipairs(addr) do self:addnameserver(server); end
+	elseif type(addr) == "string" then
+		self:addnameserver(addr);
+	else
+		self:addnameserver("127.0.0.1");
+		-- Fall back to local resolver
+	end
 end
 
-
-function resolver:adddefaultnameservers()    -- - - - -  adddefaultnameservers
+function resolver:adddefaultnameservers()
 	local resolv_conf = io.open("/etc/resolv.conf");
 	if resolv_conf then
 		for line in resolv_conf:lines() do
 			line = line:gsub("#.*$", "")
 				:match('^%s*nameserver%s+(.*)%s*$');
 			if line then
-				line:gsub("%f[%d.](%d+%.%d+%.%d+%.%d+)%f[^%d.]", function (address)
+				line:gsub("%f[%d.](%d+%.%d+%.%d+%.%d+)%f[^%d.]", function(address)
 					self:addnameserver(address)
 				end);
 			end
 		end
 	end
 	if not self.server or #self.server == 0 then
-		-- TODO log warning about no nameservers, adding localhost as the default nameserver
 		self:addnameserver("127.0.0.1");
 	end
 end
 
-
-function resolver:resetnameservers()    -- - - - - - - - - - resetnameservers
+function resolver:resetnameservers()
 	self:closeall(); -- pre-emptively close all active sockets.
 	self.best_server = 1;
 	self.server = nil;
@@ -610,8 +568,7 @@ function resolver:resetnameservers()    -- - - - - - - - - - resetnameservers
 	self:adddefaultnameservers();
 end
 
-
-function resolver:getsocket(servernum)    -- - - - - - - - - - - - - getsocket
+function resolver:getsocket(servernum)
 	self.socket = self.socket or {};
 	self.socketset = self.socketset or {};
 
@@ -643,12 +600,11 @@ function resolver:voidsocket(sock)
 	end
 end
 
-function resolver:socket_wrapper_set(func)  -- - - - - - - socket_wrapper_set
+function resolver:socket_wrapper_set(func)
 	self.socket_wrapper = func;
 end
 
-
-function resolver:closeall ()    -- - - - - - - - - - - - - - - - - -  closeall
+function resolver:closeall()
 	for i,sock in ipairs(self.socket) do
 		self.socket[i] = nil;
 		self.socketset[sock] = nil;
@@ -656,15 +612,12 @@ function resolver:closeall ()    -- - - - - - - - - - - - - - - - - -  closeall
 	end
 end
 
-
-function resolver:remember(rr, type)    -- - - - - - - - - - - - - -  remember
-	--print ('remember', type, rr.class, rr.type, rr.name)
+function resolver:remember(rr, type)
 	local qname, qtype, qclass = standardize(rr.name, rr.type, rr.class);
 
 	if type ~= '*' then
 		type = qtype;
 		local all = get(self.cache, qclass, '*', qname);
-		--print('remember all', all);
 		if all then t_insert(all, rr); end
 	end
 
@@ -676,13 +629,11 @@ function resolver:remember(rr, type)    -- - - - - - - - - - - - - -  remember
 	if type == 'MX' then self.unsorted[rrs] = true; end
 end
 
-
-local function comp_mx(a, b)    -- - - - - - - - - - - - - - - - - - - comp_mx
+local function comp_mx(a, b)
 	return (a.pref == b.pref) and (a.mx < b.mx) or (a.pref < b.pref);
 end
 
-
-function resolver:peek (qname, qtype, qclass)    -- - - - - - - - - - - -  peek
+function resolver:peek(qname, qtype, qclass)
 	qname, qtype, qclass = standardize(qname, qtype, qclass);
 	local rrs = get(self.cache, qclass, qtype, qname);
 	if not rrs then return nil; end
@@ -690,12 +641,11 @@ function resolver:peek (qname, qtype, qclass)    -- - - - - - - - - - - -  peek
 		set(self.cache, qclass, qtype, qname, nil);
 		return nil;
 	end
-	if self.unsorted[rrs] then t_sort (rrs, comp_mx); end
+	if self.unsorted[rrs] then t_sort(rrs, comp_mx); end
 	return rrs;
 end
 
-
-function resolver:purge(soft)    -- - - - - - - - - - - - - - - - - - -  purge
+function resolver:purge(soft)
 	if soft == 'soft' then
 		self.time = socket.gettime();
 		for class,types in pairs(self.cache or {}) do
@@ -708,18 +658,16 @@ function resolver:purge(soft)    -- - - - - - - - - - - - - - - - - - -  purge
 	else self.cache = setmetatable({}, cache_metatable); end
 end
 
-
-function resolver:query(qname, qtype, qclass)    -- - - - - - - - - - -- query
+function resolver:query(qname, qtype, qclass)
 	qname, qtype, qclass = standardize(qname, qtype, qclass)
 
 	if not self.server then self:adddefaultnameservers(); end
 
 	local question = encodeQuestion(qname, qtype, qclass);
-	local peek = self:peek (qname, qtype, qclass);
+	local peek = self:peek(qname, qtype, qclass);
 	if peek then return peek; end
 
 	local header, id = encodeHeader();
-	--print ('query  id', id, qclass, qtype, qname)
 	local o = {
 		packet = header..question,
 		server = self.best_server,
@@ -735,19 +683,18 @@ function resolver:query(qname, qtype, qclass)    -- - - - - - - - - - -- query
 	local co = coroutine.running();
 	if co then
 		set(self.wanted, qclass, qtype, qname, co, true);
-		--set(self.yielded, co, qclass, qtype, qname, true);
 	end
 
 	local conn, err = self:getsocket(o.server)
 	if not conn then
 		return nil, err;
 	end
-	conn:send (o.packet)
+	conn:send(o.packet)
 	
 	if timer and self.timeout then
 		local num_servers = #self.server;
 		local i = 1;
-		timer.add_task(self.timeout, function ()
+		timer.add_task(self.timeout, function()
 			if get(self.wanted, qclass, qtype, qname, co) then
 				if i < num_servers then
 					i = i + 1;
@@ -787,7 +734,6 @@ function resolver:servfail(sock)
 
 				o.retries = (o.retries or 0) + 1;
 				if o.retries >= #self.server then
-					--print('timeout');
 					queries[question] = nil;
 				else
 					local _a = self:getsocket(o.server);
@@ -810,8 +756,7 @@ function resolver:settimeout(seconds)
 	self.timeout = seconds;
 end
 
-function resolver:receive(rset)    -- - - - - - - - - - - - - - - - -  receive
-	--print('receive');  print(self.socket);
+function resolver:receive(rset)
 	self.time = socket.gettime();
 	rset = rset or self.socket;
 
@@ -824,8 +769,6 @@ function resolver:receive(rset)    -- - - - - - - - - - - - - - - - -  receive
 				response = self:decode(packet);
 				if response and self.active[response.header.id]
 					and self.active[response.header.id][response.question.raw] then
-					--print('received response');
-					--self.print(response);
 
 					for j,rr in pairs(response.answer) do
 						if rr.name:sub(-#response.question[1].name, -1) == response.question[1].name then
@@ -858,16 +801,12 @@ function resolver:receive(rset)    -- - - - - - - - - - - - - - - - -  receive
 	return response;
 end
 
-
 function resolver:feed(sock, packet, force)
-	--print('receive'); print(self.socket);
 	self.time = socket.gettime();
 
 	local response = self:decode(packet, force);
 	if response and self.active[response.header.id]
 		and self.active[response.header.id][response.question.raw] then
-		--print('received response');
-		--self.print(response);
 
 		for j,rr in pairs(response.answer) do
 			self:remember(rr, response.question[1].type);
@@ -906,8 +845,7 @@ function resolver:cancel(qclass, qtype, qname, co, call_handler)
 	end
 end
 
-function resolver:pulse()    -- - - - - - - - - - - - - - - - - - - - -  pulse
-	--print(':pulse');
+function resolver:pulse()
 	while self:receive() do end
 	if not next(self.active) then return nil; end
 
@@ -923,12 +861,10 @@ function resolver:pulse()    -- - - - - - - - - - - - - - - - - - - - -  pulse
 				end
 
 				if o.delay > #self.delays then
-					--print('timeout');
 					queries[question] = nil;
 					if not next(queries) then self.active[id] = nil; end
 					if not next(self.active) then return nil; end
 				else
-					--print('retry', o.server, o.delay);
 					local _a = self.socket[o.server];
 					if _a then _a:send(o.packet); end
 					o.retry = self.time + self.delays[o.delay];
@@ -941,9 +877,8 @@ function resolver:pulse()    -- - - - - - - - - - - - - - - - - - - - -  pulse
 	return nil;
 end
 
-
-function resolver:lookup(qname, qtype, qclass)    -- - - - - - - - - -  lookup
-	self:query (qname, qtype, qclass)
+function resolver:lookup(qname, qtype, qclass)
+	self:query(qname, qtype, qclass)
 	while self:pulse() do
 		local recvt = {}
 		for i, s in ipairs(self.socket) do
@@ -951,11 +886,10 @@ function resolver:lookup(qname, qtype, qclass)    -- - - - - - - - - -  lookup
 		end
 		socket.select(recvt, nil, 4)
 	end
-	--print(self.cache);
 	return self:peek(qname, qtype, qclass);
 end
 
-function resolver:lookupex(handler, qname, qtype, qclass)    -- - - - - - - - - -  lookup
+function resolver:lookupex(handler, qname, qtype, qclass)
 	return self:peek(qname, qtype, qclass) or self:query(qname, qtype, qclass);
 end
 
@@ -963,10 +897,10 @@ function resolver:tohostname(ip)
 	return dns.lookup(ip:gsub("(%d+)%.(%d+)%.(%d+)%.(%d+)", "%4.%3.%2.%1.in-addr.arpa."), "PTR");
 end
 
---print ---------------------------------------------------------------- print
 
+-- Print related functions
 
-local hints = {    -- - - - - - - - - - - - - - - - - - - - - - - - - - - hints
+local hints = {
 	qr = { [0]='query', 'response' },
 	opcode = { [0]='query', 'inverse query', 'server status request' },
 	aa = { [0]='non-authoritative', 'authoritative' },
@@ -980,22 +914,20 @@ local hints = {    -- - - - - - - - - - - - - - - - - - - - - - - - - - - hints
 	class = dns.class
 };
 
-
-local function hint(p, s)    -- - - - - - - - - - - - - - - - - - - - - - hint
+local function hint(p, s)
 	return (hints[s] and hints[s][p[s]]) or '';
 end
 
-
-function resolver.print(response)    -- - - - - - - - - - - - - resolver.print
+function resolver.print(response)
 	for s,s in pairs { 'id', 'qr', 'opcode', 'aa', 'tc', 'rd', 'ra', 'z',
 						'rcode', 'qdcount', 'ancount', 'nscount', 'arcount' } do
 		print( s_format('%-30s', 'header.'..s), response.header[s], hint(response.header, s) );
 	end
 
 	for i,question in ipairs(response.question) do
-		print(s_format ('question[%i].name         ', i), question.name);
-		print(s_format ('question[%i].type         ', i), question.type);
-		print(s_format ('question[%i].class        ', i), question.class);
+		print(s_format('question[%i].name         ', i), question.name);
+		print(s_format('question[%i].type         ', i), question.type);
+		print(s_format('question[%i].class        ', i), question.class);
 	end
 
 	local common = { name=1, type=1, class=1, ttl=1, rdlength=1, rdata=1 };
@@ -1017,23 +949,14 @@ function resolver.print(response)    -- - - - - - - - - - - - - resolver.print
 end
 
 
--- module api ------------------------------------------------------ module api
+-- API functions
 
-
-function dns.resolver ()    -- - - - - - - - - - - - - - - - - - - - - resolver
-	-- this function seems to be redundant with resolver.new ()
-
-	local r = { active = {}, cache = {}, unsorted = {}, wanted = {}, yielded = {}, best_server = 1 };
-	setmetatable (r, resolver);
-	setmetatable (r.cache, cache_metatable);
-	setmetatable (r.unsorted, { __mode = 'kv' });
-	return r;
-end
+function dns.resolver = resolver.new;
 
 local _resolver = dns.resolver();
 dns._resolver = _resolver;
 
-function dns.lookup(...)    -- - - - - - - - - - - - - - - - - - - - -  lookup
+function dns.lookup(...)
 	return _resolver:lookup(...);
 end
 
@@ -1041,23 +964,23 @@ function dns.tohostname(...)
 	return _resolver:tohostname(...);
 end
 
-function dns.purge(...)    -- - - - - - - - - - - - - - - - - - - - - -  purge
+function dns.purge(...)
 	return _resolver:purge(...);
 end
 
-function dns.peek(...)    -- - - - - - - - - - - - - - - - - - - - - - -  peek
+function dns.peek(...)
 	return _resolver:peek(...);
 end
 
-function dns.query(...)    -- - - - - - - - - - - - - - - - - - - - - -  query
+function dns.query(...)
 	return _resolver:query(...);
 end
 
-function dns.feed(...)    -- - - - - - - - - - - - - - - - - - - - - - -  feed
+function dns.feed(...)
 	return _resolver:feed(...);
 end
 
-function dns.cancel(...)  -- - - - - - - - - - - - - - - - - - - - - -  cancel
+function dns.cancel(...)
 	return _resolver:cancel(...);
 end
 
@@ -1065,7 +988,7 @@ function dns.settimeout(...)
 	return _resolver:settimeout(...);
 end
 
-function dns.socket_wrapper_set(...)    -- - - - - - - - -  socket_wrapper_set
+function dns.socket_wrapper_set(...)
 	return _resolver:socket_wrapper_set(...);
 end
 
