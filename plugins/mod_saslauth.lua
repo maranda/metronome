@@ -24,6 +24,7 @@ local blacklisted_mechanisms = module:get_option_set("blacklist_sasl_mechanisms"
 
 local log = module._log;
 
+local xmlns_db = "urn:xmpp:features:dialback";
 local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
 local xmlns_bind = "urn:ietf:params:xml:ns:xmpp-bind";
 
@@ -105,7 +106,7 @@ module:hook_stanza(xmlns_sasl, "failure", function (session, stanza)
 end, 500)
 
 module:hook_stanza(xmlns_sasl, "failure", function (session, stanza)
-	-- TODO: Dialback wasn't loaded.  Do something useful.
+	session:close();
 end, 90)
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function (session, stanza)
@@ -116,6 +117,11 @@ module:hook_stanza("http://etherx.jabber.org/streams", "features", function (ses
 		return; 
 	end
 
+	local dialback = stanza:get_child("dialback", xmlns_db);
+	if dialback then -- don't attempt falling back to dialback if the remote end doesn't offer it.
+		session.can_do_dialback = true;
+	end
+	
 	local mechanisms = stanza:get_child("mechanisms", xmlns_sasl);
 	if mechanisms then
 		for mech in mechanisms:childtags() do

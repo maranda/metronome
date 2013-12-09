@@ -155,9 +155,13 @@ module:hook("stanza/jabber:server:dialback:result", function(event)
 end);
 
 module:hook_stanza("urn:ietf:params:xml:ns:xmpp-sasl", "failure", function (origin, stanza)
-	if origin.external_auth == "failed" then
+	if origin.external_auth == "failed" and origin.can_do_dialback then
 		module:log("debug", "SASL EXTERNAL failed, falling back to dialback");
 		initiate_dialback(origin);
+		return true;
+	else
+		module:log("debug", "SASL EXTERNAL failed and no dialback available, closing stream(s)");
+		origin:close();
 		return true;
 	end
 end, 100);
@@ -165,6 +169,7 @@ end, 100);
 module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 	if not origin.external_auth or origin.external_auth == "failed" then
 		module:log("debug", "Initiating dialback...");
+		origin.can_do_dialback = true;
 		initiate_dialback(origin);
 		return true;
 	end
