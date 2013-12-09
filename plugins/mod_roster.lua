@@ -23,6 +23,7 @@ local rm_add_to_roster = require "util.rostermanager".add_to_roster;
 local rm_roster_push = require "util.rostermanager".roster_push;
 local rm_load_roster = require "util.rostermanager".load_roster;
 local rm_get_readonly_rosters = require "util.rostermanager".get_readonly_rosters;
+local rm_get_readonly_item = require "util.rostermanager".get_readonly_item;
 local core_post_stanza = metronome.core_post_stanza;
 
 module:add_feature("jabber:iq:roster");
@@ -98,7 +99,7 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 			local from_node, from_host = jid_split(stanza.attr.from);
 			local from_bare = from_node and (from_node.."@"..from_host) or from_host; -- bare JID
 			local jid = jid_prep(item.attr.jid);
-			if rostermanager.get_readonly_item(session_username, session_host, jid_bare(jid)) then
+			if rm_get_readonly_item(session_username, session_host, jid_bare(jid)) then
 				module:log("debug", "%s attempted to remove a readonly roster entry (%s)", session.full_jid, jid);
 				return session.send(st.error_reply(stanza, "cancel", "forbidden",
 					"Modifying read-only roster entries is forbidden."));
