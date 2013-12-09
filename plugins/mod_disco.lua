@@ -8,7 +8,7 @@
 -- ** Copyright (c) 2008-2013, Kim Alvefur, Matthew Wild, Waqas Hussain
 
 local get_children = require "core.hostmanager".get_children;
-local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed;
+local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 local jid_section = require "util.jid".section;
 local jid_bare = require "util.jid".bare;
 local st = require "util.stanza"

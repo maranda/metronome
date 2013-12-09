@@ -8,7 +8,7 @@
 -- ** Copyright (c) 2009-2010, Matthew Wild, Waqas Hussain
 
 local st = require "util.stanza";
-local is_contact_subscribed = require "core.rostermanager".is_contact_subscribed;
+local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 local jid_bare = require "util.jid".bare;
 local jid_section = require "util.jid".section;
 
