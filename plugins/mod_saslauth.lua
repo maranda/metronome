@@ -111,9 +111,6 @@ end, 90)
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function (session, stanza)
 	if session.type ~= "s2sout_unauthed" or not session.secure or session.cert_chain_status ~= "valid" then
-		if session.cert_chain_status ~= "valid" then
-			module:log("debug", "Presented certificate is invalid, not performing SASL EXTERNAL");
-		end
 		return; 
 	end
 
