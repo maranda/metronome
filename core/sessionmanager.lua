@@ -161,7 +161,7 @@ function bind_resource(session, resource)
 	hosts[session.host].sessions[session.username].sessions[resource] = session;
 	full_sessions[session.full_jid] = session;
 	
-	hosts[session.host].events.fire_event("initialize-roster" { session = session });
+	hosts[session.host].events.fire_event("initialize-roster", { session = session });
 	hosts[session.host].events.fire_event("resource-bind", { session = session });
 	
 	return true;
