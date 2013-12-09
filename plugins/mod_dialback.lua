@@ -193,8 +193,8 @@ module:hook("s2s-stream-features", function (data)
 	data.features:tag("dialback", { xmlns = "urn:xmpp:features:dialback" }):up();
 end, 98);
 
-function module.unload()
-	if not s2s_strict_mode then
+function module.unload(reload)
+	if not reload and not s2s_strict_mode then
 		module:log("warn", "In interoperability mode mod_s2s directly depends on mod_dialback for its local instances.");
 		module:log("warn", "Perhaps it will be unloaded as well for this host. (To prevent this set s2s_strict_mode = true in the config)");
 	end
