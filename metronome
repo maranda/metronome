@@ -260,12 +260,7 @@ function load_secondary_libraries()
 	require "core.portmanager";
 	require "core.modulemanager";
 	require "core.usermanager";
-	require "core.rostermanager";
 	require "core.sessionmanager";
-	package.loaded['core.componentmanager'] = setmetatable({},{__index=function()
-		log("warn", "componentmanager is deprecated: %s", debug.traceback():match("\n[^\n]*\n[ \t]*([^\n]*)"));
-		return function() end
-	end});
 
 	require "net.http";
 	
@@ -277,13 +272,6 @@ function load_secondary_libraries()
 	
 	pcall(require, "util.signal");
 	
-	-- Commented to protect us from 
-	-- the second kind of people
-	--[[ 
-	pcall(require, "remdebug.engine");
-	if remdebug then remdebug.engine.start() end
-	]]
-
 	require "util.stanza";
 	require "util.jid";
 end
