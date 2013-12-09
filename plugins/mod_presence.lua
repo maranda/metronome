@@ -148,7 +148,7 @@ function handle_normal_presence(origin, stanza)
 		if roster then
 			local probe = st.presence({from = origin.full_jid, type = "probe"});
 			probe_interested_contacts(roster, origin, probe);
-			for jid in pairs(roster.pending) do -- resend incoming subscription requests
+			for jid in pairs(roster.pending or NULL) do -- resend incoming subscription requests
 				origin.send(st.presence({type="subscribe", from=jid})); -- TODO add to attribute? Use original?
 			end
 			local request = st.presence({type="subscribe", from=origin.username.."@"..origin.host});
