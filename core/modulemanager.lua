@@ -72,12 +72,12 @@ end);
 
 --- Private helpers ---
 
-local function do_unload_module(host, name)
+local function do_unload_module(host, name, reload)
 	local mod = get_module(host, name);
 	if not mod then return nil, "module-not-loaded"; end
 	
 	if module_has_method(mod, "unload") then
-		local ok, err = call_module_method(mod, "unload");
+		local ok, err = call_module_method(mod, "unload", reload);
 		if (not ok) and err then
 			log("warn", "Non-fatal error unloading module '%s' on '%s': %s", name, host, err);
 		end
@@ -212,7 +212,7 @@ local function do_reload_module(host, name)
 		end
 	end
 
-	do_unload_module(host, name);
+	do_unload_module(host, name, true);
 	local ok, err = do_load_module(host, name);
 	if ok then
 		mod = get_module(host, name);
