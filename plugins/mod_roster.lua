@@ -22,6 +22,7 @@ local rm_remove_from_roster = require "util.rostermanager".remove_from_roster;
 local rm_add_to_roster = require "util.rostermanager".add_to_roster;
 local rm_roster_push = require "util.rostermanager".roster_push;
 local rm_load_roster = require "util.rostermanager".load_roster;
+local rm_get_readonly_rosters = require "util.rostermanager".get_readonly_rosters;
 local core_post_stanza = metronome.core_post_stanza;
 
 module:add_feature("jabber:iq:roster");
@@ -76,7 +77,7 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 			roster:query("jabber:iq:roster");
 
 			-- Append read-only rosters, if there.
-			for ro_roster in rostermanager.get_readonly_rosters(session_username, session_host) do
+			for ro_roster in rm_get_readonly_rosters(session_username, session_host) do
 				roster_stanza_builder(roster, ro_roster, bare_jid);
 			end
 
