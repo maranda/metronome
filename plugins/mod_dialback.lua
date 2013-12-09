@@ -17,6 +17,7 @@ local st = require "util.stanza";
 local sha256_hash = require "util.hashes".sha256;
 local nameprep = require "util.encodings".stringprep.nameprep;
 
+local xmlns_db = "urn:xmpp:features:dialback";
 local xmlns_stream = "http://etherx.jabber.org/streams";
 
 local dialback_requests = setmetatable({}, { __mode = "v" });
@@ -168,10 +169,16 @@ end, 100);
 
 module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 	if not origin.external_auth or origin.external_auth == "failed" then
-		module:log("debug", "Initiating dialback...");
-		origin.can_do_dialback = true;
-		initiate_dialback(origin);
-		return true;
+		if stanza:get_child("dialback", xmlns_db) then
+			module:log("debug", "Initiating dialback...");
+			origin.can_do_dialback = true;
+			initiate_dialback(origin);
+			return true;
+		else
+			module:log("warn", "Remote server doesn't offer any mean of (known) authentication, closing stream(s)");
+			origin:close();
+			return true;
+		end
 	end
 end, 100);
 

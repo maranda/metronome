@@ -117,8 +117,7 @@ module:hook_stanza("http://etherx.jabber.org/streams", "features", function (ses
 		return; 
 	end
 
-	local dialback = stanza:get_child("dialback", xmlns_db);
-	if dialback then -- don't attempt falling back to dialback if the remote end doesn't offer it.
+	if stanza:get_child("dialback", xmlns_db) then -- don't attempt falling back to dialback if the remote end doesn't offer it.
 		session.can_do_dialback = true;
 	end
 	
