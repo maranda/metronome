@@ -340,7 +340,7 @@ local function outbound_presence_handler(data)
 		local t = stanza.attr.type;
 		if t ~= nil and t ~= "unavailable" and t ~= "error" then -- check for subscriptions and probes
 			if not hosts[origin.host].supports_rosters then
-				log("debug", "dropped outbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, from_bare, to_bare);
+				log("debug", "dropped outbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
 				return true;
 			end
 			return handle_outbound_presence_subscriptions_and_probes(origin, stanza, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
@@ -372,7 +372,7 @@ module:hook("presence/bare", function(data)
 	if to then
 		if t ~= nil and t ~= "unavailable" and t ~= "error" then -- check for subscriptions and probes sent to bare JID
 			if not hosts[jid_section(to_bare, "host")].supports_rosters then
-				log("debug", "dropped inbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, from_bare, to_bare);
+				log("debug", "dropped inbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
 				return true;
 			end
 			return handle_inbound_presence_subscriptions_and_probes(origin, stanza, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
@@ -404,7 +404,7 @@ module:hook("presence/full", function(data)
 	local t = stanza.attr.type;
 	if t ~= nil and t ~= "unavailable" and t ~= "error" then -- check for subscriptions and probes sent to full JID
 		if not hosts[jid_section(to_bare, "host")].supports_rosters then
-			log("debug", "dropped inbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, from_bare, to_bare);
+			log("debug", "dropped inbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
 			return true;
 		end
 		return handle_inbound_presence_subscriptions_and_probes(origin, stanza, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
