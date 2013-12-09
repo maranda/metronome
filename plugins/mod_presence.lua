@@ -368,14 +368,15 @@ module:hook("presence/bare", function(data)
 	local origin, stanza = data.origin, data.stanza;
 
 	local to = stanza.attr.to;
+	local to_bare = jid_bare(to);
 	local t = stanza.attr.type;
 	if to then
 		if t ~= nil and t ~= "unavailable" and t ~= "error" then -- check for subscriptions and probes sent to bare JID
 			if not hosts[jid_section(to_bare, "host")].supports_rosters then
-				log("debug", "dropped inbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
+				log("debug", "dropped inbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, jid_bare(stanza.attr.from), to_bare);
 				return true;
 			end
-			return handle_inbound_presence_subscriptions_and_probes(origin, stanza, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
+			return handle_inbound_presence_subscriptions_and_probes(origin, stanza, jid_bare(stanza.attr.from), to_bare);
 		end
 	
 		local user = bare_sessions[to];
@@ -402,12 +403,13 @@ module:hook("presence/full", function(data)
 	local origin, stanza = data.origin, data.stanza;
 
 	local t = stanza.attr.type;
+	local to_bare = jid_bare(stanza.attr.to);
 	if t ~= nil and t ~= "unavailable" and t ~= "error" then -- check for subscriptions and probes sent to full JID
 		if not hosts[jid_section(to_bare, "host")].supports_rosters then
-			log("debug", "dropped inbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
+			log("debug", "dropped inbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, jid_bare(stanza.attr.from), to_bare);
 			return true;
 		end
-		return handle_inbound_presence_subscriptions_and_probes(origin, stanza, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
+		return handle_inbound_presence_subscriptions_and_probes(origin, stanza, jid_bare(stanza.attr.from), to_bare);
 	end
 
 	local session = full_sessions[stanza.attr.to];
