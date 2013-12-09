@@ -169,7 +169,7 @@ end, 100);
 
 module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 	if not origin.external_auth or origin.external_auth == "failed" then
-		if stanza:get_child("dialback", xmlns_db) then
+		if stanza:get_child("dialback", xmlns_db) or session.stream_attributes["xmlns:db"] == "jabber:server:dialback" then
 			module:log("debug", "Initiating dialback...");
 			origin.can_do_dialback = true;
 			initiate_dialback(origin);
