@@ -17,12 +17,13 @@ local tonumber = tonumber;
 
 local core_post_stanza = metronome.core_post_stanza;
 local st = require "util.stanza";
-local jid_split = require "util.jid".split;
 local jid_bare = require "util.jid".bare;
+local jid_section = require "util.jid".section;
+local jid_split = require "util.jid".split;
 local hosts = hosts;
 local NULL = {};
 
-local rostermanager = require "core.rostermanager";
+local rostermanager = require "util.rostermanager";
 local sessionmanager = require "core.sessionmanager";
 
 local function pre_process(bare_jid)
@@ -118,7 +119,7 @@ function handle_normal_presence(origin, stanza)
 		origin.send(stanza); -- reflect their presence back to them
 	end
 	local roster = origin.roster;
-	local has_ro = roster.__readonly and true; -- check if user has readonly rosters.
+	local has_ro = roster and roster.__readonly and true; -- check if user has readonly rosters.
 	local node, host = origin.username, origin.host;
 	local user = bare_sessions[node.."@"..host];
 	for _, res in pairs(user and user.sessions or NULL) do -- broadcast to all resources
@@ -127,16 +128,16 @@ function handle_normal_presence(origin, stanza)
 			core_post_stanza(origin, stanza, true);
 		end
 	end
-	broadcast_to_interested_contacts(roster, origin, stanza);
-	if has_ro then
-		for ro_roster in rostermanager.get_readonly_rosters(node, host) do 
-			broadcast_to_interested_contacts(ro_roster, origin, stanza); 
+	if roster then
+		broadcast_to_interested_contacts(roster, origin, stanza);
+		if has_ro then
+			for ro_roster in rostermanager.get_readonly_rosters(node, host) do 
+				broadcast_to_interested_contacts(ro_roster, origin, stanza); 
+			end
 		end
 	end
 	if stanza.attr.type == nil and not origin.presence then -- initial presence
 		origin.presence = stanza; -- FIXME repeated later
-		local probe = st.presence({from = origin.full_jid, type = "probe"});
-		probe_interested_contacts(roster, origin, probe);
 		for _, res in pairs(user and user.sessions or NULL) do -- broadcast from all available resources
 			if res ~= origin and res.presence then
 				res.presence.attr.to = origin.full_jid;
@@ -144,16 +145,18 @@ function handle_normal_presence(origin, stanza)
 				res.presence.attr.to = nil;
 			end
 		end
-		if roster.pending then -- resend incoming subscription requests
-			for jid in pairs(roster.pending) do
+		if roster then
+			local probe = st.presence({from = origin.full_jid, type = "probe"});
+			probe_interested_contacts(roster, origin, probe);
+			for jid in pairs(roster.pending) do -- resend incoming subscription requests
 				origin.send(st.presence({type="subscribe", from=jid})); -- TODO add to attribute? Use original?
 			end
-		end
-		local request = st.presence({type="subscribe", from=origin.username.."@"..origin.host});
-		resend_outgoing_subscriptions(roster, origin, request);
-		if has_ro then
-			for ro_roster in rostermanager.get_readonly_rosters(node, host) do
-				probe_interested_contacts(ro_roster, origin, probe);
+			local request = st.presence({type="subscribe", from=origin.username.."@"..origin.host});
+			resend_outgoing_subscriptions(roster, origin, request);
+			if has_ro then
+				for ro_roster in rostermanager.get_readonly_rosters(node, host) do
+					probe_interested_contacts(ro_roster, origin, probe);
+				end
 			end
 		end
 		if priority >= 0 then
@@ -264,7 +267,6 @@ function handle_inbound_presence_subscriptions_and_probes(origin, stanza, from_b
 	local st_from, st_to = stanza.attr.from, stanza.attr.to;
 	stanza.attr.from, stanza.attr.to = from_bare, to_bare;
 	log("debug", "inbound presence %s from %s for %s", stanza.attr.type, from_bare, to_bare);
-	
 	if stanza.attr.type == "probe" then
 		local result, err = rostermanager.is_contact_subscribed(node, host, from_bare);
 		if result then
@@ -337,12 +339,16 @@ local function outbound_presence_handler(data)
 	if to then
 		local t = stanza.attr.type;
 		if t ~= nil and t ~= "unavailable" and t ~= "error" then -- check for subscriptions and probes
+			if not hosts[origin.host].supports_rosters then
+				log("debug", "dropped outbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, from_bare, to_bare);
+				return true;
+			end
 			return handle_outbound_presence_subscriptions_and_probes(origin, stanza, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
 		end
 
 		local to_bare = jid_bare(to);
 		local roster = origin.roster;
-		if roster and check_directed_presence(roster, to_bare) then -- directed presence
+		if (roster and check_directed_presence(roster, to_bare)) or not roster then -- directed presence
 			origin.directed = origin.directed or {};
 			if t then -- removing from directed presence list on sending an error or unavailable
 				origin.directed[to] = nil; -- FIXME does it make more sense to add to_bare rather than to?
@@ -365,6 +371,10 @@ module:hook("presence/bare", function(data)
 	local t = stanza.attr.type;
 	if to then
 		if t ~= nil and t ~= "unavailable" and t ~= "error" then -- check for subscriptions and probes sent to bare JID
+			if not hosts[jid_section(to_bare, "host")].supports_rosters then
+				log("debug", "dropped inbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, from_bare, to_bare);
+				return true;
+			end
 			return handle_inbound_presence_subscriptions_and_probes(origin, stanza, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
 		end
 	
@@ -393,6 +403,10 @@ module:hook("presence/full", function(data)
 
 	local t = stanza.attr.type;
 	if t ~= nil and t ~= "unavailable" and t ~= "error" then -- check for subscriptions and probes sent to full JID
+		if not hosts[jid_section(to_bare, "host")].supports_rosters then
+			log("debug", "dropped inbound presence %s from %s for %s as host doesn't support rosters", stanza.attr.type, from_bare, to_bare);
+			return true;
+		end
 		return handle_inbound_presence_subscriptions_and_probes(origin, stanza, jid_bare(stanza.attr.from), jid_bare(stanza.attr.to));
 	end
 
