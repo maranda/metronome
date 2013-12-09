@@ -16,10 +16,12 @@ local t_concat = table.concat;
 local tonumber = tonumber;
 local pairs, ipairs = pairs, ipairs;
 
-local rm_remove_from_roster = require "core.rostermanager".remove_from_roster;
-local rm_add_to_roster = require "core.rostermanager".add_to_roster;
-local rm_roster_push = require "core.rostermanager".roster_push;
-local rm_load_roster = require "core.rostermanager".load_roster;
+local hosts = hosts;
+
+local rm_remove_from_roster = require "util.rostermanager".remove_from_roster;
+local rm_add_to_roster = require "util.rostermanager".add_to_roster;
+local rm_roster_push = require "util.rostermanager".roster_push;
+local rm_load_roster = require "util.rostermanager".load_roster;
 local core_post_stanza = metronome.core_post_stanza;
 
 module:add_feature("jabber:iq:roster");
@@ -50,6 +52,12 @@ local function roster_stanza_builder(stanza, roster, owner)
 		end
 	end
 end
+
+module:hook("initialize-roster", function(event)
+	local session = event.session;
+	session.roster, err = rm_load_roster(session.username, session.host);
+	return;
+end, 100);
 
 module:hook("iq/self/jabber:iq:roster:query", function(event)
 	local session, stanza = event.origin, event.stanza;
@@ -160,6 +168,9 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 	end
 	return true;
 end);
+
+function module.load() hosts[module.host].supports_rosters = true; end
+function module.unload() hosts[module.host].supports_rosters = nil; end
 
 module:hook("user-pre-delete", function(event)
 	local username, host, _roster = event.username, event.host, event.session and event.session.roster;
