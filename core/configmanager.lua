@@ -28,11 +28,12 @@ local config = setmetatable({ ["*"] = {} }, config_mt);
 local host_mt = { };
 
 function section_mt(section_name)
-	return { __index = 	function (t, k)
-					local section = rawget(config["*"], section_name);
-					if not section then return nil; end
-					return section[k];
-				end
+	return { 
+		__index = function (t, k)
+			local section = rawget(config["*"], section_name);
+			if not section then return nil; end
+			return section[k];
+		end
 	};
 end
 
