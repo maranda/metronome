@@ -14,7 +14,7 @@ local st = require "util.stanza";
 local datamanager = require "util.datamanager";
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local jid_bare, jid_split, jid_join = require "util.jid".bare, require "util.jid".split, require "util.jid".join;
-local rm = require "core.rostermanager";
+local rm = require "util.rostermanager";
 local tonumber, t_sort = tonumber, table.sort;
 
 function is_list_used(origin, name, privacy_lists)
