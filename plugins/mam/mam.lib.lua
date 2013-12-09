@@ -14,7 +14,7 @@ local jid_section = require "util.jid".section;
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
-local load_roster = rostermanager.load_roster;
+local load_roster = require "util.rostermanager".load_roster;
 local ipairs, now, pairs, ripairs, select, t_remove, tostring = ipairs, os.time, pairs, ripairs, select, table.remove, tostring;
       
 local xmlns = "urn:xmpp:mam:0";
