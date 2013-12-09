@@ -16,7 +16,6 @@ local bare_sessions = bare_sessions;
 
 local logger = require "util.logger";
 local log = logger.init("sessionmanager");
-local rm_load_roster = require "core.rostermanager".load_roster;
 local config_get = require "core.configmanager".get;
 local resourceprep = require "util.encodings".stringprep.resourceprep;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
@@ -162,21 +161,8 @@ function bind_resource(session, resource)
 	hosts[session.host].sessions[session.username].sessions[resource] = session;
 	full_sessions[session.full_jid] = session;
 	
-	local err;
-	session.roster, err = rm_load_roster(session.username, session.host);
-	if err then
-		full_sessions[session.full_jid] = nil;
-		hosts[session.host].sessions[session.username].sessions[resource] = nil;
-		session.full_jid = nil;
-		session.resource = nil;
-		if next(bare_sessions[session.username..'@'..session.host].sessions) == nil then
-			bare_sessions[session.username..'@'..session.host] = nil;
-			hosts[session.host].sessions[session.username] = nil;
-		end
-		return nil, "cancel", "internal-server-error", "Error loading roster";
-	end
-	
-	hosts[session.host].events.fire_event("resource-bind", {session=session});
+	hosts[session.host].events.fire_event("initialize-roster" { session = session });
+	hosts[session.host].events.fire_event("resource-bind", { session = session });
 	
 	return true;
 end
