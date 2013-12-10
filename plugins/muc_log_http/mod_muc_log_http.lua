@@ -301,8 +301,8 @@ local function parse_message(body, title, time, nick, day_t, day_m, day_mm, day_
 
 	if nick and body then
 		body = html_escape(body);
-		if body:find("^/me") then body = body:gsub("^/me ", ""); end
-		ret = ((me and day_mm) or day_m):gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###MSG###", body);
+		if body:find("^/me") then body = body:gsub("^/me ", ""); day_m = nil; end
+		ret = (day_m or day_mm):gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###MSG###", body);
 	elseif nick and title then
 		title = html_escape(title);
 		ret = day_title:gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###TITLE###", title);
