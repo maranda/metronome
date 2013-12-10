@@ -44,6 +44,8 @@ local sessions = module:shared("sessions");
 local log = module._log;
 local last_inactive_clean = now();
 
+local xmlns_stream = "http://etherx.jabber.org/streams";
+
 --- Handle stanzas to remote domains
 
 local function time_and_clean(_session, now)
@@ -139,7 +141,7 @@ local function session_open_stream(session, from, to)
 	local attr = {
 		xmlns = "jabber:server", 
 		["xmlns:db"] = db and "jabber:server:dialback" or nil,
-		["xmlns:stream"] = "http://etherx.jabber.org/streams",
+		["xmlns:stream"] = xmlns_stream,
 		id = session.streamid,
 		from = from, to = to,
 		version = session.version and (session.version > 0 and "1.0" or nil), 
@@ -183,6 +185,11 @@ function module.add_host(module)
 			load_module(module.host, "dialback") 
 		end
 	end
+	module:hook_stanza(xmlns_stream, "features", function(origin, stanza)
+		module:log("warn", "Remote server doesn't offer any mean of (known) authentication, closing stream(s)");
+		origin:close();
+		return true;
+	end, -1)
 	module:hook("route/remote", route_to_existing_session, 200);
 	module:hook("route/remote", route_to_new_session, 100);
 end
@@ -396,7 +403,7 @@ local listener = {};
 
 --- Session methods
 local stream_xmlns_attr = {xmlns = "urn:ietf:params:xml:ns:xmpp-streams"};
-local default_stream_attr = { ["xmlns:stream"] = "http://etherx.jabber.org/streams", xmlns = stream_callbacks.default_ns, version = "1.0", id = "" };
+local default_stream_attr = { ["xmlns:stream"] = xmlns_stream, xmlns = stream_callbacks.default_ns, version = "1.0", id = "" };
 local function session_close(session, reason, remote_reason)
 	local log = session.log or log;
 	if session.conn then
