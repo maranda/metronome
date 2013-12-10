@@ -500,9 +500,11 @@ local function initialize_session(session)
 			return; -- Ok, we're connected
 		end
 		-- Not connected, need to close session and clean up
-		(session.log or log)("debug", "Destroying incomplete session %s->%s due to inactivity",
-		session.from_host or "(unknown)", session.to_host or "(unknown)");
-		session:close("connection-timeout");
+		if session.type ~= "s2s_destroyed" then
+			(session.log or log)("debug", "Destroying incomplete session %s->%s due to inactivity",
+			session.from_host or "(unknown)", session.to_host or "(unknown)");
+			session:close("connection-timeout");
+		end
 	end);
 end
 
