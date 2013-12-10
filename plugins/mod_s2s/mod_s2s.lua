@@ -186,10 +186,12 @@ function module.add_host(module)
 		end
 	end
 	module:hook_stanza(xmlns_stream, "features", function(origin, stanza)
-		module:log("warn", "Remote server doesn't offer any mean of (known) authentication, closing stream(s)");
-		origin:close();
+		if session.type == "s2sout_unauthed" then
+			module:log("warn", "Remote server doesn't offer any mean of (known) authentication, closing stream(s)");
+			origin:close();
+		end
 		return true;
-	end, -1)
+	end, -10)
 	module:hook("route/remote", route_to_existing_session, 200);
 	module:hook("route/remote", route_to_new_session, 100);
 end
