@@ -12,7 +12,7 @@ local cert_verify_identity = require "util.x509".verify_identity;
 local xmlns_db = "urn:xmpp:features:dialback";
 local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
 
-local build_error(err)
+local function build_error(err)
 	local reply = st.stanza("failure", {xmlns = xmlns_sasl});
 	reply:tag(err):up();
 	return reply;
