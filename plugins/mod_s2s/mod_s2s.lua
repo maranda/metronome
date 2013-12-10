@@ -173,10 +173,6 @@ function route_to_new_session(event)
 end
 
 function module.add_host(module)
-	if module:get_option_boolean("disallow_s2s", false) then
-		module:log("warn", "The 'disallow_s2s' config option is deprecated.");
-		return nil, "This host has disallow_s2s set";
-	end
 	if not s2s_strict_mode then
 		module:depends("dialback");
 	else
@@ -192,6 +188,7 @@ function module.add_host(module)
 		end
 		return true;
 	end, -10)
+	module:depends("sasl_s2s");
 	module:hook("route/remote", route_to_existing_session, 200);
 	module:hook("route/remote", route_to_new_session, 100);
 end
