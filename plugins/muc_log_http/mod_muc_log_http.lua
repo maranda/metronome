@@ -294,24 +294,18 @@ local function generate_day_room_content(bare_room_jid)
 	return tmp:gsub("###JID###", bare_room_jid), "Chatroom logs for "..bare_room_jid;
 end
 
-local function parse_message(body, title, time, nick)
+local function parse_message(body, title, time, nick, day_t, day_m, day_mm, day_title)
 	local ret = "";
-	local html_day = html.day;
+	time = day_t:gsub("###TIME###", time):gsub("###UTC###", time);
+	nick = html_escape(nick:match("/(.+)$"));
 
 	if nick and body then
 		body = html_escape(body);
-		local me = body:find("^/me");
-		local template = "";
-		if not me then
-			template = html_day.message;
-		else
-			template = html_day.messageMe;
-			body = body:gsub("^/me ", "");
-		end
-		ret = template:gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###MSG###", body);
+		if body:find("^/me") then body = body:gsub("^/me ", ""); end
+		ret = ((me and day_mm) or day_m):gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###MSG###", body);
 	elseif nick and title then
 		title = html_escape(title);
-		ret = html_day.titleChange:gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###TITLE###", title);
+		ret = day_title:gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###TITLE###", title);
 	end
 	return ret;
 end
@@ -449,25 +443,18 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 		year = year + 2000;
 	end
 
-	temptime.day = tonumber(day)
-	temptime.month = tonumber(month)
-	temptime.year = tonumber(year)
-	calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, room=node, webpath="../"}) or ""
+	temptime.day = tonumber(day);
+	temptime.month = tonumber(month);
+	temptime.year = tonumber(year);
+	calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, room=node, webpath="../"}) or "";
 
 	if bare_day then
+		local day_t, day_m, day_mm, day_title = html_day.time, html_day.message, html_day.messageMe, html_day.titleChange;
 		local data = data_load(node, host, datastore .. "/" .. bare_day:match("^20(.*)"):gsub("-", ""));
 		if data then
 			for i, entry in ipairs(data) do
-				local timeStuff = html_day.time:gsub("###TIME###", entry.time):gsub("###UTC###", entry.time);
-				local nick;
-				local tmp;
-
-				nick = html_escape(entry.from:match("/(.+)$"));
-				tmp = parse_message(entry.body, entry.subject, timeStuff, nick);
-				if tmp then
-					ret = ret .. tmp
-					tmp = nil;
-				end
+				local tmp = parse_message(entry.body, entry.subject, entry.time, entry.from, day_t, day_m, day_mm, day_title);
+				if tmp then ret = ret .. tmp; end
 			end
 		end
 		if ret ~= "" then
