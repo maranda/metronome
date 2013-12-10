@@ -186,7 +186,7 @@ function module.add_host(module)
 		end
 	end
 	module:hook_stanza(xmlns_stream, "features", function(origin, stanza)
-		if session.type == "s2sout_unauthed" then
+		if origin.type == "s2sout_unauthed" then
 			module:log("warn", "Remote server doesn't offer any mean of (known) authentication, closing stream(s)");
 			origin:close();
 		end
