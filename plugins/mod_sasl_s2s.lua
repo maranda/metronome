@@ -12,66 +12,71 @@ local cert_verify_identity = require "util.x509".verify_identity;
 local xmlns_db = "urn:xmpp:features:dialback";
 local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
 
+local build_error(err)
+	local reply = st.stanza("failure", {xmlns = xmlns_sasl});
+	reply:tag(err):up();
+	return reply;
+end
+
+local success = st.stanza("success", {xmlns = xmlns_sasl}):text(base64.encode(""));
 local function s2s_auth(session, stanza)
 	local mechanism = stanza.attr.mechanism;
 
 	if not session.secure then
 		if mechanism == "EXTERNAL" then
-			session.sends2s(build_reply("failure", "encryption-required"))
+			session.sends2s(build_error("encryption-required"));
 		else
-			session.sends2s(build_reply("failure", "invalid-mechanism"))
+			session.sends2s(build_error("invalid-mechanism"));
 		end
 		return true;
 	end
 
 	if mechanism ~= "EXTERNAL" or session.cert_chain_status ~= "valid" then
-		session.sends2s(build_reply("failure", "invalid-mechanism"))
+		session.sends2s(build_error("invalid-mechanism"));
 		return true;
 	end
 
-	local text = stanza[1]
+	local text = stanza[1];
 	if not text then
-		session.sends2s(build_reply("failure", "malformed-request"))
-		return true
+		session.sends2s(build_error("malformed-request"));
+		return true;
 	end
 
 	-- Either the value is "=" and we've already verified the external
 	-- cert identity, or the value is a string and either matches the
 	-- from_host
 
-	text = base64.decode(text)
+	text = base64.decode(text);
 	if not text then
-		session.sends2s(build_reply("failure", "incorrect-encoding"))
+		session.sends2s(build_error("incorrect-encoding"));
 		return true;
 	end
 
 	if session.cert_identity_status == "valid" then
 		if text ~= "" and text ~= session.from_host then
-			session.sends2s(build_reply("failure", "invalid-authzid"))
-			return true
+			session.sends2s(build_error("invalid-authzid"));
+			return true;
 		end
 	else
 		if text == "" then
-			session.sends2s(build_reply("failure", "invalid-authzid"))
-			return true
+			session.sends2s(build_error("invalid-authzid"));
+			return true;
 		end
 
-		local cert = session.conn:socket():getpeercertificate()
+		local cert = session.conn:socket():getpeercertificate();
 		if (cert_verify_identity(text, "xmpp-server", cert)) then
-			session.cert_identity_status = "valid"
+			session.cert_identity_status = "valid";
 		else
-			session.cert_identity_status = "invalid"
-			session.sends2s(build_reply("failure", "invalid-authzid"))
-			return true
+			session.cert_identity_status = "invalid";
+			session.sends2s(build_error("invalid-authzid"));
+			return true;
 		end
 	end
 
-	session.external_auth = "succeeded"
+	session.external_auth = "succeeded";
 
-	if not session.from_host then
-		session.from_host = text;
-	end
-	session.sends2s(build_reply("success"))
+	if not session.from_host then session.from_host = text; end
+	session.sends2s(success);
 
 	local domain = text ~= "" and text or session.from_host;
 	module:log("info", "Accepting SASL EXTERNAL identity from %s", domain);
@@ -128,7 +133,7 @@ end, 150);
 module:hook("stanza/urn:ietf:params:xml:ns:xmpp-sasl:auth", function(event)
 	local session, stanza = event.origin, event.stanza;
 	if session.type == "s2sin_unauthed" then
-		return s2s_auth(session, stanza)
+		return s2s_auth(session, stanza);
 	end
 end, 10);
 
