@@ -238,7 +238,7 @@ end
 
 --- XMPP stream event handlers
 
-local stream_callbacks = { default_ns = "jabber:server", handlestanza =  core_process_stanza };
+local stream_callbacks = { default_ns = "jabber:server", handlestanza = core_process_stanza };
 
 local xmlns_xmpp_streams = "urn:ietf:params:xml:ns:xmpp-streams";
 
@@ -468,7 +468,7 @@ local function initialize_session(session)
 	end
 	
 	local filter = session.filter;
-	function session.data(data)
+	local function _data(data)
 		data = filter("bytes/in", data);
 		if data then
 			local ok, err = stream:feed(data);
@@ -476,6 +476,23 @@ local function initialize_session(session)
 			(session.log or log)("warn", "Received invalid XML: %s", data);
 			(session.log or log)("warn", "Problem was: %s", err);
 			session:close("not-well-formed");
+		end
+	end
+	
+	function session.data(data)
+		-- This is not exactly pretty but LuaExpat does seem to trim out all sub namespaces with feeds,
+		-- so until I find why or a better solution, this is the only way to get all attributes.
+		local initial = filter("bytes/in", data);
+		if initial then
+			if initial:match("^<stream:stream.*") then
+				if initial:gsub("\n", ""):match(".*xmlns:db=[\"']jabber:server:dialback[\"'].*") then
+					session.can_do_dialback = true;
+				end
+				session.data = _data;
+				_data(data);
+			else
+				_data(data);
+			end
 		end
 	end
 

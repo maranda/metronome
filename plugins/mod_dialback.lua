@@ -12,7 +12,6 @@ local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
 
 local log = module._log;
 local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
-local compat_whitelist = module:get_option_set("dialback_compatibility_whitelist", {});
 
 local st = require "util.stanza";
 local sha256_hash = require "util.hashes".sha256;
@@ -169,13 +168,8 @@ end, 100);
 
 module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 	if not origin.external_auth or origin.external_auth == "failed" then
-		if stanza:get_child("dialback", xmlns_db) or origin.stream_attributes["xmlns:db"] == "jabber:server:dialback" then
+		if origin.can_do_dialback or stanza:get_child("dialback", xmlns_db) then
 			module:log("debug", "Initiating dialback...");
-			origin.can_do_dialback = true;
-			initiate_dialback(origin);
-			return true;
-		elseif origin.type == "s2sout_unauthed" and compat_whitelist:contains(origin.to_host) then
-			module:log("debug", "Initiating dialback as entity supports it without advertising...");
 			origin.can_do_dialback = true;
 			initiate_dialback(origin);
 			return true;
