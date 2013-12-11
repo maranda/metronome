@@ -12,6 +12,7 @@ local st = require "util.stanza";
 local stanza_mt = st.stanza_mt;
 
 local error = error;
+local next = next;
 local tostring = tostring;
 local t_insert = table.insert;
 local t_concat = table.concat;
@@ -60,6 +61,20 @@ function new_sax_handlers(session, stream_callbacks)
 	local stack = {};
 	local chardata, stanza = {};
 	local non_streamns_depth = 0;
+	session.stream_declared_ns = {};
+	function xml_handlers:StartNamespaceDecl(prefix, uri)
+		if session.notopen then
+			if prefix and prefix ~= "stream" then 
+				session.stream_declared_ns[prefix] = uri; 
+			end
+		else
+			-- Drop this callback after session is initialized
+			xml_handlers.StartNamespaceDecl = false;
+			if not next(session.stream_declared_ns) then
+				session.stream_declared_ns = nil;
+			end
+		end
+	end
 	function xml_handlers:StartElement(tagname, attr)
 		if stanza and #chardata > 0 then
 			-- We have some character data in the buffer
