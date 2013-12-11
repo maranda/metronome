@@ -485,7 +485,7 @@ local function initialize_session(session)
 		local initial = filter("bytes/in", data);
 		if initial then
 			if initial:match("^<stream:stream.*") then
-				if initial:gsub("\n", ""):match(".*xmlns:db=[\"']jabber:server:dialback[\"'].*") then
+				if initial:match(".*xmlns:db=[\"']jabber:server:dialback[\"'].*") then
 					session.can_do_dialback = true;
 				end
 				session.data = _data;
