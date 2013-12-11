@@ -204,6 +204,7 @@ function commands.help(session, data)
 		print [[Commands are divided into multiple sections. For help on a particular section, ]]
 		print [[type: help SECTION (for example, 'help c2s'). Sections are: ]]
 		print [[]]
+		print [[dns - Commands to manage Metronome's internal dns resolver]]
 		print [[c2s - Commands to manage local client-to-server sessions]]
 		print [[s2s - Commands to manage sessions between this server and others]]
 		print [[module - Commands to load/reload/unload modules/plugins]]
@@ -212,6 +213,9 @@ function commands.help(session, data)
 		print [[server - Uptime, version, shutting down, etc.]]
 		print [[config - Reloading the configuration, etc.]]
 		print [[console - Help regarding the console itself]]
+	elseif section == "dns" then
+		print [[dns:reload() - Reload system resolvers configuration data]]
+		print [[dns:purge() - Purge the internal dns cache]]
 	elseif section == "c2s" then
 		print [[c2s:show(jid) - Show all client sessions with the specified JID (or all if no JID given)]]
 		print [[c2s:show_insecure() - Show all unencrypted client connections]]
@@ -240,7 +244,6 @@ function commands.help(session, data)
 		print [[server:uptime() - Show how long the server has been running]]
 		print [[server:shutdown(reason) - Shut down the server, with an optional reason to be broadcast to all connections]]
 	elseif section == "config" then
-		print [[config:dns_reload() - Reload system resolvers configuration data]]
 		print [[config:reload() - Reload the server configuration. Modules may need to be reloaded for changes to take effect]]
 	elseif section == "console" then
 		print [[Hey! Welcome to Metronome's admin console.]]
@@ -427,12 +430,21 @@ function def_env.module:list(hosts)
 	end
 end
 
-def_env.config = {};
-function def_env.config:dns_reload()
+def_env.dns = {};
+
+function def_env.dns:reload()
 	dns._resolver:resetnameservers();
 
-	return true, "Resolvers configuration reloaded.";
+	return true, "Resolvers configuration reloaded";
 end
+
+function def_env.dns:purge()
+	dns.purge();
+
+	return true, "Internal dns cache has been purged";
+end
+
+def_env.config = {};
 
 function def_env.config:load(filename, format)
 	local ok, err = cm.load(filename, format);
@@ -452,6 +464,7 @@ function def_env.config:reload()
 end
 
 def_env.hosts = {};
+
 function def_env.hosts:list()
 	for host, host_session in pairs(hosts) do
 		self.session.print(host);
