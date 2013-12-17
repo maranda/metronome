@@ -36,7 +36,6 @@ local open_pipe = io.popen;
 
 local module_path = (module.path and module.path:gsub("[/\\][^/\\]*$", "") or (metronome.paths.plugins or "./plugins") .. "/muc_log_http");
 local themes_parent = module_path .. "/themes";
-local package_paths = package.path;
 local metronome_paths = metronome.paths;
 
 local lfs = require "lfs";
@@ -416,7 +415,7 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 		temptime.year = tonumber(year);
 		calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, room=node, webpath="../"}) or "";
 		
-		local call_str = module_path.."/generate_log '"..package_paths.."' "..metronome_paths.data.." "..theme_path.." "..bare_room_jid.." ".._year..month..day;
+		local call_str = module_path.."/generate_log '"..metronome_paths.source.."' "..metronome_paths.data.." "..theme_path.." "..bare_room_jid.." ".._year..month..day;
 		ret = open_pipe(call_str):read("*a");
 		if ret ~= "" then
 			if next_day then
