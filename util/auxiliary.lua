@@ -8,7 +8,7 @@
 
 local CFG_SOURCEDIR, metronome = _G.CFG_SOURCEDIR, _G.metronome;
 local open, popen = io.open, io.popen;
-local pairs, tonumber, type = pairs, tonumber, type;
+local char, pairs, tonumber, type = string.char, pairs, tonumber, type;
 
 module "auxiliary"
 
@@ -72,6 +72,24 @@ function escape_magic_chars(string)
 	string = string:gsub("%$", "%%$")
 
 	return string
+end
+
+function html_escape(t)
+	if t then
+		t = t:gsub("<", "&lt;");
+		t = t:gsub(">", "&gt;");
+		t = t:gsub("(http://[%a%d@%.:/&%?=%-_#%%~]+)", function(h)
+			h = h:gsub("+", " ");
+			h = h:gsub("%%(%x%x)", function(h) return char(tonumber(h,16)) end);
+			h = h:gsub("\r\n", "\n");
+			return "<a href='" .. h .. "'>" .. h .. "</a>";
+		end);
+		t = t:gsub("\n", "<br />");
+		t = t:gsub("%%", "%%%%");
+	else
+		t = "";
+	end
+	return t;
 end
 
 return _M;
