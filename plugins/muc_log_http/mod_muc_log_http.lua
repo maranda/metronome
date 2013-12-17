@@ -17,12 +17,12 @@ module:depends("http");
 local metronome = metronome;
 local hosts = metronome.hosts;
 local my_host = module:get_host();
-local strchar = string.char;
 local strformat = string.format;
 local section_jid = require "util.jid".section;
 local split_jid = require "util.jid".split;
 local config_get = require "core.configmanager".get;
 local urldecode = require "net.http".urldecode;
+local html_escape = require "util.auxiliary".html_escape;
 local http_event = require "net.http.server".fire_server_event;
 local data_load, data_getpath = datamanager.load, datamanager.getpath;
 local datastore = "muc_log";
@@ -32,11 +32,16 @@ local table, tostring, tonumber = table, tostring, tonumber;
 local os_date, os_time = os.date, os.time;
 local str_format = string.format;
 local io_open = io.open;
-local themes_parent = (module.path and module.path:gsub("[/\\][^/\\]*$", "")  or (metronome.paths.plugins or "./plugins") .. "/muc_log_http") .. "/themes";
+local open_pipe = io.popen;
+
+local module_path = (module.path and module.path:gsub("[/\\][^/\\]*$", "") or (metronome.paths.plugins or "./plugins") .. "/muc_log_http");
+local themes_parent = module_path .. "/themes";
+local package_paths = package.path;
+local metronome_paths = metronome.paths;
 
 local lfs = require "lfs";
 local html = {};
-local theme;
+local theme, theme_path;
 
 local muc_rooms = hosts[my_host].muc.rooms;
 
@@ -49,34 +54,11 @@ end
 
 -- Module Definitions
 
-local function html_escape(t)
-	if t then
-		t = t:gsub("<", "&lt;");
-		t = t:gsub(">", "&gt;");
-		t = t:gsub("(http://[%a%d@%.:/&%?=%-_#%%~]+)", function(h)
-			h = urlunescape(h)
-			return "<a href='" .. h .. "'>" .. h .. "</a>";
-		end);
-		t = t:gsub("\n", "<br />");
-		t = t:gsub("%%", "%%%%");
-	else
-		t = "";
-	end
-	return t;
-end
-
 function create_doc(body, title)
 	if not body then return "" end
 	body = body:gsub("%%", "%%%%");
 	return html.doc:gsub("###BODY_STUFF###", body)
 		:gsub("<title>muc_log</title>", "<title>"..(title and html_escape(title) or "Chatroom logs").."</title>");
-end
-
-function urlunescape (url)
-	url = url:gsub("+", " ")
-	url = url:gsub("%%(%x%x)", function(h) return strchar(tonumber(h,16)) end)
-	url = url:gsub("\r\n", "\n")
-	return url
 end
 
 local function generate_room_list()
@@ -294,22 +276,6 @@ local function generate_day_room_content(bare_room_jid)
 	return tmp:gsub("###JID###", bare_room_jid), "Chatroom logs for "..bare_room_jid;
 end
 
-local function parse_message(body, title, time, nick, day_t, day_m, day_mm, day_title)
-	local ret = "";
-	time = day_t:gsub("###TIME###", time):gsub("###UTC###", time);
-	nick = html_escape(nick:match("/(.+)$"));
-
-	if nick and body then
-		body = html_escape(body);
-		if body:find("^/me") then body = body:gsub("^/me ", ""); day_m = nil; end
-		ret = (day_m or day_mm):gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###MSG###", body);
-	elseif nick and title then
-		title = html_escape(title);
-		ret = day_title:gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###TITLE###", title);
-	end
-	return ret;
-end
-
 local function increment_day(bare_day)
 	local year, month, day = bare_day:match("^20(%d%d)-(%d%d)-(%d%d)$");
 	local leapyear = false;
@@ -428,35 +394,30 @@ local function find_previous_day(bare_room_jid, bare_day)
 end
 
 local function parse_day(bare_room_jid, room_subject, bare_day)
-	local ret = "";
-	local node, host = split_jid(bare_room_jid);
-	local year, month, day = bare_day:match("^20(%d%d)-(%d%d)-(%d%d)$");
-	local previous_day = find_previous_day(bare_room_jid, bare_day);
-	local next_day = find_next_day(bare_room_jid, bare_day);
-	local temptime = {day=0, month=0, year=0};
-	local path = data_getpath(node, host, datastore);
-	path = path:gsub("/[^/]*$", "");
-	local calendar = "";
-	local html_day = html.day;
-
-	if tonumber(year) <= 99 then
-		year = year + 2000;
-	end
-
-	temptime.day = tonumber(day);
-	temptime.month = tonumber(month);
-	temptime.year = tonumber(year);
-	calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, room=node, webpath="../"}) or "";
-
 	if bare_day then
-		local day_t, day_m, day_mm, day_title = html_day.time, html_day.message, html_day.messageMe, html_day.titleChange;
-		local data = data_load(node, host, datastore .. "/" .. bare_day:match("^20(.*)"):gsub("-", ""));
-		if data then
-			for i, entry in ipairs(data) do
-				local tmp = parse_message(entry.body, entry.subject, entry.time, entry.from, day_t, day_m, day_mm, day_title);
-				if tmp then ret = ret .. tmp; end
-			end
+		local ret = "";
+		local node, host = split_jid(bare_room_jid);
+		local year, month, day = bare_day:match("^20(%d%d)-(%d%d)-(%d%d)$");
+		local _year = year;
+		local previous_day = find_previous_day(bare_room_jid, bare_day);
+		local next_day = find_next_day(bare_room_jid, bare_day);
+		local temptime = {day=0, month=0, year=0};
+		local path = data_getpath(node, host, datastore);
+		path = path:gsub("/[^/]*$", "");
+		local calendar = "";
+		local html_day = html.day;
+
+		if tonumber(year) <= 99 then
+			year = year + 2000;
 		end
+
+		temptime.day = tonumber(day);
+		temptime.month = tonumber(month);
+		temptime.year = tonumber(year);
+		calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, room=node, webpath="../"}) or "";
+		
+		local call_str = module_path.."/generate_log '"..package_paths.."' "..metronome_paths.data.." "..theme_path.." "..bare_room_jid.." ".._year..month..day;
+		ret = open_pipe(call_str):read("*a");
 		if ret ~= "" then
 			if next_day then
 				next_day = html_day.dayLink:gsub("###DAY###", next_day):gsub("###TEXT###", "&gt;")
@@ -566,7 +527,7 @@ function module.load()
 	if config.url_base and type(config.url_base) == "string" then url_base = config.url_base; end
 
 	theme = config.theme or "metronome";
-	local theme_path = themes_parent .. "/" .. tostring(theme);
+	theme_path = themes_parent .. "/" .. tostring(theme);
 	local attributes, err = lfs.attributes(theme_path);
 	if attributes == nil or attributes.mode ~= "directory" then
 		module:log("error", "Theme folder of theme \"".. tostring(theme) .. "\" isn't existing. expected Path: " .. theme_path);

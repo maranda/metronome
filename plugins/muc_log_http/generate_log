@@ -1,0 +1,96 @@
+#!/usr/bin/env lua
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information about copyright and licensing.
+
+-- This script generates log pages for mod_muc_log_http
+	
+src_path = arg[1];
+data_path = arg[2];
+theme_path = arg[3];
+muc_jid = arg[4];
+date = arg[5];
+
+metronome = { platform = "posix" } -- Replicate metronome env partially.
+package.path = src_path;
+html_escape = require "util.auxiliary".html_escape;
+datamanager = require "util.datamanager";
+datamanager.set_data_path(data_path);
+lfs = require "lfs";
+node, host = require "util.jid".split(muc_jid);
+html = {};
+
+function html_escape(t)
+	if t then
+		t = t:gsub("<", "&lt;");
+		t = t:gsub(">", "&gt;");
+		t = t:gsub("(http://[%a%d@%.:/&%?=%-_#%%~]+)", function(h)
+			h = urlunescape(h)
+			return "<a href='" .. h .. "'>" .. h .. "</a>";
+		end);
+		t = t:gsub("\n", "<br />");
+		t = t:gsub("%%", "%%%%");
+	else
+		t = "";
+	end
+	return t;
+end
+function read_file(filepath)
+	local f,err = io.open(filepath, "r");
+	if not f then return f,err; end
+	local t = f:read("*all");
+	f:close()
+	return t;
+end
+function load_theme(path)
+	for file in lfs.dir(path) do
+		if file:match("%.html$") then
+			local content,err = read_file(path .. "/" .. file);
+			if not content then return content,err; end
+			local tmp = html;
+			for idx in file:gmatch("([^_]*)_") do
+				tmp[idx] = tmp[idx] or {};
+				tmp = tmp[idx];
+			end
+			tmp[file:match("([^_]*)%.html$")] = content;
+		end
+	end
+	return true;
+end
+
+if not load_theme(theme_path) then
+	print("error loading theme");
+	os.exit(1);
+end
+
+function parse_message(body, title, time, nick, day_t, day_m, day_mm, day_title)
+	local ret = "";
+	time = day_t:gsub("###TIME###", time):gsub("###UTC###", time);
+	nick = html_escape(nick:match("/(.+)$"));
+
+	if nick and body then
+		body = html_escape(body);
+		if body:find("^/me") then body = body:gsub("^/me ", ""); day_m = nil; end
+		ret = (day_m or day_mm):gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###MSG###", body);
+	elseif nick and title then
+		title = html_escape(title);
+		ret = day_title:gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###TITLE###", title);
+	end
+	return ret;
+end
+	
+ret = "";
+
+html_day = html.day;
+day_t, day_m, day_mm, day_title = html_day.time, html_day.message, html_day.messageMe, html_day.titleChange;
+data = datamanager.load(node, host, "muc_log" .. "/" .. date);
+if data then
+	for i, entry in ipairs(data) do
+		local tmp = parse_message(entry.body, entry.subject, entry.time, entry.from, day_t, day_m, day_mm, day_title);
+		if tmp then ret = ret .. tmp; end
+	end
+end
+	
+os.exit(print(ret));
