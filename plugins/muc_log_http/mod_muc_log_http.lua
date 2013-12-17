@@ -432,7 +432,7 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 			tmp = html_day.body:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
 			tmp = tmp:gsub("###CALENDAR###", calendar);
 			tmp = tmp:gsub("###DATE###", tostring(os_date("%A, %B %d, %Y", os_time(temptime))));
-			tmp = tmp:gsub("###TITLE_STUFF###", html_day.title:gsub("###TITLE###", room_subject));
+			tmp = tmp:gsub("###TITLE_STUFF###", html_day.title:gsub("###TITLE###", room_subject:gsub("%%", "%%%%"));
 			tmp = tmp:gsub("###NEXT_LINK###", next_day or "");
 			tmp = tmp:gsub("###PREVIOUS_LINK###", previous_day or "");
 
