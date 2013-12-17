@@ -415,8 +415,11 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 		temptime.year = tonumber(year);
 		calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, room=node, webpath="../"}) or "";
 		
-		local call_str = module_path.."/generate_log '"..metronome_paths.source.."' "..metronome_paths.data.." "..theme_path.." "..bare_room_jid.." ".._year..month..day;
-		ret = open_pipe(call_str):read("*a");
+		local get_page = open_pipe(
+			module_path.."/generate_log '"..metronome_paths.source.."' "..metronome_paths.data.." "..theme_path.." "..bare_room_jid.." ".._year..month..day;
+		);
+		
+		ret = get_page:read("*a"); get_page:close(); get_page = nil;
 		if ret ~= "" then
 			if next_day then
 				next_day = html_day.dayLink:gsub("###DAY###", next_day):gsub("###TEXT###", "&gt;")
