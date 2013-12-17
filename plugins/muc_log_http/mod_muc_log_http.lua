@@ -245,6 +245,7 @@ local function generate_day_room_content(bare_room_jid)
 	if attributes and room then
 		local already_done_years = {};
 		topic = room._data.subject or "(no subject)";
+		if topic:find("%%") then topic = topic:gsub("%%", "%%") end
 		if topic:len() > 135 then
 			topic = topic:sub(1, topic:find(" ", 120)) .. " ...";
 		end
