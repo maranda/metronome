@@ -403,6 +403,7 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 		local next_day = find_next_day(bare_room_jid, bare_day);
 		local temptime = {day=0, month=0, year=0};
 		local path = data_getpath(node, host, datastore);
+		local subject = room_subject:gsub("%%", "%%%%");
 		path = path:gsub("/[^/]*$", "");
 		local calendar = "";
 		local html_day = html.day;
@@ -432,7 +433,7 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 			tmp = html_day.body:gsub("###DAY_STUFF###", ret):gsub("###JID###", bare_room_jid);
 			tmp = tmp:gsub("###CALENDAR###", calendar);
 			tmp = tmp:gsub("###DATE###", tostring(os_date("%A, %B %d, %Y", os_time(temptime))));
-			tmp = tmp:gsub("###TITLE_STUFF###", html_day.title:gsub("###TITLE###", room_subject:gsub("%%", "%%%%")));
+			tmp = tmp:gsub("###TITLE_STUFF###", html_day.title:gsub("###TITLE###", subject));
 			tmp = tmp:gsub("###NEXT_LINK###", next_day or "");
 			tmp = tmp:gsub("###PREVIOUS_LINK###", previous_day or "");
 
