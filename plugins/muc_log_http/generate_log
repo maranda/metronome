@@ -22,21 +22,6 @@ lfs = require "lfs";
 node, host = require "util.jid".split(muc_jid);
 html = {};
 
-function html_escape(t)
-	if t then
-		t = t:gsub("<", "&lt;");
-		t = t:gsub(">", "&gt;");
-		t = t:gsub("(http://[%a%d@%.:/&%?=%-_#%%~]+)", function(h)
-			h = urlunescape(h)
-			return "<a href='" .. h .. "'>" .. h .. "</a>";
-		end);
-		t = t:gsub("\n", "<br />");
-		t = t:gsub("%%", "%%%%");
-	else
-		t = "";
-	end
-	return t;
-end
 function read_file(filepath)
 	local f,err = io.open(filepath, "r");
 	if not f then return f,err; end
