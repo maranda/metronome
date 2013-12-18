@@ -449,7 +449,8 @@ function handle_request(event)
 	local request = event.request;
 	local room;
 
-	local node, day, more = request.url.path:match("^/"..url_base.."/+([^/]*)/*([^/]*)/*(.*)$");
+	local request_path = request.url.path;
+	local node, day, more = request_path:match("^/"..url_base.."/+([^/]*)/*([^/]*)/*(.*)$");
 	if more ~= "" then
 		response.status_code = 404;
 		return response:send(handle_error(response.status_code, "Unknown URL."));
@@ -474,6 +475,11 @@ function handle_request(event)
 		return response:send(handle_error(response.status_code, "There're no logs for this room."));
 	end
 
+	if not request_path:match(".*/$") then
+		response.status_code = 301;
+		response.headers = { ["Location"] = request_path .. "/" };
+		return response:send();
+	end
 
 	if not node then -- room list for component
 		return response:send(create_doc(generate_room_list())); 
@@ -487,7 +493,7 @@ function handle_request(event)
 				return response:send(handle_error(response.status_code, "No entries for that year."));
 			end
 			response.status_code = 301;
-			response.headers = { ["Location"] = request.url.path:match("^/"..url_base.."/+[^/]*").."/20"..y.."-"..m.."-"..d.."/" };
+			response.headers = { ["Location"] = request_path:match("^/"..url_base.."/+[^/]*").."/20"..y.."-"..m.."-"..d.."/" };
 			return response:send();
 		end
 
