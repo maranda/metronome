@@ -450,6 +450,12 @@ function handle_request(event)
 	local room;
 
 	local request_path = request.url.path;
+	if not request_path:match(".*/$") then
+		response.status_code = 301;
+		response.headers = { ["Location"] = request_path .. "/" };
+		return response:send();
+	end
+	
 	local node, day, more = request_path:match("^/"..url_base.."/+([^/]*)/*([^/]*)/*(.*)$");
 	if more ~= "" then
 		response.status_code = 404;
@@ -473,12 +479,6 @@ function handle_request(event)
 	if room and (room._data.hidden or not room._data.logging) then
 		response.status_code = 404;
 		return response:send(handle_error(response.status_code, "There're no logs for this room."));
-	end
-
-	if not request_path:match(".*/$") then
-		response.status_code = 301;
-		response.headers = { ["Location"] = request_path .. "/" };
-		return response:send();
 	end
 
 	if not node then -- room list for component
