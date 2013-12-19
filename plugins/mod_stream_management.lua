@@ -283,9 +283,7 @@ module:hook("pre-resource-unbind", function(event)
 			session.halted, session.detached = _now, true;
 			add_timer(timeout, function()
 				local current = full_sessions[session.full_jid];
-				if session.destroyed then
-					session.log("debug", "SM timeout was reached but the session is already gone");
-				elseif current and (current.token == token and session.halted == _now) then
+				if not session.destroyed and current and (current.token == token and session.halted == _now) then
 					session.log("debug", "%s session has been halted too long, destroying", session.full_jid);
 					handled_sessions[token] = nil;
 					session.token = nil;
