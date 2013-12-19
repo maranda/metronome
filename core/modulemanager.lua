@@ -26,12 +26,12 @@ local debug_traceback = debug.traceback;
 local unpack, select = unpack, select;
 pcall = function(f, ...)
 	local n = select("#", ...);
-	local params = {...};
+	local params = { ... };
 	return xpcall(function() return f(unpack(params, 1, n)) end, function(e) return tostring(e).."\n"..debug_traceback(); end);
 end
 
-local autoload_modules = {"presence", "message", "iq", "offline", "c2s", "s2s"};
-local component_inheritable_modules = {"tls", "iq", "s2s"};
+local autoload_modules = { "presence", "message", "iq", "offline", "c2s", "s2s" };
+local component_inheritable_modules = { "tls", "iq", "s2s", "stream_management" };
 
 local _G = _G;
 
