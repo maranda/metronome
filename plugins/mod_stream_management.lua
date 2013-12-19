@@ -142,10 +142,8 @@ end);
 
 module:hook("s2s-stream-features", function(event)
 	local session = event.origin;
-	if verify(event.origin) then 
-		event.features:tag("sm", { xmlns = xmlns_sm }):tag("optional"):up():up(); 
-	end
-end);
+	event.features:tag("sm", { xmlns = xmlns_sm }):tag("optional"):up():up(); 
+end, 97);
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function(session, stanza)
 	local session_type = session.type;
