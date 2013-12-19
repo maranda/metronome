@@ -329,7 +329,6 @@ function stream_callbacks.streamopened(session, attr)
 		-- If we are just using the connection for verifying dialback keys, we won't try and auth it
 		if not attr.id then error("stream response did not give us a streamid!!!"); end
 		session.streamid = attr.id;
-		session.stream_attributes = attr;
 
 		if session.secure and not session.cert_chain_status then check_cert_status(session); end
 
