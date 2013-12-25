@@ -20,12 +20,12 @@ local os_difftime, os_time, tostring = os.difftime, os.time, tostring;
 module:add_feature("jabber:iq:last");
 
 module:hook("pre-presence/bare", function(event)
-	local username, host, stanza = event.origin.username, event.origin.host, event.stanza;
+	local origin, stanza = event.origin, event.stanza;
 	if not(stanza.attr.to) and stanza.attr.type == "unavailable" then
 		local t = os_time();
 		local s = stanza:child_with_name("status");
 		s = s and #s.tags == 0 and s[1] or "";
-		dm_store(username, host, "last_activity", { status = s, time = t });
+		dm_store(origin.username, origin.host, "last_activity", { status = s, time = t });
 	end
 end, 10);
 
