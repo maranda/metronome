@@ -216,6 +216,7 @@ function commands.help(session, data)
 	elseif section == "dns" then
 		print [[dns:reload() - Reload system resolvers configuration data]]
 		print [[dns:purge() - Purge the internal dns cache]]
+		print [[dns:set(serverlist) - Sets an arbitrary list of resolvers (argument passed can either be a string or list)]]
 	elseif section == "c2s" then
 		print [[c2s:show(jid) - Show all client sessions with the specified JID (or all if no JID given)]]
 		print [[c2s:show_insecure() - Show all unencrypted client connections]]
@@ -442,6 +443,17 @@ function def_env.dns:purge()
 	dns.purge();
 
 	return true, "Internal dns cache has been purged";
+end
+
+function def_env.dns:set(arg)
+	if type(arg) ~= "string" and type(arg) ~= "table" then
+		return false, "Passed argument needs to either be a string or list"
+	elseif type(arg) == "table" and #arg == 0 then
+		return false, "Passed table is not a valid list"
+	end
+	dns._resolver:setnameservers(arg);
+
+	return true, "DNS resolvers list changed";
 end
 
 def_env.config = {};
