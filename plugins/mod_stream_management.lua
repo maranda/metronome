@@ -172,13 +172,13 @@ module:hook_stanza(xmlns_sm, "enable", function(session, stanza)
 		return true;
 	end
 	
-	session.log("debug", "Attempting to enable Stream Management...");
+	local c2s = session.type == "c2s" and true;
+	session.log("debug", "Attempting to enable %s...", (c2s and "Stream Management") or "Stanza Acknowledgement");
 	session.sm = true;
 	wrap(session);
 	
 	local token;
 	local resume = stanza.attr.resume;
-	local c2s = session.type == "c2s" and true;
 	if (resume == "1" or resume == "true") and c2s then
 		token = uuid();
 		handled_sessions[token], session.token = session, token;
