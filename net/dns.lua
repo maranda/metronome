@@ -532,7 +532,7 @@ function resolver:addnameserver(address)
 end
 
 function resolver:setnameservers(addr)
-	self.server = nil;
+	self:resetobject();
 	if type(addr) == "table" then
 		for i, server in ipairs(addr) do self:addnameserver(server); end
 	elseif type(addr) == "string" then
@@ -561,12 +561,16 @@ function resolver:adddefaultnameservers()
 	end
 end
 
-function resolver:resetnameservers()
-	self:closeall(); -- pre-emptively close all active sockets.
+function resolver:resetobject()
+	self:closeall();
 	self.best_server = 1;
 	self.server = nil;
 	self.socket = nil;
 	self.socketset = nil;
+end
+
+function resolver:resetnameservers()
+	self:resetobject();
 	self:adddefaultnameservers();
 end
 
