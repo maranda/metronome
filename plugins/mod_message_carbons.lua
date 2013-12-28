@@ -18,12 +18,12 @@ local xmlns = "urn:xmpp:carbons:2";
 
 module:add_feature(xmlns);
 
-local received = st.stanza("received", { xmlns = xmlns }):tag("forwarded", { xmlns = "urn:xmpp:forward:0" });
-local sent = st.stanza("sent", { xmlns = xmlns }):tag("forwarded", { xmlns = "urn:xmpp:forward:0" });
+local received = st.stanza("received", { xmlns = xmlns });
+local sent = st.stanza("sent", { xmlns = xmlns });
 
 local function fwd(bare, session, stanza, s)
 	local to = jid_join(session.username, session.host, session.resource);
-	local f = st.clone(s and sent or received):add_child(stanza);
+	local f = st.clone(s and sent or received):tag("forwarded", { xmlns = "urn:xmpp:forward:0" }):add_child(stanza);
 	local message = st.message({ from = bare, to = to }):add_child(f);
 	module:log("debug", "Forwarding carbon copy of message from %s to %s", stanza.attr.from or "self", to);
 	session.send(message);
