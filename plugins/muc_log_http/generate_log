@@ -72,11 +72,13 @@ ret = "";
 html_day = html.day;
 day_t, day_m, day_mm, day_title = html_day.time, html_day.message, html_day.messageMe, html_day.titleChange;
 data = datamanager.load(node, host, "muc_log" .. "/" .. date);
-if data then
+if data and #data <= 4000 then
 	for i, entry in ipairs(data) do
 		local tmp = parse_message(entry.body, entry.subject, entry.time, entry.from, day_t, day_m, day_mm, day_title);
 		if tmp then ret = ret .. tmp; end
 	end
+else
+	ret = "The log for this day is far too large, please contact the Server Administrator to obtain it.<br />";
 end
 	
 os.exit(print(ret));
