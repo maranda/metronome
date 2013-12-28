@@ -36,11 +36,11 @@ local function process_message(origin, stanza, s)
 	
 	if bare_session and stanza.attr.type == "chat" then
 		local private = s and stanza:get_child("private", xmlns) and true;
-		local sender = s and jid_section(stanza.attr.to, "resource") or jid_section(origin.full_jid, "resource");
+		local r = s and jid_section(origin.full_jid, "resource") or jid_section(stanza.attr.to, "resource");
 			
 		if not private then
 			for resource, session in pairs(bare_session.sessions) do 
-				if session.carbons and resource ~= sender then fwd(from_bare or to_bare, session, stanza, s); end
+				if session.carbons and resource ~= r then fwd(from_bare or to_bare, session, stanza, s); end
 			end
 		else -- just strip the tag;
 			local index;
