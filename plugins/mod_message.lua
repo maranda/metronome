@@ -37,7 +37,7 @@ local function process_to_bare(bare, origin, stanza)
 			if recipients then
 				local sent;
 				for i=1,#recipients do
-					sent = recipients[i].send(stanza);
+					sent = recipients[i].send(stanza) or sent;
 				end
 				if sent then
 					return true;
