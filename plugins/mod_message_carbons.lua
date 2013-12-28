@@ -40,7 +40,9 @@ local function process_message(origin, stanza, s)
 			
 		if not private then
 			for resource, session in pairs(bare_session.sessions) do 
-				if session.carbons and resource ~= r then fwd(from_bare or to_bare, session, stanza, s); end
+				if session.carbons and resource ~= r then 
+					fwd(from_bare or to_bare, session, stanza, s);
+				end
 			end
 		else -- just strip the tag;
 			local index;
@@ -57,7 +59,9 @@ end
 module:hook("iq-set/self/"..xmlns..":enable", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	if not origin.full_jid then
-		return origin.send(st.error_reply(stanza, "auth", "not-allowed", "A resource needs to be bound before enabling Message Carbons"));
+		return origin.send(st.error_reply(
+			stanza, "auth", "not-allowed", "A resource needs to be bound before enabling Message Carbons"
+		));
 	elseif origin.carbons then
 		return origin.send(st.error_reply(stanza, "cancel", "forbidden", "Message Carbons are already enabled"));
 	else
@@ -69,7 +73,7 @@ end);
 module:hook("iq-set/self/"..xmlns..":disable", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	if not origin.full_jid then
-		return origin.send(st.error_reply(stanza, "cancel", "forbidden"));
+		return origin.send(st.error_reply(stanza, "cancel", "bad-request"));
 	elseif not origin.carbons then
 		return origin.send(st.error_reply(stanza, "cancel", "forbidden", "Message Carbons are already disabled"));
 	else
