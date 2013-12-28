@@ -56,7 +56,9 @@ end
 
 module:hook("iq-set/self/"..xmlns..":enable", function(event)
 	local origin, stanza = event.origin, event.stanza;
-	if origin.carbons then
+	if not origin.full_jid then
+		return origin.send(st.error_reply(stanza, "auth", "not-allowed", "A resource needs to be bound before enabling Message Carbons"));
+	elseif origin.carbons then
 		return origin.send(st.error_reply(stanza, "cancel", "forbidden", "Message Carbons are already enabled"));
 	else
 		origin.carbons = true;
@@ -66,7 +68,9 @@ end);
 	
 module:hook("iq-set/self/"..xmlns..":disable", function(event)
 	local origin, stanza = event.origin, event.stanza;
-	if not origin.carbons then
+	if not origin.full_jid then
+		return origin.send(st.error_reply(stanza, "cancel", "forbidden"));
+	elseif not origin.carbons then
 		return origin.send(st.error_reply(stanza, "cancel", "forbidden", "Message Carbons are already disabled"));
 	else
 		origin.carbons = nil;
