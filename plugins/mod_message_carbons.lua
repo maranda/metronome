@@ -34,7 +34,7 @@ local function process_message(origin, stanza, s)
 	local from_bare = s and jid_bare(origin.full_jid);
 	local bare_session = bare_sessions[from_bare or to_bare];
 	
-	if bare_session and stanza.attr.type == "chat" then
+	if bare_session and bare_session.has_carbons and stanza.attr.type == "chat" then
 		local private = s and stanza:get_child("private", xmlns) and true;
 		local r = s and jid_section(origin.full_jid, "resource") or jid_section(stanza.attr.to, "resource");
 			
@@ -66,6 +66,7 @@ module:hook("iq-set/self/"..xmlns..":enable", function(event)
 		return origin.send(st.error_reply(stanza, "cancel", "forbidden", "Message Carbons are already enabled"));
 	else
 		origin.carbons = true;
+		bare_sessions[jid_join(origin.username, origin.host)].has_carbons = true;
 		return origin.send(st.reply(stanza));
 	end
 end);
@@ -78,6 +79,13 @@ module:hook("iq-set/self/"..xmlns..":disable", function(event)
 		return origin.send(st.error_reply(stanza, "cancel", "forbidden", "Message Carbons are already disabled"));
 	else
 		origin.carbons = nil;
+		-- has other carbons resources?
+		local has_carbons;
+		for _, session in pairs(bare_sessions[jid_join(origin.username, origin.host)]) do
+			if session.carbons then has_carbons = true; break; end
+		end
+		if not has_carbons then bare_sessions.has_carbons = nil; end
+		
 		return origin.send(st.reply(stanza));
 	end
 end);
@@ -104,6 +112,8 @@ module:hook("pre-message/full", function(event) process_message(event.origin, ev
 
 function module.unload(reload)
 	if not reload then 
-		for jid, session in pairs(full_sessions) do session.carbons = nil; end -- cleanup
+		-- cleanup
+		for _, full_session in pairs(full_sessions) do full_session.carbons = nil; end
+		for _, bare_session in pairs(bare_sessions) do bare_session.has_carbons = nil; end
 	end
 end
