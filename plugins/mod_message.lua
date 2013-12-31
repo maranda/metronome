@@ -35,12 +35,8 @@ local function process_to_bare(bare, origin, stanza)
 		if user then
 			local recipients = user.top_resources;
 			if recipients then
-				local sent;
 				for i=1,#recipients do
-					sent = recipients[i].send(stanza) or sent;
-				end
-				if sent then
-					return true;
+					if recipients[i].send(stanza) then return true; end
 				end
 			end
 		end
