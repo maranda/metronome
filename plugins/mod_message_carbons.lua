@@ -38,13 +38,13 @@ local function process_message(origin, stanza, s)
 		local private = s and stanza:get_child("private", xmlns) and true;
 		local r = s and jid_section(origin.full_jid, "resource") or jid_section(stanza.attr.to, "resource");
 			
-		if not private then
+		if not private or not stanza:get_child("no-copy", "urn:xmpp:hints") then
 			for resource, session in pairs(bare_session.sessions) do 
 				if session.carbons and resource ~= r then 
 					fwd(from_bare or to_bare, session, stanza, s);
 				end
 			end
-		else -- just strip the tag;
+		elseif private then -- just strip the tag;
 			local index;
 			for i, tag in ipairs(stanza) do
 				if tag.name == "private" and tag.attr.xmlns == xmlns then 
