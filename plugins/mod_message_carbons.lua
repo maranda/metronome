@@ -37,11 +37,11 @@ local function process_message(origin, stanza, s)
 	if bare_session and bare_session.has_carbons and stanza.attr.type == "chat" then
 		local private = s and stanza:get_child("private", xmlns) and true;
 		local r = s and jid_section(origin.full_jid, "resource") or jid_section(stanza.attr.to, "resource");
-		local f = jid_bare(stanza.attr.from);
+		local from_muc = origin.joined_mucs[jid_bare(stanza.attr.from)] and true;
 			
-		if not private or not stanza:get_child("no-copy", "urn:xmpp:hints") then
+		if not private and not stanza:get_child("no-copy", "urn:xmpp:hints") and not from_muc then
 			for resource, session in pairs(bare_session.sessions) do 
-				if session.carbons and resource ~= r and not session.joined_mucs[f] then 
+				if session.carbons and resource ~= r then 
 					fwd(from_bare or to_bare, session, stanza, s);
 				end
 			end
