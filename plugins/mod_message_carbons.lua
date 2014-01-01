@@ -117,7 +117,7 @@ module:hook("pre-message/full", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local bare_to = jid_bare(stanza.attr.to);
 	if not origin.joined_mucs[bare_to] then process_message(event.origin, event.stanza, true); end
-e-nd, 1);
+end, 1);
 
 function module.unload(reload)
 	if not reload then 
