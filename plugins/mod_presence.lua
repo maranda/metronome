@@ -10,7 +10,7 @@
 local log = module._log;
 
 local require = require;
-local pairs, ipairs = pairs, ipairs;
+local pairs, ipairs, next = pairs, ipairs, next;
 local t_concat, t_insert = table.concat, table.insert;
 local s_find = string.find;
 local tonumber = tonumber;
@@ -350,10 +350,20 @@ local function outbound_presence_handler(data)
 		local roster = origin.roster;
 		if (roster and check_directed_presence(roster, to_bare)) or not roster then -- directed presence
 			origin.directed = origin.directed or {};
+			origin.joined_mucs = origin.joined_mucs or {};
 			if t then -- removing from directed presence list on sending an error or unavailable
-				origin.directed[to] = nil; -- FIXME does it make more sense to add to_bare rather than to?
+				origin.directed[to] = nil;
+				if origin.joined_mucs[to_bare] then
+					local joined_muc = origin.joined_mucs[to_bare];
+					joined_muc[jid_section(to, "resource")] = nil;
+					if not next(joined_muc) then origin.joined_mucs[to_bare] = nil; end
+				end
 			else
-				origin.directed[to] = true; -- FIXME does it make more sense to add to_bare rather than to?
+				origin.directed[to] = true;
+				if stanza:get_child("x", "http://jabber.org/protocol/muc") then
+					origin.joined_mucs[to_bare] = origin.joined_mucs[to_bare] or {};
+					origin.joined_mucs[to_bare][jid_section(to, "resource")] = true;
+				end
 			end
 		end
 	end -- TODO maybe handle normal presence here, instead of letting it pass to incoming handlers?
