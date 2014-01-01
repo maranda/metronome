@@ -37,9 +37,8 @@ local function process_message(origin, stanza, s)
 	if bare_session and bare_session.has_carbons and stanza.attr.type == "chat" then
 		local private = s and stanza:get_child("private", xmlns) and true;
 		local r = s and jid_section(origin.full_jid, "resource") or jid_section(stanza.attr.to, "resource");
-		local from_muc = origin.joined_mucs[jid_bare(stanza.attr.from)] and true;
 			
-		if not private and not stanza:get_child("no-copy", "urn:xmpp:hints") and not from_muc then
+		if not private and not stanza:get_child("no-copy", "urn:xmpp:hints") then
 			for resource, session in pairs(bare_session.sessions) do 
 				if session.carbons and resource ~= r then 
 					fwd(from_bare or to_bare, session, stanza, s);
@@ -107,9 +106,18 @@ module:hook("message/bare", function(event)
 	end
 end, 1);
 
-module:hook("message/full", function(event) process_message(event.origin, event.stanza); end, 1);
+module:hook("message/full", function(event)
+	local origin, stanza = event.origin, event.stanza;
+	local bare_from = jid_bare(stanza.attr.from);
+	local full_session = full_sessions[stanza.attr.to];
+	if full_session and not full_session.joined_mucs[bare_from] then origin.process_message(origin, stanza); end
+end, 1);
 module:hook("pre-message/bare", function(event) process_message(event.origin, event.stanza, true); end, 1);
-module:hook("pre-message/full", function(event) process_message(event.origin, event.stanza, true); end, 1);
+module:hook("pre-message/full", function(event)
+	local origin, stanza = event.origin, event.stanza;
+	local bare_to = jid_bare(stanza.attr.to);
+	if not origin.joined_mucs[bare_to] then process_message(event.origin, event.stanza, true); end
+e-nd, 1);
 
 function module.unload(reload)
 	if not reload then 
