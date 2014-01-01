@@ -328,14 +328,21 @@ local function process_message(event, outbound)
 	
 	local from, to = (message.attr.from or origin.full_jid), message.attr.to;
 	local bare_from, bare_to = jid_bare(from), jid_bare(to);
-	local bare_session, user;
+	local bare_session, full_session, user;
 	
 	if outbound then
 		bare_session = bare_sessions[bare_from];
+		full_session = full_sessions[from];
 		user = jid_section(from, "node");
 	else
 		bare_session = bare_sessions[bare_to];
+		full_session = full_sessions[to];
 		user = jid_section(to, "node");
+	end
+
+	if full_session and 
+	   (not full_session.joined_mucs or not full_session.joined_mucs[outbound and bare_to or bare_from]) then
+		return; -- don't process muc private messages
 	end
 	
 	local archive = bare_session and bare_session.archiving;
@@ -345,7 +352,7 @@ local function process_message(event, outbound)
 		if not offline_overcap then archive = storage:get(user); end
 	end
 
-	if archive and add_to_store(archive, user, (outbound and bare_to) or bare_from) then
+	if archive and add_to_store(archive, user, outbound and bare_to or bare_from) then
 		local replace = message:get_child("replace", "urn:xmpp:message-correct:0");
 		local id;
 		if replace then
