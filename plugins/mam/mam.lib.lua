@@ -341,7 +341,7 @@ local function process_message(event, outbound)
 	end
 
 	if full_session and 
-	   (not full_session.joined_mucs or not full_session.joined_mucs[outbound and bare_to or bare_from]) then
+	   (full_session.joined_mucs and full_session.joined_mucs[outbound and bare_to or bare_from]) then
 		return; -- don't process muc private messages
 	end
 	
