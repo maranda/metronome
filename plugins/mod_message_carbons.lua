@@ -110,13 +110,13 @@ module:hook("message/full", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local bare_from = jid_bare(stanza.attr.from);
 	local full_session = full_sessions[stanza.attr.to];
-	if full_session and not full_session.joined_mucs[bare_from] then process_message(origin, stanza); end
+	if full_session and not (full_session.joined_mucs or full_session.joined_mucs[bare_from]) then process_message(origin, stanza); end
 end, 1);
 module:hook("pre-message/bare", function(event) process_message(event.origin, event.stanza, true); end, 1);
 module:hook("pre-message/full", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local bare_to = jid_bare(stanza.attr.to);
-	if not origin.joined_mucs[bare_to] then process_message(event.origin, event.stanza, true); end
+	if not (origin.joined_mucs or origin.joined_mucs[bare_to]) then process_message(event.origin, event.stanza, true); end
 end, 1);
 
 function module.unload(reload)
