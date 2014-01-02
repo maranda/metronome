@@ -270,7 +270,7 @@ local function handle_reset(event, path)
 	if secure and not request.secure then return nil end
 	
 	if request.method == "GET" then
-		return http_get(event, "password", path)
+		return http_file_get(event, "password", path)
 	elseif request.method == "POST" then
 		if path == "" then
 			if not body then return http_error_reply(event, 400, "Bad Request.") end
@@ -310,7 +310,7 @@ local function handle_verify(event, path)
 	if secure and not request.secure then return nil end
 
 	if request.method == "GET" then
-		return http_get(event, "verify", path)
+		return http_file_get(event, "verify", path)
 	elseif request.method == "POST" then
 		if path == "" then
 			if not body then return http_error_reply(event, 400, "Bad Request.") end
