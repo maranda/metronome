@@ -113,7 +113,7 @@ end
 local function r_template(event, type)
 	local data = open_file(files_base..type.."_t.html")
 	if data then
-		data = data:gsub("%%REG%-URL", base_path.."verify/")
+		data = data:gsub("%%REG%-URL", base_path..type:match("^(.*)_"))
 		return data
 	else return http_error_reply(event, 500, "Failed to obtain template.") end
 end
