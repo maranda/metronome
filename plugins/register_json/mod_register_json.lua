@@ -143,40 +143,6 @@ end
 
 -- Handlers
 
-local function handle_req(event)
-	local request = event.request
-	if secure and not request.secure then return nil end
-
-	if request.method ~= "POST" then
-		return http_error_reply(event, 405, "Bad method.", {["Allow"] = "POST"})
-	end
-	
-	local data
-	-- We check that what we have is valid JSON wise else we throw an error...
-	if not pcall(function() data = json_decode(b64_decode(request.body)) end) then
-		module:log("debug", "Data submitted by %s failed to Decode.", user)
-		return http_error_reply(event, 400, "Decoding failed.")
-	end
-	
-	-- Check if user is an admin of said host
-	if data.auth_token ~= auth_token then
-		module:log("warn", "%s tried to retrieve a registration token for %s@%s", request.ip, username, module.host)
-		return http_error_reply(event, 401, "Auth token is invalid! The attempt has been logged.")
-	else
-		data.auth_token = nil;
-	end
-	
-	-- Decode JSON data and check that all bits are there else throw an error
-	if data.reset and data.password and data.ip and data.mail then
-		handle_register(data, event);
-	elseif data.reset and data.ip then
-		handle_password_reset(data, event);
-	else
-		module:log("debug", "%s supplied an insufficent number of elements in the request", user)
-		return http_error_reply(event, 400, "Invalid syntax.")
-	end
-end
-
 local function handle_register(data, event)
 	-- Set up variables
 	local username, password, ip, mail, token = data.username, data.password, data.ip, data.mail, data.auth_token
@@ -261,6 +227,40 @@ local function handle_password_reset(data, event)
 	else
 		module:log("warn", "%s submitted a password reset request for a mail address which has no account association (%s)", ip, mail);
 		return http_error_reply(event, 404, "No account associated with the specified E-Mail address found.")
+	end
+end
+
+local function handle_req(event)
+	local request = event.request
+	if secure and not request.secure then return nil end
+
+	if request.method ~= "POST" then
+		return http_error_reply(event, 405, "Bad method.", {["Allow"] = "POST"})
+	end
+	
+	local data
+	-- We check that what we have is valid JSON wise else we throw an error...
+	if not pcall(function() data = json_decode(b64_decode(request.body)) end) then
+		module:log("debug", "Data submitted by %s failed to Decode.", user)
+		return http_error_reply(event, 400, "Decoding failed.")
+	end
+	
+	-- Check if user is an admin of said host
+	if data.auth_token ~= auth_token then
+		module:log("warn", "%s tried to retrieve a registration token for %s@%s", request.ip, username, module.host)
+		return http_error_reply(event, 401, "Auth token is invalid! The attempt has been logged.")
+	else
+		data.auth_token = nil;
+	end
+	
+	-- Decode JSON data and check that all bits are there else throw an error
+	if data.reset and data.password and data.ip and data.mail then
+		handle_register(data, event);
+	elseif data.reset and data.ip then
+		handle_password_reset(data, event);
+	else
+		module:log("debug", "%s supplied an insufficent number of elements in the request", user)
+		return http_error_reply(event, 400, "Invalid syntax.")
 	end
 end
 
