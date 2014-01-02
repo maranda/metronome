@@ -255,9 +255,9 @@ local function handle_req(event)
 	
 	-- Decode JSON data and check that all bits are there else throw an error
 	if data.username and data.password and data.ip and data.mail then
-		handle_register(data, event);
+		return handle_register(data, event);
 	elseif data.reset and data.ip then
-		handle_password_reset(data, event);
+		return handle_password_reset(data, event);
 	else
 		module:log("debug", "A request with an insufficent number of elements was sent")
 		return http_error_reply(event, 400, "Invalid syntax.")
