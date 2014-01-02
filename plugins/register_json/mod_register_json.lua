@@ -280,7 +280,7 @@ local function handle_reset(event, path)
 				if password ~= verify then 
 					return r_template(event, "reset_nomatch")
 				else
-					local node = reset_tokens[uuid].node
+					local node = reset_tokens[uuid] and reset_tokens[uuid].node
 					if node then
 						local ok, error = usermanager.set_password(node, password, module.host)
 						if ok then
