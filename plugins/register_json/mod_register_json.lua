@@ -270,7 +270,7 @@ local function handle_reset(event, path)
 	if secure and not request.secure then return nil end
 	
 	if request.method == "GET" then
-		return http_file_get(event, "password", path)
+		return http_file_get(event, "reset", path)
 	elseif request.method == "POST" then
 		if path == "" then
 			if not body then return http_error_reply(event, 400, "Bad Request.") end
@@ -278,7 +278,7 @@ local function handle_reset(event, path)
 			if uuid and password and verify then
 				uuid, password, verify = urldecode(uuid), urldecode(password), urldecode(verify)
 				if password ~= verify then 
-					return r_template(event, "password_nomatch")
+					return r_template(event, "reset_nomatch")
 				else
 					local node = reset_tokens[uuid].node
 					if node then
@@ -286,13 +286,13 @@ local function handle_reset(event, path)
 						if ok then
 							module:log("info", "User %s successfully changed the account password", node)
 							reset_tokens[uuid] = nil
-							return r_template(event, "password_success")
+							return r_template(event, "reset_success")
 						else
 							module:log("error", "Password change for %s failed: %s", node, error)
 							return http_error_reply(event, 500, "Encountered an error while changing the password: "..error)
 						end
 					else
-						return r_template(event, "password_fail")
+						return r_template(event, "reset_fail")
 					end
 				end
 			else
