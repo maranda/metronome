@@ -34,37 +34,45 @@ local fn_patterns = module:get_option_table("reg_servlet_filtered_nodes", {})
 
 local files_base = module.path:gsub("/[^/]+$","") .. "/template/"
 
+local valid_files = {
+	["css/style.css"] = files_base.."css/style.css",
+	["images/tile.png"] = files_base.."images/tile.png",
+	["images/header.png"] = files_base.."images/header.png"
+}
 local recent_ips = {}
 local pending = {}
 local pending_node = {}
+local reset_tokens = {}
 
 -- Setup hashes data structure
 
 hashes = { _index = {} }
 local hashes_mt = {} ; hashes_mt.__index = hashes_mt
+
 function hashes_mt:add(node, mail)
 	local _hash = b64_encode(sha1(mail))
-	if not self:exists(_hash) then
+	if not self[_hash] then
 		self[_hash] = node ; self._index[node] = _hash ; self:save()
 		return true
 	else
 		return false
 	end
 end
-function hashes_mt:exists(hash)
-	if hashes[hash] then return true else return false end
-end
+
 function hashes_mt:remove(node)
 	local _hash = self._index[node]
 	if _hash then
 		self[_hash] = nil ; self._index[node] = nil ; self:save()
 	end
 end
+
 function hashes_mt:save()
 	if not datamanager.store("register_json", module.host, "hashes", hashes) then
 		module:log("error", "Failed to save the mail addresses' hashes store.")
 	end
 end
+
+-- Utility functions
 
 local function check_mail(address)
 	for _, pattern in ipairs(fm_patterns) do 
@@ -80,119 +88,22 @@ local function check_node(node)
 	return true
 end
 
--- Begin
-
-local function handle(code, message) return http_event("http-error", { code = code, message = message }) end
-local function http_response(event, code, message, headers)
-	local response = event.response
-
-	if headers then
-		for header, data in pairs(headers) do response.headers[header] = data end
-	end
-
-	response.status_code = code
-	response:send(handle(code, message))
-end
-
-local function handle_req(event)
-	local request = event.request
-	if secure and not request.secure then return nil end
-
-	if request.method ~= "POST" then
-		return http_response(event, 405, "Bad method.", {["Allow"] = "POST"})
-	end
-	
-	local req_body
-	-- We check that what we have is valid JSON wise else we throw an error...
-	if not pcall(function() req_body = json_decode(b64_decode(request.body)) end) then
-		module:log("debug", "Data submitted for user registration by %s failed to Decode.", user)
-		return http_response(event, 400, "Decoding failed.")
-	else
-		-- Decode JSON data and check that all bits are there else throw an error
-		if req_body["username"] == nil or req_body["password"] == nil or req_body["ip"] == nil or req_body["mail"] == nil or
-		   req_body["auth_token"] == nil then
-			module:log("debug", "%s supplied an insufficent number of elements or wrong elements for the JSON registration", user)
-			return http_response(event, 400, "Invalid syntax.")
+local function to_throttle(ip)
+	if whitelist:contains(ip) then return true end
+	if not recent_ips[ip] then
+		recent_ips[ip] = os_time()
+	else 
+		if os_time() - recent_ips[ip] < throttle_time then
+			recent_ips[ip] = os_time()
+			return true;
 		end
-		-- Set up variables
-		local username, password, ip, mail, token = req_body.username, req_body.password, req_body.ip, req_body.mail, req_body.auth_token
-
-		-- Check if user is an admin of said host
-		if token ~= auth_token then
-			module:log("warn", "%s tried to retrieve a registration token for %s@%s", request.ip, username, module.host)
-			return http_response(event, 401, "Auth token is invalid! The attempt has been logged.")
-		else	
-			-- Blacklist can be checked here.
-			if blacklist:contains(ip) then 
-				module:log("warn", "Attempt of reg. submission to the JSON servlet from blacklisted address: %s", ip)
-				return http_response(event, 403, "The specified address is blacklisted, sorry.") 
-			end
-
-			if not check_mail(mail) then
-				module:log("warn", "%s attempted to use a mail address (%s) matching one of the forbidden patterns.", ip, mail)
-				return http_response(event, 403, "Requesting to register using this E-Mail address is forbidden, sorry.")
-			end
-
-			-- We first check if the supplied username for registration is already there.
-			-- And nodeprep the username
-			username = nodeprep(username)
-			if not username then
-				module:log("debug", "A username containing invalid characters was supplied: %s", req_body["username"])
-				return http_response(event, 406, "Supplied username contains invalid characters, see RFC 6122.")
-			else
-				if not check_node(username) then
-					module:log("warn", "%s attempted to use an username (%s) matching one of the forbidden patterns.", ip, username)
-					return http_response(event, 403, "Requesting to register using this Username is forbidden, sorry.")
-				end
-				
-				if pending_node[username] then
-					module:log("warn", "%s attempted to submit a registration request but another request for that user (%s) is pending", ip, username)
-					return http_response(event, 401, "Another user registration by that username is pending.")
-				end
-
-				if not usermanager.user_exists(username, module.host) then
-					-- if username fails to register successive requests shouldn't be throttled until one is successful.
-					if throttle_time and not whitelist:contains(ip) then
-						if not recent_ips[ip] then
-							recent_ips[ip] = os_time()
-						else 
-							if os_time() - recent_ips[ip] < throttle_time then
-								recent_ips[ip] = os_time()
-								module:log("warn", "JSON Registration request from %s has been throttled.", req_body["ip"])
-								return http_response(event, 503, "Request throttled, wait a bit and try again.")
-							end
-							recent_ips[ip] = os_time()
-						end
-					end
-
-					local uuid = uuid_gen()
-					if not hashes:add(username, mail) then
-						module:log("warn", "%s (%s) attempted to register to the server with an E-Mail address we already possess the hash of.", username, ip)
-						return http_response(event, 409, "The E-Mail Address provided matches the hash associated to an existing account.")
-					end
-					pending[uuid] = { node = username, password = password, ip = ip }
-					pending_node[username] = uuid
-
-					timer.add_task(300, function()
-						if pending[uuid] then
-							pending[uuid] = nil
-							pending_node[username] = nil
-							hashes:remove(username)
-						end
-					end)
-					module:log("info", "%s (%s) submitted a registration request and is awaiting final verification", username, uuid)
-					return uuid
-				else
-					module:log("debug", "%s registration data submission failed (user already exists)", username)
-					return http_response(event, 409, "User already exists.")
-				end
-			end
-		end
+		recent_ips[ip] = os_time()
 	end
+	return false;
 end
 
 local function open_file(file)
-	local f, err = open(file, "rb");
+	local f, err = open(file, "rb")
 	if not f then return nil end
 
 	local data = f:read("*a") ; f:close()
@@ -204,7 +115,193 @@ local function r_template(event, type)
 	if data then
 		data = data:gsub("%%REG%-URL", base_path.."verify/")
 		return data
-	else return http_response(event, 500, "Failed to obtain template.") end
+	else return http_error_reply(event, 500, "Failed to obtain template.") end
+end
+
+local function http_file_get(event, type, path)
+	if path == "" then
+		return r_template(event, type.."_form")
+	end		
+
+	if valid_files[path] then
+		local data = open_file(valid_files[path])
+		if data then return data
+		else return http_error_reply(event, 404, "Not found.") end
+	end
+end
+
+local function http_error_reply(event, code, message, headers)
+	local response = event.response
+
+	if headers then
+		for header, data in pairs(headers) do response.headers[header] = data end
+	end
+
+	response.status_code = code
+	response:send(http_event("http-error", { code = code, message = message }))
+end
+
+-- Handlers
+
+local function handle_req(event)
+	local request = event.request
+	if secure and not request.secure then return nil end
+
+	if request.method ~= "POST" then
+		return http_error_reply(event, 405, "Bad method.", {["Allow"] = "POST"})
+	end
+	
+	local data
+	-- We check that what we have is valid JSON wise else we throw an error...
+	if not pcall(function() data = json_decode(b64_decode(request.body)) end) then
+		module:log("debug", "Data submitted by %s failed to Decode.", user)
+		return http_error_reply(event, 400, "Decoding failed.")
+	end
+	
+	-- Check if user is an admin of said host
+	if data.auth_token ~= auth_token then
+		module:log("warn", "%s tried to retrieve a registration token for %s@%s", request.ip, username, module.host)
+		return http_error_reply(event, 401, "Auth token is invalid! The attempt has been logged.")
+	else
+		data.auth_token = nil;
+	end
+	
+	-- Decode JSON data and check that all bits are there else throw an error
+	if data.reset and data.password and data.ip and data.mail then
+		handle_register(data, event);
+	elseif data.reset and data.ip then
+		handle_password_reset(data, event);
+	else
+		module:log("debug", "%s supplied an insufficent number of elements in the request", user)
+		return http_error_reply(event, 400, "Invalid syntax.")
+	end
+end
+
+local function handle_register(data, event)
+	-- Set up variables
+	local username, password, ip, mail, token = data.username, data.password, data.ip, data.mail, data.auth_token
+
+	-- Blacklist can be checked here.
+	if blacklist:contains(ip) then 
+		module:log("warn", "Attempt of reg. submission to the JSON servlet from blacklisted address: %s", ip)
+		return http_error_reply(event, 403, "The specified address is blacklisted, sorry.") 
+	end
+
+	if not check_mail(mail) then
+		module:log("warn", "%s attempted to use a mail address (%s) matching one of the forbidden patterns.", ip, mail)
+		return http_error_reply(event, 403, "Requesting to register using this E-Mail address is forbidden, sorry.")
+	end
+
+	-- We first check if the supplied username for registration is already there.
+	-- And nodeprep the username
+	username = nodeprep(username)
+	if not username then
+		module:log("debug", "A username containing invalid characters was supplied: %s", data.username)
+		return http_error_reply(event, 406, "Supplied username contains invalid characters, see RFC 6122.")
+	else
+		if not check_node(username) then
+			module:log("warn", "%s attempted to use an username (%s) matching one of the forbidden patterns.", ip, username)
+			return http_error_reply(event, 403, "Requesting to register using this Username is forbidden, sorry.")
+		end
+			
+		if pending_node[username] then
+			module:log("warn", "%s attempted to submit a registration request but another request for that user (%s) is pending", ip, username)
+			return http_error_reply(event, 401, "Another user registration by that username is pending.")
+		end
+
+		if not usermanager.user_exists(username, module.host) then
+			-- if username fails to register successive requests shouldn't be throttled until one is successful.
+			if throttle_time and to_throttle(ip) then
+				module:log("warn", "JSON Registration request from %s has been throttled.", ip)
+				return http_error_reply(event, 503, "Request throttled, wait a bit and try again.")
+			end
+				local uuid = uuid_gen()
+			if not hashes:add(username, mail) then
+				module:log("warn", "%s (%s) attempted to register to the server with an E-Mail address we already possess the hash of.", username, ip)
+				return http_error_reply(event, 409, "The E-Mail Address provided matches the hash associated to an existing account.")
+			end
+			pending[uuid] = { node = username, password = password, ip = ip }
+			pending_node[username] = uuid
+
+			timer.add_task(300, function()
+				if pending[uuid] then
+					pending[uuid] = nil
+					pending_node[username] = nil
+					hashes:remove(username)
+				end
+			end)
+			module:log("info", "%s (%s) submitted a registration request and is awaiting final verification", username, uuid)
+			return uuid
+		else
+			module:log("debug", "%s registration data submission failed (user already exists)", username)
+			return http_error_reply(event, 409, "User already exists.")
+		end
+	end
+end
+
+local function handle_password_reset(data, event)
+	local mail, ip = data.reset, data.ip
+
+	if throttle_time and to_throttle(ip) then
+		module:log("warn", "JSON Password Reset request from %s has been throttled.", ip)
+		return http_error_reply(event, 503, "Request throttled, wait a bit and try again.")
+	end
+	
+	local node = hashes[b64_encode(sha1(mail))]
+	if node then
+		local uuid = uuid_gen()
+		reset_tokens[uuid] = { node = node }
+	
+		timer.add_task(300, function()
+			reset_tokens[uuid] = nil
+		end
+		
+		module:log("info", "%s submitted a password reset request, waiting for the change", node);
+		return uuid
+	else
+		module:log("warn", "%s submitted a password reset request for a mail address which has no account association (%s)", ip, mail);
+		return http_error_reply(event, 404, "No account associated with the specified E-Mail address found.")
+	end
+end
+
+local function handle_reset(event, path)
+	local request = event.request
+	local body = request.body
+	if secure and not request.secure then return nil end
+	
+	if request.method == "GET" then
+		return http_get(event, "password", path)
+	elseif request.method == "POST" then
+		if path == "" then
+			if not body then return http_error_reply(event, 400, "Bad Request.") end
+			local uuid, password, verify = body:match("^uuid=(.*)&password=(.*)&verify=(.*)$")
+			if uuid and password and verify then
+				uuid, password, verify = urldecode(uuid), urldecode(password), urldecode(verify)
+				if password ~= verify then 
+					return r_template(event, "password_nomatch")
+				else
+					local node = reset_tokens[uuid].node
+					if node then
+						local ok, error = usermanager.set_password(node, password, module.host)
+						if ok then
+							module:log("info", "User %s successfully changed the account password", node)
+							reset_tokens[uuid] = nil
+							return r_template(event, "password_success")
+						else
+							module:log("error", "Password change for %s failed: %s", node, error)
+							return http_error_reply(event, 500, "Encountered an error while changing the password: "..error)
+						end
+					else
+						return r_template(event, "password_fail")
+					end
+				end
+			else
+				return http_error_reply(event, 400, "Invalid Request.")
+			end
+		end
+	else
+		return http_error_reply(event, 405, "Invalid method.")
+	end
 end
 
 local function handle_verify(event, path)
@@ -212,29 +309,15 @@ local function handle_verify(event, path)
 	local body = request.body
 	if secure and not request.secure then return nil end
 
-	local valid_files = {
-		["css/style.css"] = files_base.."css/style.css",
-		["images/tile.png"] = files_base.."images/tile.png",
-		["images/header.png"] = files_base.."images/header.png"
-	}
-
 	if request.method == "GET" then
-		if path == "" then
-			return r_template(event, "form")
-		end		
-
-		if valid_files[path] then
-			local data = open_file(valid_files[path])
-			if data then return data
-			else return http_response(event, 404, "Not found.") end
-		end
+		return http_get(event, "verify", path)
 	elseif request.method == "POST" then
 		if path == "" then
-			if not body then return http_response(event, 400, "Bad Request.") end
+			if not body then return http_error_reply(event, 400, "Bad Request.") end
 			local uuid = urldecode(body):match("^uuid=(.*)$")
 
 			if not pending[uuid] then
-				return r_template(event, "fail")
+				return r_template(event, "verify_fail")
 			else
 				local username, password, ip = 
 				      pending[uuid].node, pending[uuid].password, pending[uuid].ip
@@ -248,15 +331,15 @@ local function handle_verify(event, path)
 					module:log("info", "Account %s@%s is successfully verified and activated", username, module.host)
 					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
 					pending[uuid] = nil ; pending_node[username] = nil
-					return r_template(event, "success")				
+					return r_template(event, "verify_success")				
 				else
 					module:log("error", "User creation failed: "..error)
-					return http_response(event, 500, "Encountered server error while creating the user: "..error)
+					return http_error_reply(event, 500, "Encountered an error while creating the user: "..error)
 				end
 			end
 		end	
 	else
-		return http_response(event, 405, "Invalid method.")
+		return http_error_reply(event, 405, "Invalid method.")
 	end
 end
 
@@ -274,6 +357,8 @@ module:provides("http", {
         route = {
                 ["GET /"] = handle_req,
 		["POST /"] = handle_req,
+                ["GET /reset/*"] = handle_reset,
+		["POST /reset/*"] = handle_reset,
 		["GET /verify/*"] = handle_verify,
 		["POST /verify/*"] = handle_verify
         }
