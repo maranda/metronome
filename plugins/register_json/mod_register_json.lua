@@ -254,7 +254,7 @@ local function handle_password_reset(data, event)
 	
 		timer.add_task(300, function()
 			reset_tokens[uuid] = nil
-		end
+		end)
 		
 		module:log("info", "%s submitted a password reset request, waiting for the change", node);
 		return uuid
