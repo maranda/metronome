@@ -355,13 +355,13 @@ hashes = datamanager.load("register_json", module.host, "hashes") or hashes ; se
 module:provides("http", {
 	default_path = base_path,
         route = {
-                ["GET /"] = handle_req,
+		["GET /"] = handle_req,
 		["POST /"] = handle_req,
-                ["GET /reset/*"] = handle_reset,
+		["GET /reset/*"] = handle_reset,
 		["POST /reset/*"] = handle_reset,
 		["GET /verify/*"] = handle_verify,
 		["POST /verify/*"] = handle_verify
-        }
+	}
 })
 
 module:hook_global("user-deleted", handle_user_deletion, 10);
