@@ -12,6 +12,7 @@ local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
 
 local log = module._log;
 local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
+local require_encryption = module:get_option_boolean("s2s_require_encryption", false);
 
 local st = require "util.stanza";
 local sha256_hash = require "util.hashes".sha256;
@@ -79,6 +80,12 @@ module:hook("stanza/jabber:server:dialback:result", function(event)
 			return true;
 		elseif not from then
 			origin:close("improper-addressing");
+			return true;
+		end
+		
+		if require_encryption and not origin.secure then
+			origin:close({ condition = "policy-violation", text = "An encrypted stream is required before initiating dialback to this host, good bye" })
+			return true;
 		end
 		
 		origin.hosts[from] = { dialback_key = stanza[1] };
@@ -135,7 +142,6 @@ module:hook("stanza/jabber:server:dialback:result", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	
 	if origin.type == "s2sout_unauthed" or origin.type == "s2sout" then
-		
 		local attr = stanza.attr;
 		if not hosts[attr.to] then
 			origin:close("host-unknown");
