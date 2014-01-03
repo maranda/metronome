@@ -190,7 +190,7 @@ module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 	if not origin.external_auth or origin.external_auth == "failed" then
 		local db = origin.stream_declared_ns and origin.stream_declared_ns["db"];
 		local tls = stanza:child_with_ns(xmlns_starttls);
-		if (not require_encryption and db == "jabber:server:dialback") or stanza:get_child("dialback", xmlns_features) then
+		if db == "jabber:server:dialback" or stanza:get_child("dialback", xmlns_features) then
 			local tls_required = tls and tls:get_child("required");
 			if tls_required and not origin.secure then
 				module:log("warn", "Remote server mandates to encrypt streams but TLS is not available for this host,");

@@ -141,7 +141,7 @@ local function session_open_stream(session, from, to)
 	local db = (not s2s_strict_mode and true) or is_module_loaded((direction == "outgoing" and from) or to, "dialback");
 	local attr = {
 		xmlns = "jabber:server", 
-		["xmlns:db"] = (not require_encryption and db and "jabber:server:dialback") or nil,
+		["xmlns:db"] = db and "jabber:server:dialback" or nil,
 		["xmlns:stream"] = xmlns_stream,
 		id = session.streamid,
 		from = from, to = to,
