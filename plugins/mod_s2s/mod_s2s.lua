@@ -36,6 +36,7 @@ local s2sout = module:require("s2sout");
 local connect_timeout = module:get_option_number("s2s_timeout", 90);
 local stream_close_timeout = module:get_option_number("s2s_close_timeout", 5);
 local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
+local require_encryption = module:get_option_boolean("s2s_require_encryption", false);
 local max_inactivity = module:get_option_number("s2s_max_inactivity", 1800);
 local check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
 
@@ -105,7 +106,7 @@ function route_to_existing_session(event)
 	if host then
 		time_and_clean(host, now());
 		-- We have a connection to this host already
-		if host.type == "s2sout_unauthed" and (stanza.name ~= "db:verify" or not host.dialback_key) then
+		if host.type == "s2sout_unauthed" and (stanza.name ~= (require_encryption and "verify" or "db:verify") or not host.dialback_key) then
 			(host.log or log)("debug", "trying to send over unauthed s2sout to "..to_host);
 
 			-- Queue stanza until we are able to send it
@@ -140,13 +141,13 @@ local function session_open_stream(session, from, to)
 	local db = (not s2s_strict_mode and true) or is_module_loaded((direction == "outgoing" and from) or to, "dialback");
 	local attr = {
 		xmlns = "jabber:server", 
-		["xmlns:db"] = db and "jabber:server:dialback" or nil,
+		["xmlns:db"] = (not require_encryption and db and "jabber:server:dialback") or nil,
 		["xmlns:stream"] = xmlns_stream,
 		id = session.streamid,
 		from = from, to = to,
 		version = session.version and (session.version > 0 and "1.0" or nil), 
 	};
-
+	
 	session.sends2s("<?xml version='1.0'?>");
 	session.sends2s(st.stanza("stream:stream", attr):top_tag());
 end
