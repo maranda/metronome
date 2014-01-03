@@ -19,6 +19,7 @@ local sha256_hash = require "util.hashes".sha256;
 local nameprep = require "util.encodings".stringprep.nameprep;
 
 local xmlns_db = "urn:xmpp:features:dialback";
+local xmlns_starttls = 'urn:ietf:params:xml:ns:xmpp-tls';
 local xmlns_stream = "http://etherx.jabber.org/streams";
 
 local dialback_requests = setmetatable({}, { __mode = "v" });
@@ -180,7 +181,16 @@ end, 100);
 module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 	if not origin.external_auth or origin.external_auth == "failed" then
 		local db = origin.stream_declared_ns and origin.stream_declared_ns["db"];
+		local tls = stanza:child_with_ns(xmlns_starttls);
 		if db == "jabber:server:dialback" or stanza:get_child("dialback", xmlns_db) then
+			local tls_required = tls:get_child("required");
+			if tls_required and not origin.secure then
+				module:log("warn", "Remote server mandates to encrypt streams but TLS is not available for this host,");
+				module:log("warn", "please check your configuration and that mod_tls is loaded correctly");
+				origin:close();
+				return true;
+			end
+			
 			module:log("debug", "Initiating dialback...");
 			origin.can_do_dialback = true;
 			initiate_dialback(origin);
