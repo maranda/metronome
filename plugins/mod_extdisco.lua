@@ -5,12 +5,26 @@
 -- information about copyright and licensing.
 
 local st = require "util.stanza";
+local ipairs, pairs = ipairs, pairs;
 
 local services = module:get_option_table("external_services", {});
 
 local xmlns_extdisco = "urn:xmpp:extdisco:1";
 
 module:add_feature(xmlns_extdisco);
+
+local function render(host, type, info, reply)
+	if not type or info.type == type then
+		reply:tag("service", {
+			host = host;
+			port = info.port;
+			transport = info.transport;
+			type = info.type;
+			username = info.username;
+			password = info.password;
+		}):up();
+	end
+end
 
 module:hook_global("config-reloaded", function() 
 	services = module:get_option_table("external_services", {}); 
@@ -24,15 +38,12 @@ module:hook("iq-get/host/"..xmlns_extdisco..":services", function (event)
 	reply:tag("services", { xmlns = xmlns_extdisco });
 
 	for host, service_info in pairs(services) do
-		if not(service_type) or service_info.type == service_type then
-			reply:tag("service", {
-				host = host;
-				port = service_info.port;
-				transport = service_info.transport;
-				type = service_info.type;
-				username = service_info.username;
-				password = service_info.password;
-			}):up();
+		if #service_info > 0 then
+			for _host, _info in ipairs(service_info) do 
+				render(_host, service_type, _info, reply); 
+			end
+		else
+			render(host, service_type, service_info, reply);
 		end
 	end
 
