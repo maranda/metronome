@@ -348,6 +348,7 @@ function stream_callbacks.streamopened(session, attr)
 		if session.version < 1.0 then
 			if require_encryption then
 				-- pre-1.0 servers won't support tls perhaps they should be excluded
+				session.forced_close = true;
 				session:close({ condition = "unsupported-version", text = "Unable to connect to a pre-1.0 server if stream encryption is required" });
 				return;
 			end
@@ -412,7 +413,7 @@ local default_stream_attr = { ["xmlns:stream"] = xmlns_stream, xmlns = stream_ca
 local function session_close(session, reason, remote_reason)
 	local log = session.log or log;
 	if session.conn then
-		if session.notopen then
+		if session.notopen and not session.forced_close then
 			session.sends2s("<?xml version='1.0'?>");
 			session.sends2s(st.stanza("stream:stream", default_stream_attr):top_tag());
 		end
