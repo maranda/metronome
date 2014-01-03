@@ -70,7 +70,7 @@ function new_sax_handlers(session, stream_callbacks)
 		else
 			-- Drop this callback after session is initialized
 			xml_handlers.StartNamespaceDecl = false;
-			if not next(session.stream_declared_ns) then
+			if session.stream_declared_ns and not next(session.stream_declared_ns) then
 				session.stream_declared_ns = nil;
 			end
 		end
