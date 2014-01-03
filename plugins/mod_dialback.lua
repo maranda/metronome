@@ -45,6 +45,11 @@ module:hook("stanza/jabber:server:dialback:verify", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	
 	if origin.type == "s2sin_unauthed" or origin.type == "s2sin" then
+		if require_encryption and not origin.secure then
+			origin:close({ condition = "policy-violation", text = "An encrypted stream is required before requesting to verify dialback keys" })
+			return true;
+		end
+	
 		origin.log("debug", "verifying that dialback key is ours...");
 		local attr = stanza.attr;
 		if attr.type then
