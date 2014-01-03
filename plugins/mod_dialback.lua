@@ -19,7 +19,6 @@ local sha256_hash = require "util.hashes".sha256;
 local nameprep = require "util.encodings".stringprep.nameprep;
 
 local xmlns_db = "jabber:server:dialback";
-local xmlns_features = "urn:xmpp:features:dialback";
 local xmlns_starttls = 'urn:ietf:params:xml:ns:xmpp-tls';
 local xmlns_stream = "http://etherx.jabber.org/streams";
 
@@ -35,9 +34,7 @@ end
 
 function initiate_dialback(session)
 	session.dialback_key = generate_dialback(session.streamid, session.to_host, session.from_host);
-	session.sends2s(st.stanza(require_encryption and "result" or "db:result", 
-		{ xmlns = require_encryption and xmlns_db, from = session.from_host, to = session.to_host }):text(session.dialback_key)
-	);
+	session.sends2s(st.stanza("db:result", { from = session.from_host, to = session.to_host }):text(session.dialback_key));
 	session.log("info", "sent dialback key on outgoing s2s stream");
 end
 
@@ -65,15 +62,13 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 		--if attr.from ~= origin.to_host then error("invalid-from"); end
 		local type;
 		if verify_dialback(attr.id, attr.from, attr.to, stanza[1]) then
-			type = "valid"
+			type = "valid";
 		else
-			type = "invalid"
+			type = "invalid";
 			origin.log("warn", "Asked to verify a dialback key that was incorrect. An imposter is claiming to be %s?", attr.to);
 		end
 		origin.log("debug", "verified dialback key... it is %s", type);
-		origin.sends2s(st.stanza(require_encryption and "verify" or "db:verify", 
-			{ xmlns = require_encryption and xmlns_db, from = attr.to, to = attr.from, id = attr.id, type = type }):text(stanza[1])
-		);
+		origin.sends2s(st.stanza("db:verify", { from = attr.to, to = attr.from, id = attr.id, type = type }):text(stanza[1]));
 		return true;
 	end
 end);
@@ -115,9 +110,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		origin.log("debug", "asking %s if key %s belongs to them", from, stanza[1]);
 		module:fire_event("route/remote", {
 			from_host = to, to_host = from;
-			stanza = st.stanza(require_encryption and "verify" or "db:verify", 
-				{ xmlns = require_encryption and xmlns_db, from = to, to = from, id = origin.streamid }):text(stanza[1]
-			);
+			stanza = st.stanza("db:verify", { from = to, to = from, id = origin.streamid }):text(stanza[1]);
 		});
 		return true;
 	end
@@ -142,9 +135,8 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 				log("warn", "Incoming s2s session %s was closed in the meantime, so we can't notify it of the db result", tostring(dialback_verifying):match("%w+$"));
 			else
 				dialback_verifying.sends2s(
-						st.stanza(require_encryption and "result" or "db:result", 
-							{ xmlns = require_encryption and xmlns_db, from = attr.to, to = attr.from, id = attr.id, type = valid })
-								:text(dialback_verifying.hosts[attr.from].dialback_key));
+					st.stanza("db:result", { from = attr.to, to = attr.from, id = attr.id, type = valid }):text(dialback_verifying.hosts[attr.from].dialback_key)
+				);
 			end
 			dialback_requests[attr.from.."/"..(attr.id or "")] = nil;
 		end
@@ -190,7 +182,7 @@ module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 	if not origin.external_auth or origin.external_auth == "failed" then
 		local db = origin.stream_declared_ns and origin.stream_declared_ns["db"];
 		local tls = stanza:child_with_ns(xmlns_starttls);
-		if db == "jabber:server:dialback" or stanza:get_child("dialback", xmlns_features) then
+		if db == xmlns_db or stanza:get_child("dialback", "urn:xmpp:features:dialback") then
 			local tls_required = tls and tls:get_child("required");
 			if tls_required and not origin.secure then
 				module:log("warn", "Remote server mandates to encrypt streams but TLS is not available for this host,");
@@ -213,12 +205,6 @@ module:hook("s2s-authenticate-legacy", function (event)
 	initiate_dialback(event.origin);
 	return true;
 end, 100);
-
-module:hook("s2s-stream-features", function (data)
-	if not require_encryption or (require_encryption and data.origin.secure) then
-		data.features:tag("dialback", { xmlns = "urn:xmpp:features:dialback" }):up();
-	end
-end, 98);
 
 function module.unload(reload)
 	if not reload and not s2s_strict_mode then
