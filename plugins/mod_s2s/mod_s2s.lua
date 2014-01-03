@@ -325,12 +325,9 @@ function stream_callbacks.streamopened(session, attr)
 			
 			log("debug", "Sending stream features: %s", tostring(features));
 			send(features);
-		else
-			if require_encryption then
-				session.forced_close = true;
-				session:close({ condition = "unsupported-version", text = "To connect to this server version xmpp streams of version 1.0 or above are required" });
-				return;
-			end
+		elseif session.version < 1.0 and require_encryption then
+			session:close({ condition = "unsupported-version", text = "To connect to this server version xmpp streams of version 1.0 or above are required" });
+			return;
 		end
 	elseif session.direction == "outgoing" then
 		-- If we are just using the connection for verifying dialback keys, we won't try and auth it
@@ -354,7 +351,6 @@ function stream_callbacks.streamopened(session, attr)
 		if session.version < 1.0 then
 			if require_encryption then
 				-- pre-1.0 servers won't support tls perhaps they should be excluded
-				session.forced_close = true;
 				session:close({ condition = "unsupported-version", text = "Unable to connect to a pre-1.0 server if stream encryption is required" });
 				return;
 			end
@@ -419,7 +415,7 @@ local default_stream_attr = { ["xmlns:stream"] = xmlns_stream, xmlns = stream_ca
 local function session_close(session, reason, remote_reason)
 	local log = session.log or log;
 	if session.conn then
-		if session.notopen and not session.forced_close then
+		if session.notopen then
 			session.sends2s("<?xml version='1.0'?>");
 			session.sends2s(st.stanza("stream:stream", default_stream_attr):top_tag());
 		end
