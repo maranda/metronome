@@ -325,6 +325,12 @@ function stream_callbacks.streamopened(session, attr)
 			
 			log("debug", "Sending stream features: %s", tostring(features));
 			send(features);
+		else
+			if require_encryption then
+				session.forced_close = true;
+				session:close({ condition = "unsupported-version", text = "To connect to this server version xmpp streams of version 1.0 or above are required" });
+				return;
+			end
 		end
 	elseif session.direction == "outgoing" then
 		-- If we are just using the connection for verifying dialback keys, we won't try and auth it
