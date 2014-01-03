@@ -346,7 +346,13 @@ function stream_callbacks.streamopened(session, attr)
 	
 		-- If server is pre-1.0, don't wait for features, just do dialback
 		if session.version < 1.0 then
-			if not session.legacy_dialback then -- FIXME: This could not be correct...
+			if require_encryption then
+				-- pre-1.0 servers won't support tls perhaps they should be excluded
+				session:close({ condition = "unsupported-version", text = "Unable to connect to a pre-1.0 server if stream encryption is required" });
+				return;
+			end
+		
+			if not session.legacy_dialback then
 				hosts[session.from_host].events.fire_event("s2s-authenticate-legacy", { origin = session });
 			else
 				s2s_mark_connected(session);
