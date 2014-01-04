@@ -45,7 +45,7 @@ end
 function make_authenticated(session, host)
 	if require_encryption and not session.secure then
 		local t = session.direction == "outgoing" and "offered" or "used";
-		session:close("policy-violation", "authentication failure");
+		session:close({ condition = "policy-violation", text = "TLS encryption is mandatory but wasn't "..t }, "authentication failure");
 		return false;
 	end
 	return s2s_make_authenticated(session, host);
