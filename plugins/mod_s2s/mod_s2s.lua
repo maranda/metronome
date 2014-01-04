@@ -326,7 +326,10 @@ function stream_callbacks.streamopened(session, attr)
 			log("debug", "Sending stream features: %s", tostring(features));
 			send(features);
 		elseif session.version < 1.0 and require_encryption then
-			session:close({ condition = "unsupported-version", text = "To connect to this server xmpp streams of version 1.0 or above are required" });
+			session:close(
+				{ condition = "unsupported-version", text = "To connect to this server xmpp streams of version 1 or above are required" }, 
+				"error communicating with the remote server"
+			);
 			return;
 		end
 	elseif session.direction == "outgoing" then
@@ -351,7 +354,7 @@ function stream_callbacks.streamopened(session, attr)
 		if session.version < 1.0 then
 			if require_encryption then
 				-- pre-1.0 servers won't support tls perhaps they should be excluded
-				session:close({ condition = "unsupported-version", text = "Unable to connect to a pre-1.0 server if stream encryption is required" });
+				session:close("unsupported-version", "error communicating with the remote server");
 				return;
 			end
 		
