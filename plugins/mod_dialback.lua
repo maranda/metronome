@@ -46,9 +46,9 @@ function make_authenticated(session, host)
 	if require_encryption and not session.secure then
 		local t = session.direction == "outgoing" and "offered" or "used";
 		session:close({ condition = "policy-violation", text = "TLS encryption is mandatory but wasn't "..t });
-		return;
+		return false;
 	end
-	s2s_make_authenticated(session, host);
+	return s2s_make_authenticated(session, host);
 end
 
 module:hook("stanza/"..xmlns_db..":verify", function(event)
@@ -122,22 +122,23 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 		local attr = stanza.attr;
 		local dialback_verifying = dialback_requests[attr.from.."/"..(attr.id or "")];
 		if dialback_verifying and attr.from == origin.to_host then
-			local valid;
+			local valid, authed;
 			if attr.type == "valid" then
-				make_authenticated(dialback_verifying, attr.from);
+				authed = make_authenticated(dialback_verifying, attr.from);
 				valid = "valid";
 			else
 				log("warn", "authoritative server for %s denied the key", attr.from or "(unknown)");
 				valid = "invalid";
 			end
-			if dialback_verifying.destroyed then
+			if authed and dialback_verifying.destroyed then
 				log("warn", "Incoming s2s session %s was closed in the meantime, so we can't notify it of the db result", tostring(dialback_verifying):match("%w+$"));
-			else
+			elseif authed then
 				dialback_verifying.sends2s(
 					st.stanza("db:result", { from = attr.to, to = attr.from, id = attr.id, type = valid }):text(dialback_verifying.hosts[attr.from].dialback_key)
 				);
 			end
 			dialback_requests[attr.from.."/"..(attr.id or "")] = nil;
+			if not authed then origin:close("not-authorized", "authentication failed"); end -- we close the outgoing stream
 		end
 		return true;
 	end
@@ -159,7 +160,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		if stanza.attr.type == "valid" then
 			make_authenticated(origin, attr.from);
 		else
-			origin:close("not-authorized", "dialback authentication failed");
+			origin:close("not-authorized", "authentication failed");
 		end
 		return true;
 	end
