@@ -8,8 +8,8 @@
 			notes:
 			-- when using luaevent, never register 2 or more EV_READ at one socket, same for EV_WRITE
 			-- you cant even register a new EV_READ/EV_WRITE callback inside another one
-			-- to do some of the above, use timeout events or something what will called from outside
-			-- dont let garbagecollect eventcallbacks, as long they are running
+			-- to do some of the above, use timeout events or something that will be called from outside
+			-- dont let eventcallbacks to be garbage collected, as long they are running
 			-- when using luasec, there are 4 cases of timeout errors: wantread or wantwrite during reading or writing
 
 --]]
@@ -308,7 +308,7 @@ do
 		local total = len + self.writebufferlen
 		if total > cfg.MAX_SEND_LENGTH then  -- check buffer length
 			local err = "send buffer exceeded"
-			debug( "error:", err )  -- to much, check your app
+			debug( "error:", err )  -- too much, check your app
 			return nil, err
 		end
 		t_insert(self.writebuffer, data) -- new buffer
