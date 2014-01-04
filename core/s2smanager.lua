@@ -42,16 +42,6 @@ function new_outgoing(from_host, to_host, connect)
 end
 
 function make_authenticated(session, host)
-	if not session.secure then
-		local local_host = session.direction == "incoming" and session.to_host or session.from_host;
-		if config.get(local_host, "s2s_require_encryption") then
-			session:close({
-				condition = "policy-violation",
-				text = "Encrypted server-to-server communication is required but was not "
-				       ..((session.direction == "outgoing" and "offered") or "used")
-			});
-		end
-	end
 	if session.type == "s2sout_unauthed" then
 		session.type = "s2sout";
 	elseif session.type == "s2sin_unauthed" then
