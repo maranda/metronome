@@ -42,15 +42,19 @@ function verify_dialback(id, to, from, key)
 	return key == generate_dialback(id, to, from);
 end
 
+function make_authenticated(session, host)
+	if require_encryption and not session.secure then
+		local t = session.direction == "outgoing" and "offered" or "used";
+		session:close({ condition = "policy-violation", text = "TLS encryption is mandatory but wasn't "..t });
+		return;
+	end
+	s2s_make_authenticated(session, host);
+end
+
 module:hook("stanza/"..xmlns_db..":verify", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	
 	if origin.type == "s2sin_unauthed" or origin.type == "s2sin" then
-		if require_encryption and not origin.secure then
-			origin:close({ condition = "policy-violation", text = "An encrypted stream is required before requesting to verify dialback keys" })
-			return true;
-		end
-	
 		origin.log("debug", "verifying that dialback key is ours...");
 		local attr = stanza.attr;
 		if attr.type then
@@ -89,11 +93,6 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 			return true;
 		end
 		
-		if require_encryption and not origin.secure then
-			origin:close({ condition = "policy-violation", text = "An encrypted stream is required before initiating dialback to this host, good bye" })
-			return true;
-		end
-		
 		origin.hosts[from] = { dialback_key = stanza[1] };
 		
 		dialback_requests[from.."/"..origin.streamid] = origin;
@@ -125,7 +124,7 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 		if dialback_verifying and attr.from == origin.to_host then
 			local valid;
 			if attr.type == "valid" then
-				s2s_make_authenticated(dialback_verifying, attr.from);
+				make_authenticated(dialback_verifying, attr.from);
 				valid = "valid";
 			else
 				log("warn", "authoritative server for %s denied the key", attr.from or "(unknown)");
@@ -158,7 +157,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 			return true;
 		end
 		if stanza.attr.type == "valid" then
-			s2s_make_authenticated(origin, attr.from);
+			make_authenticated(origin, attr.from);
 		else
 			origin:close("not-authorized", "dialback authentication failed");
 		end
@@ -187,8 +186,7 @@ module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 			if tls_required and not origin.secure then
 				module:log("warn", "Remote server mandates to encrypt streams but TLS is not available for this host,");
 				module:log("warn", "please check your configuration and that mod_tls is loaded correctly");
-				origin:close();
-				return true;
+				return;
 			end
 			
 			module:log("debug", "Initiating dialback...");
