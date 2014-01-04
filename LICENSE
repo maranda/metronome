@@ -5,7 +5,7 @@
 <
 <===========================================================================================
 *
-* Metronome is a fork of Prosody IM (http://prosody.im), which is MIT (Expat) licensed
+* Metronome is based on Prosody IM (http://prosody.im), which is MIT (Expat) licensed
 * Below is the original codebase (forked on the date of the First Commit) copyright and
 * license notice.
 *
@@ -46,7 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 * 
 <===========================================================================================
 
-Copyright (c) 2012-2013, Marco Cirillo (LW.Org) <maranda@lightwitch.org>
+Copyright (c) 2012-2014, Marco Cirillo (LW.Org) <maranda@lightwitch.org>
 
 Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
