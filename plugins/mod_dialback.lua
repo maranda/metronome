@@ -45,7 +45,7 @@ end
 function make_authenticated(session, host)
 	if require_encryption and not session.secure then
 		local t = session.direction == "outgoing" and "offered" or "used";
-		session:close({ condition = "policy-violation", text = "TLS encryption is mandatory but wasn't "..t });
+		session:close("policy-violation", "authentication failure");
 		return false;
 	end
 	return s2s_make_authenticated(session, host);
@@ -138,7 +138,7 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 				);
 			end
 			dialback_requests[attr.from.."/"..(attr.id or "")] = nil;
-			if not authed then origin:close("not-authorized", "authentication failed"); end -- we close the outgoing stream
+			if not authed then origin:close("not-authorized", "authentication failure"); end -- we close the outgoing stream
 		end
 		return true;
 	end
@@ -160,7 +160,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		if stanza.attr.type == "valid" then
 			make_authenticated(origin, attr.from);
 		else
-			origin:close("not-authorized", "authentication failed");
+			origin:close("not-authorized", "authentication failure");
 		end
 		return true;
 	end
