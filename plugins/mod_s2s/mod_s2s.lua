@@ -308,7 +308,7 @@ function stream_callbacks.streamopened(session, attr)
 		if session.secure and not session.cert_chain_status then check_cert_status(session); end
 
 		if (not to or not from) and s2s_strict_mode then
-			session:close({ condition = "improper-addressing" });
+			session:close({ condition = "improper-addressing", text = "No to or from attributes on stream header" });
 			return;
 		end
 		session.open_stream = session_open_stream;
