@@ -39,8 +39,8 @@ module:hook("iq-get/host/"..xmlns_extdisco..":services", function (event)
 
 	for host, service_info in pairs(services) do
 		if #service_info > 0 then
-			for _host, _info in ipairs(service_info) do 
-				render(_host, service_type, _info, reply); 
+			for i, _info in ipairs(service_info) do 
+				render(host, service_type, _info, reply); 
 			end
 		else
 			render(host, service_type, service_info, reply);
