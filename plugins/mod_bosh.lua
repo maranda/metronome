@@ -354,12 +354,17 @@ end
 
 function stream_callbacks.handlestanza(context, stanza)
 	if context.ignore then return; end
-	log("debug", "BOSH stanza received: %s\n", stanza:top_tag());
+	log("debug", "BOSH stanza received: %s\n", tostring(stanza));
 	local session = sessions[context.sid];
 	if session then
-		if stanza.attr.xmlns == xmlns_bosh then
+		if stanza.attr.xmlns == xmlns_bosh then -- Clients not qualifying stanzas should be whipped..
 			stanza.attr.xmlns = nil;
+			if stanza.name == "message" then
+				local body = stanza:child_with_name("body");
+				if body then body.attr.xmlns = nil; end
+			end
 		end
+		log("debug", "Stanza is: %s", tostring(stanza));
 		stanza = session.filter("stanzas/in", stanza);
 		if stanza then core_process_stanza(session, stanza); end
 	end
