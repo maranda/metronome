@@ -9,8 +9,10 @@ local dataforms_new = require "util.dataforms".new
 local escape_magic = require "util.auxiliary".escape_magic_chars
 local jid_split = require "util.jid".split
 local jid_bare = require "util.jid".bare
+local jid_join = require "util.jid".join
 local st = require "util.stanza";
 
+local auto_optin_host = module:get_option_string("auto_optin_host")
 local restrict_to_hosts = module:get_option_set("restrict_to_hosts")
 local synchronize_to_host = module:get_option_string("synchronize_to_host_vcards")
 local ud_disco_name = module:get_option_string("ud_disco_name", "Metronome User Directory")
@@ -153,9 +155,28 @@ local function disco_handler(event)
 	origin.send(disco_reply) ; return true
 end
 
+local function oncreate_handler(event)
+	local username, host = event.username, event.host
+	
+	if host == auto_optin_host then
+		module:log("debug", "Auto-optin in %s@%s to the user directory", username, host)
+		directory[jid_join(username, host)] = { nickname = "", realname = "", country = "", email = "" }
+		datamanager.store("store", my_host, "directory", directory)
+	end
+end
+
+local function ondelete_handler(event)
+	local username, host = event.username, event.host
+	
+	directory[jid_join(username, host)] = nil
+	datamanager.store("store", my_host, "directory", directory)
+end
+
 module:hook("iq-get/host/jabber:iq:search:query", search_get_handler)
 module:hook("iq-get/host/http://jabber.org/protocol/disco#info:query", disco_handler)
 module:hook("iq-set/host/jabber:iq:search:query", search_process_handler)
+module:hook_global("user-deleted", ondelete_handler)
+if auto_optin_host then module:hook_global("user-created", oncreate_handler) end
 if synchronize_to_host then module:hook_global("vcard-updated", vcard_handler) end
 
 --- Adhoc Handlers
