@@ -181,7 +181,7 @@ function module.add_host(module)
 	else
 		local modules_disabled = module:get_option_set("modules_disabled", {});
 		if not is_module_loaded(module.host, "dialback") and not modules_disabled:contains("dialback") then
-			load_module(module.host, "dialback") 
+			load_module(module.host, "dialback");
 		end
 	end
 	module:hook_stanza(xmlns_stream, "features", function(origin, stanza)
