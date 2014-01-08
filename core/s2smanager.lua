@@ -43,7 +43,7 @@ end
 
 local function incoming_has_hosts(session, host)
 	local _hosts = session.hosts;
-	if not _hosts[host] then 
+	if not _hosts[host] then
 		_hosts[host] = {};
 	elseif next(_hosts) then
 		session.multiplexed_stream = true;
