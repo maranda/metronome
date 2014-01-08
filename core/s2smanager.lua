@@ -8,8 +8,8 @@
 -- ** Copyright (c) 2008-2013, Florian Zeitz, Kim Alvefur, Marco Cirillo, Matthew Wild, Waqas Hussain
 
 local hosts = hosts;
-local tostring, pairs, ipairs, getmetatable, setmetatable
-    = tostring, pairs, ipairs, getmetatable, setmetatable;
+local next, tostring, pairs, ipairs, getmetatable, setmetatable
+    = next, tostring, pairs, ipairs, getmetatable, setmetatable;
 
 local fire_event = metronome.events.fire_event;
 local logger_init = require "util.logger".init;
@@ -41,17 +41,26 @@ function new_outgoing(from_host, to_host, connect)
 	return host_session;
 end
 
+local function incoming_has_hosts(session, host)
+	local _hosts = session.hosts;
+	if not _hosts[host] then 
+		_hosts[host] = {};
+	elseif next(_hosts) then
+		session.multiplexed_stream = true;
+	end
+end
+
 function make_authenticated(session, host)
 	if session.type == "s2sout_unauthed" then
 		session.type = "s2sout";
 	elseif session.type == "s2sin_unauthed" then
 		session.type = "s2sin";
 		if host then
-			if not session.hosts[host] then session.hosts[host] = {}; end
+			incoming_has_hosts(session, host);
 			session.hosts[host].authed = true;
 		end
 	elseif session.type == "s2sin" and host then
-		if not session.hosts[host] then session.hosts[host] = {}; end
+		incoming_has_hosts(session, host);
 		session.hosts[host].authed = true;
 	else
 		return false;

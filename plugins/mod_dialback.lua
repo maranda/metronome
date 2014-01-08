@@ -7,7 +7,8 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2013, Kim Alvefur, Florian Zeitz, Marco Cirillo, Matthew Wild, Paul Aurich, Waqas Hussain
 
-local hosts = _G.hosts;
+local hosts = metronome.hosts;
+local incoming = metronome.incoming_s2s;
 local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
 
 local log = module._log;
@@ -48,6 +49,14 @@ function make_authenticated(session, host)
 		session:close({ condition = "policy-violation", text = "TLS encryption is mandatory but wasn't "..t }, "authentication failure");
 		return false;
 	end
+	if session.type == "s2sout_unauthed" and session.multiplexed_from then
+		local hosts = session.multiplexed_from.hosts;
+		if not hosts[session.to_host] then 
+			hosts[session.to_host] = { authed = true };
+		else
+			hosts[session.to_host].authed = true;
+		end
+	end
 	return s2s_make_authenticated(session, host);
 end
 
@@ -67,6 +76,10 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 		local type;
 		if verify_dialback(attr.id, attr.from, attr.to, stanza[1]) then
 			type = "valid";
+			if origin.type == "s2sin" then
+				local s2sout = hosts[attr.to].s2sout[attr.from];
+				if s2sout then s2sout.multiplexed_from = origin; end
+			end
 		else
 			type = "invalid";
 			origin.log("warn", "Asked to verify a dialback key that was incorrect. An imposter is claiming to be %s?", attr.to);
@@ -106,10 +119,15 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 			origin.to_host = to;
 		end
 
+		local is_multiplexed_from;
+		if origin.from_host ~= from then -- multiplexed stream
+			is_multiplexed_from = origin;
+		end
+		
 		origin.log("debug", "asking %s if key %s belongs to them", from, stanza[1]);
 		module:fire_event("route/remote", {
-			from_host = to, to_host = from;
-			stanza = st.stanza("db:verify", { from = to, to = from, id = origin.streamid }):text(stanza[1]);
+			from_host = to, to_host = from, multiplexed_from = is_multiplexed_from,
+			stanza = st.stanza("db:verify", { from = to, to = from, id = origin.streamid }):text(stanza[1])
 		});
 		return true;
 	end
@@ -182,11 +200,18 @@ module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 	if not origin.external_auth or origin.external_auth == "failed" then
 		local db = origin.stream_declared_ns and origin.stream_declared_ns["db"];
 		local tls = stanza:child_with_ns(xmlns_starttls);
-		if db == xmlns_db or stanza:get_child("dialback", "urn:xmpp:features:dialback") then
+		if db == xmlns_db then
 			local tls_required = tls and tls:get_child("required");
 			if tls_required and not origin.secure then
+				local to, from = origin.to_host, origin.from_host
 				module:log("warn", "Remote server mandates to encrypt streams but TLS is not available for this host,");
 				module:log("warn", "please check your configuration and that mod_tls is loaded correctly");
+				-- Close paired incoming stream
+				for session in pairs(incoming) do
+					if session.from_host == to and session.to_host == from and not session.multiplexed_stream then
+						session:close("internal-server-error", "dialback authentication failed on paired outgoing stream");
+					end
+				end
 				return;
 			end
 			

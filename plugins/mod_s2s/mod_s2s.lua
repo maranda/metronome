@@ -97,13 +97,14 @@ end
 
 -- Handles stanzas to existing s2s sessions
 function route_to_existing_session(event)
-	local from_host, to_host, stanza = event.from_host, event.to_host, event.stanza;
+	local from_host, to_host, multiplexed_from, stanza = event.from_host, event.to_host, event.multiplexed_from, event.stanza;
 	if not hosts[from_host] then
 		log("warn", "Attempt to send stanza from %s - a host we don't serve", from_host);
 		return false;
 	end
 	local host = hosts[from_host].s2sout[to_host];
 	if host then
+		if multiplexed_from then host.multiplexed_from = multiplexed_from; end
 		time_and_clean(host, now());
 		-- We have a connection to this host already
 		if host.type == "s2sout_unauthed" and (stanza.name ~= "db:verify" or not host.dialback_key) then
@@ -154,13 +155,14 @@ end
 
 -- Create a new outgoing session for a stanza
 function route_to_new_session(event)
-	local from_host, to_host, stanza = event.from_host, event.to_host, event.stanza;
+	local from_host, to_host, multiplexed_from, stanza = event.from_host, event.to_host, event.multiplexed_from, event.stanza;
 	log("debug", "opening a new outgoing connection for this stanza");
 	local host_session = s2s_new_outgoing(from_host, to_host);
 
 	-- Store in buffer
 	host_session.bounce_sendq = bounce_sendq;
 	host_session.open_stream = session_open_stream;
+	if multiplexed_from then host_session.multiplexed_from = multiplexed_from; end
 
 	host_session.sendq = { {tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza)} };
 	log("debug", "stanza [%s] queued until connection complete", tostring(stanza.name));
@@ -192,6 +194,11 @@ function module.add_host(module)
 	module:depends("sasl_s2s");
 	module:hook("route/remote", route_to_existing_session, 200);
 	module:hook("route/remote", route_to_new_session, 100);
+	module:hook("s2sout-destroyed", function(event)
+		local session = event.session;
+		local multiplexed_from = session.multiplexed_from;
+		if multiplexed_from and not multiplexed_from.destroyed then multiplexed_from.hosts[session.to_host] = nil; end
+	end, 100);
 end
 
 --- Helper to check that a session peer's certificate is valid
