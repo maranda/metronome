@@ -61,7 +61,10 @@ local function save_session_store(event)
 	local user, host = event.session.username, event.session.host;
 	local bare_jid = jid_join(user, host);
 	local user_archive = session_stores[bare_jid];
-	storage:set(user, user_archive);
+	if user_archive.changed then
+		user_archive.changed = nil;
+		storage:set(user, user_archive);
+	end
 end
 
 local function process_inbound_messages(event)

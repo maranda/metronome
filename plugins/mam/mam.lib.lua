@@ -43,7 +43,10 @@ local function save_stores()
 	to_save = now();
 	for bare, store in pairs(session_stores) do
 		local user = jid_section(bare, "node");
-		storage:set(user, store);
+		if store.changed then
+			store.changed = nil;
+			storage:set(user, store);
+		end
 	end	
 end
 
@@ -64,6 +67,7 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, body
 	
 	if #logs > stores_cap then t_remove(logs, 1); end
 	logs[#logs + 1] = entry;
+	session_archive.changed = true;
 
 	if now() - to_save > store_time then save_stores(); end
 	return uid;
