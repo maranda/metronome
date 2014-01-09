@@ -98,7 +98,7 @@ local function purge_handler(event)
 	local bare_session = bare_sessions[bare_jid];
 	local archive = bare_session.archiving;
 	
-	if mam_forbid_purge then
+	if forbid_purge then
 		return origin.send(st.error_reply(stanza, "cancel", "not-allowed", "Purging message archives is not allowed"));
 	end
 	
