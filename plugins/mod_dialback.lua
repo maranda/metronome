@@ -49,7 +49,7 @@ function make_authenticated(session, host)
 		session:close({ condition = "policy-violation", text = "TLS encryption is mandatory but wasn't "..t }, "authentication failure");
 		return false;
 	end
-	if session.type == "s2sout_unauthed" and session.multiplexed_from then
+	if session.type == "s2sout_unauthed" and session.multiplexed_from and not session.multiplexed_from.destroyed then
 		local hosts = session.multiplexed_from.hosts;
 		if not hosts[session.to_host] then
 			hosts[session.to_host] = { authed = true };
