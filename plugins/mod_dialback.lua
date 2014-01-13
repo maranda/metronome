@@ -83,7 +83,7 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 			type = "valid";
 			if origin.type == "s2sin" then
 				local s2sout = hosts[attr.to].s2sout[attr.from];
-				if s2sout then s2sout.multiplexed_from = origin; end
+				if s2sout and origin.from_host ~= attr.from then s2sout.multiplexed_from = origin; end
 			end
 		else
 			type = "invalid";
