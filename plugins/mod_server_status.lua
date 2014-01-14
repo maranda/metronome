@@ -39,7 +39,7 @@ response_table.sessions = {
 		elem_header = '  <sessions>', elem_closure = '  </sessions>',
 		bosh = '    <bosh number="%d" />',
 		c2s = '    <c2s number="%d" />',
-		websockets = '    <websockets number="%d" />',
+		ws = '    <websockets number="%d" />',
 		s2s = '    <s2s incoming="%d" outgoing="%d" />'
 }
 response_table.hosts = {
@@ -95,7 +95,7 @@ local function forge_response_xml()
 	sessions_stats[1] = sessions.elem_header
 	sessions_stats[2] = sessions.bosh:format(count_bosh)
 	sessions_stats[3] = sessions.c2s:format(count_c2s)
-	sessions_stats[4] = sessions.c2s:format(count_ws)
+	sessions_stats[4] = sessions.ws:format(count_ws)
 	sessions_stats[5] = sessions.s2s:format(count_s2sin, count_s2sout)
 	sessions_stats[6] = sessions.elem_closure
 	
