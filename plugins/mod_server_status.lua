@@ -62,7 +62,7 @@ local function count_sessions()
 					count_bosh = count_bosh + 1
 				elseif session.ws_session then
 					count_ws = count_ws + 1
-				else then
+				else
 					count_c2s = count_c2s + 1
 				end
 			end
