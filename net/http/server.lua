@@ -236,12 +236,13 @@ function _M.send_response(response, body)
 	response.finished = true;
 	response.conn._http_open_response = nil;
 	
+	local keep_alive = response.keep_alive;
 	local status_line = "HTTP/"..response.request.httpversion.." "..(response.status or codes[response.status_code]);
 	local headers = response.headers;
 	body = body or response.body or "";
 	headers.content_length = #body;
 	if not headers.connection then
-		headers.connection = response.keep_alive and "Keep-Alive" or "close";
+		headers.connection = keep_alive and "Keep-Alive" or "close";
 	end
 
 	local output = { status_line };
