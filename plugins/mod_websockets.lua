@@ -20,8 +20,8 @@ local websockets = require "util.websockets";
 
 local t_concat = table.concat;
 
-local consider_websocket_secure = module:get_option_boolean("consider_websocket_secure");
-local cross_domain = module:get_option("cross_domain_websocket");
+local consider_websocket_secure = module:get_option_boolean("consider_websockets_secure");
+local cross_domain = module:get_option("cross_domain_websockets");
 if cross_domain then
 	if cross_domain == true then
 		cross_domain = "*";
@@ -98,8 +98,8 @@ end
 function module.add_host(module)
 	module:depends("http");
 	module:provides("http", {
-		name = "websocket";
-		default_path = "xmpp-websocket";
+		name = "websockets";
+		default_path = "xmpp-websockets";
 		route = {
 			["GET"] = handle_request;
 			["GET /"] = handle_request;
