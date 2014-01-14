@@ -52,7 +52,7 @@ response_table.comps = {
 }
 
 local function count_sessions()
-	local count_c2s, count_bosh, count_ws, count_s2sin, count_s2sout = 0, 0, 0, 0
+	local count_c2s, count_bosh, count_ws, count_s2sin, count_s2sout = 0, 0, 0, 0, 0
 	local incoming_s2s = metronome.incoming_s2s
 
 	for name, host in pairs(hosts) do
