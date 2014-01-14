@@ -20,6 +20,7 @@ local websockets = require "util.websockets";
 
 local t_concat = table.concat;
 
+local raw_log = module:get_option_boolean("websockets_no_raw_requests_logging", true) ~= true and true or nil;
 local consider_websocket_secure = module:get_option_boolean("consider_websockets_secure");
 local cross_domain = module:get_option("cross_domain_websockets");
 if cross_domain then
@@ -61,7 +62,7 @@ function handle_request(event, path)
 	c2s_listener.onconnect(conn);
 
 	local session = sessions[conn];
-	local ws = websockets.new(conn);
+	local ws = websockets.new(conn, raw_log);
 
 	session.secure = consider_websocket_secure or session.secure;
 	session.ws_session = true;

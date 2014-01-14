@@ -126,7 +126,7 @@ end
 	
 function ws:handle(frame)
 	local conn, length, opcode = self.conn, frame.length, frame.opcode;
-	log("debug", "Websocket received: %s (%i bytes)", frame.data, #frame.data);
+	log("debug", "Websocket received: %s (%i bytes)", self.frame_log and frame.data or "<filtered>", #frame.data);
 	
 	local buffer = self.buffer;
 
@@ -208,6 +208,6 @@ function ws:handle(frame)
 	return "";
 end
 	
-function new(conn) return setmetatable({ conn = conn }, mt); end
+function new(conn, _log) return setmetatable({ conn = conn, frame_log = _log }, mt); end
 	
 return _M;
