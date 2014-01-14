@@ -64,6 +64,7 @@ function handle_request(event, path)
 	local ws = websockets.new(conn);
 
 	session.secure = consider_websocket_secure or session.secure;
+	session.ws_session = true;
 
 	local buffer = "";
 	add_filter(session, "bytes/in", function(data)
