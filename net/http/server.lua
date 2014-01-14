@@ -240,7 +240,9 @@ function _M.send_response(response, body)
 	local headers = response.headers;
 	body = body or response.body or "";
 	headers.content_length = #body;
-	headers.connection = response.keep_alive and "Keep-Alive" or "close";
+	if not headers.connection then
+		headers.connection = response.keep_alive and "Keep-Alive" or "close";
+	end
 
 	local output = { status_line };
 	for k, v in pairs(headers) do
@@ -254,7 +256,7 @@ function _M.send_response(response, body)
 		response:on_destroy();
 		response.on_destroy = nil;
 	end
-	if headers.connection == "Keep-Alive" then
+	if keep_alive then
 		response:finish_cb();
 	else
 		response.conn:close();
