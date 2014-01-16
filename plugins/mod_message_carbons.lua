@@ -96,7 +96,7 @@ module:hook("message/bare", function(event)
 
 	if bare_session and stanza.attr.type == "chat" then
 		local clone = st.clone(stanza);
-		local top_resource = bare_session.top_resources[1];
+		local top_resource = bare_session.top_resources and bare_session.top_resources[1];
 		for resource, session in pairs(bare_session.sessions) do
 			if session.carbons and not session == top_resource then
 				clone.attr.to = jid_join(session.username, session.host, resource);
