@@ -332,21 +332,14 @@ local function process_message(event, outbound)
 	
 	local from, to = (message.attr.from or origin.full_jid), message.attr.to;
 	local bare_from, bare_to = jid_bare(from), jid_bare(to);
-	local bare_session, full_session, user;
+	local bare_session, user;
 	
 	if outbound then
 		bare_session = bare_sessions[bare_from];
-		full_session = full_sessions[from];
 		user = jid_section(from, "node");
 	else
 		bare_session = bare_sessions[bare_to];
-		full_session = full_sessions[to];
 		user = jid_section(to, "node");
-	end
-
-	if full_session and 
-	   (full_session.joined_mucs and full_session.joined_mucs[outbound and bare_to or bare_from]) then
-		return; -- don't process muc private messages
 	end
 	
 	local archive = bare_session and bare_session.archiving;
