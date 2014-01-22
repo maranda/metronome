@@ -48,7 +48,8 @@ local muc_rooms = hosts[my_host].muc.rooms;
 
 local p_encode = datamanager.path_encode;
 local function store_exists(node, host, today)
-	if lfs.attributes(data_getpath(node, host, datastore .. "/" .. today), "mode") then return true; else return false; end
+	local data = data_load(node, host, datastore .. "/" .. today);
+	if data and #data > 0 then return true; else return false; end;
 end
 
 -- Module Definitions
@@ -117,7 +118,7 @@ local function create_month(month, year, callback)
 		if i < days + 1 then
 			local tmp = tostring(i);
 			if callback and callback.callback then
-				tmp = callback.callback(callback.path, i, month, year, callback.room, callback.webpath);
+				tmp = callback.callback(callback.path, i, month, year, callback.room, callback.host, callback.webpath);
 			end
 			if tmp == nil then
 				tmp = tostring(i);
@@ -182,7 +183,7 @@ local function create_year(year, callback)
 	return "";
 end
 
-local function day_callback(path, day, month, year, room, webpath)
+local function day_callback(path, day, month, year, room, host, webpath)
 	local webpath = webpath or ""
 	local year = year;
 	if year > 2000 then
@@ -190,8 +191,7 @@ local function day_callback(path, day, month, year, room, webpath)
 	end
 	local bare_day = str_format("20%.02d-%.02d-%.02d", year, month, day);
 	room = p_encode(room);
-	local attributes, err = lfs.attributes(path.."/"..str_format("%.02d%.02d%.02d", year, month, day).."/"..room..".dat");
-	if attributes ~= nil and attributes.mode == "file" then
+	if store_exists(room, host, str_format("%.02d%.02d%.02d", year, month, day)) then
 		local s = html.days.bit;
 		s = s:gsub("###BARE_DAY###", webpath .. bare_day);
 		s = s:gsub("###DAY###", day);
@@ -217,7 +217,6 @@ local function generate_day_room_content(bare_room_jid)
 	local html_days = html.days;
 
 	path = path:gsub("/[^/]*$", "");
-	attributes = lfs.attributes(path);
 	do
 		local found = 0;
 		for jid, room in pairs(muc_rooms) do
@@ -242,27 +241,38 @@ local function generate_day_room_content(bare_room_jid)
 			room = nil;
 		end
 	end
-	if attributes and room then
+	if room then
 		local already_done_years = {};
 		topic = room._data.subject or "(no subject)";
 		if topic:find("%%") then topic = topic:gsub("%%", "%%%%") end
 		if topic:len() > 135 then
 			topic = topic:sub(1, topic:find(" ", 120)) .. " ...";
 		end
-		local folders = {};
-		for folder in lfs.dir(path) do table.insert(folders, folder); end
-		table.sort(folders);
-		for _, folder in ipairs(folders) do
-			local year, month, day = folder:match("^(%d%d)(%d%d)(%d%d)");
+
+		local stores = {};
+		for store in datamanager.stores(true, host) do 
+			if string.match(store,'^'..datastore..'$') then
+				-- this occurs with internal storage
+				for folder in lfs.dir(path) do table.insert(stores, datastore.."/"..folder); end
+			break;
+			end
+			if string.match(store,'^'..datastore) then
+				table.insert(stores, store);
+			end
+		end
+		table.sort(stores);
+		for _, store in ipairs(stores) do
+			local year, month, day = string.match(store,'^'..datastore.."/(%d%d)(%d%d)(%d%d)");
 			if year then
 				to = tostring(os_date("%B %Y", os_time({ day=tonumber(day), month=tonumber(month), year=2000+tonumber(year) })));
 				if since == "" then since = to; end
 				if not already_done_years[year] then
 					module:log("debug", "creating overview for: %s", to);
-					days = create_year(year, {callback=day_callback, path=path, room=node}) .. days;
+					days = create_year(year, {callback=day_callback, path=path, room=node, host=host}) .. days;
 					already_done_years[year] = true;
 				end
 			end
+
 		end
 	end
 
@@ -414,13 +424,18 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 		temptime.day = tonumber(day);
 		temptime.month = tonumber(month);
 		temptime.year = tonumber(year);
-		calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, room=node, webpath="../"}) or "";
-		
-		local get_page = open_pipe(
-			module_path.."/generate_log '"..metronome_paths.source.."' "..metronome_paths.data.." "..theme_path.." "..bare_room_jid.." ".._year..month..day
-		);
-		
-		ret = get_page:read("*a"); get_page:close(); get_page = nil;
+		calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, room=node, host=host, webpath="../"}) or "";
+	
+		local ret = "";
+		local data = datamanager.load(node,host,"muc_log" .. "/" .._year..month..day);
+		if data and #data <= 3000 then
+			for i, entry in ipairs(data) do
+				local tmp = parse_message(entry.body, entry.subject, entry.time, entry.from, html_day.time, html_day.message, html_day.messagemM, html_day.titleChange);
+				if tmp then ret = ret .. tmp; end
+			end
+		else
+			ret = "The log for this day is too large, please contact the Server Administrator to obtain it<br />";
+		end	
 		if ret ~= "" then
 			if next_day then
 				next_day = html_day.dayLink:gsub("###DAY###", next_day):gsub("###TEXT###", "&gt;")
@@ -441,6 +456,22 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 			return tmp, "Chatroom logs for "..bare_room_jid.." ("..tostring(os_date("%A, %B %d, %Y", os_time(temptime)))..")";
 		end
 	end
+end
+
+function parse_message(body, title, time, nick, day_t, day_m, day_mm, day_title)
+	local ret = "";
+	time = day_t:gsub("###TIME###", time):gsub("###UTC###", time);
+	nick = html_escape(nick:match("/(.+)$"));
+
+	if nick and body then
+		body = html_escape(body);
+		if body:find("^/me") then body = body:gsub("^/me ", ""); day_m = nil; end
+		ret = (day_m or day_mm):gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###MSG###", body);
+	elseif nick and title then
+		title = html_escape(title);
+		ret = day_title:gsub("###TIME_STUFF###", time):gsub("###NICK###", nick):gsub("###TITLE###", title);
+	end
+	return ret;
 end
 
 local function handle_error(code, err) return http_event("http-error", { code = code, message = err }); end
