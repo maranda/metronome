@@ -59,8 +59,8 @@ function log_if_needed(e)
 		local bare = jid_bare(to_room);
 		if muc.rooms[bare] then
 			local room = muc.rooms[bare];
-			local today = os.date("%y%m%d");
-			local now = os.date("%X");
+			local today = os.date("!%y%m%d");
+			local now = os.date("!%X");
 			local muc_from = nil;
 			
 			if room._data.hidden then -- do not log any data of private rooms
