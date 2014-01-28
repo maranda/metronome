@@ -19,7 +19,8 @@ local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
 
-local xmlns = "urn:xmpp:mam:0";
+local xmlns = "urn:xmpp:mam:tmp";
+local purge_xmlns = "http://metronome.im/protocol/mam-purge";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
 module:add_feature(xmlns);
@@ -208,7 +209,7 @@ module:hook("message/full", process_inbound_messages, 30);
 module:hook("pre-message/full", process_outbound_messages, 30);
 
 module:hook("iq/self/"..xmlns..":prefs", prefs_handler);
-module:hook("iq-set/self/"..xmlns..":purge", purge_handler);
+module:hook("iq-set/self/"..purge_xmlns..":purge", purge_handler);
 module:hook("iq-get/self/"..xmlns..":query", query_handler);
 
 module:hook_global("server-stopping", save_stores);

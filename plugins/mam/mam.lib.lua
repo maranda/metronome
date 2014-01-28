@@ -17,7 +17,7 @@ local storagemanager = storagemanager;
 local load_roster = require "util.rostermanager".load_roster;
 local ipairs, now, pairs, ripairs, select, t_remove, tostring = ipairs, os.time, pairs, ripairs, select, table.remove, tostring;
       
-local xmlns = "urn:xmpp:mam:0";
+local xmlns = "urn:xmpp:mam:tmp";
 local delay_xmlns = "urn:xmpp:delay";
 local e2e_xmlns = "http://www.xmpp.org/extensions/xep-0200.html#ns";
 local forward_xmlns = "urn:xmpp:forward:0";
