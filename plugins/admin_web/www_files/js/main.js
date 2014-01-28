@@ -1,8 +1,8 @@
 var BOSH_SERVICE = '/http-bind/';
 
-Strophe.addNamespace('C2SSTREAM', 'http://lightwitch.org/metronome/streams/c2s');
-Strophe.addNamespace('S2SSTREAM', 'http://lightwitch.org/metronome/streams/s2s');
-Strophe.addNamespace('ADMINSUB', 'http://lightwitch.org/metronome/adminsub');
+Strophe.addNamespace('C2SSTREAM', 'http://metronome.im/streams/c2s');
+Strophe.addNamespace('S2SSTREAM', 'http://metronome.im/streams/s2s');
+Strophe.addNamespace('ADMINSUB', 'http://metronome.im/protocol/adminsub');
 Strophe.addNamespace('CAPS', 'http://jabber.org/protocol/caps');
 
 var localJID = null;

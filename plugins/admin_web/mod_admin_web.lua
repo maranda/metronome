@@ -7,12 +7,12 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2011-2012, Florian Zeitz
 
--- <session xmlns="http://lightwitch.org/metronome/streams/c2s" jid="alice@example.com/brussels">
+-- <session xmlns="http://metronome.im/streams/c2s" jid="alice@example.com/brussels">
 --   <encrypted/>
 --   <compressed/>
 -- </session>
 
--- <session xmlns="http://lightwitch.org/metronome/streams/s2s" jid="example.com">
+-- <session xmlns="http://metronome.im/streams/s2s" jid="example.com">
 --   <encrypted>
 --     <valid/> / <invalid/>
 --   </encrypted>
@@ -39,9 +39,9 @@ local require_secure = module:get_option_boolean("admin_web_require_secure", fal
 
 local http_base = module.path:gsub("/[^/]+$","") .. "/www_files/";
 
-local xmlns_adminsub = "http://lightwitch.org/metronome/adminsub";
-local xmlns_c2s_session = "http://lightwitch.org/metronome/streams/c2s";
-local xmlns_s2s_session = "http://lightwitch.org/metronome/streams/s2s";
+local xmlns_adminsub = "http://metronome.im/protocol/adminsub";
+local xmlns_c2s_session = "http://metronome.im/streams/c2s";
+local xmlns_s2s_session = "http://metronome.im/streams/s2s";
 
 local mime_map = {
 	html = "text/html; charset=utf-8";
@@ -243,7 +243,7 @@ function module.add_host(module)
 	end
 
 	-- Register adminsub handler
-	module:hook("iq/host/http://lightwitch.org/metronome/adminsub:adminsub", function(event)
+	module:hook("iq/host/"..xmlns_adminsub..":adminsub", function(event)
 		local origin, stanza = event.origin, event.stanza;
 		local adminsub = stanza.tags[1];
 		local action = adminsub.tags[1];

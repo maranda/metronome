@@ -259,11 +259,11 @@ end
 local adhoc_new = module:require "adhoc".new
 local optin_descriptor
 if not synchronize_to_host then
-	optin_descriptor = adhoc_new("Optin for the user search directory", "optin", optin_command_handler)
+	optin_descriptor = adhoc_new("Optin for the user search directory", "http://metronome.im/protocol/vjud#optin", optin_command_handler)
 else
-	optin_descriptor = adhoc_new("Optin for the user search directory", "optin", optin_vcard_command_handler)
+	optin_descriptor = adhoc_new("Optin for the user search directory", "http://metronome.im/protocol/vjud#optin", optin_vcard_command_handler)
 end
-local optout_descriptor = adhoc_new("Optout for the user search directory", "optout", optout_command_handler)
+local optout_descriptor = adhoc_new("Optout for the user search directory", "http://metronome.im/protocol/vjud#optout", optout_command_handler)
 module:provides("adhoc", optin_descriptor)
 module:provides("adhoc", optout_descriptor)
 
