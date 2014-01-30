@@ -45,10 +45,11 @@ end);
 
 if legacy then 
 	local function session_handle(event)
+		local origin, stanza = event.origin, event.stanza;
 		if origin.username then
-			return event.origin.send(st.reply(event.stanza));
+			return origin.send(st.reply(stanza));
 		else
-			return event.origin.send(st.error_reply(event.stanza, "auth", "forbidden"));
+			return origin.send(st.error_reply(stanza, "auth", "forbidden"));
 		end
 	end
 	module:hook("iq/host/"..xmlns_legacy..":session", session_handle);
