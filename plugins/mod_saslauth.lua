@@ -147,7 +147,6 @@ module:hook("stream-features", function(event)
 	local origin, features = event.origin, event.features;
 	if origin.username then
 		features:tag("bind", bind_attr):tag("required"):up():up();
-		features:tag("session", xmpp_session_attr):tag("optional"):up():up();
 	end
 end, 96);
 
@@ -171,11 +170,3 @@ module:hook("iq/self/urn:ietf:params:xml:ns:xmpp-bind:bind", function(event)
 	end
 	return true;
 end);
-
-local function handle_legacy_session(event)
-	event.origin.send(st.reply(event.stanza));
-	return true;
-end
-
-module:hook("iq/self/urn:ietf:params:xml:ns:xmpp-session:session", handle_legacy_session);
-module:hook("iq/host/urn:ietf:params:xml:ns:xmpp-session:session", handle_legacy_session);
