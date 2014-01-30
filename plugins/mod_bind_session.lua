@@ -22,7 +22,7 @@ module:hook("stream-features", function(event)
 	end
 end, 96);
 
-module:hook("iq/self/urn:ietf:params:xml:ns:xmpp-bind:bind", function(event)
+module:hook("iq/self/"..xmlns_bind..":bind", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local resource;
 	if stanza.attr.type == "set" then
@@ -44,7 +44,13 @@ module:hook("iq/self/urn:ietf:params:xml:ns:xmpp-bind:bind", function(event)
 end);
 
 if legacy then 
-	module:hook("iq/host/urn:ietf:params:xml:ns:xmpp-session:session", function(event)
-		return event.origin.send(st.reply(event.stanza));
-	end);
+	local function session_handle(event)
+		if origin.username then
+			return event.origin.send(st.reply(event.stanza));
+		else
+			return event.origin.send(st.error_reply(event.stanza, "auth", "forbidden"));
+		end
+	end
+	module:hook("iq/host/"..xmlns_legacy..":session", session_handle);
+	module:hook("iq/self/"..xmlns_legacy..":session", session_handle);
 end
