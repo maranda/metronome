@@ -124,7 +124,6 @@ end);
 
 local mechanisms_attr = { xmlns = "urn:ietf:params:xml:ns:xmpp-sasl" };
 local bind_attr = { xmlns = "urn:ietf:params:xml:ns:xmpp-bind" };
-local xmpp_session_attr = { xmlns = "urn:ietf:params:xml:ns:xmpp-session" };
 module:hook("stream-features", function(event)
 	local origin, features = event.origin, event.features;
 	if not origin.username then
