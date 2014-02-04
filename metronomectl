@@ -761,10 +761,10 @@ if command and command:match("^mod_") then -- Is a command in a module
 		elseif type(ret) == "string" then
 			show_message(ret);
 		end
-		os.exit(0); -- :)
+		os.exit(0);
 	else
 		show_message("Failed to execute command: "..error_messages[ret]);
-		os.exit(1); -- :(
+		os.exit(1);
 	end
 end
 
