@@ -14,12 +14,12 @@ end
 
 local datamanager = require "util.datamanager";
 local storagemanager = require "core.storagemanager";
-local jid = require "util.jid";
 local json = require "util.json";
 local message = metronomectl.show_message;
+local unpack = unpack;
 	
 function module.command(arg)
-	local node, host, store = arg[1], arg[2], arg[3];
+	local node, host, store = unpack(arg);
 	if not node or not host or not store then
 		message("Incorrect syntax please use:");
 		message("metronomectl mod_dump_json <node name or nil> <host> <store name>");
