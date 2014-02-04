@@ -54,9 +54,7 @@ function handle_request(event, path)
 		if proto == "xmpp" then wants_xmpp = true; end
 	end);
 
-	if not wants_xmpp then
-		return 501;
-	end
+	if not wants_xmpp then return 501; end
 
 	conn:setlistener(c2s_listener);
 	c2s_listener.onconnect(conn);
