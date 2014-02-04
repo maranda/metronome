@@ -26,7 +26,9 @@ function module.command(arg)
 		return 1;
 	end
 	
-	storagemanager.initialize_host(host);
+	storagemanager.initialize_host(host); -- initialize host storage
+	if node == "nil" then node = nil; end -- allows checking inner pathed stores
+	
 	local data = datamanager.load(node, host, store);
 	if data then
 		message(json.encode(data));
