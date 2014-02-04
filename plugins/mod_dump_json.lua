@@ -22,7 +22,7 @@ function module.command(arg)
 	local node, host, store = arg[1], arg[2], arg[3];
 	if not node or not host or not store then
 		message("Incorrect syntax please use:");
-		message("metronomectl mod_dump_json <store node> <host> <store name>");
+		message("metronomectl mod_dump_json <node name or nil> <host> <store name>");
 		return 1;
 	end
 	
