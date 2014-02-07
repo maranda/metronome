@@ -290,12 +290,22 @@ function driver:open(store, typ)
 	return nil, "unsupported-store";
 end
 
-function driver:stores(username)
-	local sql = "SELECT DISTINCT `store` FROM `metronome` WHERE `host`=? AND `user`"..(username == true and "!=?" or "=?");
+function driver:stores(username, type, pattern)
+	local sql = "SELECT DISTINCT `store` FROM `metronome` WHERE `host`=? AND `user`"..(username == true and "!=?" or "=?").." AND `TYPE`=? `store` LIKE ?";
+
+	type = type or "keyval";
+
 	if username == true or not username then
 		username = "";
 	end
-	local stmt, err = dosql(sql, host, username);
+
+	if pattern then
+		pattern = pattern.."/%";
+	else
+		pattern = "%";
+	end
+
+	local stmt, err = dosql(sql, host, username, type, pattern);
 	if not stmt then
 		return rollback(nil, err);
 	end
