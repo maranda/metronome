@@ -326,26 +326,17 @@ function stores(username, host, type, pattern)
 			if not node:match("^%.") then
 				if username == true then
 					if lfs.attributes(store_dir..node, "mode") == "directory" then
-						if pattern then
-							return pattern ..'/' .. decode(node);
-						end
-						return decode(node);
+						return (pattern and pattern .. "/" .. decode(node)) or decode(node);
 					end
 				elseif username then
-					local store = decode(node);
-					if pattern then
-						store = pattern .. '/' .. node;
-					end
+					local store = (pattern and pattern .. "/" .. decode(node)) or decode(node);
 					if lfs.attributes(getpath(username, host, store, type), "mode") then
 						return store;
 					end
 				elseif lfs.attributes(node, "mode") == "file" then
 					local file, ext = node:match("^(.*)%.([dalist]+)$");
 					if ext == type then
-						if pattern then
-							return pattern ..'/'.. decode(file);
-						end	
-						return decode(file);
+						return (pattern and pattern .. "/" .. decode(file)) or decode(file);
 					end
 				end
 			end
