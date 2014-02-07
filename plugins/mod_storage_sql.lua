@@ -4,6 +4,8 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 --
+-- Additional Contributors: John Regan
+--
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2010-2013, Kim Alvefur, Matthew Wild, Waqas Hussain
 
