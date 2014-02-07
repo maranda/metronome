@@ -301,13 +301,20 @@ function list_load(username, host, datastore)
 end
 
 local type_map = { keyval = "dat", list = "list" }
-function stores(username, host, type)
+function stores(username, host, type, pattern)
 	if not host then
 		return nil, "bad argument #2 to 'stores' (string expected, got nothing)";
 	end
 
 	type = type_map[type or "keyval"];
-	local store_dir = format("%s/%s/", data_path, encode(host));
+	local store_dir;
+	if pattern then
+		store_dir = format("%s/%s/%s", data_path, encode(host), pattern);
+	else
+		store_dir = format("%s/%s/", data_path, encode(host));
+	end
+	log("debug", format("store_dir = %s",store_dir));
+
 
 	local mode, err = lfs.attributes(store_dir, "mode");
 	if not mode then
@@ -319,16 +326,25 @@ function stores(username, host, type)
 			if not node:match("^%.") then
 				if username == true then
 					if lfs.attributes(store_dir..node, "mode") == "directory" then
+						if pattern then
+							return pattern ..'/' .. decode(node);
+						end
 						return decode(node);
 					end
 				elseif username then
 					local store = decode(node);
+					if pattern then
+						store = pattern .. '/' .. node;
+					end
 					if lfs.attributes(getpath(username, host, store, type), "mode") then
 						return store;
 					end
 				elseif lfs.attributes(node, "mode") == "file" then
 					local file, ext = node:match("^(.*)%.([dalist]+)$");
 					if ext == type then
+						if pattern then
+							return pattern ..'/'.. decode(file);
+						end	
 						return decode(file);
 					end
 				end

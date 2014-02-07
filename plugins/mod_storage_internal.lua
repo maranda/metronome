@@ -28,8 +28,8 @@ function driver:set(user, data)
 	return datamanager.store(user, host, self.store, data);
 end
 
-function driver:stores(username, type)
-	return datamanager.stores(username, host, type);
+function driver:stores(username, type, pattern)
+	return datamanager.stores(username, host, type, pattern);
 end
 
 function driver:purge(user)
