@@ -129,8 +129,8 @@ end
 function datamanager.store(username, host, datastore, data)
 	return open(host, datastore):set(username, data);
 end
-function datamanager.stores(username, host, type)
-	return get_driver(host):stores(username, type);
+function datamanager.stores(username, host, type, pattern)
+	return get_driver(host):stores(username, type, pattern);
 end
 function datamanager.purge(username, host)
 	return purge(username, host);
