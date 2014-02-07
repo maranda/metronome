@@ -291,7 +291,7 @@ function driver:open(store, typ)
 end
 
 function driver:stores(username, type, pattern)
-	local sql = "SELECT DISTINCT `store` FROM `metronome` WHERE `host`=? AND `user`"..(username == true and "!=?" or "=?").." AND `TYPE`=? `store` LIKE ?";
+	local sql = "SELECT DISTINCT `store` FROM `metronome` WHERE `host`=? AND `user`"..(username == true and "!=?" or "=?").." AND `TYPE`=? AND `store` LIKE ?";
 
 	type = type or "keyval";
 
