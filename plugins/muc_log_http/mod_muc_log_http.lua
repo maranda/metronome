@@ -191,7 +191,7 @@ local function day_callback(path, day, month, year, host, room, webpath)
 	end
 	local bare_day = str_format("20%.02d-%.02d-%.02d", year, month, day);
 	room = p_encode(room);
-	if(store_exists(room,host,datastore .. "/" .. str_format("%.02d%.02d%.02d",year,month,day) )) then
+	if(data_store_exists(room,host,datastore .. "/" .. str_format("%.02d%.02d%.02d",year,month,day) )) then
 		local s = html.days.bit;
 		s = s:gsub("###BARE_DAY###", webpath .. bare_day);
 		s = s:gsub("###DAY###", day);
