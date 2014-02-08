@@ -323,9 +323,7 @@ function driver:store_exists(username, datastore, type)
 
 	type = type or "keyval";
 
-	if username == true or not username then
-		username = "";
-	end
+	if username == true or not username then username = ""; end
 
 	local stmt, err = dosql(sql, host, username, datastore, type);
 	if not stmt then
@@ -338,7 +336,7 @@ function driver:store_exists(username, datastore, type)
 	if count > 0 then 
 		return true;
 	end
-	return false
+	return false;
 end
 
 function driver:purge(username)
