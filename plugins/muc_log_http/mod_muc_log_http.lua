@@ -217,7 +217,6 @@ local function generate_day_room_content(bare_room_jid)
 	local html_days = html.days;
 
 	path = path:gsub("/[^/]*$", "");
-	attributes = lfs.attributes(path);
 	do
 		local found = 0;
 		for jid, room in pairs(muc_rooms) do
@@ -242,18 +241,21 @@ local function generate_day_room_content(bare_room_jid)
 			room = nil;
 		end
 	end
-	if attributes and room then
+	if room then
 		local already_done_years = {};
 		topic = room._data.subject or "(no subject)";
 		if topic:find("%%") then topic = topic:gsub("%%", "%%%%") end
 		if topic:len() > 135 then
 			topic = topic:sub(1, topic:find(" ", 120)) .. " ...";
 		end
-		local folders = {};
-		for folder in lfs.dir(path) do table.insert(folders, folder); end
-		table.sort(folders);
-		for _, folder in ipairs(folders) do
-			local year, month, day = folder:match("^(%d%d)(%d%d)(%d%d)");
+
+		local stores = {};
+		for store in datamanager.stores(node, host, 'keyval', datastore) do 
+			table.insert(stores, store);
+		end
+		table.sort(stores);
+		for _, store in ipairs(stores) do
+			local year, month, day = string.match(store,'^'..datastore.."/(%d%d)(%d%d)(%d%d)");
 			if year then
 				to = tostring(os_date("%B %Y", os_time({ day=tonumber(day), month=tonumber(month), year=2000+tonumber(year) })));
 				if since == "" then since = to; end
