@@ -114,7 +114,7 @@ local function create_month(month, year, callback)
 		if i < days + 1 then
 			local tmp = tostring(i);
 			if callback and callback.callback then
-				tmp = callback.callback(callback.path, i, month, year, callback.room, callback.webpath);
+				tmp = callback.callback(callback.path, i, month, year, callback.host, callback.room, callback.webpath);
 			end
 			if tmp == nil then
 				tmp = tostring(i);
@@ -179,7 +179,7 @@ local function create_year(year, callback)
 	return "";
 end
 
-local function day_callback(path, day, month, year, room, webpath)
+local function day_callback(path, day, month, year, host, room, webpath)
 	local webpath = webpath or ""
 	local year = year;
 	if year > 2000 then
@@ -187,8 +187,7 @@ local function day_callback(path, day, month, year, room, webpath)
 	end
 	local bare_day = str_format("20%.02d-%.02d-%.02d", year, month, day);
 	room = p_encode(room);
-	local attributes, err = lfs.attributes(path.."/"..str_format("%.02d%.02d%.02d", year, month, day).."/"..room..".dat");
-	if attributes ~= nil and attributes.mode == "file" then
+	if(store_exists(room,host,datastore .. "/" .. str_format("%.02d%.02d%.02d",year,month,day) )) then
 		local s = html.days.bit;
 		s = s:gsub("###BARE_DAY###", webpath .. bare_day);
 		s = s:gsub("###DAY###", day);
@@ -258,7 +257,7 @@ local function generate_day_room_content(bare_room_jid)
 				if since == "" then since = to; end
 				if not already_done_years[year] then
 					module:log("debug", "creating overview for: %s", to);
-					days = create_year(year, {callback=day_callback, path=path, room=node}) .. days;
+					days = create_year(year, {callback=day_callback, path=path, host=host, room=node}) .. days;
 					already_done_years[year] = true;
 				end
 			end
@@ -413,7 +412,7 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 		temptime.day = tonumber(day);
 		temptime.month = tonumber(month);
 		temptime.year = tonumber(year);
-		calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, room=node, webpath="../"}) or "";
+		calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, host=host, room=node, webpath="../"}) or "";
 		
 		local get_page = open_pipe(
 			module_path.."/generate_log '"..metronome_paths.source.."' "..metronome_paths.data.." "..theme_path.." "..bare_room_jid.." ".._year..month..day
