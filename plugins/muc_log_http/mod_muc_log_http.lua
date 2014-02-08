@@ -24,7 +24,7 @@ local config_get = require "core.configmanager".get;
 local urldecode = require "net.http".urldecode;
 local html_escape = require "util.auxiliary".html_escape;
 local http_event = require "net.http.server".fire_server_event;
-local data_load, data_getpath = datamanager.load, datamanager.getpath;
+local data_load, data_getpath, store_exists = datamanager.load, datamanager.getpath, datamanager.store_exists;
 local datastore = "muc_log";
 local url_base = "muc_log";
 local config = nil;
@@ -47,9 +47,6 @@ local muc_rooms = hosts[my_host].muc.rooms;
 -- Helper Functions
 
 local p_encode = datamanager.path_encode;
-local function store_exists(node, host, today)
-	if lfs.attributes(data_getpath(node, host, datastore .. "/" .. today), "mode") then return true; else return false; end
-end
 
 -- Module Definitions
 
@@ -324,7 +321,7 @@ local function find_next_day(bare_room_jid, bare_day)
 	local max_trys = 7;
 
 	module:log("debug", day);
-	while(not store_exists(node, host, day)) do
+	while(not store_exists(node, host, datastore .. "/" .. day)) do
 		max_trys = max_trys - 1;
 		if max_trys == 0 then
 			break;
@@ -381,7 +378,7 @@ local function find_previous_day(bare_room_jid, bare_day)
 	local day = decrement_day(bare_day);
 	local max_trys = 7;
 	module:log("debug", day);
-	while(not store_exists(node, host, day)) do
+	while(not store_exists(node, host, datastore .. "/" .. day)) do
 		max_trys = max_trys - 1;
 		if max_trys == 0 then
 			break;
