@@ -315,8 +315,6 @@ function stores(username, host, type, pattern)
 	else
 		store_dir = format("%s/%s/", data_path, encode(host));
 	end
-	log("debug", format("store_dir = %s",store_dir));
-
 
 	local mode, err = lfs.attributes(store_dir, "mode");
 	if not mode then
