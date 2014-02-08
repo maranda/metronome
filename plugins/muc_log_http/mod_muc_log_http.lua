@@ -24,11 +24,13 @@ local config_get = require "core.configmanager".get;
 local urldecode = require "net.http".urldecode;
 local html_escape = require "util.auxiliary".html_escape;
 local http_event = require "net.http.server".fire_server_event;
-local data_load, data_getpath, store_exists = datamanager.load, datamanager.getpath, datamanager.store_exists;
+local data_load, data_getpath, data_stores, data_store_exists = 
+	datamanager.load, datamanager.getpath, datamanager.stores, datamanager.store_exists;
 local datastore = "muc_log";
 local url_base = "muc_log";
 local config = nil;
-local table, tostring, tonumber = table, tostring, tonumber;
+local tostring, tonumber = tostring, tonumber;
+local t_insert, t_sort = table.insert, table.sort;
 local os_date, os_time = os.date, os.time;
 local str_format = string.format;
 local io_open = io.open;
@@ -246,12 +248,11 @@ local function generate_day_room_content(bare_room_jid)
 		end
 
 		local stores = {};
-		for store in datamanager.stores(node, host, 'keyval', datastore) do 
-			table.insert(stores, store);
-		end
-		table.sort(stores);
+		for store in data_stores(node, host, "keyval", datastore) do t_insert(stores, store); end
+		t_sort(stores);
+		
 		for _, store in ipairs(stores) do
-			local year, month, day = string.match(store,'^'..datastore.."/(%d%d)(%d%d)(%d%d)");
+			local year, month, day = store:match("^"..datastore.."/(%d%d)(%d%d)(%d%d)");
 			if year then
 				to = tostring(os_date("%B %Y", os_time({ day=tonumber(day), month=tonumber(month), year=2000+tonumber(year) })));
 				if since == "" then since = to; end
@@ -320,7 +321,7 @@ local function find_next_day(bare_room_jid, bare_day)
 	local max_trys = 7;
 
 	module:log("debug", day);
-	while(not store_exists(node, host, datastore .. "/" .. day)) do
+	while(not data_store_exists(node, host, datastore .. "/" .. day)) do
 		max_trys = max_trys - 1;
 		if max_trys == 0 then
 			break;
@@ -377,7 +378,7 @@ local function find_previous_day(bare_room_jid, bare_day)
 	local day = decrement_day(bare_day);
 	local max_trys = 7;
 	module:log("debug", day);
-	while(not store_exists(node, host, datastore .. "/" .. day)) do
+	while(not data_store_exists(node, host, datastore .. "/" .. day)) do
 		max_trys = max_trys - 1;
 		if max_trys == 0 then
 			break;
