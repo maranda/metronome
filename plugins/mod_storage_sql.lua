@@ -293,7 +293,7 @@ function driver:open(store, typ)
 end
 
 function driver:stores(username, type, pattern)
-	local sql = "SELECT DISTINCT `store` FROM `metronome` WHERE `host`=? AND `user`"..(username == true and "!=?" or "=?").." AND `TYPE`=? AND `store` LIKE ?";
+	local sql = "SELECT DISTINCT `store` FROM `metronome` WHERE `host`=? AND `user`"..(username == true and "!=?" or "=?").." AND `type`=? AND `store` LIKE ?";
 
 	type = type or "keyval";
 
@@ -316,6 +316,29 @@ function driver:stores(username, type, pattern)
 		local row = next();
 		return row and row[1];
 	end);
+end
+
+function driver:store_exists(username, datastore, type)
+	local sql = "SELECT DISTINCT `store` FROM `metronome` WHERE `host`=? and `user`"..(username == true and "!=?" or "=?").." AND `store`=? AND `type` =?";
+
+	type = type or "keyval";
+
+	if username == true or not username then
+		username = "";
+	end
+
+	local stmt, err = dosql(sql, host, username, datastore, type);
+	if not stmt then
+		return rollback(nil, err);
+	end
+	local count = 0;
+	for i, row in ipairs(stmt:rows()) do
+		count = count + 1;
+	end
+	if count > 0 then 
+		return true;
+	end
+	return false
 end
 
 function driver:purge(username)

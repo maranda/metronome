@@ -344,6 +344,34 @@ function stores(username, host, type, pattern)
 	end, state;
 end
 
+function store_exists(username, host, datastore, type)
+	if not username then
+		return nil, "bad argument #1 to 'store_exists' ('true' or string expected)";
+	end
+	if not host then
+		return nil, "bad argument #2 to 'store_exists' (string expected, got nothing)";
+	end
+
+	if not datastore then
+		return nil, "bad argument #3 to 'store_exists' (string expected, got nothing)";
+	end
+
+	type = type_map[type or "keyval"]
+
+	if username == true then
+		if lfs.attributes(format("%s/%s/%s",data_path,encode(host),datastore),"mode") == "directory" then
+			return true;
+		end
+		return false
+	elseif username then
+		if lfs.attributes(getpath(username,host,datastore,type), "mode") then
+			return true
+		end
+		return false
+	end
+
+end
+
 local function do_remove(path)
 	local ok, err = os_remove(path);
 	if not ok and lfs.attributes(path, "mode") then

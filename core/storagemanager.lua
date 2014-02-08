@@ -134,6 +134,9 @@ end
 function datamanager.stores(username, host, type, pattern)
 	return get_driver(host):stores(username, type, pattern);
 end
+function datamanager.store_exists(username, host, datastore, type)
+	return get_driver(host):store_exists(username, datastore, type);
+end
 function datamanager.purge(username, host)
 	return purge(username, host);
 end

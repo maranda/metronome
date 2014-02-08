@@ -24,7 +24,7 @@ local config_get = require "core.configmanager".get;
 local urldecode = require "net.http".urldecode;
 local html_escape = require "util.auxiliary".html_escape;
 local http_event = require "net.http.server".fire_server_event;
-local data_load, data_getpath = datamanager.load, datamanager.getpath;
+local data_load, data_getpath, store_exists = datamanager.load, datamanager.getpath, datamanager.store_exists;
 local datastore = "muc_log";
 local url_base = "muc_log";
 local config = nil;
@@ -47,9 +47,6 @@ local muc_rooms = hosts[my_host].muc.rooms;
 -- Helper Functions
 
 local p_encode = datamanager.path_encode;
-local function store_exists(node, host, today)
-	if lfs.attributes(data_getpath(node, host, datastore .. "/" .. today), "mode") then return true; else return false; end
-end
 
 -- Module Definitions
 
@@ -117,7 +114,7 @@ local function create_month(month, year, callback)
 		if i < days + 1 then
 			local tmp = tostring(i);
 			if callback and callback.callback then
-				tmp = callback.callback(callback.path, i, month, year, callback.room, callback.webpath);
+				tmp = callback.callback(callback.path, i, month, year, callback.host, callback.room, callback.webpath);
 			end
 			if tmp == nil then
 				tmp = tostring(i);
@@ -182,7 +179,7 @@ local function create_year(year, callback)
 	return "";
 end
 
-local function day_callback(path, day, month, year, room, webpath)
+local function day_callback(path, day, month, year, host, room, webpath)
 	local webpath = webpath or ""
 	local year = year;
 	if year > 2000 then
@@ -190,8 +187,7 @@ local function day_callback(path, day, month, year, room, webpath)
 	end
 	local bare_day = str_format("20%.02d-%.02d-%.02d", year, month, day);
 	room = p_encode(room);
-	local attributes, err = lfs.attributes(path.."/"..str_format("%.02d%.02d%.02d", year, month, day).."/"..room..".dat");
-	if attributes ~= nil and attributes.mode == "file" then
+	if(store_exists(room,host,datastore .. "/" .. str_format("%.02d%.02d%.02d",year,month,day) )) then
 		local s = html.days.bit;
 		s = s:gsub("###BARE_DAY###", webpath .. bare_day);
 		s = s:gsub("###DAY###", day);
@@ -217,7 +213,6 @@ local function generate_day_room_content(bare_room_jid)
 	local html_days = html.days;
 
 	path = path:gsub("/[^/]*$", "");
-	attributes = lfs.attributes(path);
 	do
 		local found = 0;
 		for jid, room in pairs(muc_rooms) do
@@ -242,24 +237,27 @@ local function generate_day_room_content(bare_room_jid)
 			room = nil;
 		end
 	end
-	if attributes and room then
+	if room then
 		local already_done_years = {};
 		topic = room._data.subject or "(no subject)";
 		if topic:find("%%") then topic = topic:gsub("%%", "%%%%") end
 		if topic:len() > 135 then
 			topic = topic:sub(1, topic:find(" ", 120)) .. " ...";
 		end
-		local folders = {};
-		for folder in lfs.dir(path) do table.insert(folders, folder); end
-		table.sort(folders);
-		for _, folder in ipairs(folders) do
-			local year, month, day = folder:match("^(%d%d)(%d%d)(%d%d)");
+
+		local stores = {};
+		for store in datamanager.stores(node, host, 'keyval', datastore) do 
+			table.insert(stores, store);
+		end
+		table.sort(stores);
+		for _, store in ipairs(stores) do
+			local year, month, day = string.match(store,'^'..datastore.."/(%d%d)(%d%d)(%d%d)");
 			if year then
 				to = tostring(os_date("%B %Y", os_time({ day=tonumber(day), month=tonumber(month), year=2000+tonumber(year) })));
 				if since == "" then since = to; end
 				if not already_done_years[year] then
 					module:log("debug", "creating overview for: %s", to);
-					days = create_year(year, {callback=day_callback, path=path, room=node}) .. days;
+					days = create_year(year, {callback=day_callback, path=path, host=host, room=node}) .. days;
 					already_done_years[year] = true;
 				end
 			end
@@ -322,7 +320,7 @@ local function find_next_day(bare_room_jid, bare_day)
 	local max_trys = 7;
 
 	module:log("debug", day);
-	while(not store_exists(node, host, day)) do
+	while(not store_exists(node, host, datastore .. "/" .. day)) do
 		max_trys = max_trys - 1;
 		if max_trys == 0 then
 			break;
@@ -379,7 +377,7 @@ local function find_previous_day(bare_room_jid, bare_day)
 	local day = decrement_day(bare_day);
 	local max_trys = 7;
 	module:log("debug", day);
-	while(not store_exists(node, host, day)) do
+	while(not store_exists(node, host, datastore .. "/" .. day)) do
 		max_trys = max_trys - 1;
 		if max_trys == 0 then
 			break;
@@ -414,7 +412,7 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 		temptime.day = tonumber(day);
 		temptime.month = tonumber(month);
 		temptime.year = tonumber(year);
-		calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, room=node, webpath="../"}) or "";
+		calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, host=host, room=node, webpath="../"}) or "";
 		
 		local get_page = open_pipe(
 			module_path.."/generate_log '"..metronome_paths.source.."' "..metronome_paths.data.." "..theme_path.." "..bare_room_jid.." ".._year..month..day

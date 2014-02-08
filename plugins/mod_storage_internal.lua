@@ -34,6 +34,10 @@ function driver:stores(username, type, pattern)
 	return datamanager.stores(username, host, type, pattern);
 end
 
+function driver:store_exists(username, datastore, type)
+	return datamanager.store_exists(username, host, datastore, type);
+end
+
 function driver:purge(user)
 	return datamanager.purge(user, host);
 end
