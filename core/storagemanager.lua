@@ -97,6 +97,8 @@ function get_driver(host, store)
 end
 	
 function open(host, store, typ)
+    typ = typ or "keyval";
+
 	local driver, driver_name = get_driver(host, store);
 	local ret, err = driver:open(store, typ);
 	if not ret then
@@ -125,11 +127,11 @@ function purge(user, host)
 	return true;
 end
 
-function datamanager.load(username, host, datastore)
-	return open(host, datastore):get(username);
+function datamanager.load(username, host, datastore, typ)
+	return open(host, datastore, typ):get(username);
 end
-function datamanager.store(username, host, datastore, data)
-	return open(host, datastore):set(username, data);
+function datamanager.store(username, host, datastore, data, typ)
+	return open(host, datastore, typ):set(username, data);
 end
 function datamanager.stores(username, host, type, pattern)
 	return get_driver(host):stores(username, type, pattern);
