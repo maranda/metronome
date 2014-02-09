@@ -18,7 +18,7 @@ cache = {};
 local driver = { name = "internal" };
 local driver_mt = { __index = driver };
 
-function driver:open(store)
+function driver:open(store,typ) -- internal supports all types
 	if not cache[store] then cache[store] = setmetatable({ store = store }, driver_mt); end
 	return cache[store];
 end
