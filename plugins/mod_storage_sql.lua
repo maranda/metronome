@@ -285,7 +285,9 @@ cache = {};
 local driver = { name = "sql" };
 
 function driver:open(store, typ)
-	if not typ then -- default key-value store
+	if not typ then
+		return nil, "unsupported-store"; -- typ should be set to "keyval" by storagemanager call, if not provided by module
+	elseif typ == "keyval" then
 		if not cache[store] then cache[store] = setmetatable({ store = store }, keyval_store); end
 		return cache[store];
 	end
