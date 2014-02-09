@@ -48,10 +48,6 @@ local theme, theme_path;
 
 local muc_rooms = hosts[my_host].muc.rooms;
 
--- Helper Functions
-
-local p_encode = datamanager.path_encode;
-
 -- Module Definitions
 
 function create_doc(body, title)
@@ -190,8 +186,7 @@ local function day_callback(path, day, month, year, host, room, webpath)
 		year = year - 2000;
 	end
 	local bare_day = str_format("20%.02d-%.02d-%.02d", year, month, day);
-	room = p_encode(room);
-	if(data_store_exists(room, host, datastore .. "/" .. str_format("%.02d%.02d%.02d",year,month,day))) then
+	if(data_store_exists(room, host, datastore .. "/" .. str_format("%.02d%.02d%.02d", year, month, day))) then
 		local s = html.days.bit;
 		s = s:gsub("###BARE_DAY###", webpath .. bare_day);
 		s = s:gsub("###DAY###", day);
