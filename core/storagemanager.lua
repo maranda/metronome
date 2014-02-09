@@ -97,7 +97,7 @@ function get_driver(host, store)
 end
 	
 function open(host, store, typ)
-    typ = typ or "keyval";
+	typ = typ or "keyval";
 
 	local driver, driver_name = get_driver(host, store);
 	local ret, err = driver:open(store, typ);
