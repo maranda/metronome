@@ -42,9 +42,11 @@ local function handle_stanza(event)
 
 	local domain = jid_section(stanza.attr.from, "host");
 	if exclusion_list and exclusion_list:contains(domain) then
+		module:log("debug", "Skipping stanza from excluded host %s...", domain);
 		return;
 	end
 	if _parent and _parent.events.fire_event("peer-is-subscribed", domain) then
+		module:log("debug", "Skipping stanza from server peer %s...", domain);
 		return;
 	end
 
