@@ -255,7 +255,7 @@ function stream_callbacks.streamopened(context, attr)
 			bosh_version = attr.ver, bosh_wait = math_min(attr.wait, BOSH_MAX_WAIT), streamid = sid,
 			bosh_hold = BOSH_DEFAULT_HOLD, bosh_max_inactive = BOSH_DEFAULT_INACTIVITY,
 			requests = { }, send_buffer = {}, reset_stream = bosh_reset_stream,
-			close = bosh_close_stream, dispatch_stanza = streamcallbacks.handlestanza, notopen = true,
+			close = bosh_close_stream, dispatch_stanza = stream_callbacks.handlestanza, notopen = true,
 			log = logger.init("bosh"..sid), secure = consider_bosh_secure or request.secure,
 			ip = get_ip_from_request(request), headers = custom_headers;
 		};
