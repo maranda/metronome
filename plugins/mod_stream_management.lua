@@ -19,7 +19,7 @@ local dt = require "util.datetime".datetime;
 local destroy = sessionmanager.destroy_session;
 local uuid = require "util.uuid".generate;
 
-local process_stanza = metronome.core_process_stanza;
+local fire_event = metronome.events.fire_event;
 
 local xmlns_sm = "urn:xmpp:sm:2"; -- COMPAT: move down to :2 as most clients don't seem to support the latest NS
 local xmlns_e = "urn:ietf:params:xml:ns:xmpp-stanzas";
@@ -122,7 +122,7 @@ local function wrap(session, _r) -- SM session wrapper
 			if reply.attr.to ~= session.full_jid then
 				reply.attr.type = "error";
 				reply:tag("error", attr):tag("recipient-unavaible", { xmlns = xmlns_e });
-				process_stanza(session, reply);
+				fire_event("route/process", session, reply);
 			end
 		end
 		_q, session.sm_queue = {}, {};

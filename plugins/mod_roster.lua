@@ -24,7 +24,6 @@ local rm_roster_push = require "util.rostermanager".roster_push;
 local rm_load_roster = require "util.rostermanager".load_roster;
 local rm_get_readonly_rosters = require "util.rostermanager".get_readonly_rosters;
 local rm_get_readonly_item = require "util.rostermanager".get_readonly_item;
-local core_post_stanza = metronome.core_post_stanza;
 
 module:add_feature("jabber:iq:roster");
 
@@ -112,10 +111,10 @@ module:hook("iq/self/jabber:iq:roster:query", function(event)
 						if r_item then
 							local to_bare = node and (node.."@"..host) or host; -- bare JID
 							if r_item.subscription == "both" or r_item.subscription == "from" or (session_roster.pending and session_roster.pending[jid]) then
-								core_post_stanza(session, st.presence({type="unsubscribed", from=session.full_jid, to=to_bare}));
+								module:fire_global_event("route/post", session, st.presence({type="unsubscribed", from=session.full_jid, to=to_bare}));
 							end
 							if r_item.subscription == "both" or r_item.subscription == "to" or r_item.ask then
-								core_post_stanza(session, st.presence({type="unsubscribe", from=session.full_jid, to=to_bare}));
+								module:fire_global_event("route/post", session, st.presence({type="unsubscribe", from=session.full_jid, to=to_bare}));
 							end
 							local success, err_type, err_cond, err_msg = rm_remove_from_roster(session, jid);
 							if success then
