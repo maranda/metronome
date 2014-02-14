@@ -22,7 +22,7 @@ local tonumber, tostring = tonumber, tostring;
 
 local metronome = metronome;
 local hosts = metronome.hosts;
-local core_post_stanza = metronome.core_post_stanza;
+local fire_global_event = metronome.events.fire_event;
 
 local shared_data = setmetatable({}, { __mode = "v" });
 
@@ -76,6 +76,10 @@ end
 
 function api:fire_event(...)
 	return (hosts[self.host] or metronome).events.fire_event(...);
+end
+
+function api:fire_global_event(...)
+	return metronome.events.fire_event(...);
 end
 
 function api:hook_object_event(object, event, handler, priority)
@@ -323,7 +327,7 @@ function api:provides(name, item)
 end
 
 function api:send(stanza)
-	return core_post_stanza(hosts[self.host], stanza);
+	return fire_global_event("route/post", hosts[self.host], stanza);
 end
 
 function api:add_timer(delay, callback)
