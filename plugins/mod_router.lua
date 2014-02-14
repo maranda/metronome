@@ -6,17 +6,18 @@
 
 module:set_global();
 
-local hosts = _G.metronome.hosts;
+local hosts = metronome.hosts;
 local tostring = tostring;
 local st = require "util.stanza";
 local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local jid_prepped_split = require "util.jid".prepped_split;
 
-local full_sessions = _G.metronome.full_sessions;
-local bare_sessions = _G.metronome.bare_sessions;
+local full_sessions = metronome.full_sessions;
+local bare_sessions = metronome.bare_sessions;
 
-local function log(level, entry) module:log(level, entry) end
+local log = module._log;
+local fire_event = metronome.events.fire_event;
 
 local function handle_unhandled_stanza(host, origin, stanza)
 	local name, xmlns, origin_type = stanza.name, stanza.attr.xmlns or "jabber:client", origin.type;
@@ -121,7 +122,7 @@ local function process_stanza(origin, stanza)
 				return;
 			end
 		end
-		module:fire_event("route/post", origin, stanza, origin.full_jid);
+		fire_event("route/post", origin, stanza, origin.full_jid);
 	else
 		local h = hosts[stanza.attr.to or origin.host or origin.to_host];
 		if h then
@@ -177,7 +178,7 @@ local function post_stanza(origin, stanza, preevents)
 		if to_self and h.events.fire_event(stanza.name..'/self', event_data) then return; end
 		handle_unhandled_stanza(h.host, origin, stanza);
 	else
-		module:fire_event("route/local", origin, stanza);
+		fire_event("route/local", origin, stanza);
 	end
 end
 
@@ -189,7 +190,7 @@ local function route_stanza(origin, stanza)
 	if not origin then return false; end
 	
 	if hosts[host] then
-		module:fire_event("route/post", origin, stanza);
+		fire_event("route/post", origin, stanza);
 	else
 		log("debug", "Routing to remote...");
 		local host_session = hosts[from_host];
@@ -203,7 +204,7 @@ local function route_stanza(origin, stanza)
 			if not routed then
 				module:log("debug", "... or not.");
 				if stanza.attr.type == "error" or (stanza.name == "iq" and stanza.attr.type == "result") then return; end
-				module:fire_event("route/local", host_session, st.error_reply(stanza, "cancel", "not-allowed", "Communication with remote domains is not enabled"));
+				fire_event("route/local", host_session, st.error_reply(stanza, "cancel", "not-allowed", "Communication with remote domains is not enabled"));
 			end
 		end
 	end
