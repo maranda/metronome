@@ -11,7 +11,6 @@ module:set_global();
 
 local metronome = metronome;
 local hosts = metronome.hosts;
-local core_process_stanza = metronome.core_process_stanza;
 
 local tostring, type, now = tostring, type, os.time;
 local t_insert = table.insert;
@@ -44,6 +43,7 @@ local sessions = module:shared("sessions");
 
 local log = module._log;
 local last_inactive_clean = now();
+local fire_event = metronome.events.fire_event;
 
 local xmlns_stream = "http://etherx.jabber.org/streams";
 
@@ -88,7 +88,7 @@ local function bounce_sendq(session, reason)
 				reply:tag("text", {xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas"})
 					:text("Server-to-server connection failed: "..reason):up();
 			end
-			core_process_stanza(dummy, reply);
+			fire_event("route/process", dummy, reply);
 		end
 		sendq[i] = nil;
 	end
@@ -246,7 +246,7 @@ end
 
 --- XMPP stream event handlers
 
-local stream_callbacks = { default_ns = "jabber:server", handlestanza = core_process_stanza };
+local stream_callbacks = { default_ns = "jabber:server" };
 
 local xmlns_xmpp_streams = "urn:ietf:params:xml:ns:xmpp-streams";
 
@@ -413,7 +413,7 @@ function stream_callbacks.handlestanza(session, stanza)
 	end
 	stanza = session.filter("stanzas/in", stanza);
 	if stanza then
-		return xpcall(function () return core_process_stanza(session, stanza) end, handleerr);
+		return xpcall(function () return fire_event("route/process", session, stanza) end, handleerr);
 	end
 end
 

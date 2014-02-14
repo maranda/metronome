@@ -19,8 +19,8 @@ local jid_section = require "util.jid".section;
 local new_xmpp_stream = require "util.xmppstream".new;
 local uuid_gen = require "util.uuid".generate;
 
-local core_process_stanza = metronome.core_process_stanza;
 local log = module._log;
+local fire_event = metronome.events.fire_event;
 
 local sessions = module:shared("sessions");
 
@@ -209,7 +209,7 @@ function stream_callbacks.handlestanza(session, stanza)
 			return;
 		end
 	end
-	return core_process_stanza(session, stanza);
+	return fire_event("route/process", session, stanza);
 end
 
 --- Closing a component connection

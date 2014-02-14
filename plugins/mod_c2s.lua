@@ -17,6 +17,7 @@ local st = require "util.stanza";
 local sm_new_session, sm_destroy_session = sessionmanager.new_session, sessionmanager.destroy_session;
 local uuid_generate = require "util.uuid".generate;
 local hosts = metronome.hosts;
+local fire_event = metronome.events.fire_event;
 
 local xpcall, tostring, type = xpcall, tostring, type;
 local traceback = debug.traceback;
@@ -30,9 +31,8 @@ local stream_close_timeout = module:get_option_number("c2s_close_timeout", 5);
 local opt_keepalives = module:get_option_boolean("tcp_keepalives", false);
 
 local sessions = module:shared("sessions");
-local core_process_stanza = metronome.core_process_stanza;
 
-local stream_callbacks = { default_ns = "jabber:client", handlestanza = core_process_stanza };
+local stream_callbacks = { default_ns = "jabber:client" };
 local listener = {};
 
 --- Stream events handlers
@@ -120,7 +120,7 @@ local function handleerr(err) log("error", "Traceback[c2s]: %s: %s", tostring(er
 function stream_callbacks.handlestanza(session, stanza)
 	stanza = session.filter("stanzas/in", stanza);
 	if stanza then
-		return xpcall(function () return core_process_stanza(session, stanza) end, handleerr);
+		return xpcall(function () return fire_event("route/process", session, stanza) end, handleerr);
 	end
 end
 

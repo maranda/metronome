@@ -15,7 +15,6 @@ local sm = require "core.sessionmanager";
 local sm_destroy_session = sm.destroy_session;
 local new_uuid = require "util.uuid".generate;
 local fire_event = metronome.events.fire_event;
-local core_process_stanza = metronome.core_process_stanza;
 local st = require "util.stanza";
 local logger = require "util.logger";
 local log = logger.init("mod_bosh");
@@ -256,7 +255,7 @@ function stream_callbacks.streamopened(context, attr)
 			bosh_version = attr.ver, bosh_wait = math_min(attr.wait, BOSH_MAX_WAIT), streamid = sid,
 			bosh_hold = BOSH_DEFAULT_HOLD, bosh_max_inactive = BOSH_DEFAULT_INACTIVITY,
 			requests = { }, send_buffer = {}, reset_stream = bosh_reset_stream,
-			close = bosh_close_stream, dispatch_stanza = core_process_stanza, notopen = true,
+			close = bosh_close_stream, dispatch_stanza = streamcallbacks.handlestanza, notopen = true,
 			log = logger.init("bosh"..sid), secure = consider_bosh_secure or request.secure,
 			ip = get_ip_from_request(request), headers = custom_headers;
 		};
@@ -365,7 +364,7 @@ function stream_callbacks.handlestanza(context, stanza)
 			end
 		end
 		stanza = session.filter("stanzas/in", stanza);
-		if stanza then core_process_stanza(session, stanza); end
+		if stanza then fire_event("route/process", session, stanza); end
 	end
 end
 
