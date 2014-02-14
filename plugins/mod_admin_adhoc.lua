@@ -26,7 +26,6 @@ local timer_add_task = require "util.timer".add_task;
 local dataforms_new = require "util.dataforms".new;
 local array = require "util.array";
 local modulemanager = require "modulemanager";
-local core_post_stanza = metronome.core_post_stanza;
 
 local hashed_auth = module:get_option_string("authentication");
 if hashed_auth == "internal_hashed" then hashed_auth = true; else hashed_auth = false; end
@@ -526,7 +525,7 @@ function send_to_online(message, server)
 			c = c + 1;
 			message.attr.from = domain;
 			message.attr.to = user.."@"..domain;
-			core_post_stanza(session, message);
+			module:fire_global_event("route/post", session, message);
 		end
 	end
 

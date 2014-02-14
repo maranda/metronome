@@ -40,7 +40,6 @@ local read_version = read_version;
 local commands = module:shared("commands")
 local def_env = module:shared("env");
 local default_env_mt = { __index = def_env };
-local core_post_stanza = metronome.core_post_stanza;
 
 local strict_host_checks = module:get_option_boolean("admin_telnet_strict_host_checks", true)
 
@@ -996,7 +995,7 @@ def_env.xmpp = {};
 
 function def_env.xmpp:ping(localhost, remotehost)
 	if hosts[localhost] then
-		core_post_stanza(hosts[localhost],
+		module:fire_global_event("route/post", hosts[localhost],
 			st.iq{ from=localhost, to=remotehost, type="get", id="ping" }
 				:tag("ping", {xmlns = "urn:xmpp:ping"}));
 		return true, "Sent ping";

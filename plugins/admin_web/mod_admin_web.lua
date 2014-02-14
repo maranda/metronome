@@ -20,7 +20,6 @@
 --   <in/> / <out/>
 -- </session>
 
-local core_post_stanza = metronome.core_post_stanza;
 local st = require "util.stanza";
 local uuid_generate = require "util.uuid".generate;
 local is_admin = usermanager.is_admin;
@@ -337,7 +336,7 @@ function simple_broadcast(self, node, jids, item, host)
 	for jid in pairs(jids) do
 		module:log("debug", "Sending notification to %s", jid);
 		message.attr.to = jid;
-		core_post_stanza(hosts[host], message);
+		module:fire_global_event("route/post", hosts[host], message);
 	end
 end
 
