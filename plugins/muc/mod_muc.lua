@@ -29,11 +29,13 @@ local jid_bare = require "util.jid".bare;
 local st = require "util.stanza";
 local uuid_gen = require "util.uuid".generate;
 local datamanager = require "util.datamanager";
+local fire_event = metronome.events.fire_event;
 local um_is_admin = require "core.usermanager".is_admin;
 local hosts = hosts;
 local pairs = pairs;
 
 rooms = {};
+local host_session = hosts[muc_host];
 local rooms = rooms;
 local persistent_rooms = datamanager.load(nil, muc_host, "persistent") or {};
 
@@ -88,7 +90,9 @@ function muclib.room_mt:set_affiliation(actor, jid, affiliation, callback, reaso
 	return _set_affiliation(self, actor, jid, affiliation, callback, reason);
 end
 
-local function room_route_stanza(room, stanza) module:send(stanza); end
+local function room_route_stanza(room, stanza) 
+	fire_event("route/post", host_session, stanza); 
+end
 local function room_save(room, forced)
 	local node = jid_section(room.jid, "node");
 	persistent_rooms[room.jid] = room._data.persistent;

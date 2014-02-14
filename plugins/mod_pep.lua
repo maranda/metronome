@@ -5,7 +5,6 @@
 -- information about copyright and licensing.
 
 local hosts = hosts;
-local core_post_stanza = metronome.core_post_stanza;
 local ripairs, tonumber, type, os_remove, os_time, select = ripairs, tonumber, type, os.remove, os.time, select;
 
 local pubsub = require "util.pubsub";
@@ -64,7 +63,7 @@ local function idle_service_closer()
 end
 
 local function disco_info_query(user, from)
-	core_post_stanza(hosts[module.host], 
+	module:fire_global_event("route/post", hosts[module.host], 
 		st.stanza("iq", { from = user, to = from, id = "disco", type = "get" })
 			:query("http://jabber.org/protocol/disco#info")
 	);
@@ -72,7 +71,8 @@ local function disco_info_query(user, from)
 end
 
 local function probe_jid(user, from)
-	core_post_stanza(hosts[module.host], st.presence({from=user, to=from, id="peptrigger", type="probe"}));
+	module:fire_global_event("route/post", hosts[module.host], 
+		st.presence({from=user, to=from, id="peptrigger", type="probe"}));
 	module:log("debug", "Sending trigger probe to: %s", from);
 end
 
