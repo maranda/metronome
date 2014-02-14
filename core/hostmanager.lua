@@ -11,6 +11,7 @@ local configmanager = require "core.configmanager";
 local modulemanager = require "core.modulemanager";
 local events_new = require "util.events".new;
 local mt_new = require "util.multitable".new;
+local set_new = require "util.set".new;
 local disco_items = mt_new();
 local NULL = {};
 
@@ -21,11 +22,11 @@ local log = require "util.logger".init("hostmanager");
 
 local hosts = hosts;
 local metronome_events = metronome.events;
-if not _G.metronome.incoming_s2s then
+if not metronome.incoming_s2s then
 	require "core.s2smanager";
 end
-local incoming_s2s = _G.metronome.incoming_s2s;
-local core_route_stanza = _G.metronome.core_route_stanza;
+local incoming_s2s = metronome.incoming_s2s;
+local fire_event = metronome_events.fire_event;
 
 local pairs, tostring, type = pairs, tostring, type;
 
@@ -34,6 +35,15 @@ module "hostmanager"
 local hosts_loaded_once;
 
 local function load_enabled_hosts()
+	local disabled = configmanager.get("*", "modules_disabled");
+	if disabled then
+		disabled = set_new(disabled);
+		if disabled:contains("router") then
+			log("warn", "You intentionally disabled core routing functions.");
+			log("warn", "Be aware that if you don't have any replacement this will cause Metronome to NOT work correctly.");
+		end
+	end
+
 	local defined_hosts = configmanager.getconfig();
 	local activated_any_host;
 	
@@ -76,7 +86,7 @@ local function host_send(stanza)
 		log("warn", "Unhandled response sent to %s host %s: %s", dest_host.type, dest_host_name, tostring(stanza));
 		return;
 	end
-	core_route_stanza(nil, stanza);
+	fire_event("route/local", nil, stanza);
 end
 
 function activate(host)

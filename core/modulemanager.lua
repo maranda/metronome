@@ -30,7 +30,7 @@ pcall = function(f, ...)
 	return xpcall(function() return f(unpack(params, 1, n)) end, function(e) return tostring(e).."\n"..debug_traceback(); end);
 end
 
-local autoload_modules = { "bind_session", "presence", "message", "iq", "offline", "c2s", "s2s" };
+local autoload_modules = { "router", "bind_session", "presence", "message", "iq", "offline", "c2s", "s2s" };
 local component_inheritable_modules = { "tls", "iq", "s2s", "stream_management" };
 
 local _G = _G;
