@@ -989,7 +989,7 @@ function room_mt:handle_stanza(origin, stanza)
 	end
 end
 
-function room_mt:route_stanza(stanza) end -- Replace with a routing function, e.g., function(room, stanza) core_route_stanza(origin, stanza); end
+function room_mt:route_stanza(stanza) end
 
 function room_mt:get_affiliation(jid)
 	local node, host, resource = jid_split(jid);

@@ -15,7 +15,7 @@ local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed
 local dataforms = require "util.dataforms";
 local encode_node = datamanager.path_encode;
 local um_is_admin = usermanager.is_admin;
-local core_post_stanza = metronome.core_post_stanza;
+local fire_event = metronome.events.fire_event;
 
 local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
 local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
@@ -294,7 +294,7 @@ local function send_event(self, node, message, jid)
 	local subscribers = self.nodes[node].subscribers;
 	if subscribers[jid] then
 		log("debug", "%s -- service sending %s notification to %s", self.name, node, jid);
-		message.attr.to = jid; core_post_stanza(self.session, message);
+		message.attr.to = jid; fire_event("route/post", self.session, message);
 	end
 end
 
