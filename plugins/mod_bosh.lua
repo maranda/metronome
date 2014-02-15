@@ -396,7 +396,7 @@ function stream_callbacks.error(context, error)
 end
 
 local dead_sessions = {};
-function on_timer()
+local function on_timer()
 	local now = os_time() + 3;
 	for request, reply_before in pairs(waiting_requests) do
 		if reply_before <= now then
