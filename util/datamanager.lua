@@ -135,7 +135,7 @@ function getpath(username, host, datastore, ext, create)
 	else
 		if create then 
 			mkdir(mkdir(data_path).."/"..host);
-			recursive_ds_create(host, datastore);
+			if datastore:find("/") then recursive_ds_create(host, datastore); end
 		end
 		return format("%s/%s/%s.%s", data_path, host, datastore, ext);
 	end
