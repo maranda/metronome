@@ -26,8 +26,7 @@ local xmlns_streams = "http://etherx.jabber.org/streams";
 local xmlns_xmpp_streams = "urn:ietf:params:xml:ns:xmpp-streams";
 local xmlns_bosh = "http://jabber.org/protocol/httpbind"; -- (hard-coded into a literal in session.send)
 
-local stream_callbacks = {
-	stream_ns = xmlns_bosh, stream_tag = "body", default_ns = "jabber:client" };
+local stream_callbacks = { stream_ns = xmlns_bosh, stream_tag = "body", default_ns = "jabber:client" };
 
 local BOSH_DEFAULT_HOLD = module:get_option_number("bosh_default_hold", 1);
 local BOSH_DEFAULT_INACTIVITY = module:get_option_number("bosh_max_inactivity", 60);
@@ -88,7 +87,7 @@ local function jsonp_encode(callback, data)
 	return data;		
 end
 
-function on_destroy_request(request)
+local function on_destroy_request(request)
 	log("debug", "Request destroyed: %s", tostring(request));
 	waiting_requests[request] = nil;
 	local session = sessions[request.context.sid];
@@ -109,7 +108,7 @@ function on_destroy_request(request)
 	end
 end
 
-function handle_OPTIONS(event)
+local function handle_OPTIONS(event)
 	local request = event.request;
 	if force_secure and not request.secure then return nil; end
 
@@ -118,7 +117,7 @@ function handle_OPTIONS(event)
 	return { headers = headers, body = "" };
 end
 
-function handle_POST(event)
+local function handle_POST(event)
 	local request, response, custom_headers = event.request, event.response, event.custom_headers;
 	if force_secure and not request.secure then
 		log("debug", "Discarding unsecure request %s: %s\n----------", tostring(request), tostring(no_raw_req_logging and "<filtered>" or request.body));
@@ -186,7 +185,7 @@ end
 
 local function bosh_reset_stream(session) session.notopen = true; end
 
-local stream_xmlns_attr = { xmlns = "urn:ietf:params:xml:ns:xmpp-streams" };
+local stream_xmlns_attr = { xmlns = xmlns_xmpp_streams };
 
 local function bosh_close_stream(session, reason)
 	(session.log or log)("info", "BOSH client disconnected");
@@ -483,3 +482,8 @@ function module.add_host(module)
 		};
 	});
 end
+
+-- Export a few functions in the environment
+module.environment.utils = { 
+	stream_callbacks = stream_callbacks, get = handle_GET, options = handle_OPTIONS, post = handle_POST
+};
