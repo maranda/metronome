@@ -252,11 +252,11 @@ function stream_callbacks.streamopened(context, attr)
 		local session = {
 			type = "c2s_unauthed", conn = {}, sid = sid, rid = tonumber(attr.rid)-1, host = attr.to,
 			bosh_version = attr.ver, bosh_wait = math_min(attr.wait, BOSH_MAX_WAIT), streamid = sid,
-			bosh_hold = BOSH_DEFAULT_HOLD, bosh_max_inactive = BOSH_DEFAULT_INACTIVITY,
-			requests = { }, send_buffer = {}, reset_stream = bosh_reset_stream,
-			close = bosh_close_stream, dispatch_stanza = stream_callbacks.handlestanza, notopen = true,
-			log = logger.init("bosh"..sid), secure = consider_bosh_secure or request.secure,
-			ip = get_ip_from_request(request), headers = custom_headers;
+			bosh_hold = BOSH_DEFAULT_HOLD, bosh_max_inactive = BOSH_DEFAULT_INACTIVITY, requests = {},
+			send_buffer = {}, reset_stream = bosh_reset_stream, close = bosh_close_stream,
+			dispatch_stanza = stream_callbacks.handlestanza, notopen = true, log = logger.init("bosh"..sid),
+			secure = consider_bosh_secure or request.secure, ip = get_ip_from_request(request),
+			headers = custom_headers;
 		};
 		sessions[sid] = session;
 
@@ -267,6 +267,7 @@ function stream_callbacks.streamopened(context, attr)
 
 		local creating_session = true;
 
+		local attach = context.attach;
 		local r = session.requests;
 		function session.send(s)
 			if s.attr and not s.attr.xmlns then
@@ -299,7 +300,13 @@ function stream_callbacks.streamopened(context, attr)
 					body_attr["xmpp:version"] = "1.0";
 					creating_session = nil;
 				end
-				oldest_request:send(st.stanza("body", body_attr):top_tag()..t_concat(session.send_buffer).."</body>");
+				if not attach then
+					oldest_request:send(st.stanza("body", body_attr):top_tag()..t_concat(session.send_buffer).."</body>");
+				else
+					attach = nil;
+					t_remove(r, 1);
+					oldest_request = nil;
+				end
 				session.send_buffer = {};
 			end
 			return true;
