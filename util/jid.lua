@@ -56,7 +56,7 @@ function section(jid, type)
 end
 
 function prepped_section(jid, type)
-	local bit = section(jid, type)
+	local bit = section(jid, type);
 	if not bit then return; end
 	if type == "node" then return nodeprep(bit);
 	elseif type == "host" then return nameprep(bit);
