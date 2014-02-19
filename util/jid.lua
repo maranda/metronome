@@ -50,9 +50,17 @@ function section(jid, type)
 	node, pos = match(jid, "^([^@/]+)@()");
 	host, pos = match(jid, "^([^@/]+)()", pos);
 	if host then resource = match(jid, "^/(.+)$", pos); end
-	if type == "node" then return node; end
-	if type == "host" then return host; end
-	if type == "resource" then return resource; end
+	if type == "node" then return node;
+	elseif type == "host" then return host;
+	elseif type == "resource" then return resource; end
+end
+
+function prepped_section(jid, type)
+	local bit = section(jid, type)
+	if not bit then return; end
+	if type == "node" then return nodeprep(bit);
+	elseif type == "host" then return nameprep(bit);
+	elseif type == "resource" then return resourceprep(bit); end
 end
 
 local function _prepped_split(jid)
