@@ -78,14 +78,13 @@ local errors_map = {
 };
 local function handle_db_errors(origin, stanza)
 	local attr = stanza.attr;
-	local error = stanza:child_with_name("error")[1];
-	local condition = error.name;
+	local condition = stanza:child_with_name("error") and stanza:child_with_name("error")[1];
+	local err = condition and errors_map[condition];
+	local type = origin.type;
 	local format;
 	
-	if errors_map[condition] and origin.type:find("s2sout.*") then
-		format = ("Dialback non-fatal error: "..errors_map[condition].." (%s)"):format(attr.from);
-	elseif errors_map[condition] and origin.type:find("s2sin.*") then
-		format = ("Dialback non-fatal error: "..errors_map[condition].." (%s)"):format(attr.to);
+	if err then
+		format = ("Dialback non-fatal error: "..err.." (%s)"):format(type:find("s2sin.*") and attr.from or attr.to);
 	else -- invalid error condition
 		origin:close(
 			{ condition = "not-acceptable", text = "Supplied error dialback condition is a non graceful one, good bye" },
@@ -95,7 +94,7 @@ local function handle_db_errors(origin, stanza)
 	
 	if format then 
 		module:log("warn", format);
-		if origin.bounce_sendq then origin:bounce_sendq(errors_map[condition]); end
+		if origin.bounce_sendq then origin:bounce_sendq(err); end
 	end
 	return true;
 end
