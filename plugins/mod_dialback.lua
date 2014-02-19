@@ -87,7 +87,10 @@ local function handle_db_errors(origin, stanza)
 	elseif errors_map[condition] and origin.type:find("s2sin.*") then
 		format = ("Dialback non-fatal error: "..errors_map[condition].." (%s)"):format(attr.to);
 	else -- invalid error condition
-		origin:close({ condition = "not-acceptable", text = "Supplied error dialback condition is a non graceful one, good bye" }, "stream failure");
+		origin:close(
+			{ condition = "not-acceptable", text = "Supplied error dialback condition is a non graceful one, good bye" },
+			"stream failure"
+		);
 	end
 	
 	if format then 
@@ -96,16 +99,16 @@ local function handle_db_errors(origin, stanza)
 	end
 	return true;
 end
-local function send_db_error(origin, name, condition, from, to, id, mp, type)
+local function send_db_error(origin, name, condition, from, to, id, mp)
 	local db_error = st.stanza(name, { from = from, to = to, id = id })
-		:tag("error", { type = type or "cancel" })
+		:tag("error", { type = "cancel" })
 			:tag(condition, { xmlns = xmlns_stanzas });
 	
 	if origin then
 		origin:send(db_error);
 	else
 		module:fire_event("route/remote", {
-			from_host = from, to_host = to, multiplexed_from = mp,	stanza = st.stanza(db_error);
+			from_host = from, to_host = to, multiplexed_from = mp, stanza = db_error;
 		});
 	end
 	return true;
@@ -146,12 +149,22 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 	if origin.type == "s2sin_unauthed" or origin.type == "s2sin" then
 		local attr = stanza.attr;
 		local to, from = nameprep(attr.to), nameprep(attr.from);
+		local is_multiplexed_from;
+
+		if not origin.from_host then
+			origin.from_host = from;
+		end
+		if not origin.to_host then
+			origin.to_host = to;
+		end
+		if origin.from_host ~= from then -- multiplexed stream
+			is_multiplexed_from = origin;
+		end
 		
 		if not hosts[to] then
-			local multiplexed = origin.multiplexed_from;
-			if multiplexed and not multiplexed.destroyed then
+			if is_multiplexed_from then
 				-- Assume the remote entity supports graceful dialback errors
-				return send_db_error(nil, "db:result", "item-not-found", to, from, origin.streamid, multiplexed);
+				return send_db_error(nil, "db:result", "item-not-found", to, from, origin.streamid, is_multiplexed_from);
 			else
 				origin.log("info", "%s tried to connect to %s, which we don't serve", from, to);
 				origin:close("host-unknown");
@@ -163,22 +176,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		end
 		
 		origin.hosts[from] = { dialback_key = stanza[1] };
-		
 		dialback_requests[from.."/"..origin.streamid] = origin;
-		
-		-- COMPAT: ejabberd, gmail and perhaps others do not always set 'to' and 'from'
-		-- on streams. We fill in the session's to/from here instead.
-		if not origin.from_host then
-			origin.from_host = from;
-		end
-		if not origin.to_host then
-			origin.to_host = to;
-		end
-
-		local is_multiplexed_from;
-		if origin.from_host ~= from then -- multiplexed stream
-			is_multiplexed_from = origin;
-		end
 		
 		origin.log("debug", "asking %s if key %s belongs to them", from, stanza[1]);
 		module:fire_event("route/remote", {
