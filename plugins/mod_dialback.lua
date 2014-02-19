@@ -20,8 +20,9 @@ local sha256_hash = require "util.hashes".sha256;
 local nameprep = require "util.encodings".stringprep.nameprep;
 
 local xmlns_db = "jabber:server:dialback";
-local xmlns_starttls = 'urn:ietf:params:xml:ns:xmpp-tls';
+local xmlns_starttls = "urn:ietf:params:xml:ns:xmpp-tls";
 local xmlns_stream = "http://etherx.jabber.org/streams";
+local xmlns_stanzas = "urn:ietf:params:xml:ns:xmpp-stanzas";
 
 local dialback_requests = setmetatable({}, { __mode = "v" });
 
@@ -65,6 +66,51 @@ function make_authenticated(session, host)
 	return s2s_make_authenticated(session, host);
 end
 
+local errors_map = {
+	["item-not-found"] = "requested host was not found on the remote enitity",
+	["remote-connection-failed"] = "the receiving entity failed to connect back to us",
+	["remote-server-not-found"] = "received item-not-found or host-unknown while attempting to dialback",
+	["remote-server-timeout"] = "time exceeded while attempting to contact the authoritative server",
+	["policy-violation"] = "the receiving entity requires to enable TLS before executing dialback",
+	["not-authorized"] = "the receiving entity denied dialback, probably  because it requires a valid certificate",
+	["forbidden"] = "received a response of type invalid while authenticating with the authoritative server",
+	["not-acceptable"] = "the receiving entity was unable to assert our identity"
+};
+local function handle_db_errors(origin, stanza)
+	local attr = stanza.attr;
+	local error = stanza:child_with_name("error")[1];
+	local condition = error.name;
+	local format;
+	
+	if errors_map[condition] and origin.type:find("s2sout.*") then
+		format = ("Dialback non-fatal error: "..errors_map[condition].." (%s)"):format(attr.from);
+	elseif errors_map[condition] and origin.type:find("s2sin.*") then
+		format = ("Dialback non-fatal error: "..errors_map[condition].." (%s)"):format(attr.to);
+	else -- invalid error condition
+		origin:close({ condition = "not-acceptable", text = "Supplied error dialback condition is a non graceful one, good bye" }, "stream failure");
+	end
+	
+	if format then 
+		module:log("warn", format);
+		if origin.bounce_sendq then origin:bounce_sendq(errors_map[condition]); end
+	end
+	return true;
+end
+local function send_db_error(origin, name, condition, from, to, id, mp, type)
+	local db_error = st.stanza(name, { from = from, to = to, id = id })
+		:tag("error", { type = type or "cancel" })
+			:tag(condition, { xmlns = xmlns_stanzas });
+	
+	if origin then
+		origin:send(db_error);
+	else
+		module:fire_event("route/remote", {
+			from_host = from, to_host = to, multiplexed_from = mp,	stanza = st.stanza(db_error);
+		});
+	end
+	return true;
+end
+
 module:hook("stanza/"..xmlns_db..":verify", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	
@@ -76,8 +122,7 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 				origin.from_host or "(unknown)", attr.from or "(unknown)", attr.type);
 			return true;
 		end
-		-- COMPAT: Grr, ejabberd breaks this one too?? it is black and white in XEP-220 example 34
-		--if attr.from ~= origin.to_host then error("invalid-from"); end
+
 		local type;
 		if verify_dialback(attr.id, attr.from, attr.to, stanza[1]) then
 			type = "valid";
@@ -103,9 +148,15 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		local to, from = nameprep(attr.to), nameprep(attr.from);
 		
 		if not hosts[to] then
-			origin.log("info", "%s tried to connect to %s, which we don't serve", from, to);
-			origin:close("host-unknown");
-			return true;
+			local multiplexed = origin.multiplexed_from;
+			if multiplexed and not multiplexed.destroyed then
+				-- Assume the remote entity supports graceful dialback errors
+				return send_db_error(nil, "db:result", "item-not-found", to, from, origin.streamid, multiplexed);
+			else
+				origin.log("info", "%s tried to connect to %s, which we don't serve", from, to);
+				origin:close("host-unknown");
+				return true;
+			end
 		elseif not from then
 			origin:close("improper-addressing");
 			return true;
@@ -149,6 +200,9 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 			if attr.type == "valid" then
 				authed = make_authenticated(dialback_verifying, attr.from);
 				valid = "valid";
+			elseif attr.type == "error" then
+				dialback_requests[attr.from.."/"..(attr.id or "")] = nil;
+				return handle_db_errors(origin, stanza);
 			else
 				log("warn", "authoritative server for %s denied the key", attr.from or "(unknown)");
 				valid = "invalid";
@@ -180,8 +234,10 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 			origin:close("invalid-id");
 			return true;
 		end
-		if stanza.attr.type == "valid" then
+		if attr.type == "valid" then
 			make_authenticated(origin, attr.from);
+		elseif attr.type == "error" then
+			return handle_db_errors(origin, stanza);
 		else
 			origin:close("not-authorized", "authentication failure");
 		end
@@ -227,6 +283,10 @@ module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 		end
 	end
 end, 100);
+
+module:hook("s2s-stream-features", function (data)
+	data.features:tag("dialback", { xmlns = "urn:xmpp:features:dialback" }):tag("errors"):up():up();
+end, 98);
 
 module:hook("s2s-authenticate-legacy", function (event)
 	event.origin.legacy_dialback = true;
