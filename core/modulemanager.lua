@@ -31,7 +31,7 @@ pcall = function(f, ...)
 end
 
 local autoload_modules = { "router", "bind_session", "presence", "message", "iq", "offline", "c2s", "s2s" };
-local component_inheritable_modules = { "tls", "iq", "s2s", "stream_management" };
+local component_inheritable_modules = { "tls", "iq", "bidi", "s2s", "stream_management" };
 
 local _G = _G;
 
