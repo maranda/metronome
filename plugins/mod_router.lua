@@ -114,7 +114,7 @@ local function process_stanza(origin, stanza)
 		if (type == "s2sin" or type == "s2sout") and not origin.dummy then
 			local host_status;
 			if incoming_bidi then
-				host_status = incoming_bidi.hosts[host];
+				host_status = incoming_bidi.hosts[from_host];
 			else
 				host_status = origin.hosts[from_host];
 			end
