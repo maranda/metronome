@@ -43,9 +43,9 @@ end
 
 local iq_types = { set=true, get=true, result=true, error=true };
 local function process_stanza(origin, stanza)
-	local _type = origin.type;
-	(origin.log or log)("debug", "Received[%s]: %s", _type, 
-		((_type == "s2sin_unauthed" or _type == "s2sout_unauthed") and tostring(stanza)) or stanza:top_tag());
+	local type = origin.type;
+	(origin.log or log)("debug", "Received[%s]: %s", type, 
+		((type == "s2sin_unauthed" or type == "s2sout_unauthed") and tostring(stanza)) or stanza:top_tag());
 
 	-- TODO verify validity of stanza (as well as JID validity)
 	if stanza.attr.type == "error" and #stanza.tags == 0 then
@@ -60,7 +60,7 @@ local function process_stanza(origin, stanza)
 		end
 	end
 
-	if origin.type == "c2s" and not stanza.attr.xmlns then
+	if type == "c2s" and not stanza.attr.xmlns then
 		if not origin.full_jid
 			and not(stanza.name == "iq" and stanza.attr.type == "set" and stanza.tags[1] and stanza.tags[1].name == "bind"
 					and stanza.tags[1].attr.xmlns == "urn:ietf:params:xml:ns:xmpp-bind") then
@@ -109,9 +109,16 @@ local function process_stanza(origin, stanza)
 		stanza.attr.from = from;
 	end
 
-	if (origin.type == "s2sin" or origin.type == "c2s" or origin.type == "component") and xmlns == nil then
-		if origin.type == "s2sin" and not origin.dummy then
-			local host_status = origin.hosts[from_host];
+	local incoming_bidi = origin.incoming_bidi;
+	if (type == "s2sin" or (type == "s2sout" and incoming_bidi) or type == "c2s" or type == "component") and xmlns == nil then
+		if (type == "s2sin" or type == "s2sout") and not origin.dummy then
+			local host_status;
+			if incoming_bidi then
+				host_status = incoming_bidi.hosts[host];
+			else
+				host_status = origin.hosts[from_host];
+			end
+
 			if not host_status or not host_status.authed then
 				module:log("warn", "Received a stanza claiming to be from %s, over a stream authed for %s!", from_host, origin.from_host);
 				origin:close("not-authorized");
