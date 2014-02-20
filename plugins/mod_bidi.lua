@@ -117,7 +117,9 @@ end
 local function disable(event)
 	local session = event.session;
 	local type = session.type;
-	(type == "s2sin" and incoming or outgoing)[(type == "s2sin" and session.from_host) or session.to_host] = nil;	
+	local from, to = session.from_host, session.to_host;
+	(type == "s2sin" and incoming or outgoing)[type == "s2sin" and from or to] = nil;	
+	verifying[type == "s2sin" and from or to] = nil;
 end
 
 module:hook("s2sin-established", enable);
