@@ -184,7 +184,7 @@ function module.add_host(module)
 			load_module(module.host, "dialback");
 		end
 	end
-	if not is_module_loaded(module.host), "sasl_s2s") and not modules_disabled:contains("sasl_s2s") then
+	if not is_module_loaded(module.host, "sasl_s2s") and not modules_disabled:contains("sasl_s2s") then
 		load_module(module.host, "sasl_s2s");
 	end
 	module:hook_stanza(xmlns_stream, "features", function(origin, stanza)
