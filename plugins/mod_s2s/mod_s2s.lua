@@ -176,13 +176,16 @@ function route_to_new_session(event)
 end
 
 function module.add_host(module)
+	local modules_disabled = module:get_option_set("modules_disabled", {});
 	if not s2s_strict_mode then
 		module:depends("dialback");
 	else
-		local modules_disabled = module:get_option_set("modules_disabled", {});
 		if not is_module_loaded(module.host, "dialback") and not modules_disabled:contains("dialback") then
 			load_module(module.host, "dialback");
 		end
+	end
+	if not is_module_loaded(module.host), "sasl_s2s") and not modules_disabled:contains("sasl_s2s") then
+		load_module(module.host, "sasl_s2s");
 	end
 	module:hook_stanza(xmlns_stream, "features", function(origin, stanza)
 		if origin.type == "s2sout_unauthed" and not origin.can_do_dialback then
@@ -191,7 +194,6 @@ function module.add_host(module)
 		end
 		return true;
 	end, -100)
-	module:depends("sasl_s2s");
 	module:hook("route/remote", route_to_existing_session, 200);
 	module:hook("route/remote", route_to_new_session, 100);
 	module:hook("s2sout-destroyed", function(event)
