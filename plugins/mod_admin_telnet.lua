@@ -576,11 +576,14 @@ local function session_flags(session, line)
 	if session.compressed then
 		line[#line+1] = "(compressed)";
 	end
-	if session.smacks then
+	if session.sm then
 		line[#line+1] = "(sm)";
 	end
+	if session.bidirectional or session.incoming_bidi then
+		line[#line+1] = "(bidi)";
+	end
 	if session.conn and session.conn:ip():match(":") then
-		line[#line+1] = "(IPv6)";
+		line[#line+1] = "(ipv6)";
 	end
 	return table.concat(line, " ");
 end
