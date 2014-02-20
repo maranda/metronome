@@ -124,7 +124,7 @@ local function process_stanza(origin, stanza)
 		end
 		fire_event("route/post", origin, stanza, origin.full_jid);
 	else
-		local h = hosts[stanza.attr.to or origin.host or origin.to_host or (origin.bidirectional and host)];
+		local h = hosts[stanza.attr.to or origin.host or origin.to_host or (origin.incoming_bidi and host)];
 		if h then
 			local event;
 			if xmlns == nil then
