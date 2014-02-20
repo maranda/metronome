@@ -348,6 +348,11 @@ local function handle_user_deletion(event)
 	if hostname == module.host then hashes:remove(user) end
 end
 
+local function slash_redirect(event)
+	event.response.headers.location = event.request.path .. "/";
+	return 301;
+end
+
 -- Set it up!
 
 hashes = datamanager.load("register_json", module.host, "hashes") or hashes ; setmt(hashes, hashes_mt)
@@ -357,6 +362,8 @@ module:provides("http", {
         route = {
 		["GET /"] = handle_req,
 		["POST /"] = handle_req,
+		["GET /reset"] = slash_redirect,
+		["GET /verify"] = slash_redirect,
 		["GET /reset/*"] = handle_reset,
 		["POST /reset/*"] = handle_reset,
 		["GET /verify/*"] = handle_verify,
