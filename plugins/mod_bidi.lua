@@ -45,9 +45,11 @@ local function make_bidirectional(session)
 	elseif session.type == "s2sout" and verifying[to] ~= "incoming" then
 		local virtual = {
 			type = "s2sin", direction = "incoming", bidirectional = true,
-			to_host = from, from_host = to,	hosts = { [to] = { authed = true } }
+			to_host = from, from_host = to, hosts = { [to] = { authed = true } }
 		};
 		set_mt(virtual, { __index = session });
+		
+		session.send = function(stanza) return session.sends2s(stanza); end
 
 		session.incoming_bidi = virtual;
 		add_filter(session, "stanzas/in", function(stanza)
