@@ -92,7 +92,7 @@ module:hook_stanza("http://etherx.jabber.org/streams", "features", function(sess
                 session.can_do_bidi = true;
 		verifying[session.to_host] = "outgoing";
         end
-end, 99);
+end, 155);
 
 module:hook("stanza/"..xmlns..":bidi", function(event) -- incoming
         local session = event.origin;
