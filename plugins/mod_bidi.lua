@@ -122,3 +122,9 @@ module:hook("s2sin-established", enable);
 module:hook("s2sin-destroyed", disable);
 module:hook("s2sout-established", enable);
 module:hook("s2sout-destroyed", disable);
+
+function module.unload()
+	-- cleanup and close connections
+	for _, session in pairs(incoming) do session:close(); end
+	for _, session in pairs(outgoing) do session:close(); end
+end
