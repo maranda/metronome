@@ -185,12 +185,12 @@ function module.add_host(module)
 		end
 	end
 	module:hook_stanza(xmlns_stream, "features", function(origin, stanza)
-		if origin.type == "s2sout_unauthed" then
+		if origin.type == "s2sout_unauthed" and not origin.can_do_dialback then
 			module:log("warn", "Remote server doesn't offer any mean of (known) authentication, closing stream(s)");
 			origin:close({ condition = "unsupported-feature", text = "Unable to authenticate at this time" }, "couldn't authenticate with the remote server");
 		end
 		return true;
-	end, -10)
+	end, -100)
 	module:depends("sasl_s2s");
 	module:hook("route/remote", route_to_existing_session, 200);
 	module:hook("route/remote", route_to_new_session, 100);

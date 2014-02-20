@@ -276,7 +276,6 @@ module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 			module:log("debug", "Initiating dialback...");
 			origin.can_do_dialback = true;
 			initiate_dialback(origin);
-			return true;
 		end
 	end
 end, 100);
