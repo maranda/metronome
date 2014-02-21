@@ -80,8 +80,9 @@ end, 101);
 
 module:hook("s2s-stream-features", function(event)
 	local session, features = event.origin, event.features;
-	if not session.bidirectional and not session.incoming_bidi and 
-	   verifying[session.from_host] ~= "outgoing" and not outgoing[session.from_host] then
+	local from = session.from_host;
+	if from and not session.bidirectional and not session.incoming_bidi and 
+	   verifying[from] ~= "outgoing" and not outgoing[from] then
 		features:tag("bidi", { xmlns = xmlns_features }):up();
 	end
 end, 100);
@@ -98,12 +99,13 @@ end, 155);
 
 module:hook("stanza/"..xmlns..":bidi", function(event) -- incoming
         local session = event.origin;
- 	if not session.bidirectional or session.incoming_bidi then
-                module:log("debug", "%s requested to enable a bidirectional s2s stream...", session.from_host);
+	local from = session.from_host;
+ 	if from and not (session.bidirectional or session.incoming_bidi) then
+                module:log("debug", "%s requested to enable a bidirectional s2s stream...", from);
                 session.can_do_bidi = true;
-		verifying[session.from_host] = "incoming";
+		verifying[from] = "incoming";
                 return true;
-        end
+	end
 end);
 
 local function enable(event)
