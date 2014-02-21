@@ -25,9 +25,9 @@ local verifying = module:shared("awaiting-verification");
 
 local function handle_err(e) log("error", "Traceback[s2s]: %s: %s", tostring(e), tb()); end
 local function handle_stanza(session, stanza)
-        if stanza then
-                return xpcall(function () return fire_event("route/process", session, stanza) end, handle_err);
-        end
+	if stanza then
+		return xpcall(function () return fire_event("route/process", session, stanza) end, handle_err);
+	end
 end
 
 local function make_bidirectional(session)
@@ -81,7 +81,7 @@ end, 101);
 module:hook("s2s-stream-features", function(event)
 	local session, features = event.origin, event.features;
 	local from = session.from_host;
-	if from and not session.bidirectional and not session.incoming_bidi and 
+	if from and not session.bidirectional and not session.incoming_bidi and
 	   verifying[from] ~= "outgoing" and not outgoing[from] then
 		features:tag("bidi", { xmlns = xmlns_features }):up();
 	end
@@ -90,30 +90,30 @@ end, 100);
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function(session, stanza) -- outgoing
         if session.type == "s2sout_unauthed" and stanza:get_child("bidi", xmlns_features) and
 	   not incoming[session.to_host] and verifying[session.to_host] ~= "incoming" then
-                module:log("debug", "Attempting to enable bidirectional s2s stream on %s...", session.to_host);
-                session.sends2s(st.stanza("bidi", { xmlns = xmlns }));
-                session.can_do_bidi = true;
+		module:log("debug", "Attempting to enable bidirectional s2s stream on %s...", session.to_host);
+		session.sends2s(st.stanza("bidi", { xmlns = xmlns }));
+		session.can_do_bidi = true;
 		verifying[session.to_host] = "outgoing";
-        end
+	end
 end, 155);
 
 module:hook("stanza/"..xmlns..":bidi", function(event) -- incoming
-        local session = event.origin;
+	local session = event.origin;
 	local from = session.from_host;
- 	if from and not (session.bidirectional or session.incoming_bidi) then
-                module:log("debug", "%s requested to enable a bidirectional s2s stream...", from);
-                session.can_do_bidi = true;
+	if from and not (session.bidirectional or session.incoming_bidi) then
+		module:log("debug", "%s requested to enable a bidirectional s2s stream...", from);
+		session.can_do_bidi = true;
 		verifying[from] = "incoming";
-                return true;
+		return true;
 	end
 end);
 
 local function enable(event)
-        local session = event.session;
-        if not (session.bidirectional or session.incoming_bidi) and session.can_do_bidi then
-                session.can_do_bidi = nil;
-                make_bidirectional(session);
-        end
+	local session = event.session;
+	if not (session.bidirectional or session.incoming_bidi) and session.can_do_bidi then
+		session.can_do_bidi = nil;
+		make_bidirectional(session);
+	end
 end
 
 local function disable(event)
