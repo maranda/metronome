@@ -23,6 +23,8 @@ local outgoing = module:shared("outgoing-sessions");
 local incoming = module:shared("incoming-sessions");
 local verifying = module:shared("awaiting-verification");
 
+local exclude = module:get_option_set("bidi_exclusion_list", {});
+
 local function handle_err(e) log("error", "Traceback[s2s]: %s: %s", tostring(e), tb()); end
 local function handle_stanza(session, stanza)
 	if stanza then
@@ -81,26 +83,27 @@ end, 101);
 module:hook("s2s-stream-features", function(event)
 	local session, features = event.origin, event.features;
 	local from = session.from_host;
-	if from and not session.bidirectional and not session.incoming_bidi and
+	if from and not exclude:contains(from) and not session.bidirectional and not session.incoming_bidi and
 	   verifying[from] ~= "outgoing" and not outgoing[from] then
 		features:tag("bidi", { xmlns = xmlns_features }):up();
 	end
 end, 100);
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function(session, stanza) -- outgoing
+	local to = session.to_host;
         if session.type == "s2sout_unauthed" and stanza:get_child("bidi", xmlns_features) and
-	   not incoming[session.to_host] and verifying[session.to_host] ~= "incoming" then
-		module:log("debug", "Attempting to enable bidirectional s2s stream on %s...", session.to_host);
+	   not exclude:contains(to) and not incoming[to] and verifying[to] ~= "incoming" then
+		module:log("debug", "Attempting to enable bidirectional s2s stream on %s...", to);
 		session.sends2s(st.stanza("bidi", { xmlns = xmlns }));
 		session.can_do_bidi = true;
-		verifying[session.to_host] = "outgoing";
+		verifying[to] = "outgoing";
 	end
 end, 155);
 
 module:hook("stanza/"..xmlns..":bidi", function(event) -- incoming
 	local session = event.origin;
 	local from = session.from_host;
-	if from and not (session.bidirectional or session.incoming_bidi) then
+	if from and not exclude:contains(from) and not (session.bidirectional or session.incoming_bidi) then
 		module:log("debug", "%s requested to enable a bidirectional s2s stream...", from);
 		session.can_do_bidi = true;
 		verifying[from] = "incoming";
