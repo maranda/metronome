@@ -361,7 +361,7 @@ function stream_callbacks.handlestanza(context, stanza)
 	if context.ignore then return; end
 	log("debug", "BOSH stanza received: %s\n", stanza:top_tag());
 	local session = sessions[context.sid];
-	if session then
+	if session or (stanza.name == "presence" and stanza.attr.type == "unavailable" and not stanza.attr.to) then
 		if stanza.attr.xmlns == xmlns_bosh then -- Clients not qualifying stanzas should be whipped..
 			stanza.attr.xmlns = nil;
 			if stanza.name == "message" then
@@ -369,8 +369,8 @@ function stream_callbacks.handlestanza(context, stanza)
 				if body then body.attr.xmlns = nil; end
 			end
 		end
-		stanza = session.filter("stanzas/in", stanza);
-		if stanza then fire_event("route/process", session, stanza); end
+		stanza = (session or context).filter("stanzas/in", stanza);
+		if stanza then fire_event("route/process", (session or context), stanza); end
 	end
 end
 
