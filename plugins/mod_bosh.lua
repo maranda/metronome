@@ -361,7 +361,7 @@ function stream_callbacks.handlestanza(context, stanza)
 	if context.ignore then return; end
 	log("debug", "BOSH stanza received: %s\n", stanza:top_tag());
 	local session = sessions[context.sid];
-	if session or (stanza.name == "presence" and stanza.attr.type == "unavailable" and not stanza.attr.to) then
+	if session or context.dead then
 		if stanza.attr.xmlns == xmlns_bosh then -- Clients not qualifying stanzas should be whipped..
 			stanza.attr.xmlns = nil;
 			if stanza.name == "message" then
@@ -429,6 +429,7 @@ local function on_timer()
 	for i=1,n_dead_sessions do
 		local session = dead_sessions[i];
 		dead_sessions[i] = nil;
+		session.dead = true;
 		sm_destroy_session(session, "BOSH client silent for over "..session.bosh_max_inactive.." seconds");
 	end
 	return 1;
