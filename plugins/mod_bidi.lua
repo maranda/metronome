@@ -34,7 +34,7 @@ end
 
 local function make_bidirectional(session)
 	local from, to = session.from_host, session.to_host;
-	if session.type == "s2sin" and verifying[from] ~= "outgoing" then
+	if session.type == "s2sin" then
 		local outgoing = hosts[session.to_host].s2sout[from]
 		if outgoing then -- close stream possibly used for dialback
 			outgoing:close();
@@ -44,7 +44,7 @@ local function make_bidirectional(session)
 		incoming[from] = session;
 		verifying[from] = nil;
 		module:fire_event("bidi-established", { session = session, host = from, type = "incoming" });
-	elseif session.type == "s2sout" and verifying[to] ~= "incoming" then
+	elseif session.type == "s2sout" then
 		local virtual = {
 			type = "s2sin", direction = "incoming", bidirectional = true,
 			to_host = from, from_host = to, hosts = { [to] = { authed = true } }
@@ -103,7 +103,8 @@ end, 155);
 module:hook("stanza/"..xmlns..":bidi", function(event) -- incoming
 	local session = event.origin;
 	local from = session.from_host;
-	if from and not exclude:contains(from) and not (session.bidirectional or session.incoming_bidi) then
+	if from and not exclude:contains(from) and not (session.bidirectional or session.incoming_bidi) and
+	   not verifying[from] ~= "outgoing" then
 		module:log("debug", "%s requested to enable a bidirectional s2s stream...", from);
 		session.can_do_bidi = true;
 		verifying[from] = "incoming";
