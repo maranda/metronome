@@ -21,7 +21,7 @@ local config = configmanager
 local error_reply = require "util.stanza".error_reply
 local tostring = tostring
 
-local function filter(from_host, to_host)
+local function filter(origin, from_host, to_host)
 	if not from_host or not to_host then return end
 
 	if guard_hexlist:contains(from_host) then
@@ -56,8 +56,7 @@ function module.add_host(module)
 	if config.get(host, "authentication") ~= "anonymous" then
 		module:hook("route/remote", rr_hook, 500)
 		module:hook("stanza/jabber:server:dialback:result", function(event)
-			local from, to = event.stanza.attr.from, event.stanza.attr.to
-			return filter(from, to)
+			return filter(event.origin, event.stanza.attr.from, event.stanza.attr.to)
 		end, 500)
 	end
 end
