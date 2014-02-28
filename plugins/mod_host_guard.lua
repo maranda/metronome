@@ -54,8 +54,8 @@ end
 function module.add_host(module)
 	local host = module.host
 	if config.get(host, "authentication") ~= "anonymous" then
-		module:hook ("route/remote", rr_hook, 500)
-		module:hook ("stanza/jabber:server:dialback:result", function(event)
+		module:hook("route/remote", rr_hook, 500)
+		module:hook("stanza/jabber:server:dialback:result", function(event)
 			local from, to = event.stanza.attr.from, event.stanza.attr.to
 			return filter(from, to)
 		end, 500)
