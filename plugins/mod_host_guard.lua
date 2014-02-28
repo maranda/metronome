@@ -21,25 +21,21 @@ local config = configmanager
 local error_reply = require "util.stanza".error_reply
 local tostring = tostring
 
-local function s2s_hook (event)
-	local origin, stanza = event.session or event.origin, event.stanza or false
-	local to_host, from_host = (not stanza and origin.to_host) or stanza.attr.to, (not stanza and origin.from_host) or stanza.attr.from
+local function filter(from_host, to_host)
+	if not from_host or not to_host then return end
 
-	if origin.type == "s2sin" or origin.type == "s2sin_unauthed" then
-	   if guard_hexlist:contains(from_host) then
+	if guard_hexlist:contains(from_host) then
 		module:log("error", "remote hexed service %s attempted to access host %s", from_host, to_host)
 		origin:close({condition = "policy-violation", text = guard_hexlist_text})
-		return false
-	   end
-	   if guard_blockall:contains(to_host) and not guard_ball_wl:contains(from_host) or
-	      guard_block_bl:contains(from_host) and guard_protect:contains(to_host) then
-                module:log("error", "remote service %s attempted to access restricted host %s", from_host, to_host)
-                origin:close({condition = "policy-violation", text = "You're not authorized, good bye."})
-                return false
-           end
-        end
+		return true
+	elseif guard_blockall:contains(to_host) and not guard_ball_wl:contains(from_host) or
+	       guard_block_bl:contains(from_host) and guard_protect:contains(to_host) then
+		module:log("error", "remote service %s attempted to access restricted host %s", from_host, to_host)
+		origin:close({condition = "policy-violation", text = "You're not authorized, good bye."})
+		return true
+	end
 
-	return nil
+	return
 end
 
 local function rr_hook (event)
@@ -52,37 +48,26 @@ local function rr_hook (event)
 	     return true
 	end
 
-	return nil
+	return
 end
 
-local function handle_activation (host, u)
-	if hosts[host] and config.get(host, "authentication") ~= "anonymous" then
-		hosts[host].events.add_handler("s2sin-established", s2s_hook, 500)
-		hosts[host].events.add_handler("route/remote", rr_hook, 500)
-		hosts[host].events.add_handler("stanza/jabber:server:dialback:result", s2s_hook, 500)
-               	if u then
-			module:log ("debug", "updating or adding host protection for: "..host)
-		else
-			module:log ("debug", "adding host protection for: "..host)
-		end
-	end
-end
-
-local function handle_deactivation (host, u, i)
-	if hosts[host] and config.get(host, "authentication") ~= "anonymous" then
-		hosts[host].events.remove_handler("s2sin-established", s2s_hook)
-		hosts[host].events.remove_handler("route/remote", rr_hook)
-		hosts[host].events.remove_handler("stanza/jabber:server:dialback:result", s2s_hook)
-		-- Logging is suppressed if it's an update or module is initializing
-               	if not u and not i then module:log ("debug", "removing host protection for: "..host) end
+function module.add_host(module)
+	local host = module.host
+	if config.get(host, "authentication") ~= "anonymous" then
+		module:hook ("route/remote", rr_hook, 500)
+		module:hook ("stanza/jabber:server:dialback:result", function(event)
+			local from, to = event.stanza.attr.from, event.stanza.attr.to
+			return filter(from, to)
+		end, 500)
 	end
 end
 
 local function close_filtered()
 	for _, host in pairs(hosts) do
 		for name, session in pairs(host.s2sout) do
-			if guard_hexlist:contains(session.to_host) or (guard_blockall:contains(session.host) and not guard_ball_wl:contains(session.to_host)) or
-			   (guard_block_bl:contains(session.to_host) and guard_protect:contains(session.host)) then
+			if guard_hexlist:contains(session.to_host) or (guard_blockall:contains(session.host) and 
+			   not guard_ball_wl:contains(session.to_host)) or (guard_block_bl:contains(session.to_host) and 
+			   guard_protect:contains(session.host)) then
 				module:log("info", "closing down s2s outgoing stream to filtered entity %s", tostring(session.to_host))
 				session:close()
 			end
@@ -98,15 +83,8 @@ local function close_filtered()
 	end
 end
 
-local function init_hosts(u, i)
-	for n in pairs(hosts) do
-		handle_deactivation(n, u, i) ; handle_activation(n, u) 
-	end
-	close_filtered()
-end
-
 local function reload()
-	module:log ("debug", "server configuration reloaded, rehashing plugin tables...")
+	module:log("debug", "server configuration reloaded, rehashing plugin tables...")
 	guard_blockall = module:get_option_set("host_guard_blockall", {})
 	guard_ball_wl = module:get_option_set("host_guard_blockall_exceptions", {})
 	guard_protect = module:get_option_set("host_guard_selective", {})
@@ -114,29 +92,17 @@ local function reload()
 	guard_hexlist = module:get_option_set("host_guard_hexlist", {})
 	guard_hexlist_text = module:get_option_string("host_guard_hexlist_text", default_hexed_text)
 
-	init_hosts(true)
+	close_filtered()
 end
 
 local function setup()
-        module:log ("debug", "initializing host guard module...")
-        module:hook ("host-activated", handle_activation)
-        module:hook ("host-deactivated", handle_deactivation)
-        module:hook ("config-reloaded", reload)
-
-        init_hosts(false, true)
-end
-
-function module.unload()
-	module:log ("debug", "removing host handlers as module is being unloaded...")
-	for n in pairs(hosts) do
-		hosts[n].events.remove_handler("s2sin-established", s2s_hook)
-		hosts[n].events.remove_handler("route/remote", rr_hook)
-		hosts[n].events.remove_handler("stanza/jabber:server:dialback:result", s2s_hook)
-	end
+	module:log("debug", "initializing host guard module...")
+	module:hook("config-reloaded", reload)
+	module:hook("s2s-filter", filter)
 end
 
 if metronome.start_time then
 	setup()
 else
-	module:hook ("server-started", setup)
+	module:hook("server-started", setup)
 end
