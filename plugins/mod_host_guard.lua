@@ -84,7 +84,7 @@ local function close_filtered()
 end
 
 local function reload()
-	module:log("debug", "server configuration reloaded, rehashing plugin tables...")
+	module:log("debug", "reloading filters configuration...")
 	guard_blockall = module:get_option_set("host_guard_blockall", {})
 	guard_ball_wl = module:get_option_set("host_guard_blockall_exceptions", {})
 	guard_protect = module:get_option_set("host_guard_selective", {})
