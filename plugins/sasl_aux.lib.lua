@@ -10,7 +10,7 @@ local user_exists = require "core.usermanager".user_exists;
 local jid_compare = require "util.jid".compare;
 local jid_split = require "util.jid".prepped_split;
 local log = require "util.logger".init("sasl");
-local get_time, ipairs, t_concat = os.time, ipairs, table.concat;
+local get_time, ipairs, t_concat, unpack = os.time, ipairs, table.concat, unpack;
 
 -- Util functions
 
@@ -40,6 +40,16 @@ local function external_backend(sasl, session, authid)
 	if not socket.getpeercertificate or not socket.getpeerverification then
 		log("error", "LuaSec 0.5+ is required in order to perform SASL external");
 		return nil, "Unable to perform external certificate authentications at this time";
+	end
+
+	local verified = module:fire_event("certificate-verification", sasl, session, authid);
+	if verified then -- certificate was verified pre-emptively by a plugin
+		local state, err = unpack(verified);
+		if not state then
+			return false, err;
+		else
+			return state;
+		end
 	end
 
 	local _log = session.log or log;
