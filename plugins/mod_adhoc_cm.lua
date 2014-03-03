@@ -73,7 +73,7 @@ local function add_cert(self, data, state)
 			if datamanager.store(data.from, my_host, "certificates", store) then
 				return { status = "completed", 
 					 info = ("Certificate %s%s, has been successfully %s"):format(
-						name, resource and " (valid for client resource "..resource.."),
+						name, resource and " (valid for client resource "..resource..")",
 						replacing and "replaced" or "added") };
 			else
 				return save_failed;
