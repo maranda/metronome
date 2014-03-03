@@ -31,7 +31,7 @@ local add_layout = dataforms.new{
 local function list_layout(data)
 	local layout = {
 		title = "List account associated client certificates";
-		instructions = "Delete or view the associated TLS certificates.";
+		instructions = "Delete one or multiple certificates associated to this account.";
 		{ name = "FORM_TYPE", type = "hidden", value = adhoc_xmlns };
 	}
 	
