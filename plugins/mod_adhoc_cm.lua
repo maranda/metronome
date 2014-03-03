@@ -57,7 +57,7 @@ local save_failed = { status = "completed", error = { message = "Failed to save 
 
 -- Adhoc handlers
 
-local function add_cert(self, data, state)
+local function add_cert(self, data, state, secure)
 	if not secure then return not_secure; end
 
 	if state then
