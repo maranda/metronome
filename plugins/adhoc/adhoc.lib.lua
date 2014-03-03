@@ -35,7 +35,7 @@ function _M.handle_cmd(command, origin, stanza)
 	dataIn.action = stanza.tags[1].attr.action or "execute";
 	dataIn.form = stanza.tags[1]:child_with_ns("jabber:x:data");
 
-	local data, state = command:handler(dataIn, states[sessionid]);
+	local data, state = command:handler(dataIn, states[sessionid], origin.secure);
 	states[sessionid] = state;
 	local stanza = st.reply(stanza);
 	local cmdtag;
