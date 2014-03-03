@@ -76,7 +76,7 @@ local function external_backend(sasl, session, authid)
 		end
 	end
 	
-	return false, "Couldn't find a valid address which could be associated with an xmpp account";
+	return false, "Couldn't find a valid address which could be associated with a xmpp account";
 end
 
 return { extract_data = extract_data, external_backend = external_backend };
