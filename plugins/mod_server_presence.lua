@@ -6,6 +6,8 @@
 
 -- Implements XEP-267: Server Buddies.
 
+module:depends("adhoc");
+
 local st = require "util.stanza";
 local dataforms = require "util.dataforms";
 local datamanager = require "util.datamanager";
