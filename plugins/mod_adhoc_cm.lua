@@ -24,7 +24,6 @@ local add_layout = dataforms.new{
 	instructions = "Associate a new TLS certificate to use for authentication  through SASL External.";
 	{ name = "FORM_TYPE", type = "hidden", value = adhoc_xmlns };
 	{ name = "name", type = "text-single", label = "The name of the certificate" };
-	{ name = "resource", type = "text-single", label = "Optional name of allowed to use Client Resource" };
 	{ name = "cert", type = "text-multi", label = "Paste your certificate (in PEM format)" };
 }
 
@@ -39,7 +38,7 @@ local function list_layout(data)
 		t_insert(layout, {
 			name = name,
 			type = "list-single",
-			label = ("Certificate: %s%s"):format(name, data.resource and "(valid for resource: "..data.resource..")" or ""),
+			label = "Certificate: "..name,
 			value = {
 				{ value = "none", default = true },
 				{ value = "remove" }
@@ -65,16 +64,15 @@ local function add_cert(self, data, state)
 		if data.action == "cancel" then return { status = "canceled" }; end
 		local fields = add_layout:data(data.form);
 		if fields.name and fields.cert then
-			local from, name, cert, resource = data.from, fields.name, fields.cert, fields.resource;
+			local from, name, cert = data.from, fields.name, fields.cert;
 			local store = datamanager.load(from, my_host, "certificates") or {};
 			local replacing = store[name] and true;
-			store[name] = { cert = cert, resource = resource };
+			store[name] = { cert = cert };
 
 			if datamanager.store(data.from, my_host, "certificates", store) then
 				return { status = "completed", 
-					 info = ("Certificate %s%s, has been successfully %s"):format(
-						name, resource and " (valid for client resource "..resource..")",
-						replacing and "replaced" or "added") };
+					 info = ("Certificate %s, has been successfully %s"):format(
+						name, replacing and "replaced" or "added") };
 			else
 				return save_failed;
 			end
@@ -126,14 +124,23 @@ module:provides("adhoc", list_descriptor);
 
 module:hook("certificate-verification", function(sasl, session, authid, socket)
 	session.log("debug", "Certification verification is being handled by mod_adhoc_cm...");
-	local cert = socket:getpeercertificate();
+	local certificates = datamanager.load(from, my_host, "certificates");
+	if not certificates then return { false, "No associated certificates with this account" }; end
 
+	local cert = socket:getpeercertificate();
 	if not cert then
 		return { false, "No certificate found" };
 	end
 	if not cert:validat(get_time()) then
 		return { false, "Supplied certificate is expired" };
 	end
+	local pem = cert:pem();
+	local match;
+	for name, data in pairs(certificates) do
+		if pem == data.cert then match = true; break; end
+	end
+	if not match then return { false, "Certificate is invalid" }; end
+
 	local data = extract_data(cert);
 	for _, address in ipairs(data) do
 		if authid == "" or jid_compare(authid, address) then
@@ -141,6 +148,5 @@ module:hook("certificate-verification", function(sasl, session, authid, socket)
 			if host == my_host and user_exists(username, host) then return { username }; end
 		end
 	end
-
 	return { false, "Couldn't find a valid address which could be associated with an xmpp account" };
 end, 10);
