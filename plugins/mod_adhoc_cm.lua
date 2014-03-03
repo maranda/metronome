@@ -124,8 +124,6 @@ module:provides("adhoc", list_descriptor);
 
 module:hook("certificate-verification", function(sasl, session, authid, socket)
 	session.log("debug", "Certification verification is being handled by mod_adhoc_cm...");
-	local certificates = datamanager.load(from, my_host, "certificates");
-	if not certificates then return { false, "No associated certificates with this account" }; end
 
 	local cert = socket:getpeercertificate();
 	if not cert then
@@ -135,18 +133,25 @@ module:hook("certificate-verification", function(sasl, session, authid, socket)
 		return { false, "Supplied certificate is expired" };
 	end
 	local pem = cert:pem();
-	local match;
-	for name, data in pairs(certificates) do
-		if pem == data.cert then match = true; break; end
-	end
-	if not match then return { false, "Certificate is invalid" }; end
 
 	local data = extract_data(cert);
+	local node;
 	for _, address in ipairs(data) do
 		if authid == "" or jid_compare(authid, address) then
 			local username, host = jid_split(address);
-			if host == my_host and user_exists(username, host) then return { username }; end
+			if host == my_host and user_exists(username, host) then 
+				node = username; break;
+			end
 		end
 	end
-	return { false, "Couldn't find a valid address which could be associated with an xmpp account" };
+	if not node then 
+		return { false, "Couldn't find a valid address which could be associated with a xmpp account" };
+	end
+
+	local certificates = datamanager.load(node, my_host, "certificates");
+	if not certificates then return { false, "No associated certificates with this account" }; end
+	for name, data in pairs(certificates) do
+		if pem == data.cert then return { node }; end
+	end
+	return { false, "Certificate is invalid" };
 end, 10);
