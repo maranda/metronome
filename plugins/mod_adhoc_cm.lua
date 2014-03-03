@@ -106,10 +106,10 @@ local function list_certs(self, data, state, secure)
 			return save_failed;
 		end
 	else
+		local store = datamanager.load(from, my_host, "certificates");
 		if not store then
 			return { status = "complete", error = { message = "You have no certificates" } };
 		else
-			local store = datamanager.load(from, my_host, "certificates");
 			local layout = list_layout(store);
 			return { status = "executing", form = layout }, { store = store, layout = layout };
 		end
