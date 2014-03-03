@@ -12,6 +12,7 @@ local jid_compare = require "util.jid".compare;
 local jid_split = require "util.jid".prepped_split;
 local extract_data = module:require("sasl_aux").extract_data;
 local user_exists = require "core.usermanager".user_exists;
+local t_insert = table.insert;
 
 local adhoc_xmlns = "http://jabber.org/protocol/commands";
 local add_xmlns = "http://metronome.im/protocol/certificates#add";
