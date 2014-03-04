@@ -69,6 +69,7 @@ local function add_cert(self, data, state, secure)
 			local from, name, cert = jid_section(data.from, "node"), fields.name, fields.cert;
 			local store = datamanager.load(from, my_host, "certificates") or {};
 			local replacing = store[name] and true;
+
 			store[name] = { cert = cert };
 
 			if datamanager.store(from, my_host, "certificates", store) then
@@ -135,6 +136,7 @@ module:hook("certificate-verification", function(sasl, session, authid, socket)
 		return { false, "Supplied certificate is expired" };
 	end
 	local pem = cert:pem();
+	local lb_eof = pem:find("\n$") and true;
 
 	local data = extract_data(cert);
 	local node;
@@ -153,7 +155,9 @@ module:hook("certificate-verification", function(sasl, session, authid, socket)
 	local certificates = datamanager.load(node, my_host, "certificates");
 	if not certificates then return { false, "No associated certificates with this account" }; end
 	for name, data in pairs(certificates) do
-		if pem == data.cert then return { node }; end
+		local _cert = data.cert;
+		if lb_eof and not _cert:find("\n$") then _cert = _cert.."\n"; end
+		if pem == _cert then return { node }; end
 	end
 	return { false, "Certificate is invalid" };
 end, 10);
