@@ -9,6 +9,7 @@ module:depends("adhoc");
 local dataforms = require "util.dataforms";
 local datamanager = require "util.datamanager";
 local jid_compare = require "util.jid".compare;
+local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".prepped_split;
 local extract_data = module:require("sasl_aux").extract_data;
 local user_exists = require "core.usermanager".user_exists;
@@ -65,12 +66,12 @@ local function add_cert(self, data, state, secure)
 		if data.action == "cancel" then return { status = "canceled" }; end
 		local fields = add_layout:data(data.form);
 		if fields.name and fields.cert then
-			local from, name, cert = data.from, fields.name, fields.cert;
+			local from, name, cert = jid_section(data.from, "node"), fields.name, fields.cert;
 			local store = datamanager.load(from, my_host, "certificates") or {};
 			local replacing = store[name] and true;
 			store[name] = { cert = cert };
 
-			if datamanager.store(data.from, my_host, "certificates", store) then
+			if datamanager.store(from, my_host, "certificates", store) then
 				return { status = "completed", 
 					 info = ("Certificate %s, has been successfully %s"):format(
 						name, replacing and "replaced" or "added") };
@@ -99,13 +100,13 @@ local function list_certs(self, data, state, secure)
 			if action == "remove" then store[name] = nil; end
 		end
 
-		if datamanager.store(data.from, my_host, "certificates", store) then
+		if datamanager.store(jid_section(data.from, "node"), my_host, "certificates", store) then
 			return { status = "completed", info = "Done" };
 		else
 			return save_failed;
 		end
 	else
-		local store = datamanager.load(data.from, my_host, "certificates");
+		local store = datamanager.load(jid_section(data.from, "node"), my_host, "certificates");
 		if not store then
 			return { status = "complete", error = { message = "You have no certificates" } };
 		else
