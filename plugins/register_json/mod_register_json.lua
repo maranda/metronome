@@ -102,17 +102,18 @@ end
 
 local deafilter_api = "http://www.deafilter.com/classes/DeaFilter.php?mail=%s&key=%s"
 local function check_dea(address, username)
-	-- trunkate the address to avoid disclosing of a user E-Mail address
 	local domain = address:match("@+(.*)$")
+	if whitelisted[domain] then return; end	
+
+	-- trunkate the address to avoid disclosing of a user E-Mail address
 	local dummy = tostring(os_time()) .. "@" .. domain
 	module:log("debug", "Submitting dummy address to deafilter.com API for checking...")
-
 	http_request(deafilter_api:format(dummy, deafilter_ak), nil, function(data, code)
 		if code == 200 then
 			local ret = json_decode(data)
 			if ret.result == "ko" then
 				dea_checks[username] = true
-			elseif not whitelisted[domain] then
+			else
 				module:log("debug", "Mail domain %s is valid, whitelisting.", domain)
 				whitelisted[domain] = true
 				datamanager.store("register_json", module.host, "whitelisted_md", whitelisted)
