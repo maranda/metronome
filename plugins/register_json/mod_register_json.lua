@@ -103,7 +103,7 @@ end
 local deafilter_api = "http://www.deafilter.com/classes/DeaFilter.php?mail=%s&key=%s"
 local function check_dea(address, username)
 	local domain = address:match("@+(.*)$")
-	if whitelisted[domain] then return; end	
+	if whitelisted[domain] then return end	
 
 	-- trunkate the address to avoid disclosing of a user E-Mail address
 	local dummy = tostring(os_time()) .. "@" .. domain
