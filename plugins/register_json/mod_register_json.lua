@@ -8,6 +8,7 @@ local datamanager = datamanager
 local b64_decode = require "util.encodings".base64.decode
 local b64_encode = require "util.encodings".base64.encode
 local http_event = require "net.http.server".fire_server_event
+local http_request = require "net.http".request;
 local jid_prep = require "util.jid".prep
 local json_decode = require "util.json".decode
 local nodeprep = require "util.encodings".stringprep.nodeprep
@@ -31,6 +32,9 @@ local whitelist = module:get_option_set("reg_servlet_wl", {})
 local blacklist = module:get_option_set("reg_servlet_bl", {})
 local fm_patterns = module:get_option_table("reg_servlet_filtered_mails", {})
 local fn_patterns = module:get_option_table("reg_servlet_filtered_nodes", {})
+local use_deafilter = module:get_option_boolean("reg_servlet_use_deafilter", false)
+local deafilter_ak = module:get_option_string("reg_servlet_deafilter_apikey")
+if use_deafilter and not deafilter_ak then use_deafilter = false end
 
 local files_base = module.path:gsub("/[^/]+$","") .. "/template/"
 
@@ -43,6 +47,21 @@ local recent_ips = {}
 local pending = {}
 local pending_node = {}
 local reset_tokens = {}
+local default_whitelist, whitelisted, dea_checks;
+
+if use_deafilter then
+	default_whitelist = {
+		["fastmail.fm"] = true,
+		["gmail.com"] = true,
+		["yahoo.com"] = true,
+		["hotmail.com"] = true,
+		["live.com"] = true,
+		["icloud.com"] = true,
+		["me.com"] = true
+	}
+	whitelisted = datamanager.load("register_json", module.host, "whitelisted_md") or default_whitelist
+	dea_checks = {}
+end
 
 -- Setup hashes data structure
 
@@ -79,6 +98,27 @@ local function check_mail(address)
 		if address:match(pattern) then return false end
 	end
 	return true
+end
+
+local deafilter_api = "http://www.deafilter.com/classes/DeaFilter.php?mail=%s&key=%s"
+local function check_dea(address, username)
+	-- trunkate the address to avoid disclosing of a user E-Mail address
+	local domain = address:match("@+(.*)$")
+	local dummy = tostring(os_time()) .. "@" .. domain
+	module:log("debug", "Submitting dummy address to deafilter.com API for checking...")
+
+	http_request(deafilter_api:format(dummy, deafilter_ak), nil, function(data, code)
+		if code == 200 then
+			local ret = json_decode(data)
+			if ret.result == "ko" then
+				dea_checks[username] = true
+			elseif not whitelisted[domain] then
+				module:log("debug", "Mail domain %s is valid, whitelisting.", domain)
+				whitelisted[domain] = true
+				datamanager.store("register_json", module.host, "whitelisted_md", whitelisted)
+			end
+		end	
+	end)
 end
 
 local function check_node(node)
@@ -154,7 +194,7 @@ local function handle_register(data, event)
 	end
 
 	if not check_mail(mail) then
-		module:log("warn", "%s attempted to use a mail address (%s) matching one of the forbidden patterns.", ip, mail)
+		module:log("warn", "%s attempted to use an invalid mail address (%s).", ip, mail)
 		return http_error_reply(event, 403, "Requesting to register using this E-Mail address is forbidden, sorry.")
 	end
 
@@ -165,6 +205,9 @@ local function handle_register(data, event)
 		module:log("debug", "A username containing invalid characters was supplied: %s", data.username)
 		return http_error_reply(event, 406, "Supplied username contains invalid characters, see RFC 6122.")
 	else
+		-- asynchronously run deafilter if applicable
+		if use_deafilter then check_dea(mail, username) end
+
 		if not check_node(username) then
 			module:log("warn", "%s attempted to use an username (%s) matching one of the forbidden patterns.", ip, username)
 			return http_error_reply(event, 403, "Requesting to register using this Username is forbidden, sorry.")
@@ -190,6 +233,7 @@ local function handle_register(data, event)
 			pending_node[username] = uuid
 
 			timer.add_task(300, function()
+				if use_deafilter then dea_checks[username] = nil end
 				if pending[uuid] then
 					pending[uuid] = nil
 					pending_node[username] = nil
@@ -322,6 +366,11 @@ local function handle_verify(event, path)
 				local username, password, ip = 
 				      pending[uuid].node, pending[uuid].password, pending[uuid].ip
 
+				if use_deafilter and dea_checks[username] then
+					dea_checks[username] = nil
+					return r_template(event, "verify_fail")
+				end
+
 				local ok, error = usermanager.create_user(username, password, module.host)
 				if ok then 
 					module:fire_event(
@@ -375,5 +424,8 @@ module:hook_global("user-deleted", handle_user_deletion, 10);
 
 -- Reloadability
 
-module.save = function() return { hashes = hashes } end
-module.restore = function(data) hashes = data.hashes or { _index = {} } ; setmt(hashes, hashes_mt) end
+module.save = function() return { hashes = hashes, whitelisted = whitelisted } end
+module.restore = function(data) 
+	hashes = data.hashes or { _index = {} } ; setmt(hashes, hashes_mt)
+	whitelisted = use_deafilter and (data.whitelisted or default_whitelist) or nil
+end
