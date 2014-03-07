@@ -367,7 +367,7 @@ local function handle_verify(event, path)
 				      pending[uuid].node, pending[uuid].password, pending[uuid].ip
 
 				if use_deafilter and dea_checks[username] then
-					dea_checks[username] = nil
+					pending[uuid] = nil ; pending_node[username] = nil ; dea_checks[username] = nil
 					return r_template(event, "verify_fail")
 				end
 
