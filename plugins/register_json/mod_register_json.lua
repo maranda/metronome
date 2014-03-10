@@ -206,9 +206,6 @@ local function handle_register(data, event)
 		module:log("debug", "A username containing invalid characters was supplied: %s", data.username)
 		return http_error_reply(event, 406, "Supplied username contains invalid characters, see RFC 6122.")
 	else
-		-- asynchronously run deafilter if applicable
-		if use_deafilter then check_dea(mail, username) end
-
 		if not check_node(username) then
 			module:log("warn", "%s attempted to use an username (%s) matching one of the forbidden patterns.", ip, username)
 			return http_error_reply(event, 403, "Requesting to register using this Username is forbidden, sorry.")
@@ -225,11 +222,16 @@ local function handle_register(data, event)
 				module:log("warn", "JSON Registration request from %s has been throttled.", ip)
 				return http_error_reply(event, 503, "Request throttled, wait a bit and try again.")
 			end
-				local uuid = uuid_gen()
+			
+			local uuid = uuid_gen()
 			if not hashes:add(username, mail) then
 				module:log("warn", "%s (%s) attempted to register to the server with an E-Mail address we already possess the hash of.", username, ip)
 				return http_error_reply(event, 409, "The E-Mail Address provided matches the hash associated to an existing account.")
 			end
+
+			-- asynchronously run deafilter if applicable
+			if use_deafilter then check_dea(mail, username) end
+
 			pending[uuid] = { node = username, password = password, ip = ip }
 			pending_node[username] = uuid
 
