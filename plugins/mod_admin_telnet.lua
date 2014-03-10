@@ -579,7 +579,7 @@ local function session_flags(session, line)
 	if session.sm then
 		line[#line+1] = "(sm)";
 	end
-	if session.bidirectional or session.incoming_bidi then
+	if session.bidirectional then
 		line[#line+1] = "(bidi)";
 	end
 	if session.conn and session.conn:ip():match(":") then

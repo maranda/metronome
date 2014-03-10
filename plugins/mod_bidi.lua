@@ -53,6 +53,7 @@ local function make_bidirectional(session)
 		
 		session.send = function(stanza) return session.sends2s(stanza); end
 
+		session.bidirectional = true;
 		session.incoming_bidi = virtual;
 		add_filter(session, "stanzas/in", function(stanza)
 			local attr = stanza.attr;
@@ -83,7 +84,7 @@ end, 101);
 module:hook("s2s-stream-features", function(event)
 	local session, features = event.origin, event.features;
 	local from = session.from_host;
-	if from and not exclude:contains(from) and not session.bidirectional and not session.incoming_bidi and
+	if from and not exclude:contains(from) and not session.bidirectional and
 	   verifying[from] ~= "outgoing" and not outgoing[from] then
 		features:tag("bidi", { xmlns = xmlns_features }):up();
 	end
@@ -103,7 +104,7 @@ end, 155);
 module:hook("stanza/"..xmlns..":bidi", function(event) -- incoming
 	local session = event.origin;
 	local from = session.from_host;
-	if from and not exclude:contains(from) and not (session.bidirectional or session.incoming_bidi) and
+	if from and not exclude:contains(from) and not session.bidirectional and
 	   not verifying[from] ~= "outgoing" then
 		module:log("debug", "%s requested to enable a bidirectional s2s stream...", from);
 		session.can_do_bidi = true;
@@ -114,7 +115,7 @@ end);
 
 local function enable(event)
 	local session = event.session;
-	if not (session.bidirectional or session.incoming_bidi) and session.can_do_bidi then
+	if not session.bidirectional and session.can_do_bidi then
 		session.can_do_bidi = nil;
 		make_bidirectional(session);
 	end
@@ -122,7 +123,7 @@ end
 
 local function disable(event)
 	local session = event.session;
-	if session.can_do_bidi or session.bidirectional or session.incoming_bidi then
+	if session.can_do_bidi or session.bidirectional then
 		local type = session.type;
 		local from, to = session.from_host, session.to_host;
 		(type == "s2sin" and incoming or outgoing)[type == "s2sin" and from or to] = nil;	
