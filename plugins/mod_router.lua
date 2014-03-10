@@ -109,9 +109,10 @@ local function process_stanza(origin, stanza)
 		stanza.attr.from = from;
 	end
 
-	if (type == "s2sin" or (type == "s2sout" and origin.incoming_bidi) or type == "c2s" or type == "component") and xmlns == nil then
+	local incoming_bidi = origin.incoming_bidi;
+	if (type == "s2sin" or (type == "s2sout" and incoming_bidi) or type == "c2s" or type == "component") and xmlns == nil then
 		if (type == "s2sin" or type == "s2sout") and not origin.dummy then
-			local _hosts = origin.incoming_bidi or origin.hosts;
+			local _hosts = (incoming_bidi and incoming_bidi.hosts) or origin.hosts;
 			local host_status = _hosts[from_host];
 
 			if not host_status or not host_status.authed then
