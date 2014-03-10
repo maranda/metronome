@@ -98,8 +98,8 @@ function module.load()
 	end
 	host.ssl_ctx = create_context(host.host, "client", ssl_config); -- for outgoing connections
 	host.ssl_ctx_in = create_context(host.host, "server", ssl_config); -- for incoming connections
-	_c2s_feature = (secure_auth_only and st.clone(c2s_feature):tag("required"):up()) or st.clone(c2s_feature);
-	_s2s_feature = (secure_s2s_only and st.clone(s2s_feature):tag("required"):up()) or st.clone(s2s_feature);
+	_c2s_feature = (secure_auth_only and st.clone(c2s_feature):tag("required"):up()) or c2s_feature;
+	_s2s_feature = (secure_s2s_only and st.clone(s2s_feature):tag("required"):up()) or s2s_feature;
 end
 
 function module.unload()
