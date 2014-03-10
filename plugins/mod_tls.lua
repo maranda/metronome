@@ -22,8 +22,6 @@ local starttls_proceed = st.stanza("proceed", starttls_attr);
 local starttls_failure = st.stanza("failure", starttls_attr);
 local c2s_feature = st.stanza("starttls", starttls_attr);
 local s2s_feature = st.stanza("starttls", starttls_attr);
-if secure_auth_only then c2s_feature:tag("required"):up(); end
-if secure_s2s_only then s2s_feature:tag("required"):up(); end
 
 local global_ssl_ctx = metronome.global_ssl_ctx;
 
@@ -99,6 +97,8 @@ function module.load()
 	end
 	host.ssl_ctx = create_context(host.host, "client", ssl_config); -- for outgoing connections
 	host.ssl_ctx_in = create_context(host.host, "server", ssl_config); -- for incoming connections
+	if secure_auth_only then c2s_feature:tag("required"):up(); end
+	if secure_s2s_only then s2s_feature:tag("required"):up(); end
 end
 
 function module.unload()
