@@ -40,7 +40,7 @@ response_table.sessions = {
 		bosh = '    <bosh number="%d" />',
 		ws = '    <websockets number="%d" />',
 		c2s = '    <c2s number="%d" />',
-		s2s = '    <s2s incoming="%d" outgoing="%d" />'
+		s2s = '    <s2s incoming="%d" outgoing="%d" bidi="%d" />'
 }
 response_table.hosts = {
 		elem_header = '  <hosts>', elem_closure = '  </hosts>',
@@ -52,7 +52,7 @@ response_table.comps = {
 }
 
 local function count_sessions()
-	local count_c2s, count_bosh, count_ws, count_s2sin, count_s2sout = 0, 0, 0, 0, 0
+	local count_c2s, count_bosh, count_bidi, count_ws, count_s2sin, count_s2sout = 0, 0, 0, 0, 0, 0
 	local incoming_s2s = metronome.incoming_s2s
 
 	for name, host in pairs(hosts) do
@@ -68,14 +68,24 @@ local function count_sessions()
 			end
 		end
 
-		for _, remotehost in pairs(host.s2sout or NULL) do
-			count_s2sout = count_s2sout + 1
+		for _, session in pairs(host.s2sout or NULL) do
+			if session.bidirectional then 
+				count_bidi = count_bidi + 1 
+			else
+				count_s2sout = count_s2sout + 1			
+			end
 		end
 	end
 
-	for _ in pairs(incoming_s2s) do count_s2sin = count_s2sin + 1 end
+	for session in pairs(incoming_s2s) do 
+		if session.bidirectional then
+			count_bidi = count_bidi + 1 
+		else
+			count_s2sin = count_s2sin + 1
+		end
+	end
 
-	return count_c2s, count_bosh, count_ws, count_s2sin, count_s2sout
+	return count_c2s, count_bosh, count_bidi, count_ws, count_s2sin, count_s2sout
 end
 
 local function t_builder(t,r) 
@@ -89,14 +99,14 @@ local function forge_response_xml()
 	if show_comps then t_builder(show_comps, components) end
 
 	-- total sessions handled by the server
-	local count_c2s, count_bosh, count_ws, count_s2sin, count_s2sout = count_sessions()
+	local count_c2s, count_bosh, count_bidi, count_ws, count_s2sin, count_s2sout = count_sessions()
 	local sessions = response_table.sessions
 	
 	sessions_stats[1] = sessions.elem_header
 	sessions_stats[2] = sessions.bosh:format(count_bosh)
 	sessions_stats[3] = sessions.ws:format(count_ws)
 	sessions_stats[4] = sessions.c2s:format(count_c2s)
-	sessions_stats[5] = sessions.s2s:format(count_s2sin, count_s2sout)
+	sessions_stats[5] = sessions.s2s:format(count_s2sin, count_s2sout, count_bidi)
 	sessions_stats[6] = sessions.elem_closure
 	
 	-- if pposix is there build memory stats
@@ -163,12 +173,13 @@ end
 local function forge_response_json()
 	local result = {}
 	local stanza_counter = metronome.stanza_counter
-	local count_c2s, count_bosh, count_ws, count_s2sin, count_s2sout = count_sessions()	
+	local count_c2s, count_bosh, count_bidi, count_ws, count_s2sin, count_s2sout = count_sessions()	
 
 	if stanza_counter then result.stanzas = {} ; result.stanzas = stanza_counter end
 
 	result.sessions = {} ; local sessions = result.sessions
-	sessions.bosh = count_bosh ; sessions.ws = count_ws ;  sessions.c2s = count_c2s ; sessions.s2s = { incoming = count_s2sin, outgoing = count_s2sout }
+	sessions.bosh = count_bosh ; sessions.ws = count_ws ;  sessions.c2s = count_c2s
+	sessions.s2s = { incoming = count_s2sin, outgoing = count_s2sout, bidi = count_bidi  }
 	
 	if pposix then
 		local info = pposix.meminfo()
