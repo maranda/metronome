@@ -223,7 +223,6 @@ local function handle_register(data, event)
 				return http_error_reply(event, 503, "Request throttled, wait a bit and try again.")
 			end
 			
-			local uuid = uuid_gen()
 			if not hashes:add(username, mail) then
 				module:log("warn", "%s (%s) attempted to register to the server with an E-Mail address we already possess the hash of.", username, ip)
 				return http_error_reply(event, 409, "The E-Mail Address provided matches the hash associated to an existing account.")
@@ -232,6 +231,7 @@ local function handle_register(data, event)
 			-- asynchronously run deafilter if applicable
 			if use_deafilter then check_dea(mail, username) end
 
+			local uuid = uuid_gen()
 			pending[uuid] = { node = username, password = password, ip = ip }
 			pending_node[username] = uuid
 
