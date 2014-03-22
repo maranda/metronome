@@ -25,7 +25,7 @@ local data_load, data_store, data_getpath = datamanager.load, datamanager.store,
 local datastore = "muc_log";
 local error_reply = require "util.stanza".error_reply;
 local storagemanager = storagemanager;
-local ripairs, t_remove = ripairs, table.remove;
+local ripairs, t_insert, t_remove = ripairs, table.insert, table.remove;
 
 local mod_host = module:get_host();
 local muc = hosts[mod_host].muc;
