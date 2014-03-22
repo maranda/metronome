@@ -293,61 +293,6 @@ function room_mt:set_option(name, value, changed)
 	return false;
 end
 
--- custom config registry
-
-room_mt.cc_registry = {};
-room_mt.cc_index = {};
-function room_mt:register_cc(xmlns, params)
-	local registry, index = self.cc_registry, self.cc_index;
-	registry[xmlns] = {
-		name = params.name;
-		field = params.field;
-		check = params.check;
-		submitted = params.submitted;
-		onjoin = params.onjoin;
-	};
-	index[#index + 1] = xmlns;
-end
-function room_mt:custom_configs()
-	local index, registry = self.cc_index, self.cc_registry;
-	local i, max = 0, #index;
-	return function()
-		i = i + 1;
-		if i <= max then
-			local xmlns = index[i];
-			return xmlns, registry[xmlns];
-		end
-	end
-end
-function room_mt:get_custom_config(xmlns, method, stanza, conf, changed)
-	if not self.cc_registry[xmlns] and method then
-		log("error", "attempting to call unexistant custom configuration: %s !!!", xmlns);
-		return false;
-	end
-
-	if not method then -- return if custom config exists
-		if self.cc_registry[xmlns] then return true; else return false; end
-	end
-
-	if type(self.cc_registry[xmlns][method]) == "function" then
-		return self.cc_registry[xmlns][method](self, stanza, conf, changed);
-	else
-		return self.cc_registry[xmlns][method];
-	end
-end
-function room_mt:cc_has_method(xmlns, method)
-	if self.cc_registry[xmlns] and self.cc_registry[xmlns][method] then
-		return true;
-	else
-		return false;
-	end
-end
-function room_mt:deregister_cc(xmlns)
-	self.cc_registry[xmlns] = nil;
-	local index = self.cc_index;
-	for i, ns in ipairs(index) do if xmlns == ns then t_remove(index, i); break; end end
-end
-
 local function construct_stanza_id(room, stanza)
 	local from_jid, to_nick = stanza.attr.from, stanza.attr.to;
 	local from_nick = room._jid_nick[from_jid];
@@ -502,9 +447,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						end
 						if self._data.whois == "anyone" then pr:tag("status", {code = "100"}):up(); end
 						pr:tag("status", {code = "110"}):up();
-						for xmlns, cc in self:custom_configs() do
-							if cc.onjoin then pr = cc.onjoin(self, pr); end
-						end
+						module:fire_event("muc-occupant-joined", self, pr);
 						pr.attr.to = from;
 						self:_route_stanza(pr);
 						self:send_history(from, stanza);
@@ -648,10 +591,7 @@ function room_mt:get_form_layout()
 			value = tostring(self:get_option("history_length"))
 		}
 	};
-
-	for xmlns in self:custom_configs() do
-		t_insert(layout, self:get_custom_config(xmlns, "field"));
-	end
+	module:fire_event("muc-fields", self, layout);
 
 	return dataform.new(layout);
 end
@@ -689,37 +629,21 @@ function room_mt:process_form(origin, stanza)
 		return origin.send(st.error_reply(stanza, "cancel", "bad-request", "Invalid value for 'whois'"));
 	end
 	
-	self:set_option("name", name, changed); fields["muc#roomconfig_roomname"] = nil;
-	self:set_option("description", fields["muc#roomconfig_roomdesc"], changed); fields["muc#roomconfig_roomdesc"] = nil;
-	self:set_option("persistent", fields["muc#roomconfig_persistentroom"], changed); fields["muc#roomconfig_persistentroom"] = nil;
-	self:set_option("moderated", fields["muc#roomconfig_moderatedroom"], changed); fields["muc#roomconfig_moderatedroom"] = nil;
-	self:set_option("members_only", fields["muc#roomconfig_membersonly"], changed); fields["muc#roomconfig_membersonly"] = nil;
-	self:set_option("hidden", not fields["muc#roomconfig_publicroom"], changed); fields["muc#roomconfig_publicroom"] = nil;
-	self:set_option("changesubject", fields["muc#roomconfig_changesubject"], changed); fields["muc#roomconfig_changesubject"] = nil;
-	self:set_option("history_length", history_length or default_history_length, changed); fields["muc#roomconfig_historylength"] = nil;
-	local whois_changed = self:set_option("whois", fields["muc#roomconfig_whois"], changed); fields["muc#roomconfig_whois"] = nil;
-	self:set_option("password", fields["muc#roomconfig_roomsecret"], changed); fields["muc#roomconfig_roomsecret"] = nil;
+	self:set_option("name", name, changed);
+	self:set_option("description", fields["muc#roomconfig_roomdesc"], changed);
+	self:set_option("persistent", fields["muc#roomconfig_persistentroom"], changed);
+	self:set_option("moderated", fields["muc#roomconfig_moderatedroom"], changed);
+	self:set_option("members_only", fields["muc#roomconfig_membersonly"], changed);
+	self:set_option("hidden", not fields["muc#roomconfig_publicroom"], changed);
+	self:set_option("changesubject", fields["muc#roomconfig_changesubject"], changed);
+	self:set_option("history_length", history_length or default_history_length, changed);
+	local whois_changed = self:set_option("whois", fields["muc#roomconfig_whois"], changed);
+	self:set_option("password", fields["muc#roomconfig_roomsecret"], changed);
 
 	-- Process custom entries
-	local submitted = {};
-
-	for ns, value in pairs(fields) do
-		local _name = self:get_custom_config(ns, "name");
-		
-		if self:cc_has_method(ns, "check") then
-			local invalid = self:get_custom_config(ns, "check", stanza, value);
-			if invalid then return origin.send(invalid); end
-		end
-		if self:cc_has_method(ns, "process") then
-			value = self:get_custom_config(ns, "process", value);
-		end
-		if self:cc_has_method(ns, "submitted") then
-			submitted[ns] = true;	
-		end
-
-		self:set_option(_name, value, changed);
-	end
-
+	local invalid = module:fire_event("muc-fields-process", self, fields, stanza, changed);
+	if invalid then return origin.send(invalid); end
+	
 	if self.save then self:save(true); end
 	origin.send(st.reply(stanza));
 
@@ -734,10 +658,7 @@ function room_mt:process_form(origin, stanza)
 			msg.tags[1]:tag("status", {code = code}):up();
 		end
 
-		for ns in pairs(submitted) do
-			msg = self:get_custom_config(ns, "submitted", msg);
-		end
-
+		module:fire_event("muc-fields-submitted", self, msg);
 		self:broadcast_message(msg, false);
 	end
 end
