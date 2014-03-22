@@ -18,7 +18,7 @@ local new_throttle = require "util.throttle".create;
 local jid_bare = require "util.jid".bare;
 local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
-local math, tonumber = math, tonumber;
+local math, tonumber, t_insert = math, tonumber, table.insert;
 
 local xmlns_muc = "http://jabber.org/protocol/muc";
 
@@ -85,91 +85,47 @@ end
 
 -- MUC Custom Form
 
-local function le_field(self)
-	local field = {
-		name = "muc#roomconfig_limits_enabled",
+local field_enabled = "muc#roomconfig_limits_enabled";
+local field_stanzas = "muc#roomconfig_limits_stanzas";
+local field_seconds = "muc#roomconfig_limits_seconds";
+
+module:hook("muc-fields", function(room, layout)
+	t_insert(layout, {
+		name = field_enabled,
 		type = "boolean",
 		label = "Enable stanza limits?",
-		value = self:get_option("limits_enabled");
-	};
-	return field;
-end
-
-local function lstanzas_field(self)
-	local value = self:get_option("limits_stanzas") or burst;
-	local field = {
-		name = "muc#roomconfig_limits_stanzas",
+		value = room:get_option("limits_enabled");
+	});
+	t_insert(layout, {
+		name = field_stanzas,
 		type = "text-single",
 		label = "Number of Stanzas",
-		value = tostring(value)
-	};
-	return field;
-end
-local function lseconds_field(self)
-	local value = self:get_option("limits_seconds") or period;
-	local field = {
-		name = "muc#roomconfig_limits_seconds",
+		value = tostring(room:get_option("limits_stanzas") or burst);
+	});
+	t_insert(layout, {
+		name = field_seconds,
 		type = "text-single",
 		label = "Per how many seconds",
-		value = tostring(value)
-	};
-	return field;
-end
+		value = tostring(room:get_option("limits_seconds") or period);
+	});
+end, -101);
 
-local function check(self, stanza, config)
-	local reply;
-	if not tonumber(config) then
-		reply = error_reply(stanza, "cancel", "forbidden", "You need to submit valid number values for muc_limits fields.");
+module:hook("muc-fields-process", function(room, fields, stanza, changed)
+	room.throttle = nil;
+	local stanzas, seconds = fields[field_stanzas], fields[field_seconds];
+	if not tonumber(stanzas) or tonumber(seconds) then
+		return error_reply(stanza, "cancel", "forbidden", "You need to submit valid number values for muc_limits fields.");
 	end
-	self.throttle = nil;
-	return reply;
-end
-local function stanzas(self, value) return math.max(tonumber(value), 1); end
-local function seconds(self, value) return math.max(tonumber(value), 0); end
-
--- Module Hooks
-
-function module.load()
-	module:fire_event("muc-config-handler", {
-		xmlns = "muc#roomconfig_limits_enabled",
-		params = {
-			name = "limits_enabled",
-			field = le_field,
-		},
-		action = "register",
-		caller = "muc_limits"
-	});
-	module:fire_event("muc-config-handler", {
-		xmlns = "muc#roomconfig_limits_stanzas",
-		params = {
-			name = "limits_stanzas",
-			field = lstanzas_field,
-			check = check,
-			process = stanzas
-		},
-		action = "register",
-		caller = "muc_limits"
-	});
-	module:fire_event("muc-config-handler", {
-		xmlns = "muc#roomconfig_limits_seconds",
-		params = {
-			name = "limits_seconds",
-			field = lseconds_field,
-			check = check,
-			process = seconds
-		},
-		action = "register",
-		caller = "muc_limits"
-	});
-end
+	stanzas, seconds = math.max(tonumber(value), 1), math.max(tonumber(value), 0);
+	room:set_option(fields[field_enabled], stanzas, changed);
+	room:set_option(field_stanzas, stanzas, changed);
+	room:set_option(field_seconds, seconds, changed);
+end, -101);
 
 function module.unload()
 	for room_jid, room in pairs(rooms) do
 		room.throttle = nil;
 	end
-	module:fire_event("muc-config-handler", { xmlns = "muc#roomconfig_limits_enabled", caller = "muc_limits" });
-	module:fire_event("muc-config-handler", { xmlns = "muc#roomconfig_limits_stanzas", caller = "muc_limits" });
-	module:fire_event("muc-config-handler", { xmlns = "muc#roomconfig_limits_seconds", caller = "muc_limits" });
 end
 
 module:hook("message/bare", handle_stanza, 100);
