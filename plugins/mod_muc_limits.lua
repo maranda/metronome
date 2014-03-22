@@ -113,8 +113,8 @@ end, -101);
 module:hook("muc-fields-process", function(room, fields, stanza, changed)
 	room.throttle = nil;
 	local stanzas, seconds = fields[field_stanzas], fields[field_seconds];
-	if not tonumber(stanzas) or tonumber(seconds) then
-		return error_reply(stanza, "cancel", "forbidden", "You need to submit valid number values for muc_limits fields.");
+	if not tonumber(stanzas) or not tonumber(seconds) then
+		return st.error_reply(stanza, "cancel", "forbidden", "You need to submit valid number values for muc_limits fields.");
 	end
 	stanzas, seconds = math.max(tonumber(value), 1), math.max(tonumber(value), 0);
 	room:set_option(fields[field_enabled], stanzas, changed);
