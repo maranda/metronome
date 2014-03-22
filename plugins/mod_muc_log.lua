@@ -124,7 +124,7 @@ module:hook("muc-fields", function(room, layout)
 		value = room:get_option("logging");
 	});
 end, -100);
-module:hook("muc-fields-process", function(room, fields, stanza, changed, submitted)
+module:hook("muc-fields-process", function(room, fields, stanza, changed)
 	local config = fields[field_xmlns];	
 	if room:get_option("hidden") and config then
 		return error_reply(stanza, "cancel", "forbidden", "You can enable logging only into public rooms!");
