@@ -111,6 +111,12 @@ local function check_dea(address, username)
 	http_request(deafilter_api:format(dummy, deafilter_ak), nil, function(data, code)
 		if code == 200 then
 			local ret = json_decode(data)
+			if not ret then -- deafilter.com's failure?
+				module:log("debug", "Failed to decode data from deafilter.com, assuming as DEA...")
+				dea_checks[username] = true
+				return
+			end
+
 			if ret.result == "ko" then
 				dea_checks[username] = true
 			else
