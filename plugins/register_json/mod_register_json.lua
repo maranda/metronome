@@ -115,7 +115,7 @@ local function check_dea(address, username)
 				return
 			end
 
-			if tonumber(ret.class) > 3000 then
+			if tonumber(ret.code) > 3000 then
 				dea_checks[username] = true
 			else
 				module:log("debug", "Mail domain %s is valid, whitelisting.", domain)
