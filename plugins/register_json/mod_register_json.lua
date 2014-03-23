@@ -12,8 +12,8 @@ local http_request = require "net.http".request;
 local jid_prep = require "util.jid".prep
 local json_decode = require "util.json".decode
 local nodeprep = require "util.encodings".stringprep.nodeprep
-local ipairs, pairs, pcall, open, os_time, setmt = 
-      ipairs, pairs, pcall, io.open, os.time, setmetatable
+local ipairs, pairs, pcall, open, os_time, setmt, tonumber = 
+      ipairs, pairs, pcall, io.open, os.time, setmetatable, tonumber
 local sha1 = require "util.hashes".sha1
 local urldecode = http.urldecode
 local usermanager = usermanager
@@ -32,9 +32,9 @@ local whitelist = module:get_option_set("reg_servlet_wl", {})
 local blacklist = module:get_option_set("reg_servlet_bl", {})
 local fm_patterns = module:get_option_table("reg_servlet_filtered_mails", {})
 local fn_patterns = module:get_option_table("reg_servlet_filtered_nodes", {})
-local use_deafilter = module:get_option_boolean("reg_servlet_use_deafilter", false)
-local deafilter_ak = module:get_option_string("reg_servlet_deafilter_apikey")
-if use_deafilter and not deafilter_ak then use_deafilter = false end
+local use_cleanlist = module:get_option_boolean("reg_servlet_use_cleanlist", false)
+local cleanlist_ak = module:get_option_string("reg_servlet_cleanlist_apikey")
+if use_cleanlist and not cleanlist_ak then use_cleanlist = false end
 
 local files_base = module.path:gsub("/[^/]+$","") .. "/template/"
 
@@ -49,7 +49,7 @@ local pending_node = {}
 local reset_tokens = {}
 local default_whitelist, whitelisted, dea_checks;
 
-if use_deafilter then
+if use_cleanlist then
 	default_whitelist = {
 		["fastmail.fm"] = true,
 		["gmail.com"] = true,
@@ -100,24 +100,22 @@ local function check_mail(address)
 	return true
 end
 
-local deafilter_api = "http://www.deafilter.com/classes/DeaFilter.php?mail=%s&key=%s"
+local cleanlist_api = "http://app.cleanli.st/api/%s/pattern/check/%s"
 local function check_dea(address, username)
 	local domain = address:match("@+(.*)$")
 	if whitelisted[domain] then return end	
 
-	-- trunkate the address to avoid disclosing of a user E-Mail address
-	local dummy = tostring(os_time()) .. "@" .. domain
-	module:log("debug", "Submitting dummy address to deafilter.com API for checking...")
-	http_request(deafilter_api:format(dummy, deafilter_ak), nil, function(data, code)
+	module:log("debug", "Submitting domain to cleanli.st API for checking...")
+	http_request(cleanlist_api:format(cleanlist_ak, domain), nil, function(data, code)
 		if code == 200 then
 			local ret = json_decode(data)
-			if not ret then -- deafilter.com's failure?
-				module:log("debug", "Failed to decode data from deafilter.com, assuming as DEA...")
+			if not ret then
+				module:log("debug", "Failed to decode data from API, assuming as DEA...")
 				dea_checks[username] = true
 				return
 			end
 
-			if ret.result == "ko" then
+			if tonumber(ret.class) > 3000 then
 				dea_checks[username] = true
 			else
 				module:log("debug", "Mail domain %s is valid, whitelisting.", domain)
@@ -234,15 +232,15 @@ local function handle_register(data, event)
 				return http_error_reply(event, 409, "The E-Mail Address provided matches the hash associated to an existing account.")
 			end
 
-			-- asynchronously run deafilter if applicable
-			if use_deafilter then check_dea(mail, username) end
+			-- asynchronously run dea filtering if applicable
+			if use_cleanlist then check_dea(mail, username) end
 
 			local uuid = uuid_gen()
 			pending[uuid] = { node = username, password = password, ip = ip }
 			pending_node[username] = uuid
 
 			timer.add_task(300, function()
-				if use_deafilter then dea_checks[username] = nil end
+				if use_cleanlist then dea_checks[username] = nil end
 				if pending[uuid] then
 					pending[uuid] = nil
 					pending_node[username] = nil
@@ -375,7 +373,7 @@ local function handle_verify(event, path)
 				local username, password, ip = 
 				      pending[uuid].node, pending[uuid].password, pending[uuid].ip
 
-				if use_deafilter and dea_checks[username] then
+				if use_cleanlist and dea_checks[username] then
 					module:log("warn", "%s (%s) attempted to register using a disposable mail address, denying", username, ip)
 					pending[uuid] = nil ; pending_node[username] = nil ; dea_checks[username] = nil
 					return r_template(event, "verify_fail")
@@ -437,5 +435,5 @@ module:hook_global("user-deleted", handle_user_deletion, 10);
 module.save = function() return { hashes = hashes, whitelisted = whitelisted } end
 module.restore = function(data) 
 	hashes = data.hashes or { _index = {} } ; setmt(hashes, hashes_mt)
-	whitelisted = use_deafilter and (data.whitelisted or default_whitelist) or nil
+	whitelisted = use_cleanlist and (data.whitelisted or default_whitelist) or nil
 end
