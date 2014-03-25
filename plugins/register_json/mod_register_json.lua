@@ -87,7 +87,7 @@ end
 
 function hashes_mt:save()
 	if not datamanager.store("register_json", module.host, "hashes", hashes) then
-		module:log("error", "Failed to save the mail addresses' hashes store.")
+		module:log("error", "Failed to save the mail addresses' hashes store")
 	end
 end
 
@@ -118,7 +118,7 @@ local function check_dea(address, username)
 			if tonumber(ret.code) > 3000 then
 				dea_checks[username] = true
 			else
-				module:log("debug", "Mail domain %s is valid, whitelisting.", domain)
+				module:log("debug", "Mail domain %s is valid, whitelisting", domain)
 				whitelisted[domain] = true
 				datamanager.store("register_json", module.host, "whitelisted_md", whitelisted)
 			end
@@ -211,7 +211,7 @@ local function handle_register(data, event)
 		return http_error_reply(event, 406, "Supplied username contains invalid characters, see RFC 6122.")
 	else
 		if not check_node(username) then
-			module:log("warn", "%s attempted to use an username (%s) matching one of the forbidden patterns.", ip, username)
+			module:log("warn", "%s attempted to use an username (%s) matching one of the forbidden patterns", ip, username)
 			return http_error_reply(event, 403, "Requesting to register using this Username is forbidden, sorry.")
 		end
 			
@@ -223,12 +223,12 @@ local function handle_register(data, event)
 		if not usermanager.user_exists(username, module.host) then
 			-- if username fails to register successive requests shouldn't be throttled until one is successful.
 			if throttle_time and to_throttle(ip) then
-				module:log("warn", "JSON Registration request from %s has been throttled.", ip)
+				module:log("warn", "JSON Registration request from %s has been throttled", ip)
 				return http_error_reply(event, 503, "Request throttled, wait a bit and try again.")
 			end
 			
 			if not hashes:add(username, mail) then
-				module:log("warn", "%s (%s) attempted to register to the server with an E-Mail address we already possess the hash of.", username, ip)
+				module:log("warn", "%s (%s) attempted to register to the server with an E-Mail address we already possess the hash of", username, ip)
 				return http_error_reply(event, 409, "The E-Mail Address provided matches the hash associated to an existing account.")
 			end
 
@@ -260,7 +260,7 @@ local function handle_password_reset(data, event)
 	local mail, ip = data.reset, data.ip
 
 	if throttle_time and to_throttle(ip) then
-		module:log("warn", "JSON Password Reset request from %s has been throttled.", ip)
+		module:log("warn", "JSON Password Reset request from %s has been throttled", ip)
 		return http_error_reply(event, 503, "Request throttled, wait a bit and try again.")
 	end
 	
@@ -292,7 +292,7 @@ local function handle_req(event)
 	local data
 	-- We check that what we have is valid JSON wise else we throw an error...
 	if not pcall(function() data = json_decode(b64_decode(request.body)) end) then
-		module:log("debug", "Data submitted by %s failed to Decode.", user)
+		module:log("debug", "Data submitted by %s failed to Decode", user)
 		return http_error_reply(event, 400, "Decoding failed.")
 	end
 	
