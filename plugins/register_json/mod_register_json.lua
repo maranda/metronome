@@ -110,7 +110,7 @@ local function check_dea(address, username)
 		if code == 200 then
 			local ret = json_decode(data)
 			if not ret then
-				module:log("debug", "Failed to decode data from API, assuming as DEA...")
+				module:log("warn", "Failed to decode data from API, assuming address from %s as DEA...", domain)
 				dea_checks[username] = true
 				return
 			end
