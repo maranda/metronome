@@ -31,12 +31,12 @@ module:hook_global("config-reloaded", reload);
 local function build_reply(status, ret, err_msg)
 	local reply = st.stanza(status, {xmlns = xmlns_sasl});
 	if status == "challenge" then
-		reply:text(base64.encode(ret or ""));
+		reply:text(ret and base64.encode(ret) or nil);
 	elseif status == "failure" then
 		reply:tag(ret):up();
 		if err_msg then reply:tag("text"):text(err_msg); end
 	elseif status == "success" then
-		reply:text(base64.encode(ret or ""));
+		reply:text(ret and base64.encode(ret) or nil);
 	else
 		module:log("error", "Unknown sasl status: %s", status);
 	end

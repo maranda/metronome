@@ -18,7 +18,7 @@ local function build_error(err)
 	return reply;
 end
 
-local success = st.stanza("success", {xmlns = xmlns_sasl}):text(base64.encode(""));
+local success = st.stanza("success", {xmlns = xmlns_sasl});
 local function s2s_auth(session, stanza)
 	local mechanism = stanza.attr.mechanism;
 
