@@ -17,7 +17,6 @@ local guard_block_bl = module:get_option_set("host_guard_blacklist", {})
 local guard_hexlist = module:get_option_set("host_guard_hexlist", {})
 local guard_hexlist_text = module:get_option_string("host_guard_hexlist_text", default_hexed_text)
 
-local config = configmanager
 local error_reply = require "util.stanza".error_reply
 local tostring = tostring
 
@@ -53,7 +52,7 @@ end
 
 function module.add_host(module)
 	local host = module.host
-	if config.get(host, "authentication") ~= "anonymous" then
+	if not host.anonymous then
 		module:hook("route/remote", rr_hook, 500)
 		module:hook("stanza/jabber:server:dialback:result", function(event)
 			return filter(event.origin, event.stanza.attr.from, event.stanza.attr.to)

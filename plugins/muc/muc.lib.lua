@@ -405,7 +405,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 				local is_merge;
 				if self._occupants[to] then
 					local host = jid_section(from, "host");
-					local is_local_anonuser = (hosts[host] and hosts[host].modules.auth_anonymous and true) or false;
+					local is_local_anonuser = (hosts[host] and hosts[host].anonymous and true) or false;
 					if jid_bare(from) ~= jid_bare(self._occupants[to].jid) or is_local_anonuser then
 						new_nick = nil;
 					end
