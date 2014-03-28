@@ -265,7 +265,7 @@ module:hook_stanza(xmlns_sm, "resume", function(session, stanza)
 		for _, queued in ipairs(_q) do session.send(queued); end
 	else
 		module:log("warn", "Client %s@%s[%s] tried to resume stream for %s@%s[%s]",
-                        session.username or "?", session.host or "?", session.type,
+			session.username or "?", session.host or "?", session.type,
 			original.username or "?", original.host or "?", original.type);
 		session.send(st_stanza("failed", { xmlns = xmlns_sm }):tag("not-authorized", { xmlns = xmlns_e }));
 	end
