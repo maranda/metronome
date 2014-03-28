@@ -103,6 +103,7 @@ function activate(host)
 	if not host_config.component_module then
 		host_session.type = "local";
 		host_session.sessions = {};
+		if host_config.authentication == "anonymous" then host_session.anonymous = true; end
 	else
 		host_session.type = "component";
 	end

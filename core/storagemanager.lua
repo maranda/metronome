@@ -84,7 +84,11 @@ function get_driver(host, store)
 		driver_name = storage[store];
 	end
 	if not driver_name then
-		driver_name = config.get(host, "default_storage") or "internal";
+		if config.get(host, authentication) == "anonymous" then
+			driver_name = config.get(host, "default_storage") or "null";
+		else
+			driver_name = config.get(host, "default_storage") or "internal";
+		end
 	end
 	
 	local driver = load_driver(host, driver_name);
