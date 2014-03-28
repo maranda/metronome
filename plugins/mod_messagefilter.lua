@@ -24,7 +24,7 @@ local function message_filter(event)
 
 	if body_text then
 		local host = ahosts:contains(fromhost) and hosts[fromhost];
-		if not host or not host.modules.auth_anonymous then return; end
+		if not host or not host.anonymous then return; end
 		
 		for _, pattern in ipairs(patterns) do
 			if body_text:match(pattern) then
