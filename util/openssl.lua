@@ -116,8 +116,7 @@ function ssl_config:from_metronome(hosts, config, certhosts, raw)
 				if config.get(name, "component_module") == nil then
 					self:add_sRVName(name, "xmpp-client");
 				end
-				if not (config.get(name, "anonymous_login") or
-						config.get(name, "authentication") == "anonymous") then
+				if config.get(name, "authentication") == "anonymous") then
 					self:add_sRVName(name, "xmpp-server");
 				end
 				self:add_xmppAddr(name);

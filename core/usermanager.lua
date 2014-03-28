@@ -58,7 +58,6 @@ function initialize_host(host)
 	end);
 	host_session.users = new_null_provider();
 	local auth_provider = config.get(host, "authentication") or default_provider;
-	if config.get(host, "anonymous_login") then auth_provider = "anonymous"; end
 	if auth_provider ~= "null" then
 		modulemanager.load(host, "auth_"..auth_provider);
 	end
