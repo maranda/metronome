@@ -62,7 +62,7 @@ function load_modules_for_host(host)
 		load(host, component);
 	end
 	for module in modules do
-		load(host, module);
+		if not is_loaded(host, module) then load(host, module); end
 	end
 end
 metronome.events.add_handler("host-activated", load_modules_for_host);
