@@ -19,6 +19,7 @@ local compression_stream_feature = st.stanza("compression", {xmlns = xmlns_compr
 local add_filter = require "util.filters".add_filter;
 
 local compression_level = module:get_option_number("compression_level", 7);
+local size_limit = module:get_option_number("compressed_data_max_size", 524288);
 
 if not compression_level or compression_level < 1 or compression_level > 9 then
 	module:log("warn", "Invalid compression level in config: %s", tostring(compression_level));
@@ -92,7 +93,7 @@ local function setup_compression(session, deflate_stream)
 	add_filter(session, "bytes/out", function(t)
 		local status, compressed, eof = pcall(deflate_stream, tostring(t), "sync");
 		if status == false then
-			module:log("warn", "%s", tostring(compressed));
+			module:log("warn", "Decompressed data processing failed: %s", tostring(compressed));
 			session:close({
 				condition = "undefined-condition";
 				text = compressed;
@@ -107,9 +108,15 @@ end
 -- setup decompression for a stream
 local function setup_decompression(session, inflate_stream)
 	add_filter(session, "bytes/in", function(data)
-		local status, decompressed, eof = pcall(inflate_stream, data);
+		local status, decompressed, eof;
+		if data and #data > size_limit then
+			status, decompressed = false, "Received compressed data exceeded the max allowed size!";
+		else
+			status, decompressed, eof = pcall(inflate_stream, data);
+		end
+
 		if status == false then
-			module:log("warn", "%s", tostring(decompressed));
+			module:log("warn", "Compressed data processing failed: %s", tostring(decompressed));
 			session:close({
 				condition = "undefined-condition";
 				text = decompressed;
@@ -124,7 +131,7 @@ end
 module:hook("stanza/http://jabber.org/protocol/compress:compressed", function(event)
 	local session = event.origin;
 	
-	if session.type == "s2sout_unauthed" or session.type == "s2sout" then
+	if session.type == "s2sout" then
 		session.log("debug", "Activating compression...")
 		local deflate_stream = get_deflate_stream(session);
 		if not deflate_stream then return true; end
@@ -144,7 +151,7 @@ end);
 module:hook("stanza/http://jabber.org/protocol/compress:compress", function(event)
 	local session, stanza = event.origin, event.stanza;
 
-	if session.type == "c2s" or session.type == "s2sin" or session.type == "c2s_unauthed" or session.type == "s2sin_unauthed" then
+	if session.type == "c2s" or session.type == "s2sin" then
 		if session.compressed then
 			local error_st = st.stanza("failure", {xmlns = xmlns_compression_protocol}):tag("setup-failed");
 			(session.sends2s or session.send)(error_st);
