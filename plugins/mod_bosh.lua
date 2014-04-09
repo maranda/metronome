@@ -172,6 +172,7 @@ local function handle_POST(event)
 		
 		if session.bosh_terminate then
 			session.log("debug", "Closing session with %d requests open", #session.requests);
+			session.dead = true;
 			session:close();
 			return nil;
 		else
