@@ -48,14 +48,10 @@ local pep_new = pep_lib.pep_new;
 
 singleton_nodes:add_list(module:get_option("pep_custom_singleton_nodes"));
 
--- define in how many time (in seconds) inactive services should be deactivated
--- default is 3 days, minimal accepted is 3 hours.
-local service_ttd = module:get_option_number("pep_deactivate_service_time", 259200)
-if service_ttd < 10800 then service_ttd = 10800 end
-
 local function idle_service_closer()
+	local bare_sessions = metronome.bare_sessions;
 	for name, service in pairs(services) do
-		if os_time() - service.last_used >= service_ttd then
+		if not bare_sessions[name] then
 			module:log("debug", "Deactivated inactive PEP Service -- %s", name);
 			services[name] = nil;
 		end
@@ -92,8 +88,6 @@ function handle_pubsub_iq(event)
 	end
 
 	if not user_service then return; end
-
-	user_service.last_used = time_now;
 
 	if time_now - last_idle_cleanup >= 3600 then
 		module:log("debug", "Checking for idle PEP Services...");
@@ -560,7 +554,6 @@ end, 100);
 
 function set_service(new_service, jid, restore)
 	services[jid] = new_service;
-	services[jid].last_used = os_time();
 	services[jid].name = jid;
 	services[jid].recipients = {};
 	module.environment.services[jid] = services[jid];
@@ -584,15 +577,12 @@ function module.save()
 end
 
 function module.restore(data)
-	local time_now = os_time();
-
 	hash_map = data.hash_map or {};
-	last_idle_cleanup = data.last_idle_cleanup or time_now;
+	last_idle_cleanup = data.last_idle_cleanup or os_time();
 	local _services = data.services or {};
 	for id, service in pairs(_services) do
 		username = jid_split(id);
 		services[id] = set_service(pubsub.new(pep_new(username)), id);
-		services[id].last_used = service.last_used or time_now;
 		services[id].nodes = service.nodes or {};
 		services[id].recipients = service.recipients or {};
 	end
