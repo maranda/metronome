@@ -29,7 +29,7 @@ end
 
 module:hook("stream-features", function(event)
 	local origin, features = event.origin, event.features;
-	if not origin.compressed and session.type == "c2s" then
+	if not origin.compressed and origin.type == "c2s" then
 		features:add_child(compression_stream_feature);
 	end
 end, 97);
