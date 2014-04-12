@@ -67,7 +67,7 @@ module:hook("s2sout-established", function(event)
 		session.log("debug", "Enabled compression using zlib.");
 		session.sends2s(st.stanza("compress", {xmlns = xmlns_compression_protocol}):tag("method"):text("zlib"));
 	end
-end
+end);
 
 -- returns either nil or a fully functional ready to use inflate stream
 local function get_deflate_stream(session)
