@@ -49,7 +49,8 @@ module:hook_stanza(xmlns_stream, "features", function(session, stanza)
 			for a in comp_st:children() do
 				local algorithm = a[1]
 				if algorithm == "zlib" then
-					session.to_compress = true;
+					session.log("debug", "Enabled compression using zlib.");
+					session.sends2s(st.stanza("compress", {xmlns = xmlns_compression_protocol}):tag("method"):text("zlib"));
 					return;
 				end
 			end
@@ -57,15 +58,6 @@ module:hook_stanza(xmlns_stream, "features", function(session, stanza)
 		end
 	end
 end, 250);
-
-module:hook("s2sout-established", function(event)
-	local session = event.session;
-	if session.to_compress then
-		session.to_compress = nil;
-		session.log("debug", "Enabled compression using zlib.");
-		session.sends2s(st.stanza("compress", {xmlns = xmlns_compression_protocol}):tag("method"):text("zlib"));
-	end
-end);
 
 -- returns either nil or a fully functional ready to use inflate stream
 local function get_deflate_stream(session)
