@@ -19,7 +19,7 @@ local compression_stream_feature = st.stanza("compression", {xmlns = xmlns_compr
 local add_filter = require "util.filters".add_filter;
 
 local compression_level = module:get_option_number("compression_level", 7);
-local size_limit = module:get_option_number("compressed_data_max_size", 524288);
+local size_limit = module:get_option_number("compressed_data_max_size", 131072);
 
 if not compression_level or compression_level < 1 or compression_level > 9 then
 	module:log("warn", "Invalid compression level in config: %s", tostring(compression_level));
