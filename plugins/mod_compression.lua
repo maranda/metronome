@@ -36,7 +36,7 @@ end, 97);
 
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;
-	if not origin.compressed then
+	if not origin.compressed and (origin.type == "s2sin" or origin.type == "s2sout") then
 		features:add_child(compression_stream_feature);
 	end
 end, 97);
@@ -50,7 +50,7 @@ module:hook_stanza(xmlns_stream, "features", function(session, stanza)
 				local algorithm = a[1]
 				if algorithm == "zlib" then
 					session.to_compress = true;
-					return true;
+					return;
 				end
 			end
 			session.log("debug", "Remote server supports no compression algorithm we support.")
