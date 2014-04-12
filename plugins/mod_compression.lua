@@ -29,7 +29,7 @@ end
 
 module:hook("stream-features", function(event)
 	local origin, features = event.origin, event.features;
-	if not origin.compressed and (origin.type == "c2s" or origin.type == "s2sin" or origin.type == "s2sout") then
+	if not origin.compressed then
 		-- FIXME only advertise compression support when TLS layer has no compression enabled
 		features:add_child(compression_stream_feature);
 	end
@@ -38,21 +38,20 @@ end, 97);
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;
 	-- FIXME only advertise compression support when TLS layer has no compression enabled
-	if not origin.compressed and (origin.type == "c2s" or origin.type == "s2sin" or origin.type == "s2sout") then
+	if not origin.compressed then
 		features:add_child(compression_stream_feature);
 	end
 end, 97);
 
 -- Hook to activate compression if remote server supports it.
 module:hook_stanza(xmlns_stream, "features", function(session, stanza)
-	if not session.compressed and (session.type == "c2s" or session.type == "s2sin" or session.type == "s2sout") then
+	if not session.compressed and session.type == "s2sout" then
 		local comp_st = stanza:child_with_name("compression");
 		if comp_st then
 			for a in comp_st:children() do
 				local algorithm = a[1]
 				if algorithm == "zlib" then
-					session.sends2s(st.stanza("compress", {xmlns = xmlns_compression_protocol}):tag("method"):text("zlib"))
-					session.log("debug", "Enabled compression using zlib.")
+					session.to_compress = true;
 					return true;
 				end
 			end
@@ -61,6 +60,14 @@ module:hook_stanza(xmlns_stream, "features", function(session, stanza)
 	end
 end, 250);
 
+module:hook("s2sout-established", function(event)
+	local session = event.session;
+	if session.to_compress then
+		session.to_compress = nil;
+		session.log("debug", "Enabled compression using zlib.");
+		session.sends2s(st.stanza("compress", {xmlns = xmlns_compression_protocol}):tag("method"):text("zlib"));
+	end
+end
 
 -- returns either nil or a fully functional ready to use inflate stream
 local function get_deflate_stream(session)
@@ -189,6 +196,15 @@ module:hook("stanza/http://jabber.org/protocol/compress:compress", function(even
 			(session.sends2s or session.send)(st.stanza("failure", {xmlns = xmlns_compression_protocol}):tag("setup-failed"));
 		end
 		return true;
+	else
+		return (session.sends2s or session.send)(
+			st.stanza("failure", { xmlns = xmlns_compression_protocol })
+				:tag("error", { type = "auth" })
+					:tag("not-authorized", { xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas" }):up()
+					:tag("text", { xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas" }):text(
+						"Authentication is required, before compressing a stream"
+					):up():up();
+		);
 	end
 end);
 
