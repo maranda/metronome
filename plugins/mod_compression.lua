@@ -203,7 +203,7 @@ module:hook("stanza/http://jabber.org/protocol/compress:compress", function(even
 					:tag("not-authorized", { xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas" }):up()
 					:tag("text", { xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas" }):text(
 						"Authentication is required, before compressing a stream"
-					):up():up();
+					):up():up()
 		);
 	end
 end);
