@@ -68,7 +68,7 @@ module:hook("s2sout-established", function(event)
 			(session.sends2s or session.send)(st.stanza("compress", {xmlns = xmlns_compression_protocol}):tag("method"):text("zlib"));
 		end);
 	end
-end)
+end);
 
 -- returns either nil or a fully functional ready to use inflate stream
 local function get_deflate_stream(session)
@@ -78,9 +78,9 @@ local function get_deflate_stream(session)
 		(session.sends2s or session.send)(error_st);
 		session.log("error", "Failed to create zlib.deflate filter");
 		module:log("error", "%s", tostring(deflate_stream));
-		return
+		return;
 	end
-	return deflate_stream
+	return deflate_stream;
 end
 
 -- returns either nil or a fully functional ready to use inflate stream
@@ -91,9 +91,9 @@ local function get_inflate_stream(session)
 		(session.sends2s or session.send)(error_st);
 		session.log("error", "Failed to create zlib.inflate filter");
 		module:log("error", "%s", tostring(inflate_stream));
-		return
+		return;
 	end
-	return inflate_stream
+	return inflate_stream;
 end
 
 -- setup compression for a stream
