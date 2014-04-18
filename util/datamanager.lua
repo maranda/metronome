@@ -29,7 +29,7 @@ local path_separator = assert ( package.config:match ( "^([^\n]+)" ) , "package.
 local lfs = require "lfs";
 local metronome = metronome;
 
-local load_file, serialize;
+local load_file, serialize = _load_file, _serialize;
 local serialization = config.get("*","flat_files_serialization");
 if serialization == "cjson" then
 	local cjson = require "util.cjson";
@@ -40,9 +40,6 @@ if serialization == "cjson" then
 		end
 		serialize = cjson.serialize;
 	end
-else
-	load_file = _load_file;
-	serialize = _serialize;
 end
 
 local raw_mkdir = lfs.mkdir;
