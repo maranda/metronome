@@ -20,6 +20,7 @@ local io_open = io.open;
 local os_remove = os.remove;
 local os_rename = os.rename;
 local tonumber = tonumber;
+local type = type;
 local next = next;
 local t_insert = table.insert;
 local t_concat = table.concat;
