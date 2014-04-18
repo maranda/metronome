@@ -172,6 +172,8 @@ function load(username, host, datastore)
 		end
 	end
 
+	if type(data) ~= "function" then return data; end
+	
 	local success, ret = pcall(data);
 	if not success then
 		log("error", "Unable to load %s storage ('%s') for user: %s@%s", datastore, ret, username or "nil", host or "nil");
