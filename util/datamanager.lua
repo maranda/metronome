@@ -33,11 +33,11 @@ local load_file = _load_file;
 local serialize = function(data)
 	return "return " .. _serialize(data) .. ";";
 end
-if metronome.serialization == "cjson" then
-	local cjson = require "util.cjson";
-	if cjson then
-		load_file = cjson.loadfile;
-		serialize = cjson.serialize;
+if metronome.serialization == "json" then
+	local json = require "util.jsonload";
+	if json then
+		load_file = json.loadfile;
+		serialize = json.serialize;
 	end
 end
 
