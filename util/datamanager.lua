@@ -29,7 +29,10 @@ local path_separator = assert ( package.config:match ( "^([^\n]+)" ) , "package.
 local lfs = require "lfs";
 local metronome = metronome;
 
-local load_file, serialize = _load_file, _serialize;
+local load_file = _load_file;
+local serialize = function(data)
+	return "return " .. _serialize(data) .. ";\n";
+end
 local serialization = config.get("*","flat_files_serialization");
 if serialization == "cjson" then
 	local cjson = require "util.cjson";
@@ -41,6 +44,7 @@ if serialization == "cjson" then
 		serialize = cjson.serialize;
 	end
 end
+
 
 local raw_mkdir = lfs.mkdir;
 local function fallocate(f, offset, len)
@@ -219,7 +223,7 @@ function store(username, host, datastore, data)
 	end
 
 	-- save the datastore
-	local d = "return " .. serialize(data) .. ";\n";
+	local d = serialize(data);
 	local mkdir_cache_cleared;
 	repeat
 		local ok, msg = atomic_store(getpath(username, host, datastore, nil, true), d);
