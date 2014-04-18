@@ -5,11 +5,8 @@
 -- information about copyright and licensing.
 
 local open, pcall, select = io.open, pcall, select;
-local cjson = select(2, pcall(require, "cjson"));
-if type(cjson) ~= "table" then -- error
-	return false;
-end
-local decode = cjson.decode;
+local decode = require "util.json".decode;
+local encode = require "util.json".encode
 
 local function loadfile(file)
 	local f = open(file);
@@ -24,4 +21,4 @@ local function loadfile(file)
 	end
 end
 
-return { loadfile = loadfile, serialize = cjson.encode };
+return { loadfile = loadfile, serialize = encode };
