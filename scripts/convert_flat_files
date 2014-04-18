@@ -1,0 +1,63 @@
+#!/usr/bin/env lua
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information about copyright and licensing.
+
+-- This script generates log pages for mod_muc_log_http
+	
+src_path = arg[1];
+data_path = arg[2];
+s = arg[3];
+
+if s ~= "from-internal" and s ~= "from-cjson" then
+	print("Invalid syntax please use:")
+	print("   convert_flat_files <source path> <data path> <from-internal|from-cjson>");
+	print("   (Note: all paths should not have a final trailing slash)");
+	os.exit(1);
+end
+
+metronome = { platform = "posix", serialization = (s == "from-internal" and "internal") or "cjson" };
+package.path = src_path.."/?.lua;"..package.path;
+package.cpath = src_path.."/?.so;"..package.cpath;
+datamanager = require "util.datamanager";
+datamanager.set_data_path(data_path);
+
+local converted = {};
+
+str = io.popen("find "..data_path.." -type f");
+str = str:read("*all");
+for i in str:gmatch("[%w%p]+[^\n]") do
+	local path = datamanager.path_decode(i);
+	print("Loading: "..path);
+	local host, datastore, node = path:match("^"..data_path.."/(.*)/(.*)/(.*)%.dat");
+	if not host then
+		host, datastore = path:match("^"..data_path.."/(.*)/(.*)%.dat");
+	end
+	local data = datamanager.load(node, host, datastore);
+	if not node then
+		converted["nil|"..host.."|"..datastore] = data;
+	else
+		converted[node.."|"..host.."|"..datastore] = data;
+	end
+end
+
+metronome.serialization = (s == "from-internal" and "cjson") or "internal";
+
+datamanager = nil; package.loaded.datamanager = nil; package.loaded["util.datamanager"] = nil;
+datamanager = require "util.datamanager";
+datamanager.set_data_path(data_path);
+
+for i, data in pairs(converted) do
+	local node, host, datastore = i:match("^(.*)|(.*)|(.*)$");
+	print("Coverting: "..node..", "..host..", "..datastore);
+	if node == "nil" then
+		datamanager.store(nil, host, datastore, data);
+	else
+		datamanager.store(node, host, datastore, data);
+	end
+end
+
+print("Done.");
+os.exit();
