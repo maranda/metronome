@@ -32,7 +32,7 @@ local metronome = metronome;
 
 local load_file = _load_file;
 local serialize = function(data)
-	return "return " .. _serialize(data) .. ";\n";
+	return "return " .. _serialize(data) .. ";";
 end
 local serialization = config.get("*","flat_files_serialization");
 if serialization == "cjson" then
@@ -226,7 +226,7 @@ function store(username, host, datastore, data)
 	end
 
 	-- save the datastore
-	local d = serialize(data);
+	local d = serialize(data) .. "\n";
 	local mkdir_cache_cleared;
 	repeat
 		local ok, msg = atomic_store(getpath(username, host, datastore, nil, true), d);
