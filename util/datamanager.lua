@@ -36,10 +36,7 @@ end
 if metronome.serialization == "cjson" then
 	local cjson = require "util.cjson";
 	if cjson then
-		local cjsonload = cjson.loadfile;
-		load_file = function(f, e)
-			return (cjsonload(f) or _load_file(f, e));
-		end
+		load_file = cjson.loadfile;
 		serialize = cjson.serialize;
 	end
 end
