@@ -44,14 +44,15 @@ end, 97);
 
 -- Hook to activate compression if remote server supports it.
 module:hook_stanza(xmlns_stream, "features", function(session, stanza)
-	if not session.compressed and (session.type == "s2sout_unauthed" or session.type == "s2sout") then
+	if not session.compressed and not session.compressing and 
+	   (session.type == "s2sout_unauthed" or session.type == "s2sout") then
 		local comp_st = stanza:child_with_name("compression");
 		if comp_st then
 			for a in comp_st:children() do
 				local algorithm = a[1]
 				if algorithm == "zlib" then
 					session.log("debug", "Preparing to enable compression...");
-					session.can_do_compression = true;
+					session.compressing = true;
 					return;
 				end
 			end
@@ -62,9 +63,9 @@ end, 250);
 
 module:hook("s2sout-established", function(event)
 	session = event.session;
-	if session.can_do_compression then
+	if session.compressing then
 		add_task(3, function()
-			session.can_do_compression = nil;
+			session.compressing = nil;
 			(session.sends2s or session.send)(st.stanza("compress", {xmlns = xmlns_compression_protocol}):tag("method"):text("zlib"));
 		end);
 	end
