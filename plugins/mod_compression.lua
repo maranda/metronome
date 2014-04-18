@@ -205,3 +205,9 @@ module:hook("stanza/http://jabber.org/protocol/compress:compress", function(even
 	end
 end);
 
+module:hook("stanza/http://jabber.org/protocol/compress:failure", function(event)
+	local session, stanza = event.session, event.stanza;
+	session.log("warn", "Remote entity refused to enabled compression, failure stanza dump: %s", tostring(stanza));
+	return true;
+end);
+
