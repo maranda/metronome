@@ -15,7 +15,12 @@ local function loadfile(file)
 	local f = open(file);
 	if f then
 		local str = f:read("*all");
-		return pcall(decode, str);
+		local ok, ret = pcall(decode, str);
+		if ok then
+			return ret;
+		else
+			return nil, ret;
+		end
 	end
 end
 
