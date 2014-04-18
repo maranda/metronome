@@ -413,7 +413,7 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 		calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, host=host, room=node, webpath="../"}) or "";
 		
 		local get_page = open_pipe(
-			module_path.."/generate_log '"..metronome_paths.source.."' "..metronome_paths.data.." "..theme_path.." "..bare_room_jid.." ".._year..month..day
+			module_path.."/generate_log '"..metronome_paths.source.."' "..metronome_paths.data.." "..theme_path.." "..bare_room_jid.." ".._year..month..day.." "..metronome.serialization
 		);
 		
 		ret = get_page:read("*a"); get_page:close(); get_page = nil;

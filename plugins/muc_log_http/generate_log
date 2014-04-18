@@ -12,8 +12,9 @@ data_path = arg[2];
 theme_path = arg[3];
 muc_jid = arg[4];
 date = arg[5];
+serialization = arg[6];
 
-metronome = { platform = "posix" } -- Replicate metronome env partially.
+metronome = { platform = "posix", serialization = serialization or "internal" };
 package.path = src_path.."/?.lua;"..package.path;
 package.cpath = src_path.."/?.so;"..package.cpath;
 html_escape = require "util.auxiliary".html_escape;
