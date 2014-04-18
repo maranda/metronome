@@ -93,6 +93,10 @@ function read_config()
 	end
 end
 
+function files_serialization_format()
+	metronome.serialization = config.get("*", "flat_files_serialization") or "internal";
+end
+
 function preload_libraries()
 	local libs = config.get("*", "metronome_preload_libraries");
 	libs = type(libs) ~= "table" and {} or libs;
@@ -363,6 +367,7 @@ function cleanup()
 end
 
 read_config();
+files_serialization_format();
 init_logging();
 sanity_check();
 sandbox_require();

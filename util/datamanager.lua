@@ -15,7 +15,6 @@ local ipairs = ipairs;
 local char = string.char;
 local pcall = pcall;
 local log = require "util.logger".init("datamanager");
-local config_get = require "configmanager".get;
 local io_open = io.open;
 local os_remove = os.remove;
 local os_rename = os.rename;
@@ -34,8 +33,7 @@ local load_file = _load_file;
 local serialize = function(data)
 	return "return " .. _serialize(data) .. ";";
 end
-local serialization = config.get("*","flat_files_serialization");
-if serialization == "cjson" then
+if metronome.serialization == "cjson" then
 	local cjson = require "util.cjson";
 	if cjson then
 		local cjsonload = cjson.loadfile;
