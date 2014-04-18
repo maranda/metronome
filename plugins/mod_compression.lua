@@ -55,7 +55,7 @@ module:hook_stanza(xmlns_stream, "features", function(session, stanza)
 					return;
 				end
 			end
-			session.log("debug", "Remote server supports no compression algorithm we support")
+			session.log("debug", "Remote server supports no compression algorithm we support");
 		end
 	end
 end, 250);
