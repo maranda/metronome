@@ -11,14 +11,14 @@ src_path = arg[1];
 data_path = arg[2];
 s = arg[3];
 
-if s ~= "from-internal" and s ~= "from-cjson" then
+if s ~= "from-internal" and s ~= "from-json" then
 	print("Invalid syntax please use:")
-	print("   convert_flat_files <source path> <data path> <from-internal|from-cjson>");
+	print("   convert_flat_files <source path> <data path> <from-internal|from-json>");
 	print("   (Note: all paths should not have a final trailing slash)");
 	os.exit(1);
 end
 
-metronome = { platform = "posix", serialization = (s == "from-internal" and "internal") or "cjson" };
+metronome = { platform = "posix", serialization = (s == "from-internal" and "internal") or "json" };
 package.path = src_path.."/?.lua;"..package.path;
 package.cpath = src_path.."/?.so;"..package.cpath;
 datamanager = require "util.datamanager";
@@ -43,7 +43,7 @@ for i in str:gmatch("[%w%p]+[^\n]") do
 	end
 end
 
-metronome.serialization = (s == "from-internal" and "cjson") or "internal";
+metronome.serialization = (s == "from-internal" and "json") or "internal";
 
 datamanager = nil; package.loaded.datamanager = nil; package.loaded["util.datamanager"] = nil;
 datamanager = require "util.datamanager";
