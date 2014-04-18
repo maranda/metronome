@@ -19,4 +19,4 @@ local function loadfile(file)
 	end
 end
 
-return { loadfile = loadfile, serialize = cjson.serialize };
+return { loadfile = loadfile, serialize = cjson.encode };
