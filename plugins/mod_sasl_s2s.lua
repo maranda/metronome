@@ -9,7 +9,6 @@ local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
 local base64 = require "util.encodings".base64;
 local cert_verify_identity = require "util.x509".verify_identity;
 
-local xmlns_db = "urn:xmpp:features:dialback";
 local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
 
 local function build_error(err)
@@ -111,10 +110,6 @@ module:hook_stanza("http://etherx.jabber.org/streams", "features", function (ses
 		return; 
 	end
 
-	if stanza:get_child("dialback", xmlns_db) then -- don't attempt falling back to dialback if the remote end doesn't offer it.
-		session.can_do_dialback = true;
-	end
-	
 	local mechanisms = stanza:get_child("mechanisms", xmlns_sasl);
 	if mechanisms then
 		for mech in mechanisms:childtags() do

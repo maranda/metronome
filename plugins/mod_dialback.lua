@@ -66,6 +66,11 @@ function make_authenticated(session, host)
 	return s2s_make_authenticated(session, host);
 end
 
+local function can_do_dialback(origin)
+	local db = origin.stream_declared_ns and origin.stream_declared_ns["db"];
+	if db == xmlns_db then return true; else return false; end
+end
+
 local errors_map = {
 	["item-not-found"] = "requested host was not found on the remote enitity",
 	["remote-connection-failed"] = "the receiving entity failed to connect back to us",
@@ -243,8 +248,9 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 end);
 
 module:hook_stanza("urn:ietf:params:xml:ns:xmpp-sasl", "failure", function (origin, stanza)
-	if origin.external_auth == "failed" and origin.can_do_dialback then
+	if origin.external_auth == "failed" and can_do_dialback(origin) then
 		module:log("debug", "SASL EXTERNAL failed, falling back to dialback");
+		origin.can_do_dialback = true;
 		initiate_dialback(origin);
 		return true;
 	else
@@ -256,9 +262,8 @@ end, 100);
 
 module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 	if not origin.external_auth or origin.external_auth == "failed" then
-		local db = origin.stream_declared_ns and origin.stream_declared_ns["db"];
 		local tls = stanza:child_with_ns(xmlns_starttls);
-		if db == xmlns_db then
+		if can_do_dialback(origin) then
 			local tls_required = tls and tls:get_child("required");
 			if tls_required and not origin.secure then
 				local to, from = origin.to_host, origin.from_host;
