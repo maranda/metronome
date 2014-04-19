@@ -65,8 +65,12 @@ module:hook("s2sout-established", function(event)
 	session = event.session;
 	if session.compressing then
 		add_task(3, function()
-			session.compressing = nil;
-			(session.sends2s or session.send)(st.stanza("compress", {xmlns = xmlns_compression_protocol}):tag("method"):text("zlib"));
+			if not session.destroyed then
+				session.compressing = nil;
+				(session.sends2s or session.send)(
+					st.stanza("compress", {xmlns = xmlns_compression_protocol}):tag("method"):text("zlib")
+				);
+			end
 		end);
 	end
 end);
