@@ -254,6 +254,12 @@ local function handle_deletion(event)
 	end
 end
 
+module:hook_global("config-reloaded", function()
+	c2s_timeout = module:get_option_number("c2s_timeout");
+	stream_close_timeout = module:get_option_number("c2s_close_timeout", 5);
+	opt_keepalives = module:get_option_boolean("tcp_keepalives", false);
+end);
+
 module:hook_global("user-deleted", handle_deletion, -1);
 
 module:add_item("net-provider", {

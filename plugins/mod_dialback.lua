@@ -302,3 +302,8 @@ function module.unload(reload)
 		module:log("warn", "Perhaps it will be unloaded as well for this host. (To prevent this set s2s_strict_mode = true in the config)");
 	end
 end
+
+module:hook_global("config-reloaded", function()
+	s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
+	require_encryption = module:get_option_boolean("s2s_require_encryption", false);
+end);

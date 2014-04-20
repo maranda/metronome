@@ -597,6 +597,15 @@ end
 
 s2sout.set_listener(listener);
 
+module:hook_global("config-reloaded", function()
+	connect_timeout = module:get_option_number("s2s_timeout", 90);
+	stream_close_timeout = module:get_option_number("s2s_close_timeout", 5);
+	s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
+	require_encryption = module:get_option_boolean("s2s_require_encryption", false);
+	max_inactivity = module:get_option_number("s2s_max_inactivity", 1800);
+	check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
+end);
+
 module:add_item("net-provider", {
 	name = "s2s";
 	listener = listener;
