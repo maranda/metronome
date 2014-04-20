@@ -193,6 +193,10 @@ module:hook("iq-get/host/http://jabber.org/protocol/disco#items:query", function
 	end
 end);
 
+module:hook("pubsub-get-service", function()
+	return service;
+end);
+
 local admin_aff = module:get_option_string("default_admin_affiliation", "owner");
 local use_parents_creds = module:get_option_boolean("use_parents_credentials", true);
 local pubsub_admins = module:get_option_set("pubsub_admins", {});

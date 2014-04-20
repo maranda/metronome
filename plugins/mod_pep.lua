@@ -451,6 +451,14 @@ module:hook("pep-get-client-filters", function(event)
 	disco_info_query(user, to);
 end, 100);
 
+module:hook("pep-get-service", function(username, spawn)
+	local service = services[jid_join(username, module.host)];
+	if spawn and not service and um_user_exists(username, module.host) then
+		service = set_service(pubsub.new(pep_new(username)), username, true);
+	end
+	return service;
+end);
+
 module:hook("iq-result/bare/disco", function(event)
 	local session, stanza = event.origin, event.stanza;
 	if stanza.attr.type == "result" then
