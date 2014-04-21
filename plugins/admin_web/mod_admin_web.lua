@@ -94,7 +94,7 @@ function add_host(session, type, host)
 			item:tag("encrypted"):tag("invalid"):up():up();
 		end
 	end
-	if session.compressed then
+	if session.compressed or session.compressing then
 		item:tag("compressed"):up();
 	end
 	service[host]:publish(xmlns_s2s_session, host, id, item);
