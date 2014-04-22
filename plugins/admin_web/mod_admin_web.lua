@@ -303,6 +303,7 @@ function module.add_host(module)
 	end);
 
 	module:hook("c2s-compressed", function(session)
+		del_client(session, module.host);
 		add_client(session, module.host, true);
 	end);
 
@@ -318,6 +319,7 @@ function module.add_host(module)
 	end);
 
 	module:hook("s2sout-compressed", function(session)
+		del_host(session, "out", module.host);
 		add_host(session, "out", module.host, true);
 	end);
 
@@ -326,6 +328,7 @@ function module.add_host(module)
 	end);
 
 	module:hook("s2sin-compressed", function(session)
+		del_host(session, "in", module.host);
 		add_host(session, "in", module.host, true);
 	end);
 
