@@ -65,6 +65,9 @@ function add_client(session, host, update)
 	if session.compressed then
 		item:tag("compressed"):up();
 	end
+	if session.sm then
+		item:tag("sm"):up();
+	end
 	service[host]:publish(xmlns_c2s_session, host, id, item);
 	if not update then module:log("debug", "Added client " .. name); end
 end
@@ -94,8 +97,14 @@ function add_host(session, type, host, update)
 			item:tag("encrypted"):tag("invalid"):up():up();
 		end
 	end
+	if session.bidirectional then
+		item:tag("bidi"):up();
+	end
 	if session.compressed then
 		item:tag("compressed"):up();
+	end
+	if session.sm then
+		item:tag("sm"):up();
 	end
 	service[host]:publish(xmlns_s2s_session, host, id, item);
 	if not update then module:log("debug", "Added host " .. name .. " s2s" .. type); end
@@ -307,6 +316,11 @@ function module.add_host(module)
 		add_client(session, module.host, true);
 	end);
 
+	module:hook("c2s-sm-enabled", function(session)
+		del_client(session, module.host);
+		add_client(session, module.host, true);
+	end);
+
 	module:hook("resource-unbind", function(event)
 		del_client(event.session, module.host);
 		service[module.host]:remove_subscription(xmlns_c2s_session, module.host, event.session.full_jid);
@@ -323,11 +337,21 @@ function module.add_host(module)
 		add_host(session, "out", module.host, true);
 	end);
 
+	module:hook("s2sout-sm-enabled", function(session)
+		del_host(session, "out", module.host);
+		add_host(session, "out", module.host, true);
+	end);
+
 	module:hook("s2sin-established", function(event)
 		add_host(event.session, "in", module.host);
 	end);
 
 	module:hook("s2sin-compressed", function(session)
+		del_host(session, "in", module.host);
+		add_host(session, "in", module.host, true);
+	end);
+
+	module:hook("s2sin-sm-enabled", function(session)
 		del_host(session, "in", module.host);
 		add_host(session, "in", module.host, true);
 	end);

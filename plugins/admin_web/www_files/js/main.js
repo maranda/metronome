@@ -26,8 +26,14 @@ function _cbNewS2S(e) {
                 entry.append('<img src="images/encrypted.png" title="encrypted (certificate invalid)" alt=" (encrypted)" />');
             }
         }
+        if (items[i].getElementsByTagName('bidi')[0]) {
+            entry.append('<img src="images/bidi.png" title="bidi" alt=" (bidirectional s2s stream)" />');
+        }
         if (items[i].getElementsByTagName('compressed')[0]) {
             entry.append('<img src="images/compressed.png" title="compressed" alt=" (compressed)" />');
+        }
+        if (items[i].getElementsByTagName('sm')[0]) {
+            entry.append('<img src="images/sm.png" title="sm" alt=" (stream management enabled)" />');
         }
 
         if (items[i].getElementsByTagName('out')[0]) {
@@ -56,6 +62,9 @@ function _cbNewC2S(e) {
         }
         if (items[i].getElementsByTagName('compressed')[0]) {
             entry.append('<img src="images/compressed.png" title="compressed" alt=" (compressed)" />');
+        }
+        if (items[i].getElementsByTagName('sm')[0]) {
+            entry.append('<img src="images/sm.png" title="sm" alt=" (stream management enabled)" />');
         }
         entry.appendTo('#c2s');
     }
