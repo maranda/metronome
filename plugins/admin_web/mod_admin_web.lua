@@ -78,7 +78,13 @@ function del_client(session, host)
 	if id then
 		local notifier = st.stanza("retract", { id = id });
 		service[host]:retract(xmlns_c2s_session, host, id, notifier);
+		idmap[name] = nil;
 	end
+end
+
+function update_client(session, host)
+	del_client(session, host);
+	add_client(session, host, true);
 end
 
 function add_host(session, type, host, update)
@@ -116,7 +122,13 @@ function del_host(session, type, host)
 	if id then
 		local notifier = st.stanza("retract", { id = id });
 		service[host]:retract(xmlns_s2s_session, host, id, notifier);
+		idmap[name] = nil;
 	end
+end
+
+function update_host(session, type, host)
+	del_host(session, type, host);
+	add_host(session, type, host, true);
 end
 
 function serve_file(event, path)
@@ -312,13 +324,11 @@ function module.add_host(module)
 	end);
 
 	module:hook("c2s-compressed", function(session)
-		del_client(session, module.host);
-		add_client(session, module.host, true);
+		update_client(session, module.host);
 	end);
 
 	module:hook("c2s-sm-enabled", function(session)
-		del_client(session, module.host);
-		add_client(session, module.host, true);
+		update_client(session, module.host);
 	end);
 
 	module:hook("resource-unbind", function(event)
@@ -333,13 +343,11 @@ function module.add_host(module)
 	end);
 
 	module:hook("s2sout-compressed", function(session)
-		del_host(session, "out", module.host);
-		add_host(session, "out", module.host, true);
+		update_host(session, "out", module.host);
 	end);
 
 	module:hook("s2sout-sm-enabled", function(session)
-		del_host(session, "out", module.host);
-		add_host(session, "out", module.host, true);
+		update_host(session, "out", module.host);
 	end);
 
 	module:hook("s2sin-established", function(event)
@@ -347,13 +355,11 @@ function module.add_host(module)
 	end);
 
 	module:hook("s2sin-compressed", function(session)
-		del_host(session, "in", module.host);
-		add_host(session, "in", module.host, true);
+		update_host(session, "in", module.host);
 	end);
 
 	module:hook("s2sin-sm-enabled", function(session)
-		del_host(session, "in", module.host);
-		add_host(session, "in", module.host, true);
+		update_host(session, "in", module.host);
 	end);
 
 	module:hook("s2sout-destroyed", function(event)
