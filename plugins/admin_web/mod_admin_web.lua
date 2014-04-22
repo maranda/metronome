@@ -51,7 +51,7 @@ local mime_map = {
 
 local idmap = {};
 
-function add_client(session, host)
+function add_client(session, host, update)
 	local name = session.full_jid;
 	local id = idmap[name];
 	if not id then
@@ -66,7 +66,7 @@ function add_client(session, host)
 		item:tag("compressed"):up();
 	end
 	service[host]:publish(xmlns_c2s_session, host, id, item);
-	module:log("debug", "Added client " .. name);
+	if not update then module:log("debug", "Added client " .. name); end
 end
 
 function del_client(session, host)
@@ -78,7 +78,7 @@ function del_client(session, host)
 	end
 end
 
-function add_host(session, type, host)
+function add_host(session, type, host, update)
 	local name = (type == "out" and session.to_host) or (type == "in" and session.from_host);
 	local id = idmap[name.."_"..type];
 	if not id then
@@ -94,11 +94,11 @@ function add_host(session, type, host)
 			item:tag("encrypted"):tag("invalid"):up():up();
 		end
 	end
-	if session.compressed or session.compressing then
+	if session.compressed then
 		item:tag("compressed"):up();
 	end
 	service[host]:publish(xmlns_s2s_session, host, id, item);
-	module:log("debug", "Added host " .. name .. " s2s" .. type);
+	if not update then module:log("debug", "Added host " .. name .. " s2s" .. type); end
 end
 
 function del_host(session, type, host)
@@ -302,6 +302,10 @@ function module.add_host(module)
 		add_client(event.session, module.host);
 	end);
 
+	module:hook("c2s-compressed", function(session)
+		add_client(session, module.host, true);
+	end);
+
 	module:hook("resource-unbind", function(event)
 		del_client(event.session, module.host);
 		service[module.host]:remove_subscription(xmlns_c2s_session, module.host, event.session.full_jid);
@@ -313,8 +317,16 @@ function module.add_host(module)
 		add_host(event.session, "out", module.host);
 	end);
 
+	module:hook("s2sout-compressed", function(session)
+		add_host(session, "out", module.host, true);
+	end);
+
 	module:hook("s2sin-established", function(event)
 		add_host(event.session, "in", module.host);
+	end);
+
+	module:hook("s2sin-compressed", function(session)
+		add_host(session, "in", module.host, true);
 	end);
 
 	module:hook("s2sout-destroyed", function(event)

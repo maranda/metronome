@@ -157,6 +157,7 @@ module:hook("stanza/http://jabber.org/protocol/compress:compressed", function(ev
 		session:reset_stream();
 		session:open_stream();
 		session.compressed = true;
+		module:fire_event("s2sout-compressed", session);
 		return true;
 	end
 end);
@@ -190,6 +191,7 @@ module:hook("stanza/http://jabber.org/protocol/compress:compress", function(even
 			setup_decompression(session, inflate_stream);
 			session:reset_stream();
 			session.compressed = true;
+			module:fire_event(session.type == "s2sin" and "s2sin-compressed" or "c2s-compressed", session);
 		elseif method then
 			session.log("debug", "%s compression selected, but we don't support it", tostring(method));
 			local error_st = st.stanza("failure", {xmlns = xmlns_compression_protocol}):tag("unsupported-method");
