@@ -128,6 +128,7 @@ local function wrap(session, _r) -- SM session wrapper
 		_q, session.sm_queue = {}, {};
 	end
 	
+	module:fire_event(session.type .. "-sm-enabled", session);
 	return session;
 end
 
