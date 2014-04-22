@@ -62,7 +62,7 @@ module:hook_stanza(xmlns_stream, "features", function(session, stanza)
 end, 250);
 
 module:hook("s2sout-established", function(event)
-	session = event.session;
+	local session = event.session;
 	if session.compressing then
 		add_task(3, function()
 			if not session.destroyed then
