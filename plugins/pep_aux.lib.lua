@@ -124,7 +124,7 @@ local function pep_mutual_recs(source, target, interested)
 	end
 end
 
-local function mutually_sub(jid, hash, nodes)
+local function mutually_sub(service, jid, hash, nodes)
 	for node, obj in pairs(nodes) do
 		if hash_map[hash] and hash_map[hash][node] and service:get_affiliation(jid, node) ~= "no_access" then
 			obj.subscribers[jid] = true; 
@@ -152,8 +152,8 @@ local function pep_send(recipient, user)
 
 		-- Mutually subscribe
 		for jid, hash in pairs(interested) do
-			mutually_sub(jid, hash, rec_nodes);
-			mutually_sub(jid, hash, nodes);
+			mutually_sub(user_srv, jid, hash, rec_nodes);
+			mutually_sub(rec_srv, jid, hash, nodes);
 		end
 
 		for node in pairs(nodes) do
