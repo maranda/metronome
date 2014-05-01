@@ -126,8 +126,7 @@ end
 
 local function mutually_sub(jid, hash, nodes)
 	for node, obj in pairs(nodes) do
-		local is_private = obj.config.access_model == "private" and true;
-		if hash_map[hash] and hash_map[hash][node] and (not is_private or service:get_affiliation(jid, node) ~= "no_access") then
+		if hash_map[hash] and hash_map[hash][node] and service:get_affiliation(jid, node) ~= "no_access" then
 			obj.subscribers[jid] = true; 
 		end
 	end
@@ -167,11 +166,10 @@ local function pep_autosubscribe_recs(service, node)
 	local recipients = service.recipients;
 	local _node = service.nodes[node];
 	if not _node then return; end
-	local is_private = _node.config.access_model == "private" and true;
 
 	for jid, hash in pairs(recipients) do
 		if type(hash) == "string" and hash_map[hash] and hash_map[hash][node] then
-			if not is_private or service:get_affiliation(jid, node) ~= "no_access" then
+			if service:get_affiliation(jid, node) ~= "no_access" then
 				_node.subscribers[jid] = true;
 			end
 		end
@@ -223,11 +221,11 @@ local function form_layout(service, name)
 		{
 			name = "pubsub#access_model",
 			type = "list-single",
-			label = "Access Model for the node, currently supported models are presence, private and open",
+			label = "Access Model for the node, currently supported models are presence, open and whitelist",
 			value = {
 				{ value = "presence", default = (node.config.access_model == "presence" or node.config.access_model == nil) and true },
-				{ value = "private", default = node.config.access_model == "private" and true },
-				{ value = "open", default = node.config.access_model == "open" and true }
+				{ value = "open", default = node.config.access_model == "open" and true },
+				{ value = "whitelist", default = node.config.access_model == "whitelist" and true }
 			}
 		},
 		{
@@ -276,7 +274,7 @@ local function process_config_form(service, name, form, new)
 			node_config.persist_items = ((persist == 0 or persist == "false") and false) or ((persist == "1" or persist == "true") and true);
 		elseif field.attr.var == "pubsub#access_model" then
 			local value = field:get_child_text("value");
-			if value == "presence" or value == "private" or value == "open" then node_config.access_model = value; end
+			if value == "presence" or value == "open" or value == "whitelist" then node_config.access_model = value; end
 		elseif field.attr.var == "pubsub#publish_model" then
 			local value = field:get_child_text("value");
 			if value == "publishers" or value == "open" then node_config.publish_model = value; end
@@ -335,7 +333,7 @@ local function get_affiliation(self, jid, node)
 		if node and (not access_model or access_model == "presence") then
 			local user, host = jid_split(self.name);
 			if not is_contact_subscribed(user, host, bare_jid) then return "no_access"; end
-		elseif node and access_model == "private" then
+		elseif node and access_model == "whitelist" then
 			return "no_access";
 		end
 			
