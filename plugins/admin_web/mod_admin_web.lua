@@ -79,6 +79,8 @@ end
 
 function add_client(session, host, update)
 	local name = session.full_jid;
+	if not name then return; end
+
 	local id = idmap[name];
 	if not id then
 		id = uuid_generate();
