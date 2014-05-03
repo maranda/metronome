@@ -9,6 +9,7 @@
 
 local hosts = metronome.hosts;
 local incoming = metronome.incoming_s2s;
+local host_session = hosts[module.host];
 local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
 
 local log = module._log;
@@ -296,11 +297,16 @@ module:hook("s2s-authenticate-legacy", function (event)
 	return true;
 end, 100);
 
+function module.load()
+	host_session.dialback_capable = true;
+end
+
 function module.unload(reload)
 	if not reload and not s2s_strict_mode then
 		module:log("warn", "In interoperability mode mod_s2s directly depends on mod_dialback for its local instances.");
 		module:log("warn", "Perhaps it will be unloaded as well for this host. (To prevent this set s2s_strict_mode = true in the config)");
 	end
+	host_session.dialback_capable = nil;
 end
 
 module:hook_global("config-reloaded", function()

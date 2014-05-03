@@ -22,6 +22,8 @@ local add_filter = require "util.filters".add_filter;
 local compression_level = module:get_option_number("compression_level", 7);
 local size_limit = module:get_option_number("compressed_data_max_size", 131072);
 
+local host_session = hosts[module.host];
+
 if not compression_level or compression_level < 1 or compression_level > 9 then
 	module:log("warn", "Invalid compression level in config: %s", tostring(compression_level));
 	module:log("warn", "Module loading aborted. Compression won't be available");
@@ -37,7 +39,7 @@ end, 97);
 
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;
-	if not origin.compressed then
+	if not origin.compressed and (host_session.dialback_capable or session.type == "s2sin") then
 		features:add_child(compression_stream_feature);
 	end
 end, 97);
