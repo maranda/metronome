@@ -239,7 +239,7 @@ function service:add_subscription(node, actor, jid, options)
 
 	if actor ~= true
 	   and node_obj.config.access_model == "whitelist"
-	   and self:get_affiliation(actor, node, action) ~= "owner" then
+	   and self:get_affiliation(actor, node) ~= "owner" then
 		local is_whitelisted = node_obj.affiliations[actor] ~= nil and true;
 		if cap == "subscribe" and not is_whitelisted then return false, "forbidden"; end
 	end
@@ -579,7 +579,7 @@ function service:get_items(node, actor, id, max)
 
 	if actor ~= true
 	   and config.access_model == "whitelist"
-	   and self:get_affiliation(actor, node, action) ~= "owner" then
+	   and self:get_affiliation(actor, node) ~= "owner" then
 		local is_whitelisted = affiliations[actor] ~= nil and true;
 		if cap == "subscribe" and not is_whitelisted then return false, "forbidden"; end
 	end
