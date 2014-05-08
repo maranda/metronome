@@ -30,22 +30,6 @@ local ripairs, t_insert, t_remove = ripairs, table.insert, table.remove;
 local mod_host = module:get_host();
 local muc = hosts[mod_host].muc;
 
--- Helper Functions
-
-local function inject_storage_config()
-	local _storage = cm.getconfig()[mod_host].storage;
-
-	module:log("debug", "injecting storage config...");
-	if type(_storage) == "string" then cm.getconfig()[mod_host].default_storage = _storage; end
-	if type(_storage) == "table" then -- append
-		_storage.muc_log = "internal";
-	else
-		cm.getconfig()[mod_host].storage = { muc_log = "internal" };
-	end
-
-	storagemanager.get_driver(mod_host, "muc_log"); -- init
-end
-
 -- Module Definitions
 
 function log_if_needed(e)
@@ -143,7 +127,6 @@ module:hook("muc-occupant-joined", function(room, presence)
 	if room:get_option("logging") then presence:tag("status", {code = "170"}):up(); end
 end, -100);
 
-module:hook("config-reloaded", inject_storage_config);
-function module.load() inject_storage_config(); end
+module.storage = { muc_log = "internal" };
 
 module:log("debug", "module mod_muc_log loaded!");
