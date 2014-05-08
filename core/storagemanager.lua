@@ -40,6 +40,7 @@ local null_storage_driver = setmetatable(
 );
 
 local stores_available = multitable.new();
+local stores_overrides = multitable.new();
 
 function initialize_host(host)
 	local host_session = hosts[host];
@@ -51,6 +52,24 @@ function initialize_host(host)
 	host_session.events.add_handler("item-removed/data-driver", function (event)
 		local item = event.item;
 		stores_available:set(host, item.name, nil);
+	end);
+
+	host_session.events.add_handler("module-loaded", function (event)
+		local host, storage = event.host, event.storage;
+		if type(storage) == "table" then
+			for store, driver in pairs(storage) do
+				stores_overrides:set(host, store, driver);
+			end
+		end
+	end);
+
+	host_session.events.add_handler("module-unloaded", function (event)
+		local host, storage = event.host, event.storage;
+		if type(storage) == "table" then
+			for store, driver in pairs(storage) do
+				stores_overrides:set(host, store, nil);
+			end
+		end
 	end);
 end
 metronome.events.add_handler("host-activated", initialize_host, 101);
@@ -75,7 +94,7 @@ function load_driver(host, driver_name)
 end
 
 function get_driver(host, store)
-	local storage = config.get(host, "storage");
+	local storage = stores_overrides:get(host, store) or config.get(host, "storage");
 	local driver_name;
 	local option_type = type(storage);
 	if option_type == "string" then

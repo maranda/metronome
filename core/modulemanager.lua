@@ -231,15 +231,20 @@ end
 function load(host, name)
 	local mod, err = do_load_module(host, name);
 	if mod then
-		(hosts[mod.module.host] or metronome).events.fire_event("module-loaded", { module = name, host = mod.module.host });
+		(hosts[mod.module.host] or metronome).events.fire_event("module-loaded",
+			{ module = name, host = mod.module.host, storage = mod.module.storage }
+		);
 	end
 	return mod, err;
 end
 
 function unload(host, name)
+	local mod = get_module(host, name);
 	local ok, err = do_unload_module(host, name);
 	if ok then
-		(hosts[host] or metronome).events.fire_event("module-unloaded", { module = name, host = host });
+		(hosts[host] or metronome).events.fire_event("module-unloaded",
+			{ module = name, host = host, storage = mod.module.storage }
+		);
 	end
 	return ok, err;
 end
