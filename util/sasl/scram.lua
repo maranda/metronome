@@ -124,7 +124,7 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			end
 
 			if not self.state.name or not self.state.clientnonce then
-				return "failure", "malformed-request", "Channel binding isn't support at this time.";
+				return "failure", "malformed-request", "Channel binding isn't supported at this time.";
 			end
 		
 			self.state.name = validate_username(self.state.name, self.profile.nodeprep);
