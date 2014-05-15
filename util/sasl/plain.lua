@@ -48,7 +48,7 @@ local function plain(self, message)
 	if _nodeprep ~= false then
 		authentication = (_nodeprep or nodeprep)(authentication);
 		if not authentication or authentication == "" then
-			return "failure", "malformed-request", "Invalid username or password."
+			return "failure", "malformed-request", "Invalid username or password"
 		end
 	end
 
@@ -65,13 +65,13 @@ local function plain(self, message)
 	if state == false then
 		return "failure", "account-disabled";
 	elseif state == nil then
-		return "failure", "not-authorized", "Unable to authorize you with the authentication credentials you've sent.";
+		return "failure", "not-authorized", "Unable to authorize you with the authentication credentials you've sent";
 	end
 
 	if correct then
 		return "success";
 	else
-		return "failure", "not-authorized", "Unable to authorize you with the authentication credentials you've sent.";
+		return "failure", "not-authorized", "Unable to authorize you with the authentication credentials you've sent";
 	end
 end
 

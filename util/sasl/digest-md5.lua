@@ -149,7 +149,7 @@ local function digest(self, message)
 			if response["nonce"] ~= tostring(self.nonce) then return "failure", "malformed-request" end
 		end
 
-		if not response["cnonce"] then return "failure", "malformed-request", "Missing entry for cnonce in SASL message." end
+		if not response["cnonce"] then return "failure", "malformed-request", "Missing entry for cnonce in SASL message" end
 		if not response["qop"] then response["qop"] = "auth" end
 
 		if response["realm"] == nil or response["realm"] == "" then
@@ -162,7 +162,7 @@ local function digest(self, message)
 		if response["charset"] == nil then
 			decoder = utf8tolatin1ifpossible;
 		elseif response["charset"] ~= "utf-8" then
-			return "failure", "incorrect-encoding", "The client's response uses "..response["charset"].." for encoding with isn't supported by sasl.lua. Supported encodings are latin or utf-8.";
+			return "failure", "incorrect-encoding", "The client's response uses "..response["charset"].." for encoding with isn't supported by sasl.lua, supported encodings are latin or utf-8";
 		end
 
 		local domain = "";
@@ -171,7 +171,7 @@ local function digest(self, message)
 			protocol, domain = response["digest-uri"]:match("(%w+)/(.*)$");
 			if protocol == nil or domain == nil then return "failure", "malformed-request" end
 		else
-			return "failure", "malformed-request", "Missing entry for digest-uri in SASL message."
+			return "failure", "malformed-request", "Missing entry for digest-uri in SASL message"
 		end
 
 		--TODO maybe realm support
@@ -224,7 +224,7 @@ local function digest(self, message)
 			--TODO: considering sending the rspauth in a success node for saving one roundtrip; allowed according to http://tools.ietf.org/html/draft-saintandre-rfc3920bis-09#section-7.3.6
 			return "challenge", serialize({rspauth = rspauth});
 		else
-			return "failure", "not-authorized", "The response provided by the client doesn't match the one we calculated."
+			return "failure", "not-authorized", "The response provided by the client doesn't match the one we calculated"
 		end
 	elseif self.step == 3 then
 		if self.authenticated ~= nil then return "success"

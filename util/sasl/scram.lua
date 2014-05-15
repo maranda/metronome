@@ -124,13 +124,13 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			end
 
 			if not self.state.name or not self.state.clientnonce then
-				return "failure", "malformed-request", "Channel binding isn't supported at this time.";
+				return "failure", "malformed-request", "Channel binding isn't supported at this time";
 			end
 		
 			self.state.name = validate_username(self.state.name, self.profile.nodeprep);
 			if not self.state.name then
-				log("debug", "Username violates either SASLprep or contains forbidden character sequences.")
-				return "failure", "malformed-request", "Invalid username.";
+				log("debug", "Username violates either SASLprep or contains forbidden character sequences")
+				return "failure", "malformed-request", "Invalid username";
 			end
 		
 			self.state["servernonce"] = generate_uuid();
@@ -144,7 +144,7 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 				password = saslprep(password);
 				if not password then
 					log("debug", "Password violates SASLprep.");
-					return "failure", "not-authorized", "Invalid password."
+					return "failure", "not-authorized", "Invalid password"
 				end
 
 				self.state.salt = generate_uuid();
@@ -177,11 +177,11 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			self.state["channelbinding"], self.state["nonce"], self.state["proof"] = client_final_message:match("^c=(.*),r=(.*),.*p=(.*)");
 	
 			if not self.state.proof or not self.state.nonce or not self.state.channelbinding then
-				return "failure", "malformed-request", "Missing an attribute(p, r or c) in SASL message.";
+				return "failure", "malformed-request", "Missing an attribute(p, r or c) in SASL message";
 			end
 
 			if self.state.nonce ~= self.state.clientnonce..self.state.servernonce then
-				return "failure", "malformed-request", "Wrong nonce in client-final-message.";
+				return "failure", "malformed-request", "Wrong nonce in client-final-message";
 			end
 			
 			local ServerKey = self.state.server_key;
@@ -197,7 +197,7 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 				self["username"] = self.state.name;
 				return "success", server_final_message;
 			else
-				return "failure", "not-authorized", "The response provided by the client doesn't match the one we calculated.";
+				return "failure", "not-authorized", "The response provided by the client doesn't match the one we calculated";
 			end
 		end
 	end
