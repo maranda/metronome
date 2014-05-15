@@ -99,6 +99,7 @@ local function hashed_plain_test(sasl, username, password, realm)
 end
 
 local function hashed_scram_backend(sasl, username, realm)
+	local host = sasl.profile.host;
 	local credentials =
 		module:fire_event("auth-hashed-proxy", sasl, username, realm)
 		or dm_load(username, host, "accounts");
