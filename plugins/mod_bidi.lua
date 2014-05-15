@@ -65,7 +65,7 @@ local function make_bidirectional(session)
 
 		outgoing[to] = virtual;	
 		verifying[to] = nil;
-		module:fire_event("bidi-established", { session = virtual, host = to, type = "outgoing" });	
+		module:fire_event("bidi-established", { session = virtual, host = to, type = "outgoing", origin = session });
 	end
 end
 

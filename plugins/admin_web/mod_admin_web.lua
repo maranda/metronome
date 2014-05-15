@@ -342,7 +342,7 @@ function module.add_host(module)
 	-- Add/remove s2s sessions
 	module:hook("bidi-established", function(event)
 		if event.type == "outgoing" then
-			add_host(event.session, "out", module.host, true);
+			add_host(event.origin, "out", module.host, true);
 		else
 			add_host(event.session, "in", module.host, true);
 		end
