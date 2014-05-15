@@ -9,9 +9,9 @@
 
 
 local datamanager = require "util.datamanager";
-local usermanager = require "core.usermanager";
 local new_sasl = require "util.sasl".new;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
+local plain_backend = module:require "sasl_aux".plain_backend;
 local external_backend = module:require "sasl_aux".external_backend;
 
 local log = module._log;
@@ -64,13 +64,7 @@ function new_default_provider(host)
 
 	function provider.get_sasl_handler(session)
 		local getpass_authentication_profile = {
-			plain = function(sasl, username, realm)
-				local password = usermanager.get_password(username, realm);
-				if not password then
-					return "", nil;
-				end
-				return password, true;
-			end,
+			plain = plain_backend,
 			external = session.secure and external_backend,
 			host = module.host,
 			session = session

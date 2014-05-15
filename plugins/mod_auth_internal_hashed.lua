@@ -10,30 +10,13 @@
 local datamanager = require "util.datamanager";
 local log = require "util.logger".init("auth_internal_hashed");
 local getAuthenticationDatabaseSHA1 = require "util.sasl.scram".getAuthenticationDatabaseSHA1;
-local usermanager = require "core.usermanager";
 local generate_uuid = require "util.uuid".generate;
 local new_sasl = require "util.sasl".new;
+local plain_test = module:require "sasl_aux".hashed_plain_test;
+local scram_backend = module:require "sasl_aux".hashed_scram_backend;
 local external_backend = module:require "sasl_aux".external_backend;
-
-local to_hex;
-do
-	local function replace_byte_with_hex(byte)
-		return ("%02x"):format(byte:byte());
-	end
-	function to_hex(binary_string)
-		return binary_string:gsub(".", replace_byte_with_hex);
-	end
-end
-
-local from_hex;
-do
-	local function replace_hex_with_byte(hex)
-		return string.char(tonumber(hex, 16));
-	end
-	function from_hex(hex_string)
-		return hex_string:gsub("..", replace_hex_with_byte);
-	end
-end
+local from_hex = module:require "sasl_aux".from_hex;
+local to_hex = module:require "sasl_aux".to_hex;
 
 -- Default; can be set per-user
 local iteration_count = 4096;
@@ -117,23 +100,8 @@ function new_hashpass_provider(host)
 
 	function provider.get_sasl_handler(session)
 		local testpass_authentication_profile = {
-			plain_test = function(sasl, username, password, realm)
-				return usermanager.test_password(username, realm, password), true;
-			end,
-			scram_sha_1 = function(sasl, username, realm)
-				local credentials = datamanager.load(username, host, "accounts");
-				if not credentials then return; end
-				if credentials.password then
-					usermanager.set_password(username, credentials.password, host);
-					credentials = datamanager.load(username, host, "accounts");
-					if not credentials then return; end
-				end
-				
-				local stored_key, server_key, iteration_count, salt = credentials.stored_key, credentials.server_key, credentials.iteration_count, credentials.salt;
-				stored_key = stored_key and from_hex(stored_key);
-				server_key = server_key and from_hex(server_key);
-				return stored_key, server_key, iteration_count, salt, true;
-			end,
+			plain_test = plain_test,
+			scram_sha_1 = scram_backend,
 			external = session.secure and external_backend,
 			host = module.host,
 			session = session
