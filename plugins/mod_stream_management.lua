@@ -136,14 +136,16 @@ end
 
 module:hook("stream-features", function(event)
 	local session = event.origin;
-	if session.type == "c2s" and not session.sm then 
-		event.features:tag("sm", { xmlns = xmlns_sm }):tag("optional"):up():up(); 
+	if session.type == "c2s" and not session.sm then
+		event.features:tag("sm", { xmlns = xmlns_sm }):tag("optional"):up():up();
 	end
 end);
 
 module:hook("s2s-stream-features", function(event)
 	local session = event.origin;
-	event.features:tag("sm", { xmlns = xmlns_sm }):tag("optional"):up():up(); 
+	if not session.sm then
+		event.features:tag("sm", { xmlns = xmlns_sm }):tag("optional"):up():up();
+	end
 end, 97);
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function(session, stanza)
