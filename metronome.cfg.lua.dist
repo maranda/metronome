@@ -58,6 +58,9 @@ modules_enabled = {
 			--"websockets"; -- Enable support for WebSocket clients, aka "XMPP over WebSockets"
 			
 };
+
+-- Default pidfile path
+pidfile = "/var/run/metronome/metronome.pid";
  
 -- Disable account creation by default, for security
 allow_registration = false;
