@@ -335,7 +335,7 @@ function stream_callbacks.streamopened(session, attr)
 			
 			log("debug", "Sending stream features: %s", tostring(features));
 			send(features);
-		elseif session.version < 1.0 and require_encryption and hosts[to].ssl_ctx_in then
+		elseif session.version < 1.0 and require_encryption and (not to or hosts[to].ssl_ctx_in) then
 			session:close(
 				{ condition = "unsupported-version", text = "To connect to this server xmpp streams of version 1 or above are required" }, 
 				"error communicating with the remote server"
