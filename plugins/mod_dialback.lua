@@ -14,7 +14,8 @@ local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
 
 local log = module._log;
 local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
-local require_encryption = module:get_option_boolean("s2s_require_encryption", false);
+local no_encryption = metronome.no_encryption;
+local require_encryption = module:get_option_boolean("s2s_require_encryption", not no_encryption);
 
 local st = require "util.stanza";
 local sha256_hash = require "util.hashes".sha256;
@@ -46,7 +47,8 @@ function verify_dialback(id, to, from, key)
 end
 
 function make_authenticated(session, host)
-	if require_encryption and not session.secure then
+	if require_encryption and not session.secure and
+	   (session.direction == "incoming" and hosts[session.to_host].ssl_ctx_in or hosts[session.from_host].ssl_ctx) then
 		local t = session.direction == "outgoing" and "offered" or "used";
 		session:close({ condition = "policy-violation", text = "TLS encryption is mandatory but wasn't "..t }, "authentication failure");
 		return false;
@@ -311,5 +313,5 @@ end
 
 module:hook_global("config-reloaded", function()
 	s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
-	require_encryption = module:get_option_boolean("s2s_require_encryption", false);
+	require_encryption = module:get_option_boolean("s2s_require_encryption", not no_encryption);
 end);

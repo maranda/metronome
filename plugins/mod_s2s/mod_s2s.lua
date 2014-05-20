@@ -35,7 +35,7 @@ local s2sout = module:require("s2sout");
 local connect_timeout = module:get_option_number("s2s_timeout", 90);
 local stream_close_timeout = module:get_option_number("s2s_close_timeout", 5);
 local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
-local require_encryption = module:get_option_boolean("s2s_require_encryption", false);
+local require_encryption = module:get_option_boolean("s2s_require_encryption", not metronome.no_encryption);
 local max_inactivity = module:get_option_number("s2s_max_inactivity", 1800);
 local check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
 
@@ -335,7 +335,7 @@ function stream_callbacks.streamopened(session, attr)
 			
 			log("debug", "Sending stream features: %s", tostring(features));
 			send(features);
-		elseif session.version < 1.0 and require_encryption then
+		elseif session.version < 1.0 and require_encryption and hosts[to].ssl_ctx_in then
 			session:close(
 				{ condition = "unsupported-version", text = "To connect to this server xmpp streams of version 1 or above are required" }, 
 				"error communicating with the remote server"
@@ -362,7 +362,7 @@ function stream_callbacks.streamopened(session, attr)
 	
 		-- If server is pre-1.0, don't wait for features, just do dialback
 		if session.version < 1.0 then
-			if require_encryption then
+			if require_encryption and hosts[session.from_host].ssl_ctx then
 				-- pre-1.0 servers won't support tls perhaps they should be excluded
 				session:close("unsupported-version", "error communicating with the remote server");
 				return;
@@ -601,7 +601,7 @@ module:hook_global("config-reloaded", function()
 	connect_timeout = module:get_option_number("s2s_timeout", 90);
 	stream_close_timeout = module:get_option_number("s2s_close_timeout", 5);
 	s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
-	require_encryption = module:get_option_boolean("s2s_require_encryption", false);
+	require_encryption = module:get_option_boolean("s2s_require_encryption", not metronome.no_encryption);
 	max_inactivity = module:get_option_number("s2s_max_inactivity", 1800);
 	check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
 end);

@@ -10,11 +10,12 @@
 local st = require "util.stanza";
 local sm_make_authenticated = require "core.sessionmanager".make_authenticated;
 local base64 = require "util.encodings".base64;
-
 local usermanager_get_sasl_handler = require "core.usermanager".get_sasl_handler;
 local tostring = tostring;
+local host_session = hosts[module.host];
 
-local secure_auth_only = module:get_option_boolean("c2s_require_encryption", false) or module:get_option_boolean("require_encryption", false);
+local no_encryption = metronome.no_encryption;
+local secure_auth_only = module:get_option_boolean("c2s_require_encryption", not no_encryption);
 local allow_unencrypted_plain_auth = module:get_option_boolean("allow_unencrypted_plain_auth", false);
 local blacklisted_mechanisms = module:get_option_set("blacklist_sasl_mechanisms");
 
@@ -23,7 +24,7 @@ local log = module._log;
 local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
 
 local function reload()
-	secure_auth_only = module:get_option_boolean("c2s_require_encryption", false) or module:get_option_boolean("require_encryption", false);
+	secure_auth_only = module:get_option_boolean("c2s_require_encryption", not no_encryption);
 	allow_unencrypted_plain_auth = module:get_option_boolean("allow_unencrypted_plain_auth", false);
 end
 module:hook_global("config-reloaded", reload);
@@ -93,7 +94,8 @@ module:hook("stanza/urn:ietf:params:xml:ns:xmpp-sasl:auth", function(event)
 		session.sasl_handler = usermanager_get_sasl_handler(module.host, session);
 	end
 	local mechanism = stanza.attr.mechanism;
-	if not session.secure and (secure_auth_only or (mechanism == "PLAIN" and not allow_unencrypted_plain_auth)) then
+	if not session.secure and
+	   ((secure_auth_only and host_session.ssl_ctx_in) or (mechanism == "PLAIN" and not allow_unencrypted_plain_auth)) then
 		session.send(build_reply("failure", "encryption-required"));
 		return true;
 	end
@@ -123,7 +125,7 @@ local mechanisms_attr = { xmlns = "urn:ietf:params:xml:ns:xmpp-sasl" };
 module:hook("stream-features", function(event)
 	local origin, features = event.origin, event.features;
 	if not origin.username then
-		if secure_auth_only and not origin.secure then
+		if secure_auth_only and not origin.secure and host_session.ssl_ctx_in then
 			return;
 		end
 		origin.sasl_handler = usermanager_get_sasl_handler(module.host, origin);

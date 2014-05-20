@@ -7,12 +7,18 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2011, Matthew Wild, Paul Aurich, Tobias Markmann, Waqas Hussain
 
+if metronome.no_encryption then
+	module:log("error", "mod_tls requires encryption support to be available,");
+	module:log("error", "please check that LuaSec is installed.");
+	return;
+end
+
 local config = require "core.configmanager";
 local create_context = require "core.certmanager".create_context;
 local st = require "util.stanza";
 
-local secure_auth_only = module:get_option_boolean("c2s_require_encryption", false);
-local secure_s2s_only = module:get_option_boolean("s2s_require_encryption", false);
+local secure_auth_only = module:get_option_boolean("c2s_require_encryption", true);
+local secure_s2s_only = module:get_option_boolean("s2s_require_encryption", true);
 local allow_s2s_tls = module:get_option_boolean("s2s_allow_encryption", true);
 if secure_s2s_only then allow_s2s_tls = true; end
 
@@ -108,8 +114,8 @@ function module.unload()
 end
 
 module:hook_global("config-reloaded", function()
-	secure_auth_only = module:get_option_boolean("c2s_require_encryption", false);
-	secure_s2s_only = module:get_option_boolean("s2s_require_encryption", false);
+	secure_auth_only = module:get_option_boolean("c2s_require_encryption", true);
+	secure_s2s_only = module:get_option_boolean("s2s_require_encryption", true);
 	allow_s2s_tls = module:get_option_boolean("s2s_allow_encryption", true);
 	if secure_s2s_only then allow_s2s_tls = true; end
 	module.load();
