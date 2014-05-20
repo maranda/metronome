@@ -16,5 +16,5 @@ module:hook("iq-get/self/"..xmlns..":address", function(event)
 	local reply = st_reply(stanza):tag("address", xmlns);
 	reply:tag("ip"):text(ip):up();
 	if port then reply:tag("port"):text(port):up(); end
-	return reply;
+	return origin.send(reply);
 end);
