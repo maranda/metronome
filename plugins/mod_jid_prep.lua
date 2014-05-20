@@ -7,18 +7,14 @@
 local st_reply = require "util.stanza".reply;
 local st_error_reply = require "util.stanza".error_reply;
 local jid_prep = require "util.jid".prep;
-local jid_section = require "util.jid".section;
 local xmlns = "urn:xmpp:jidprep:0";
 local attr = { xmlns = xmlns };
-local my_host = module.host;
 
 module:add_feature(xmlns);
 
 module:hook("iq-get/host/"..xmlns..":jid", function(event)
 	local origin, stanza = event.origin, event.stanza;
-	if jid_section(stanza.attr.from or origin.full_jid, "host") ~= my_host then
-		return origin.send(st_error_reply(stanza, "cancel", "forbidden"));
-	end
+	if origin.type ~= "c2s" then return origin.send(st_error_reply(stanza, "cancel", "forbidden")); end
 
 	local jid = stanza:get_child_text("jid", xmlns);
 	local prepped_jid = jid_prep(jid);
@@ -26,7 +22,8 @@ module:hook("iq-get/host/"..xmlns..":jid", function(event)
 		return origin.send(st_reply(stanza):tag("jid", attr):text(prepped_jid));
 	else
 		local reply = st_reply(stanza):tag("jid", attr):text(jid):up();
-		reply:tag("error", { type = "modify" }):tag("jid-malformed", { xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas" }):up():up();
+		reply:tag("error", { type = "modify" })
+			:tag("jid-malformed", { xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas" }):up():up();
 		reply.attr.type = "error";
 		return origin.send(reply);
 	end
