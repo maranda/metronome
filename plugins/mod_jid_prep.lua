@@ -16,7 +16,7 @@ module:add_feature(xmlns);
 
 module:hook("iq-get/host/"..xmlns..":jid", function(event)
 	local origin, stanza = event.origin, event.stanza;
-	if jid_section(stanza.attr.from or origin.full_jid, "host") == my_host then
+	if jid_section(stanza.attr.from or origin.full_jid, "host") ~= my_host then
 		return origin.send(st_error_reply(stanza, "cancel", "forbidden"));
 	end
 
