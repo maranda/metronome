@@ -19,7 +19,7 @@ keysize=4096
 
 # Self signed
 %.cert: %.cnf %.key
-	openssl req -new -x509 -nodes -key $(lastword $^) -days 365 \
+	openssl req -new -x509 -nodes -key $(lastword $^) -days 1825 \
 		-sha1 -out $@ -utf8 -config $(firstword $^)
 
 %.cnf:
