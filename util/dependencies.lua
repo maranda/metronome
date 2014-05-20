@@ -7,6 +7,8 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2011, Matthew Wild, Waqas Hussain
 
+local metronome = metronome;
+
 module("dependencies", package.seeall)
 
 function softreq(...) local ok, lib =  pcall(require, ...); if ok then return lib; else return nil, lib; end end
@@ -93,6 +95,7 @@ function check_dependencies()
 				["luarocks"] = "luarocks install luasec";
 				["Source"] = "http://www.inf.puc-rio.br/~brunoos/luasec/";
 			}, "SSL/TLS support will not be available");
+		metronome.no_encryption = true;
 	end
 	
 	local encodings, err = softreq "util.encodings"
