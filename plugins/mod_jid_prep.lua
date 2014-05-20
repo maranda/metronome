@@ -13,7 +13,7 @@ module:add_feature(xmlns);
 
 module:hook("iq-get/self/"..xmlns..":jid", function(event)
 	local origin, stanza = event.origin, event.stanza;
-	local jid = stanza:get_child_text("jid", attr);
+	local jid = stanza:get_child_text("jid", xmlns);
 	local prepped_jid = jid_prep(jid);
 	if prepped_jid then
 		return origin.send(st_reply(stanza):tag("jid", attr):text(jid));
