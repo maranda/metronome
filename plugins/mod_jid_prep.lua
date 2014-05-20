@@ -19,7 +19,7 @@ module:hook("iq-get/self/"..xmlns..":jid", function(event)
 		return origin.send(st_reply(stanza):tag("jid", attr):text(jid));
 	else
 		local reply = st_reply(stanza):tag("jid", attr):text(jid):up();
-		reply:tag("error", { type = "modify" }):tag("jid-malformed", "urn:ietf:params:xml:ns:xmpp-stanzas"):up():up();
+		reply:tag("error", { type = "modify" }):tag("jid-malformed", { xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas" }):up():up();
 		reply.attr.type = "error";
 		return origin.send(reply);
 	end
