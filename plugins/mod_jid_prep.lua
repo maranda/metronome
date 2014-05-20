@@ -16,7 +16,7 @@ module:hook("iq-get/self/"..xmlns..":jid", function(event)
 	local jid = stanza:get_child_text("jid", xmlns);
 	local prepped_jid = jid_prep(jid);
 	if prepped_jid then
-		return origin.send(st_reply(stanza):tag("jid", attr):text(jid));
+		return origin.send(st_reply(stanza):tag("jid", attr):text(prepped_jid));
 	else
 		local reply = st_reply(stanza):tag("jid", attr):text(jid):up();
 		reply:tag("error", { type = "modify" }):tag("jid-malformed", { xmlns = "urn:ietf:params:xml:ns:xmpp-stanzas" }):up():up();
