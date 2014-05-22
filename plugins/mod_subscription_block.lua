@@ -24,7 +24,7 @@ local function block_subscription(data)
 	end
 
 	if stanza.attr.type == "set"
-	   and jid_list:contains(stanza.attr.to)
+	   and jid_list:contains(jid.bare(stanza.attr.to))
 	   and jid.compare(stanza.attr.from, block_pattern) then
 		return origin.send(st_reply(stanza, "cancel", "not-allowed"));
 	end
