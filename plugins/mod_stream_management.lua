@@ -21,7 +21,8 @@ local uuid = require "util.uuid".generate;
 
 local fire_event = metronome.events.fire_event;
 
-local xmlns_sm = "urn:xmpp:sm:2"; -- COMPAT: move down to :2 as most clients don't seem to support the latest NS
+local xmlns_sm2 = "urn:xmpp:sm:2";
+local xmlns_sm3 = "urn:xmpp:sm:3";
 local xmlns_e = "urn:ietf:params:xml:ns:xmpp-stanzas";
 local xmlns_d = "urn:xmpp:delay";
 
@@ -70,7 +71,7 @@ local function replace_session(session, new)
 	end
 end
 
-local function wrap(session, _r) -- SM session wrapper
+local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 	local _q = (_r and session.sm_queue) or {};
 	if not _r then
 		session.sm_queue, session.sm_last_ack, session.sm_handled = _q, 0, 0;
@@ -137,23 +138,26 @@ end
 module:hook("stream-features", function(event)
 	local session = event.origin;
 	if session.type == "c2s" and not session.sm then
-		event.features:tag("sm", { xmlns = xmlns_sm }):tag("optional"):up():up();
+		event.features:tag("sm", { xmlns = xmlns_sm2 }):tag("optional"):up():up();
+		event.features:tag("sm", { xmlns = xmlns_sm3 }):tag("optional"):up():up();
 	end
 end);
 
 module:hook("s2s-stream-features", function(event)
 	local session = event.origin;
 	if not session.sm then
-		event.features:tag("sm", { xmlns = xmlns_sm }):tag("optional"):up():up();
+		event.features:tag("sm", { xmlns = xmlns_sm2 }):tag("optional"):up():up();
+		event.features:tag("sm", { xmlns = xmlns_sm3 }):tag("optional"):up():up();
 	end
 end, 97);
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function(session, stanza)
 	local session_type = session.type;
+	local version = (stanza:get_child("sm", xmlns_sm2) and 2) or (stanza:get_child("sm", xmlns_sm3) and 3);
 	if not session.can_do_sm and 
-	   (session_type == "s2sout_unauthed" or session_type == "s2sout") and
-	   stanza:get_child("sm", xmlns_sm) then
+	   (session_type == "s2sout_unauthed" or session_type == "s2sout") and version then
 		session.can_do_sm = true;
+		session.sm_version = version;
 	end
 end, 501);
 
@@ -161,24 +165,25 @@ module:hook("s2sout-established", function(event)
 	local session = event.session
 	if session.can_do_sm then
 		session.log("debug", "Attempting to enable Stanza Acknowledgement on s2sout...");
-		session.sends2s(st_stanza("enable", { xmlns = xmlns_sm }));
+		session.sends2s(st_stanza("enable", { xmlns = session.sm_version == 3 and xmlns_sm3 or xmlns_sm2 }));
 	end
 end);
 
 -- SM Handlers
 
-module:hook_stanza(xmlns_sm, "enable", function(session, stanza)
+local function enable_handler(session, stanza)
 	local ok, err, text = verify(session);
 	if not ok then
 		session.log("warn", "Failed to enable Stream Management reason is: %s", text);
-		(session.sends2s or session.send)(st_stanza("failed", { xmlns = xmlns_sm }));
+		(session.sends2s or session.send)(st_stanza("failed", { xmlns = stanza.attr.xmlns }));
 		return true;
 	end
 	
 	local c2s = session.type == "c2s" and true;
+	local xmlns_sm = stanza.attr.xmlns;
 	session.log("debug", "Attempting to enable %s...", (c2s and "Stream Management") or "Stanza Acknowledgement");
 	session.sm = true;
-	wrap(session);
+	wrap(session, nil, xmlns_sm);
 	
 	local token;
 	local resume = stanza.attr.resume;
@@ -190,26 +195,32 @@ module:hook_stanza(xmlns_sm, "enable", function(session, stanza)
 		st_stanza("enabled", { xmlns = xmlns_sm, id = token, max = (c2s and tostring(timeout)) or nil, resume = (c2s and resume) or nil })
 	);
 	return true;
-end, 100);
+end
+module:hook_stanza(xmlns_sm2, "enable", enable_handler, 100);
+module:hook_stanza(xmlns_sm3, "enable", enable_handler, 100);
 
-module:hook_stanza(xmlns_sm, "enabled", function(session, stanza)
+local function enabled_handler(session, stanza)
 	local session_type = session.type;
 	if session_type == "s2sin" or session_type == "s2sout" then
 		session.sm = true;
-		wrap(session);
+		wrap(session, nil, stanza.attr.xmlns);
 	end
 	return true;
-end);
+end
+module:hook_stanza(xmlns_sm2, "enabled", enabled_handler);
+module:hook_stanza(xmlns_sm3, "enabled", enabled_handler);
 
-module:hook_stanza(xmlns_sm, "r", function(session, stanza)
+local function req_handler(session, stanza)
 	if session.sm then
 		session.log("debug", "Received ack request for %d", session.sm_handled);
-		(session.sends2s or session.send)(st_stanza("a", { xmlns = xmlns_sm, h = tostring(session.sm_handled) }));
+		(session.sends2s or session.send)(st_stanza("a", { xmlns = stanza.attr.xmlns, h = tostring(session.sm_handled) }));
 	end
 	return true;
-end);
+end
+module:hook_stanza(xmlns_sm2, "r", req_handler);
+module:hook_stanza(xmlns_sm3, "r", req_handler);
 
-module:hook_stanza(xmlns_sm, "a", function(session, stanza)
+local function ack_handler(session, stanza)
 	if session.sm then
 		session.waiting_ack = nil;
 		local _count = tonumber(stanza.attr.h) - session.sm_last_ack;
@@ -224,16 +235,19 @@ module:hook_stanza(xmlns_sm, "a", function(session, stanza)
 		session.sm_last_ack = session.sm_last_ack + _count;
 	end
 	return true;
-end);
+end
+module:hook_stanza(xmlns_sm2, "a", ack_handler);
+module:hook_stanza(xmlns_sm3, "a", ack_handler);
 
-module:hook_stanza(xmlns_sm, "resume", function(session, stanza)
+local function resume_handler(session, stanza)
+	local xmlns_sm = stanza.attr.xmlns;
 	local _type = session.type;
 	if _type == "s2sin" or _type == "s2sout" then
 		-- properly bounce resumption requests for s2s streams
-		session.sends2s(st_stanza("failed", { xmlns = xmlns_sm }):tag("service-unavailable", { xmlns = xmlns_e }));
+		return session.sends2s(st_stanza("failed", { xmlns = xmlns_sm }):tag("service-unavailable", { xmlns = xmlns_e }));
 	elseif _type ~= "c2s" then
 		-- bounce all the unauthed ones
-		(session.sends2s or session.send)(st_stanza("failed", { xmlns = xmlns_sm }):tag("unexpected-request", { xmlns = xmlns_e }));
+		return (session.sends2s or session.send)(st_stanza("failed", { xmlns = xmlns_sm }):tag("unexpected-request", { xmlns = xmlns_e }));
 	end
 
 	if session.full_jid then
@@ -257,7 +271,7 @@ module:hook_stanza(xmlns_sm, "resume", function(session, stanza)
 			session.log("debug", "Closed the old session's connection...");
 		end
 		replace_session(original, session);
-		wrap(original, true);
+		wrap(original, true, xmlns_sm);
 		session.stream:set_session(original);
 		c2s_sessions[session.conn] = original;
 		session.send(st_stanza("resumed", { xmlns = xmlns_sm, h = original.sm_handled, previd = id }));
@@ -273,7 +287,9 @@ module:hook_stanza(xmlns_sm, "resume", function(session, stanza)
 		session.send(st_stanza("failed", { xmlns = xmlns_sm }):tag("not-authorized", { xmlns = xmlns_e }));
 	end
 	return true;
-end);
+end
+module:hook_stanza(xmlns_sm2, "resume", resume_handler);
+module:hook_stanza(xmlns_sm3, "resume", resume_handler);
 
 module:hook("pre-resource-unbind", function(event)
 	local session, _error = event.session, event.error;
