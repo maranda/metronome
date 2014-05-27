@@ -351,7 +351,7 @@ local function process_message(event, outbound)
 			marker = marker.name;
 			if marker ~= "markable" and marker ~= "received" and marker ~= "displayed" and
 			   marker ~= "acknowledged" then
-				return;
+				marker = nil;
 			end
 		end
 	end
@@ -383,7 +383,7 @@ local function process_message(event, outbound)
 		else
 			if body then
 				id = log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body, marker == "markable" and marker or nil);
-			elseif marker ~= "markable" then
+			elseif marker and marker ~= "markable" then
 				id = log_marker(archive, to, bare_to, from, bare_from, message.attr.id, marker);
 			end
 		end
