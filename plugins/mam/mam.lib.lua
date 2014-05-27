@@ -23,6 +23,7 @@ local e2e_xmlns = "http://www.xmpp.org/extensions/xep-0200.html#ns";
 local forward_xmlns = "urn:xmpp:forward:0";
 local hints_xmlns = "urn:xmpp:hints";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
+local markers_xmlns = "urn:xmpp:chat-markers:0";
 
 local store_time = module:get_option_number("mam_save_time", 300);
 local stores_cap = module:get_option_number("mam_stores_cap", 5000);
@@ -50,7 +51,7 @@ local function save_stores()
 	end	
 end
 
-local function log_entry(session_archive, to, bare_to, from, bare_from, id, body)
+local function log_entry(session_archive, to, bare_to, from, bare_from, id, body, marker)
 	local uid = uuid();
 	local entry = {
 		from = from,
@@ -59,6 +60,7 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, body
 		bare_to = bare_to,
 		id = id,
 		body = body,
+		marker = marker,
 		timestamp = now(),
 		uid = uid
 	};
@@ -75,11 +77,10 @@ end
 
 local function log_entry_with_replace(session_archive, to, bare_to, from, bare_from, id, rid, body)
 	-- handle XEP-308 or try to...
-	local logs = session_archive.logs;
 	local count = 0;
 	
 	if rid and rid ~= id then
-		for i, entry in ripairs(logs) do
+		for i, entry in ripairs(session_archive.logs) do
 			count = count + 1;
 			if count < 1000 and entry.to == to and entry.from == from and entry.id == rid then 
 				t_remove(logs, i); break;
@@ -90,13 +91,28 @@ local function log_entry_with_replace(session_archive, to, bare_to, from, bare_f
 	return log_entry(session_archive, to, bare_to, from, bare_from, id, body);
 end
 
+local function log_marker(session_archive, to, bare_to, from, bare_from, id, marker)
+	local count = 0;
+
+	for i, entry in ripairs(session_archive.logs) do
+		count = count + 1;
+		local entry_marker = entry.marker;
+		if count < 1000 and entry.to == to and entry.from == from and entry.id == id and
+		   (entry_marker == "markable" or entry_marker == "received") and entry_marker ~= marker then
+			return log_entry(session_archive, to, bare_to, from, bare_from, id, nil, marker);
+		end
+	end
+end
+
 local function append_stanzas(stanzas, entry, qid)
 	local to_forward = st.message()
 		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.id })
 			:tag("forwarded", { xmlns = forward_xmlns })
 				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
-				:tag("message", { to = entry.to, from = entry.from, id = entry.id })
-					:tag("body"):text(entry.body):up();
+				:tag("message", { to = entry.to, from = entry.from, id = entry.id });
+
+	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
+	if entry.marker then to_forward:tag(entry.marker, { xmlns = markers_xmlns }):up(); end
 	
 	stanzas[#stanzas + 1] = to_forward;
 end
@@ -318,16 +334,26 @@ local function process_message(event, outbound)
 	local message, origin = event.stanza, event.origin;
 	if message.attr.type ~= "chat" and message.attr.type ~= "normal" then return; end
 	local body = message:child_with_name("body");
-	if not body then 
+	local marker = message:child_with_ns(markers_xmlns);
+	if not body and not marker then
 		return; 
 	else
-		body = body:get_text();
-		if body:len() > max_length then return; end
 		if message:get_child("no-store", hints_xmlns) or message:get_child("no-permanent-storage", hints_xmlns) then
 			return;
 		end
-		-- COMPAT, Drop OTR/E2E messages for clients not implementing XEP-334
-		if message:get_child("c", e2e_xmlns) or body:match("^%?OTR%:[^%s]*%.$") then return; end
+		if body then
+			body = body:get_text();
+			if body:len() > max_length then return; end
+			-- COMPAT, Drop OTR/E2E messages for clients not implementing XEP-334
+			if message:get_child("c", e2e_xmlns) or body:match("^%?OTR%:[^%s]*%.$") then return; end
+		end
+		if marker then
+			marker = marker.name;
+			if marker ~= "markable" and marker ~= "received" and marker ~= "displayed" and
+			   marker ~= "acknowledged" then
+				return;
+			end
+		end
 	end
 	
 	local from, to = (message.attr.from or origin.full_jid), message.attr.to;
@@ -355,10 +381,14 @@ local function process_message(event, outbound)
 		if replace then
 			id = log_entry_with_replace(archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, body);
 		else
-			id = log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body);
+			if body then
+				id = log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body, marker == "markable" and marker or nil);
+			elseif marker ~= "markable" then
+				id = log_marker(archive, to, bare_to, from, bare_from, message.attr.id, marker);
+			end
 		end
 		if not bare_session then storage:set(user, archive); end
-		if not outbound then message:tag("archived", { jid = bare_to, id = id }):up(); end
+		if not outbound and id then message:tag("archived", { jid = bare_to, id = id }):up(); end
 	else
 		return;
 	end	
