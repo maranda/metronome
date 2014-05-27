@@ -153,7 +153,7 @@ end, 97);
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function(session, stanza)
 	local session_type = session.type;
-	local version = (stanza:get_child("sm", xmlns_sm2) and 2) or (stanza:get_child("sm", xmlns_sm3) and 3);
+	local version = (stanza:get_child("sm", xmlns_sm3) and 3) or (stanza:get_child("sm", xmlns_sm2) and 2);
 	if not session.can_do_sm and 
 	   (session_type == "s2sout_unauthed" or session_type == "s2sout") and version then
 		session.can_do_sm = true;
