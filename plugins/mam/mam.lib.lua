@@ -33,6 +33,11 @@ local session_stores = {};
 local storage = {};
 local to_save = now();
 
+local valid_markers = {
+	markable = "markable", received = "received",
+	displayed = "displayed", acknowledged = "acknowledged"
+};
+
 local _M = {};
 
 local function initialize_storage()
@@ -347,13 +352,7 @@ local function process_message(event, outbound)
 			-- COMPAT, Drop OTR/E2E messages for clients not implementing XEP-334
 			if message:get_child("c", e2e_xmlns) or body:match("^%?OTR%:[^%s]*%.$") then return; end
 		end
-		if marker then
-			marker = marker.name;
-			if marker ~= "markable" and marker ~= "received" and marker ~= "displayed" and
-			   marker ~= "acknowledged" then
-				marker = nil;
-			end
-		end
+		if marker then marker = valid_markers[marker.name]; end
 	end
 	
 	local from, to = (message.attr.from or origin.full_jid), message.attr.to;
@@ -382,7 +381,10 @@ local function process_message(event, outbound)
 			id = log_entry_with_replace(archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, body);
 		else
 			if body then
-				id = log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body, marker == "markable" and marker or nil);
+				id = log_entry(
+					archive, to, bare_to, from, bare_from, message.attr.id, body,
+					marker == "markable" and marker or nil
+				);
 			elseif marker and marker ~= "markable" then
 				id = log_marker(archive, to, bare_to, from, bare_from, message.attr.id, marker);
 			end
