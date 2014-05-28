@@ -98,8 +98,9 @@ module:hook("message/bare", function(event)
 		local clone = st.clone(stanza);
 		local top_resource = bare_session.top_resources and bare_session.top_resources[1];
 		for resource, session in pairs(bare_session.sessions) do
-			if session.carbons and not session == top_resource then
+			if session.carbons and session ~= top_resource then
 				clone.attr.to = jid_join(session.username, session.host, resource);
+				module:log("debug", "Forking message from %s to %s", stanza.attr.from, clone.attr.to);
 				session.send(clone);
 			end
 		end
