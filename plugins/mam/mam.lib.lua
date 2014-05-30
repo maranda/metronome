@@ -102,7 +102,7 @@ local function log_marker(session_archive, to, bare_to, from, bare_from, id, mar
 	for i, entry in ripairs(session_archive.logs) do
 		count = count + 1;
 		local entry_marker = entry.marker;
-		if count < 1000 and entry.to == to and entry.from == from and entry.id == id and
+		if count < 1000 and entry.bare_to == bare_to and entry.bare_from == bare_from and entry.id == id and
 		   (entry_marker == "markable" or entry_marker == "received") and entry_marker ~= marker then
 			return log_entry(session_archive, to, bare_to, from, bare_from, id, nil, marker);
 		end
