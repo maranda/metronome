@@ -56,7 +56,7 @@ local function save_stores()
 	end	
 end
 
-local function log_entry(session_archive, to, bare_to, from, bare_from, id, body, marker)
+local function log_entry(session_archive, to, bare_to, from, bare_from, id, body, marker, marker_id)
 	local uid = uuid();
 	local entry = {
 		from = from,
@@ -66,6 +66,7 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, body
 		id = id,
 		body = body,
 		marker = marker,
+		marker_id = marker_id,
 		timestamp = now(),
 		uid = uid
 	};
@@ -96,15 +97,19 @@ local function log_entry_with_replace(session_archive, to, bare_to, from, bare_f
 	return log_entry(session_archive, to, bare_to, from, bare_from, id, body);
 end
 
-local function log_marker(session_archive, to, bare_to, from, bare_from, id, marker)
+local function log_marker(session_archive, to, bare_to, from, bare_from, id, marker, marker_id)
 	local count = 0;
 
 	for i, entry in ripairs(session_archive.logs) do
 		count = count + 1;
-		local entry_marker = entry.marker;
-		if count < 1000 and entry.bare_to == bare_to and entry.bare_from == bare_from and entry.id == id and
-		   (entry_marker == "markable" or entry_marker == "received") and entry_marker ~= marker then
-			return log_entry(session_archive, to, bare_to, from, bare_from, id, nil, marker);
+		local entry_marker, entry_from, entry_to = entry.marker, entry.bare_from, entry.bare_to;
+
+		if count < 1000 and entry.id == marker_id and
+		   (entry_from == bare_from or entry_from == bare_to) and
+		   (entry_to == bare_to or entry_to == bare_from) and
+		   (entry_marker == "markable" or entry_marker == "received") and
+		   entry_marker ~= marker then
+			return log_entry(session_archive, to, bare_to, from, bare_from, id, nil, marker, marker_id);
 		end
 	end
 end
@@ -117,7 +122,7 @@ local function append_stanzas(stanzas, entry, qid)
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id });
 
 	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
-	if entry.marker then to_forward:tag(entry.marker, { xmlns = markers_xmlns }):up(); end
+	if entry.marker then to_forward:tag(entry.marker, { xmlns = markers_xmlns, id = entry.marker_id }):up(); end
 	
 	stanzas[#stanzas + 1] = to_forward;
 end
@@ -340,6 +345,7 @@ local function process_message(event, outbound)
 	if message.attr.type ~= "chat" and message.attr.type ~= "normal" then return; end
 	local body = message:child_with_name("body");
 	local marker = message:child_with_ns(markers_xmlns);
+	local marker_id = marker and marker.attr.id;
 	if not body and not marker then
 		return; 
 	else
@@ -381,12 +387,12 @@ local function process_message(event, outbound)
 			id = log_entry_with_replace(archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, body);
 		else
 			if body then
-				id = log_entry(
+				id = marker == "markable" and log_entry(
 					archive, to, bare_to, from, bare_from, message.attr.id, body,
-					marker == "markable" and marker or nil
-				);
+					marker, marker_id
+				) or log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body);
 			elseif marker and marker ~= "markable" then
-				id = log_marker(archive, to, bare_to, from, bare_from, message.attr.id, marker);
+				id = log_marker(archive, to, bare_to, from, bare_from, message.attr.id, marker, marker_id);
 			end
 		end
 		if not bare_session then storage:set(user, archive); end
