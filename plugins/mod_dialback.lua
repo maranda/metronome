@@ -200,8 +200,9 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 	if origin.type == "s2sout_unauthed" or origin.type == "s2sout" then
 		local attr = stanza.attr;
 		local dialback_verifying = dialback_requests[attr.from.."/"..(attr.id or "")];
+		local destroyed = dialback_verifying.destroyed;
 		dialback_requests[attr.from.."/"..(attr.id or "")] = nil;
-		if dialback_verifying and attr.from == origin.to_host and not dialback_verifying.destroyed then
+		if dialback_verifying and attr.from == origin.to_host and not destroyed then
 			local valid, authed;
 			if attr.type == "valid" then
 				authed = make_authenticated(dialback_verifying, attr.from);
@@ -212,10 +213,12 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 				log("warn", "authoritative server for %s denied the key", attr.from or "(unknown)");
 				valid = "invalid";
 			end
-			dialback_verifying.sends2s(
-				st.stanza("db:result", { from = attr.to, to = attr.from, id = attr.id, type = valid })
-					:text(dialback_verifying.hosts[attr.from].dialback_key));
-			if not authed and not dialback_verifying.multiplexed_from then
+			if not destroyed then
+				dialback_verifying.sends2s(
+					st.stanza("db:result", { from = attr.to, to = attr.from, id = attr.id, type = valid })
+						:text(dialback_verifying.hosts[attr.from].dialback_key));
+			end
+			if not destroyed and not authed and not dialback_verifying.multiplexed_from then
 				origin:close("not-authorized", "authentication failure");
 			end
 		else
