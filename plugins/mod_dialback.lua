@@ -215,7 +215,6 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 			dialback_verifying.sends2s(
 				st.stanza("db:result", { from = attr.to, to = attr.from, id = attr.id, type = valid })
 					:text(dialback_verifying.hosts[attr.from].dialback_key));
-			end
 			if not authed and not dialback_verifying.multiplexed_from then
 				origin:close("not-authorized", "authentication failure");
 			end
