@@ -35,8 +35,8 @@ end
 local function make_bidirectional(session)
 	local from, to = session.from_host, session.to_host;
 	if session.type == "s2sin" then
-		local outgoing = hosts[session.to_host].s2sout[from]
-		if outgoing then -- close stream possibly used for dialback
+		local outgoing = hosts[session.to_host].s2sout[from];
+		if outgoing and outgoing.close then -- close stream possibly used for dialback
 			outgoing:close();
 		end
 
