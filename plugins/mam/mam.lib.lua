@@ -56,6 +56,15 @@ local function save_stores()
 	end	
 end
 
+local function prune_archive(logs)
+	local sub = #logs - stores_cap;
+	if sub == 0 then
+		t_remove(logs, 1);
+	else
+		for i = 1,#sub do t_remove(logs, 1); end
+	end
+end
+
 local function log_entry(session_archive, to, bare_to, from, bare_from, id, body, marker, marker_id)
 	local uid = uuid();
 	local entry = {
@@ -73,7 +82,7 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, body
 
 	local logs = session_archive.logs;
 	
-	if #logs > stores_cap then t_remove(logs, 1); end
+	if #logs >= stores_cap then prune_archive(logs); end
 	logs[#logs + 1] = entry;
 	session_archive.changed = true;
 
