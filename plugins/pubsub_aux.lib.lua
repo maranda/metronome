@@ -318,8 +318,10 @@ function handlers.set_subscribe(origin, stanza, subscribe)
 	end
 	origin.send(reply);
 	if ok then
+		local deliver_payloads = service.nodes[node].config.deliver_payloads;
+		local strip = (deliver_payloads == nil or deliver_payloads) and true;
 		-- Send all current items
-		local ok, items, orderly = service:get_items(node, stanza.attr.from);
+		local ok, items, orderly = service:get_items(node, stanza.attr.from, nil, nil, strip);
 		if items then
 			local jids = { [jid] = true };
 			for _, id in ipairs(orderly) do

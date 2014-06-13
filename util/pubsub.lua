@@ -559,7 +559,7 @@ local function calculate_items_tosend(data_id, max)
 	return _data_id;
 end
 
-function service:get_items(node, actor, id, max)
+function service:get_items(node, actor, id, max, strip)
 	local node_obj = self.nodes[node];
 	if not node_obj then
 		return false, "item-not-found";
@@ -592,7 +592,7 @@ function service:get_items(node, actor, id, max)
 	if id then -- Restrict results to a single specific item
 		return true, { [id] = data[id] }, { [1] = id };
 	else
-		if config.deliver_payloads or config.deliver_payloads == nil then
+		if not strip then
 			if max then _data_id = calculate_items_tosend(data_id, max); end	
 			return true, data, _data_id or data_id;
 		else
