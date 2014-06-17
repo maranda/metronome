@@ -18,6 +18,7 @@ local no_encryption = metronome.no_encryption;
 local secure_auth_only = module:get_option_boolean("c2s_require_encryption", not no_encryption);
 local allow_unencrypted_plain_auth = module:get_option_boolean("allow_unencrypted_plain_auth", false);
 local blacklisted_mechanisms = module:get_option_set("blacklist_sasl_mechanisms");
+local auth_failures = module:get_option_number("allowed_sasl_failures", 3);
 
 local log = module._log;
 
@@ -26,6 +27,8 @@ local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
 local function reload()
 	secure_auth_only = module:get_option_boolean("c2s_require_encryption", not no_encryption);
 	allow_unencrypted_plain_auth = module:get_option_boolean("allow_unencrypted_plain_auth", false);
+	blacklisted_mechanisms = module:get_option_set("blacklist_sasl_mechanisms");
+	auth_failures = module:get_option_number("allowed_sasl_failures", 3);
 end
 module:hook_global("config-reloaded", reload);
 
@@ -46,10 +49,12 @@ end
 
 local function handle_status(session, status, ret, err_msg)
 	if status == "failure" then
+		session.auth_failures = (session.auth_failures or 0) + 1;
 		module:fire_event("authentication-failure", { session = session, condition = ret, text = err_msg });
 		session.sasl_handler = session.sasl_handler:clean_clone();
 	elseif status == "success" then
 		local ok, err = sm_make_authenticated(session, session.sasl_handler.username);
+		session.auth_failures = nil;
 		if ok then
 			module:fire_event("authentication-success", { session = session });
 			session.sasl_handler = nil;
@@ -120,6 +125,13 @@ module:hook("stanza/urn:ietf:params:xml:ns:xmpp-sasl:abort", function(event)
 	session.send(build_reply("failure", "aborted"));
 	return true;
 end);
+
+module:hook("authentication-failure", function(event)
+	local session = event.session;
+	if session.auth_failures >= auth_failures then
+		session:close{ condition = "policy-violation", text = "Exceeded max failed authentication attempts, bye." };
+	end
+end, -1);
 
 local mechanisms_attr = { xmlns = "urn:ietf:params:xml:ns:xmpp-sasl" };
 module:hook("stream-features", function(event)
