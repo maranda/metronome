@@ -77,12 +77,12 @@ function get_password(username, host)
 end
 
 function set_password(username, password, host)
-	if hosts[host] then hosts[host].users.set_password(username, password); end
+	if hosts[host] then return hosts[host].users.set_password(username, password); end
 	return nil, host_unknown;
 end
 
 function user_exists(username, host)
-	if hosts[host] then hosts[host].users.user_exists(username); end
+	if hosts[host] then return hosts[host].users.user_exists(username); end
 	return nil, host_unknown;
 end
 
@@ -108,7 +108,7 @@ function delete_user(username, host, source)
 end
 
 function get_sasl_handler(host, session)
-	if hosts[host] then hosts[host].users.get_sasl_handler(session); end
+	if hosts[host] then return hosts[host].users.get_sasl_handler(session); end
 	return nil, host_unknown;
 end
 
