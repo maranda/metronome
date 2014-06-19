@@ -108,7 +108,7 @@ function delete_user(username, host, source)
 end
 
 function get_sasl_handler(host, session)
-	if hosts[host] and hosts[host].users.get_sasl_handler(session); end
+	if hosts[host] then hosts[host].users.get_sasl_handler(session); end
 	return nil, host_unknown;
 
 function get_provider(host)
