@@ -64,24 +64,26 @@ function initialize_host(host)
 end;
 metronome.events.add_handler("host-activated", initialize_host, 100);
 
-local function host_unknown(host)
-	return nil, host.." is not an activated host!";
-end
+local host_unknown = "host unknown or deactivated";
 
 function test_password(username, host, password)
-	return hosts[host] and hosts[host].users.test_password(username, password) or host_unknown(host);
+	if hosts[host] then return hosts[host].users.test_password(username, password); end
+	return nil, host_unknown;
 end
 
 function get_password(username, host)
-	return hosts[host] and hosts[host].users.get_password(username) or host_unknown(host);
+	if hosts[host] then return hosts[host].users.get_password(username); end
+	return nil, host_unknown;
 end
 
 function set_password(username, password, host)
-	return hosts[host] and hosts[host].users.set_password(username, password) or host_unknown(host);
+	if hosts[host] then hosts[host].users.set_password(username, password); end
+	return nil, host_unknown;
 end
 
 function user_exists(username, host)
-	return hosts[host] and hosts[host].users.user_exists(username) or host_unknown(host);
+	if hosts[host] and hosts[host].users.user_exists(username); end
+	return nil, host_unknown;
 end
 
 function create_user(username, password, host)
@@ -106,8 +108,8 @@ function delete_user(username, host, source)
 end
 
 function get_sasl_handler(host, session)
-	return hosts[host] and hosts[host].users.get_sasl_handler(session) or host_unknown(host);
-end
+	if hosts[host] and hosts[host].users.get_sasl_handler(session); end
+	return nil, host_unknown;
 
 function get_provider(host)
 	return hosts[host] and hosts[host].users or nil;
