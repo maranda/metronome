@@ -82,7 +82,7 @@ function set_password(username, password, host)
 end
 
 function user_exists(username, host)
-	if hosts[host] and hosts[host].users.user_exists(username); end
+	if hosts[host] then hosts[host].users.user_exists(username); end
 	return nil, host_unknown;
 end
 
