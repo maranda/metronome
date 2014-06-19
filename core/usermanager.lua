@@ -110,6 +110,7 @@ end
 function get_sasl_handler(host, session)
 	if hosts[host] then hosts[host].users.get_sasl_handler(session); end
 	return nil, host_unknown;
+end
 
 function get_provider(host)
 	return hosts[host] and hosts[host].users or nil;
