@@ -150,15 +150,18 @@ local function process_config_form(service, name, form, new)
 			node_config.type = (field:get_child_text("value") ~= "" and field:get_child_text("value")) or nil;
 		elseif field.attr.var == "pubsub#deliver_notifications" then
 			local notify = field:get_child_text("value");
-			node_config.deliver_notifications = ((notify == 0 or notify == "false") and false) or ((notify == "1" or notify == "true") and true);
+			node_config.deliver_notifications = ((notify == 0 or notify == "false") and false) or
+				((notify == "1" or notify == "true") and true);
 		elseif field.attr.var == "pubsub#deliver_payloads" then
 			local payloads = field:get_child_text("value");
-			node_config.deliver_payloads = ((payloads == 0 or payloads == "false") and false) or ((payloads == "1" or payloads == "true") and true);
+			node_config.deliver_payloads = ((payloads == 0 or payloads == "false") and false) or
+				((payloads == "1" or payloads == "true") and true);
 		elseif field.attr.var == "pubsub#max_items" then
 			node_config.max_items = tonumber(field:get_child_text("value"));
 		elseif field.attr.var == "pubsub#persist_items" then
 			local persist = field:get_child_text("value");
-			node_config.persist_items = ((persist == 0 or persist == "false") and false) or ((persist == "1" or persist == "true") and true);
+			node_config.persist_items = ((persist == 0 or persist == "false") and false) or
+				((persist == "1" or persist == "true") and true);
 		elseif field.attr.var == "pubsub#access_model" then
 			local value = field:get_child_text("value");
 			if value == "open" or value == "whitelist" then node_config.access_model = value; end
@@ -168,7 +171,12 @@ local function process_config_form(service, name, form, new)
 		end
 	end
 
-	if new then return true, node_config end
+	if node_config.deliver_notifications == false and
+	   (node_config.deliver_payloads == true or node_config.deliver_payloads == nil) then
+		node_config.deliver_payloads == false;
+	end
+
+	if new then return true, node_config; end
 
 	service:save_node(name);
 	service:save();
