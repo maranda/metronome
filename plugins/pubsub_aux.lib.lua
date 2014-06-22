@@ -82,8 +82,10 @@ local function form_layout(service, name)
 			name = "pubsub#deliver_payloads",
 			type = "boolean",
 			label = "Whether to deliver payloads with event notifications",
-			value = (node.config.deliver_notifications and node.config.deliver_payloads == nil and true) or
-				(node.config.deliver_notifications and node.config.deliver_payloads) or false
+			value = ((node.config.deliver_notifications == nil or node.config.deliver_notifications) and
+				node.config.deliver_payloads == nil and true) or
+				((node.config.deliver_notifications == nil or node.config.deliver_notifications) and
+				node.config.deliver_payloads) or false
 		},
 		{
 			name = "pubsub#max_items",
