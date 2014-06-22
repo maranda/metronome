@@ -173,7 +173,7 @@ local function process_config_form(service, name, form, new)
 
 	if node_config.deliver_notifications == false and
 	   (node_config.deliver_payloads == true or node_config.deliver_payloads == nil) then
-		node_config.deliver_payloads == false;
+		node_config.deliver_payloads = false;
 	end
 
 	if new then return true, node_config; end
