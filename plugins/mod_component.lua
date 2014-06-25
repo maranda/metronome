@@ -185,6 +185,8 @@ function stream_callbacks.handlestanza(session, stanza)
 		stanza.attr.xmlns = xmlns_component;
 	end
 	if not stanza.attr.xmlns or stanza.attr.xmlns == "jabber:client" then
+		if stanza.attr.xmlns then stanza.attr.xmlns = nil; end -- reset
+
 		local from = stanza.attr.from;
 		if from then
 			if session.component_validate_from then
