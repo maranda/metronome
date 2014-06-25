@@ -34,7 +34,7 @@ local function pre_process(bare_jid)
 	if not host_obj then return nil; end -- if host doesn't exist already return
 
 	local host_sessions = host_obj.sessions;
-	if host_sessions and host_sessions[node] then
+	if (host_sessions and host_sessions[node]) or host_obj.type == "component" then
 		return true;
 	else
 		return false;
