@@ -452,9 +452,10 @@ module:hook("pep-get-client-filters", function(event)
 end, 100);
 
 module:hook("pep-get-service", function(username, spawn)
-	local service = services[jid_join(username, module.host)];
+	local user = jid_join(username, module.host);
+	local service = services[user];
 	if spawn and not service and um_user_exists(username, module.host) then
-		service = set_service(pubsub.new(pep_new(username)), username, true);
+		service = set_service(pubsub.new(pep_new(username)), user, true);
 	end
 	return service;
 end);
