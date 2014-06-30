@@ -150,7 +150,7 @@ function handlers.get_items(service, origin, stanza, items)
 		for _, id in ipairs(max_tosend) do data:add_child(results[id]); end		
 	end
 
-	reply = st.reply(stanza)
+	local reply = st.reply(stanza)
 		:tag("pubsub", { xmlns = xmlns_pubsub })
 			:add_child(data);
 
