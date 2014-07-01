@@ -501,7 +501,7 @@ local function session_flags(session, line)
 	if session.bidirectional then
 		line[#line+1] = "(bidi)";
 	end
-	if session.conn and session.conn:ip():match(":") then
+	if session.conn and session.conn.ip and session.conn:ip():match(":") then
 		line[#line+1] = "(ipv6)";
 	end
 	return table.concat(line, " ");
