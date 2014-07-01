@@ -486,6 +486,27 @@ end
 function def_env.hosts:add(name)
 end
 
+local function session_flags(session, line)
+	if session.cert_identity_status == "valid" then
+		line[#line+1] = "(secure)";
+	elseif session.secure then
+		line[#line+1] = "(encrypted)";
+	end
+	if session.compressed then
+		line[#line+1] = "(compressed)";
+	end
+	if session.sm then
+		line[#line+1] = "(sm)";
+	end
+	if session.bidirectional then
+		line[#line+1] = "(bidi)";
+	end
+	if session.conn and session.conn:ip():match(":") then
+		line[#line+1] = "(ipv6)";
+	end
+	return table.concat(line, " ");
+end
+
 def_env.c2s = {};
 
 local function show_c2s(callback)
@@ -528,7 +549,7 @@ function def_env.c2s:show(match_jid)
 					status = "available";
 				end
 			end
-			print("   "..jid.." - "..status.."("..priority..")");
+			print(session_flags(session, {"   ", jid, "-", status.."("..priority..")", "-"}));
 		end		
 	end);
 	return true, "Total: "..count.." clients";
@@ -565,27 +586,6 @@ function def_env.c2s:close(match_jid)
 		end
 	end);
 	return true, "Total: "..count.." sessions closed";
-end
-
-local function session_flags(session, line)
-	if session.cert_identity_status == "valid" then
-		line[#line+1] = "(secure)";
-	elseif session.secure then
-		line[#line+1] = "(encrypted)";
-	end
-	if session.compressed then
-		line[#line+1] = "(compressed)";
-	end
-	if session.sm then
-		line[#line+1] = "(sm)";
-	end
-	if session.bidirectional then
-		line[#line+1] = "(bidi)";
-	end
-	if session.conn and session.conn:ip():match(":") then
-		line[#line+1] = "(ipv6)";
-	end
-	return table.concat(line, " ");
 end
 
 def_env.s2s = {};
