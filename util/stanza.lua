@@ -52,7 +52,9 @@ end
 
 function stanza_mt:text(text)
 	local last_add = self.last_add;
-	(last_add and last_add[#last_add] or self):add_direct_child(text);
+	if type(text) == "string" then
+		(last_add and last_add[#last_add] or self):add_direct_child(text);
+	end
 	return self;
 end
 
