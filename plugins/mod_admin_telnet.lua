@@ -218,8 +218,10 @@ function commands.help(session, data)
 		print [[dns:set(serverlist) - Sets an arbitrary list of resolvers (argument passed can either be a string or list)]]
 	elseif section == "c2s" then
 		print [[c2s:show(jid) - Show all client sessions with the specified JID (or all if no JID given)]]
+		print [[c2s:show_compressed() - Show all compressed client connections]]
 		print [[c2s:show_insecure() - Show all unencrypted client connections]]
 		print [[c2s:show_secure() - Show all encrypted client connections]]
+		print [[c2s:show_sm() - Show all stream management enabled client connections]]
 		print [[c2s:close(jid) - Close all sessions for the specified JID]]
 	elseif section == "s2s" then
 		print [[s2s:show(domain) - Show all s2s connections for the given domain (or all if no domain given)]]
@@ -555,26 +557,36 @@ function def_env.c2s:show(match_jid)
 	return true, "Total: "..count.." clients";
 end
 
-function def_env.c2s:show_insecure(match_jid)
+local function show_type(self, match_jid, flag, void)
 	local print, count = self.session.print, 0;
 	show_c2s(function (jid, session)
-		if ((not match_jid) or jid:match(match_jid)) and not session.secure then
+		if ((not match_jid) or jid:match(match_jid)) and
+		   ((void and not session[flag]) or (not void and session[flag])) then
 			count = count + 1;
 			print(jid);
 		end		
 	end);
+	return count;
+end
+
+function def_env.c2s:show_compressed(match_jid)
+	local count = show_type(self, match_jid, "compressed");
+	return true, "Total: "..count.." compressed client connections";
+end
+
+function def_env.c2s:show_insecure(match_jid)
+	local count = show_type(self, match_jid, "secure", true);
 	return true, "Total: "..count.." insecure client connections";
 end
 
 function def_env.c2s:show_secure(match_jid)
-	local print, count = self.session.print, 0;
-	show_c2s(function (jid, session)
-		if ((not match_jid) or jid:match(match_jid)) and session.secure then
-			count = count + 1;
-			print(jid);
-		end		
-	end);
+	local count = show_type(self, match_jid, "secure");
 	return true, "Total: "..count.." secure client connections";
+end
+
+function def_env.c2s:show_sm(match_jid)
+	local count = show_type(self, match_jid, "sm");
+	return true, "Total: "..count.." stream management enabled client connections";
 end
 
 function def_env.c2s:close(match_jid)
