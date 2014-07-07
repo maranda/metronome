@@ -266,7 +266,7 @@ module:hook_stanza("urn:ietf:params:xml:ns:xmpp-sasl", "failure", function (orig
 end, 100);
 
 module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
-	if not origin.external_auth or origin.external_auth == "failed" then
+	if not origin.type == "s2sout" and (not origin.external_auth or origin.external_auth == "failed") then
 		local tls = stanza:child_with_ns(xmlns_starttls);
 		if can_do_dialback(origin) then
 			local tls_required = tls and tls:get_child("required");
