@@ -260,7 +260,7 @@ module:hook("config-reloaded", function()
 	opt_keepalives = module:get_option_boolean("tcp_keepalives", false);
 end);
 
-module:hook("host-deactivated", function(event)
+module:hook("host-deactivating", function(event)
 	local host, host_session, reason = event.host, event.host_session, event.reason;
 	if host_session.sessions then
 		for username, user in pairs(host_session.sessions) do
@@ -270,7 +270,7 @@ module:hook("host-deactivated", function(event)
 			end
 		end
 	end
-end, -3);
+end, -1);
 
 module:hook("user-deleted", handle_deletion, -1);
 

@@ -606,7 +606,7 @@ module:hook("config-reloaded", function()
 	check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
 end);
 
-module:hook("host-deactivated", function(event)
+module:hook("host-deactivating", function(event)
 	local host, host_session, reason = event.host, event.host_session, event.reason;
 	if host_session.s2sout then
 		for remotehost, session in pairs(host_session.s2sout) do
