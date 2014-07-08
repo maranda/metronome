@@ -14,7 +14,7 @@ if metronome.no_encryption then
 end
 
 local config = require "core.configmanager";
-local create_context = require "core.certmanager".create_context;
+local create_context = require "util.certmanager".create_context;
 local st = require "util.stanza";
 
 local secure_auth_only = module:get_option_boolean("c2s_require_encryption", true);
