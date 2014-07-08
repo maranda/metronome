@@ -23,10 +23,10 @@ local nameprep = require "util.encodings".stringprep.nameprep;
 local new_xmpp_stream = require "util.xmppstream".new;
 local is_module_loaded = modulemanager.is_loaded;
 local load_module = modulemanager.load;
-local s2s_new_incoming = require "core.s2smanager".new_incoming;
-local s2s_new_outgoing = require "core.s2smanager".new_outgoing;
-local s2s_destroy_session = require "core.s2smanager".destroy_session;
-local s2s_mark_connected = require "core.s2smanager".mark_connected;
+local s2s_new_incoming = require "util.s2smanager".new_incoming;
+local s2s_new_outgoing = require "util.s2smanager".new_outgoing;
+local s2s_destroy_session = require "util.s2smanager".destroy_session;
+local s2s_mark_connected = require "util.s2smanager".mark_connected;
 local uuid_gen = require "util.uuid".generate;
 local cert_verify_identity = require "util.x509".verify_identity;
 
@@ -597,7 +597,7 @@ end
 
 s2sout.set_listener(listener);
 
-module:hook_global("config-reloaded", function()
+module:hook("config-reloaded", function()
 	connect_timeout = module:get_option_number("s2s_timeout", 90);
 	stream_close_timeout = module:get_option_number("s2s_close_timeout", 5);
 	s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
@@ -605,6 +605,25 @@ module:hook_global("config-reloaded", function()
 	max_inactivity = module:get_option_number("s2s_max_inactivity", 1800);
 	check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
 end);
+
+module:hook("host-deactivated", function(event)
+	local host, host_session, reason = event.host, event.host_session, event.reason;
+	if host_session.s2sout then
+		for remotehost, session in pairs(host_session.s2sout) do
+			if session.close then
+				log("debug", "Closing outgoing connection to %s", remotehost);
+				if session.srv_hosts then session.srv_hosts = nil; end
+				session:close(reason);
+			end
+		end
+	end
+	for remote_session in pairs(metronome.incoming_s2s) do
+		if remote_session.to_host == host then
+			module:log("debug", "Closing incoming connection from %s", remote_session.from_host or "<unknown>");
+			remote_session:close(reason);
+		end
+	end
+end, -2);
 
 module:add_item("net-provider", {
 	name = "s2s";

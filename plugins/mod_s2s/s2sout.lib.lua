@@ -19,7 +19,7 @@ local dns = require "net.dns";
 local t_insert, t_sort, ipairs = table.insert, table.sort, ipairs;
 local st = require "util.stanza";
 
-local s2s_destroy_session = require "core.s2smanager".destroy_session;
+local s2s_destroy_session = require "util.s2smanager".destroy_session;
 
 local log = module._log;
 

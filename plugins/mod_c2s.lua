@@ -254,13 +254,25 @@ local function handle_deletion(event)
 	end
 end
 
-module:hook_global("config-reloaded", function()
+module:hook("config-reloaded", function()
 	c2s_timeout = module:get_option_number("c2s_timeout");
 	stream_close_timeout = module:get_option_number("c2s_close_timeout", 5);
 	opt_keepalives = module:get_option_boolean("tcp_keepalives", false);
 end);
 
-module:hook_global("user-deleted", handle_deletion, -1);
+module:hook("host-deactivated", function(event)
+	local host, host_session, reason = event.host, event.host_session, event.reason;
+	if host_session.sessions then
+		for username, user in pairs(host_session.sessions) do
+			for resource, session in pairs(user.sessions) do
+				module:log("debug", "Closing connection for %s@%s/%s", username, host, resource);
+				session:close(reason);
+			end
+		end
+	end
+end, -1);
+
+module:hook("user-deleted", handle_deletion, -1);
 
 module:add_item("net-provider", {
 	name = "c2s";

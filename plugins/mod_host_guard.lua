@@ -4,6 +4,7 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
+module:depends("s2s")
 module:set_global()
 
 local hosts = hosts

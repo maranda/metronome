@@ -11,7 +11,7 @@ module:set_global();
 
 local hostmanager = require "core.hostmanager";
 local modulemanager = require "core.modulemanager";
-local s2smanager = require "core.s2smanager";
+local s2smanager = require "util.s2smanager";
 local portmanager = require "core.portmanager";
 
 local _G = _G;

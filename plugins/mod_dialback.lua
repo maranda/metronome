@@ -10,7 +10,7 @@
 local hosts = metronome.hosts;
 local incoming = metronome.incoming_s2s;
 local host_session = hosts[module.host];
-local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
+local s2s_make_authenticated = require "util.s2smanager".make_authenticated;
 
 local log = module._log;
 local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
