@@ -67,7 +67,7 @@ function load_modules_for_host(host)
 end
 metronome.events.add_handler("host-activated", load_modules_for_host);
 metronome.events.add_handler("host-deactivating", function (event)
-	local host, host_sessions = event.host, event.host_session;
+	local host, host_session = event.host, event.host_session;
 	if host_session.modules then
 		for module in pairs(host_session.modules) do
 			modulemanager.unload(host, module);
