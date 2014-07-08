@@ -270,7 +270,7 @@ module:hook("host-deactivated", function(event)
 			end
 		end
 	end
-end, -1);
+end, -3);
 
 module:hook("user-deleted", handle_deletion, -1);
 
