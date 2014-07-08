@@ -8,7 +8,7 @@
 -- ** Copyright (c) 2008-2013, Kim Alvefur, Marco Cirillo, Matthew Wild, Waqas Hussain
 
 local config = require "core.configmanager";
-local certmanager = require "core.certmanager";
+local certmanager = require "util.certmanager";
 local server = require "net.server";
 
 local log = require "util.logger".init("portmanager");
