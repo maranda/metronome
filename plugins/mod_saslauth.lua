@@ -50,8 +50,8 @@ end
 local function handle_status(session, status, ret, err_msg)
 	if status == "failure" then
 		session.auth_failures = (session.auth_failures or 0) + 1;
-		module:fire_event("authentication-failure", { session = session, condition = ret, text = err_msg });
 		session.sasl_handler = session.sasl_handler:clean_clone();
+		module:fire_event("authentication-failure", { session = session, condition = ret, text = err_msg });
 	elseif status == "success" then
 		local ok, err = sm_make_authenticated(session, session.sasl_handler.username);
 		session.auth_failures = nil;
@@ -128,7 +128,7 @@ end);
 
 module:hook("authentication-failure", function(event)
 	local session = event.session;
-	if session.auth_failures >= auth_failures then
+	if session.auth_failures > auth_failures then
 		session:close{ condition = "policy-violation", text = "Exceeded max failed authentication attempts, bye." };
 	end
 end, -1);
