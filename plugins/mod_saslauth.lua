@@ -49,9 +49,7 @@ end
 
 local function handle_status(session, status, ret, err_msg)
 	if status == "failure" then
-		session.auth_failures = (session.auth_failures or 0) + 1;
 		session.sasl_handler = session.sasl_handler:clean_clone();
-		module:fire_event("authentication-failure", { session = session, condition = ret, text = err_msg });
 	elseif status == "success" then
 		local ok, err = sm_make_authenticated(session, session.sasl_handler.username);
 		session.auth_failures = nil;
@@ -84,6 +82,11 @@ local function sasl_process_cdata(session, stanza)
 	local s = build_reply(status, ret, err_msg);
 	log("debug", "sasl reply: %s", tostring(s));
 	session.send(s);
+
+	if status == "failure" then
+		session.auth_failures = (session.auth_failures or 0) + 1;
+		module:fire_event("authentication-failure", { session = session, condition = ret, text = err_msg });
+	end
 	return true;
 end
 
