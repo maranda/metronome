@@ -307,4 +307,5 @@ end
 module:hook_global("config-reloaded", function()
 	s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
 	require_encryption = module:get_option_boolean("s2s_require_encryption", not no_encryption);
+	encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 end);

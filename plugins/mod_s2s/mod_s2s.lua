@@ -612,6 +612,7 @@ module:hook("config-reloaded", function()
 	require_encryption = module:get_option_boolean("s2s_require_encryption", not metronome.no_encryption);
 	max_inactivity = module:get_option_number("s2s_max_inactivity", 1800);
 	check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
+	encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 end);
 
 module:hook("host-deactivating", function(event)

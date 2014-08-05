@@ -122,6 +122,7 @@ module:hook_global("config-reloaded", function()
 	secure_auth_only = module:get_option_boolean("c2s_require_encryption", true);
 	secure_s2s_only = module:get_option_boolean("s2s_require_encryption", true);
 	allow_s2s_tls = module:get_option_boolean("s2s_allow_encryption", true);
+	encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 	if secure_s2s_only then allow_s2s_tls = true; end
 	module.load();
 end);
