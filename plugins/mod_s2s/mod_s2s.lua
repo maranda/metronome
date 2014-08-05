@@ -38,6 +38,7 @@ local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
 local require_encryption = module:get_option_boolean("s2s_require_encryption", not metronome.no_encryption);
 local max_inactivity = module:get_option_number("s2s_max_inactivity", 1800);
 local check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
+local encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 
 local sessions = module:shared("sessions");
 
@@ -196,6 +197,18 @@ function module.add_host(module)
 	end, -100)
 	module:hook("route/remote", route_to_existing_session, 200);
 	module:hook("route/remote", route_to_new_session, 100);
+	module:hook("s2s-authenticated", function(event)
+		local ctx, direction, session, from, to = event.ctx, event.direction, event.session, event.from, event.to;
+		if require_encryption and ctx and not session.secure and
+		   not encryption_exceptions:contains(direction == "outgoing" and to or from) then
+			local text = direction == "outgoing" and "offered" or "used";
+			session:close({
+				condition = "policy-violation",
+				text = "TLS encryption is mandatory but wasn't "..text }, "authentication failure");
+			return false;
+		end
+		return true;
+	end)
 	module:hook("s2sout-destroyed", function(event)
 		local session = event.session;
 		local multiplexed_from = session.multiplexed_from;
@@ -335,12 +348,6 @@ function stream_callbacks.streamopened(session, attr)
 			
 			log("debug", "Sending stream features: %s", tostring(features));
 			send(features);
-		elseif session.version < 1.0 and require_encryption and (not to or hosts[to].ssl_ctx_in) then
-			session:close(
-				{ condition = "unsupported-version", text = "To connect to this server xmpp streams of version 1 or above are required" }, 
-				"error communicating with the remote server"
-			);
-			return;
 		end
 	elseif session.direction == "outgoing" then
 		-- If we are just using the connection for verifying dialback keys, we won't try and auth it
@@ -362,14 +369,15 @@ function stream_callbacks.streamopened(session, attr)
 	
 		-- If server is pre-1.0, don't wait for features, just do dialback
 		if session.version < 1.0 then
-			if require_encryption and hosts[session.from_host].ssl_ctx then
+			if require_encryption and hosts[session.from_host].ssl_ctx and
+			   not encryption_exceptions:contains(session.to_host) then
 				-- pre-1.0 servers won't support tls perhaps they should be excluded
 				session:close("unsupported-version", "error communicating with the remote server");
 				return;
 			end
 		
 			if not session.legacy_dialback then
-				hosts[session.from_host].events.fire_event("s2s-authenticate-legacy", { origin = session });
+				hosts[session.from_host].events.fire_event("s2s-authenticate-legacy", session);
 			else
 				s2s_mark_connected(session);
 			end

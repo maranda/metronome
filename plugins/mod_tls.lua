@@ -20,6 +20,7 @@ local st = require "util.stanza";
 local secure_auth_only = module:get_option_boolean("c2s_require_encryption", true);
 local secure_s2s_only = module:get_option_boolean("s2s_require_encryption", true);
 local allow_s2s_tls = module:get_option_boolean("s2s_allow_encryption", true);
+local encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 if secure_s2s_only then allow_s2s_tls = true; end
 
 local xmlns_starttls = 'urn:ietf:params:xml:ns:xmpp-tls';
@@ -74,7 +75,11 @@ end, 101);
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;
 	if can_do_tls(origin) then
-		features:add_child(_s2s_feature);
+		if encryption_exceptions:contains(origin.from_host) then
+			features:add_child(s2s_feature);
+		else
+			features:add_child(_s2s_feature);
+		end
 	end
 end, 101);
 
