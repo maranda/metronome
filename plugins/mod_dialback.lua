@@ -290,7 +290,6 @@ module:hook("s2s-stream-features", function (data)
 end, 98);
 
 module:hook("s2s-authenticate-legacy", function (session)
-	session.legacy_dialback = true;
 	module:log("debug", "Initiating dialback...");
 	initiate_dialback(session);
 	return true;

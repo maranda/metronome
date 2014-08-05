@@ -41,6 +41,7 @@ local check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
 local encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 
 local sessions = module:shared("sessions");
+local multiplexed_sessions = setmetatable({}, { __mode = "v" });
 
 local log = module._log;
 local last_inactive_clean = now();
@@ -140,7 +141,7 @@ local function session_open_stream(session, from, to)
 	local from = from or session.from_host;
 	local to = to or session.to_host;
 	local direction = session.direction;
-	local db = (not s2s_strict_mode and true) or is_module_loaded((direction == "outgoing" and from) or to, "dialback");
+	local db = (not s2s_strict_mode and true) or hosts[direction == "outgoing" and from or to].dialback_capable;
 	local attr = {
 		xmlns = "jabber:server", 
 		["xmlns:db"] = db and "jabber:server:dialback" or nil,
@@ -163,7 +164,10 @@ function route_to_new_session(event)
 	-- Store in buffer
 	host_session.bounce_sendq = bounce_sendq;
 	host_session.open_stream = session_open_stream;
-	if multiplexed_from then host_session.multiplexed_from = multiplexed_from; end
+	if multiplexed_from then
+		host_session.multiplexed_from = multiplexed_from;
+		multiplexed_sessions[to_host] = host_session;
+	end
 
 	host_session.sendq = { {tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza)} };
 	log("debug", "stanza [%s] queued until connection complete", tostring(stanza.name));
@@ -199,6 +203,7 @@ function module.add_host(module)
 	module:hook("route/remote", route_to_new_session, 100);
 	module:hook("s2s-authenticated", function(event)
 		local ctx, direction, session, from, to = event.ctx, event.direction, event.session, event.from, event.to;
+		if direction == "outgoing" and multiplexed_sessions[to] then return true; end
 		if require_encryption and ctx and not session.secure and
 		   not encryption_exceptions:contains(direction == "outgoing" and to or from) then
 			local text = direction == "outgoing" and "offered" or "used";
@@ -369,17 +374,19 @@ function stream_callbacks.streamopened(session, attr)
 	
 		-- If server is pre-1.0, don't wait for features, just do dialback
 		if session.version < 1.0 then
-			if require_encryption and hosts[session.from_host].ssl_ctx and
-			   not encryption_exceptions:contains(session.to_host) then
+			local from, to = session.from_host, session.to_host;
+			if require_encryption and hosts[from].ssl_ctx and
+			   not encryption_exceptions:contains(to) and not multiplexed_sessions[to] then
 				-- pre-1.0 servers won't support tls perhaps they should be excluded
 				session:close("unsupported-version", "error communicating with the remote server");
 				return;
 			end
 		
-			if not session.legacy_dialback then
-				hosts[session.from_host].events.fire_event("s2s-authenticate-legacy", session);
+			if hosts[from].dialback_capable then
+				hosts[from].events.fire_event("s2s-authenticate-legacy", session);
 			else
-				s2s_mark_connected(session);
+				session:close("internal-server-error", "unable to authenticate, dialback is not available");
+				return;
 			end
 		end
 	end
