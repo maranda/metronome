@@ -206,7 +206,7 @@ function module.add_host(module)
 		if require_encryption and ctx and not session.secure then
 			local multiplexed_from = multiplexed_sessions[to] and multiplexed_sessions[to].multiplexed_from.from_host;
 			if direction == "outgoing" and encryption_exceptions:contains(multiplexed_from) then
-				 then return true;
+				return true;
 			elseif not encryption_exceptions:contains(direction == "outgoing" and to or from) then
 				local text = direction == "outgoing" and "offered" or "used";
 				session:close({
