@@ -203,14 +203,17 @@ function module.add_host(module)
 	module:hook("route/remote", route_to_new_session, 100);
 	module:hook("s2s-authenticated", function(event)
 		local ctx, direction, session, from, to = event.ctx, event.direction, event.session, event.from, event.to;
-		if direction == "outgoing" and multiplexed_sessions[to] then return true; end
-		if require_encryption and ctx and not session.secure and
-		   not encryption_exceptions:contains(direction == "outgoing" and to or from) then
-			local text = direction == "outgoing" and "offered" or "used";
-			session:close({
-				condition = "policy-violation",
-				text = "TLS encryption is mandatory but wasn't "..text }, "authentication failure");
-			return false;
+		if require_encryption and ctx and not session.secure then
+			local multiplexed_from = multiplexed_sessions[to] and multiplexed_sessions[to].multiplexed_from.from_host;
+			if direction == "outgoing" and encryption_exceptions:contains(multiplexed_from) then
+				 then return true;
+			elseif not encryption_exceptions:contains(direction == "outgoing" and to or from) then
+				local text = direction == "outgoing" and "offered" or "used";
+				session:close({
+					condition = "policy-violation",
+					text = "TLS encryption is mandatory but wasn't "..text }, "authentication failure");
+				return false;
+			end
 		end
 		return true;
 	end)
