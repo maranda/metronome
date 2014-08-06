@@ -654,3 +654,7 @@ module:add_item("net-provider", {
 	};
 });
 
+function module.save() return { multiplexed_sessions = multiplexed_sessions }; end
+function module.restore(data)
+	multiplexed_sessions = data.multiplexed_sessions or setmetatable({}, { __mode = "v" });
+end
