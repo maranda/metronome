@@ -12,7 +12,10 @@ local xmlns_legacy = "urn:ietf:params:xml:ns:xmpp-session";
 local bind_attr = { xmlns = xmlns_bind };
 local legacy_attr = { xmlns = xmlns_legacy };
 
+local hosts, next = metronome.hosts, next;
+
 local legacy = module:get_option_boolean("legacy_session_support", "true");
+local resources_limit = module:get_option_number("max_client_resources", 9);
 
 module:hook("stream-features", function(event)
 	local origin, features = event.origin, event.features;
@@ -42,6 +45,20 @@ module:hook("iq/self/"..xmlns_bind..":bind", function(event)
 	end
 	return true;
 end);
+
+module:hook("resource-bind", function(event)
+	local session = event.session;
+	local sessions = hosts[session.host].sessions;
+	local count, i = 0, nil;
+	while next(sessions, i) do count = count + 1; i = next(sessions, i); end
+	if count > resources_limit then
+		session:close{
+			condition = "policy-violation",
+			text = "Too many resources bound, please disconnect one of the clients and retry"
+		};
+		return true;
+	end
+end, 100);
 
 if legacy then 
 	local function session_handle(event)
