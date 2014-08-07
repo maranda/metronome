@@ -362,7 +362,7 @@ local function outbound_presence_handler(data)
 				end
 			else
 				origin.directed[to] = true;
-				if stanza:get_child("x", "http://jabber.org/protocol/muc") then
+				if stanza:get_child("x", "http://jabber.org/protocol/muc") and to_resource then
 					origin.joined_mucs[to_bare] = origin.joined_mucs[to_bare] or {};
 					origin.joined_mucs[to_bare][to_resource] = true;
 				end
