@@ -42,7 +42,7 @@ module:hook("iq-set/self/"..xmlns_bind..":bind", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local resource;
 
-	if limit_binds(origin) then return true; end
+	if not origin.resource and limit_binds(origin) then return true; end
 	local bind = stanza.tags[1];
 	resource = bind:child_with_name("resource");
 	resource = resource and #resource.tags == 0 and resource[1] or nil;
