@@ -48,7 +48,7 @@ end);
 
 module:hook("resource-bind", function(event)
 	local session = event.session;
-	local sessions = hosts[session.host].sessions;
+	local sessions = hosts[session.host].sessions[session.username].sessions;
 	local count, i = 0, nil;
 	while next(sessions, i) do count = count + 1; i = next(sessions, i); end
 	if count > resources_limit then
