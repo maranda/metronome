@@ -6,21 +6,22 @@
 
 local st = require "util.stanza";
 local sm_bind_resource = require "core.sessionmanager".bind_resource;
+local join = require "util.jid".join;
 
 local xmlns_bind = "urn:ietf:params:xml:ns:xmpp-bind";
 local xmlns_legacy = "urn:ietf:params:xml:ns:xmpp-session";
 local bind_attr = { xmlns = xmlns_bind };
 local legacy_attr = { xmlns = xmlns_legacy };
 
-local hosts, next = metronome.hosts, next;
+local bare_sessions, next = bare_sessions, next;
 
 local legacy = module:get_option_boolean("legacy_session_support", "true");
 local resources_limit = module:get_option_number("max_client_resources", 9);
 
 local function limit_binds(session)
-	local sessions;
-	if hosts[session.host].sessions[session.username] then
-		sessions = hosts[session.host].sessions[session.username].sessions;
+	local sessions = bare_sessions[join(session.username, session.host)];
+	if sessions then
+		sessions = sessions.sessions;
 	else return; end
 	local count, i = 0, nil;
 	while next(sessions, i) do count = count + 1; i = next(sessions, i); end
