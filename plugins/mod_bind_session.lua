@@ -18,7 +18,10 @@ local legacy = module:get_option_boolean("legacy_session_support", "true");
 local resources_limit = module:get_option_number("max_client_resources", 9);
 
 local function limit_binds(session)
-	local sessions = hosts[session.host].sessions[session.username].sessions;
+	local sessions;
+	if hosts[session.host].sessions[session.username] then
+		sessions = hosts[session.host].sessions[session.username].sessions;
+	else return; end
 	local count, i = 0, nil;
 	while next(sessions, i) do count = count + 1; i = next(sessions, i); end
 	if count > resources_limit then
