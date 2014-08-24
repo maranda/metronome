@@ -60,6 +60,8 @@ function new_default_provider(host)
 				if not multi_resourcing and my_host.sessions[username] then
 					return nil, "You're allowed to have only one anonymous session at any given time, good bye.";
 				end
+
+				session.is_anonymous = true;
 				return username;
 			end,
 			session = session
