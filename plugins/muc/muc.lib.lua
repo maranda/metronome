@@ -359,6 +359,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 					self:broadcast_presence(pr, from);
 					self._occupants[current_nick] = nil;
 				end
+				module:fire_event("muc-occupant-left", self, pr, origin);
 			end
 		elseif not type then -- available
 			if current_nick then
@@ -445,7 +446,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						end
 						if self._data.whois == "anyone" then pr:tag("status", {code = "100"}):up(); end
 						pr:tag("status", {code = "110"}):up();
-						module:fire_event("muc-occupant-joined", self, pr);
+						module:fire_event("muc-occupant-joined", self, pr, origin);
 						pr.attr.to = from;
 						self:_route_stanza(pr);
 						self:send_history(from, stanza);
