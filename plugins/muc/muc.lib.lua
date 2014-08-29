@@ -179,10 +179,10 @@ function room_mt:send_history(to, stanza)
 	if history then
 		local x_tag = stanza and stanza:get_child("x", "http://jabber.org/protocol/muc");
 		local history_tag = x_tag and x_tag:get_child("history", "http://jabber.org/protocol/muc");
-		
+
 		local maxchars = history_tag and tonumber(history_tag.attr.maxchars);
 		if maxchars then maxchars = math.floor(maxchars); end
-		
+
 		local maxstanzas = math.floor(history_tag and tonumber(history_tag.attr.maxstanzas) or #history);
 		if not history_tag then maxstanzas = 20; end
 
@@ -197,7 +197,7 @@ function room_mt:send_history(to, stanza)
 
 		local n = 0;
 		local charcount = 0;
-		
+
 		for i=#history,1,-1 do
 			local entry = history[i];
 			if maxchars then
@@ -284,7 +284,7 @@ function room_mt:set_option(name, value, changed)
 
 	if value ~= self:get_option(name) then
 		self._data[name] = value;
-		if changed then 
+		if changed then
 			changed[name] = true;
 		end
 		return true;
@@ -298,7 +298,7 @@ local function construct_stanza_id(room, stanza)
 	local from_nick = room._jid_nick[from_jid];
 	local occupant = room._occupants[to_nick];
 	local to_jid = occupant.jid;
-	
+
 	return from_nick, to_jid, base64.encode(to_jid.."\0"..stanza.attr.id.."\0"..md5(from_jid));
 end
 local function deconstruct_stanza_id(room, stanza)
@@ -346,6 +346,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 					pr:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
 						:tag("item", {affiliation = occupant.affiliation or "none", role = "none"}):up()
 						:tag("status", {code = "110"}):up();
+					module:fire_event("muc-occupant-left", self, pr);
 					self:_route_stanza(pr);
 					if jid ~= new_jid then
 						pr = st.clone(occupant.sessions[new_jid])
@@ -626,7 +627,7 @@ function room_mt:process_form(origin, stanza)
 	if not valid_whois[whois] then
 		return origin.send(st.error_reply(stanza, "cancel", "bad-request", "Invalid value for 'whois'"));
 	end
-	
+
 	self:set_option("name", name, changed);
 	self:set_option("description", fields["muc#roomconfig_roomdesc"], changed);
 	self:set_option("persistent", fields["muc#roomconfig_persistentroom"], changed);
@@ -641,7 +642,7 @@ function room_mt:process_form(origin, stanza)
 	-- Process custom entries
 	local invalid = module:fire_event("muc-fields-process", self, fields, stanza, changed);
 	if invalid then return origin.send(invalid); end
-	
+
 	if self.save then self:save(true); end
 	origin.send(st.reply(stanza));
 
@@ -833,7 +834,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 		elseif type ~= "error" and type ~= "result" then
 			origin.send(st.error_reply(stanza, "cancel", "service-unavailable"));
 		end
-	elseif stanza.name == "message" and not stanza.attr.type and #stanza.tags == 1 and 
+	elseif stanza.name == "message" and not stanza.attr.type and #stanza.tags == 1 and
 	       stanza.tags[1].name == "x" and stanza.tags[1].attr.xmlns == "http://jabber.org/protocol/muc#user" then
 		local x = stanza.tags[1];
 		local payload = (#x.tags == 1 and x.tags[1]);
@@ -867,10 +868,10 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 					if self._occupants[_inviter] then
 						if not self._occupants[_inviter].invited_users then self._occupants[_inviter].invited_users = {}; end
 						self._occupants[_inviter].invited_users[_recipient] = true;
-					end 
-				elseif payload.name == "decline" and 
-				       self._occupants[_declineto] and 
-				       self._occupants[_declineto].invited_users and 
+					end
+				elseif payload.name == "decline" and
+				       self._occupants[_declineto] and
+				       self._occupants[_declineto].invited_users and
 				       (self._occupants[_declineto].invited_users[_from] or self._occupants[_declineto].invited_users[_from_bare]) then
 					decline = st.message({from = _to, to = _recipient, id = stanza.attr.id})
 						:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
@@ -944,7 +945,7 @@ function room_mt:set_affiliation(actor, jid, affiliation, callback, reason, dumm
 		end
 	end
 	if not dummy then
-		self._affiliations[jid] = affiliation; 
+		self._affiliations[jid] = affiliation;
 	else
 		if dummy ~= "none" then affiliation = dummy; end
 	end
@@ -1000,7 +1001,7 @@ end
 function room_mt:can_set_role(actor_jid, occupant_jid, role)
 	local actor = self._occupants[self._jid_nick[actor_jid]];
 	local occupant = self._occupants[occupant_jid];
-	
+
 	if not occupant or not actor then return nil, "modify", "not-acceptable"; end
 
 	if actor.role == "moderator" then
