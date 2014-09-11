@@ -354,7 +354,7 @@ local function process_message(event, outbound)
 			return;
 		end
 		if body then
-			body = body:get_text();
+			body = body:get_text() or "";
 			if body:len() > max_length then return; end
 			-- COMPAT, Drop OTR/E2E messages for clients not implementing XEP-334
 			if message:get_child("c", e2e_xmlns) or body:match("^%?OTR%:[^%s]*%.$") then return; end
