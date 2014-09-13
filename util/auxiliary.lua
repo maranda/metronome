@@ -8,7 +8,7 @@
 
 local CFG_SOURCEDIR, metronome = _G.CFG_SOURCEDIR, _G.metronome;
 local open, popen = io.open, io.popen;
-local char, pairs, tonumber, type = string.char, pairs, tonumber, type;
+local char, next, pairs, tonumber, type = string.char, next, pairs, tonumber, type;
 
 module "auxiliary"
 
@@ -54,6 +54,17 @@ function clone_table(t)
 		end
 	end
 	return clone;
+end
+
+function clean_table(t)
+	for key, value in pairs(t) do
+		if type(value) == "table" and not next(value) then
+			t[key] = nil;
+		elseif type(value) == "table" then
+			clean_table(value);
+			if not next(value) then t[key] = nil; end
+		end
+	end
 end
 
 function escape_magic_chars(string)
