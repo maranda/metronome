@@ -72,6 +72,15 @@ local function match_prefix(ipA, ipB)
 	return len < 64 and len or 64;
 end
 
+local function match_subnet(ipA, subnet, len)
+	if len and subnet.proto == "IPv4" then
+		len = len + 128 - 32;
+	end
+	ipA, subnet = toBits(ipA), toBits(subnet);
+	len = (len == nil or len > 128) and 128 or len;
+	return ipA:sub(1, len) == subnet:sub(1, len);
+end
+
 local function v4scope(ip)
 	local fields = {};
 	ip:gsub("([^.]*).?", function (c) fields[#fields + 1] = tonumber(c) end);
@@ -288,5 +297,6 @@ return {
 	new_ip = new_ip,
 	compare_destination = compare_destination,
 	compare_source = compare_source,
-	match_prefix = match_prefix
+	match_prefix = match_prefix,
+	match_subnet = match_subnet
 };
