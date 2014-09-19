@@ -227,6 +227,10 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 					-- Check that the user is not blacklisted or registering too often
 					if not session.ip then
 						module:log("debug", "User's IP not known; can't apply blacklist/whitelist");
+						if whitelist_only then
+							session.send(st.error_reply(stanza, "cancel", "not-acceptable", "You are not allowed to register an account."));
+							return true;
+						end
 					elseif subnets_match_ip(blacklisted_ips, session.ip) or (whitelist_only and not subnets_match_ip(whitelisted_ips, session.ip)) then
 						session.send(st.error_reply(stanza, "cancel", "not-acceptable", "You are not allowed to register an account."));
 						return true;
