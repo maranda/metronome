@@ -93,9 +93,11 @@ end
 
 function module.load()
 	datamanager.add_callback(dm_callback);
+	my_host.anonymous_host = true;
 end
 function module.unload()
 	datamanager.remove_callback(dm_callback);
+	my_host.anonymous_host = nil;
 end
 
 module:add_item("auth-provider", new_default_provider(module.host));
