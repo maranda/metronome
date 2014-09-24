@@ -12,6 +12,7 @@ local log = require "util.logger".init("usermanager");
 local type = type;
 local ipairs = ipairs;
 local jid_bare = require "util.jid".bare;
+local jid_join = require "util.jid".join;
 local jid_prep = require "util.jid".prep;
 local config = require "core.configmanager";
 local hosts = hosts;
@@ -157,6 +158,18 @@ function is_admin(jid, host)
 		is_admin = hosts[host].users.is_admin(jid);
 	end
 	return is_admin or false;
+end
+
+function account_type(user, host)
+	local host_session = hosts[host];
+	if not host_session or host_session.type ~= "local" then return; end
+	if is_admin(jid_join(user, host), host) then
+		return "admin";
+	elseif host_session.anonymous_host then
+		return "anonymous";
+	elseif user_exists(user, host) then
+		return "registered";
+	end
 end
 
 return _M;
