@@ -13,6 +13,8 @@ local jid_section = require "util.jid".section;
 local jid_bare = require "util.jid".bare;
 local st = require "util.stanza"
 local calculate_hash = require "util.caps".calculate_hash;
+local account_type = require "core.usermanager".account_type;
+
 local ipairs, pairs = ipairs, pairs;
 local hosts, my_host = hosts, module.host;
 
@@ -134,7 +136,7 @@ module:hook("iq/host/http://jabber.org/protocol/disco#items:query", function(eve
 
 	local reply = st.reply(stanza):query("http://jabber.org/protocol/disco#items");
 	for jid, name in pairs(_cached_children_data) do
-		reply:tag("item", {jid = jid, name = name~=true and name or nil}):up();
+		reply:tag("item", { jid = jid, name = name~=true and name or nil }):up();
 	end
 	return origin.send(reply);
 end);
@@ -153,8 +155,9 @@ module:hook("iq/bare/http://jabber.org/protocol/disco#info:query", function(even
 	local node = stanza.tags[1].attr.node;
 	local username = jid_section(stanza.attr.to, "node") or origin.username;
 	if not stanza.attr.to or is_contact_subscribed(username, my_host, jid_bare(stanza.attr.from)) then
-		local reply = st.reply(stanza):tag("query", {xmlns = "http://jabber.org/protocol/disco#info"});
-		if not reply.attr.from then reply.attr.from = origin.username.."@"..origin.host; end -- COMPAT To satisfy Psi when querying own account
+		local reply = st.reply(stanza):tag("query", { xmlns = "http://jabber.org/protocol/disco#info" });
+		reply:tag("identity", { category = "account", type = account_type(username, my_host) }):up();
+		if not reply.attr.from then reply.attr.from = origin.username.."@"..origin.host; end
 		module:fire_event("account-disco-info", { origin = origin, stanza = reply, node = node });
 		if reply[false] then -- error caught during callbacks
 			if reply.callback then
@@ -172,8 +175,8 @@ module:hook("iq/bare/http://jabber.org/protocol/disco#items:query", function(eve
 	local node = stanza.tags[1].attr.node;
 	local username = jid_section(stanza.attr.to, "node") or origin.username;
 	if not stanza.attr.to or is_contact_subscribed(username, my_host, jid_bare(stanza.attr.from)) then
-		local reply = st.reply(stanza):tag("query", {xmlns = "http://jabber.org/protocol/disco#items"});
-		if not reply.attr.from then reply.attr.from = origin.username.."@"..origin.host; end -- COMPAT To satisfy Psi when querying own account
+		local reply = st.reply(stanza):tag("query", { xmlns = "http://jabber.org/protocol/disco#items" });
+		if not reply.attr.from then reply.attr.from = origin.username.."@"..origin.host; end
 		module:fire_event("account-disco-items", { origin = origin, stanza = reply, node = node });
 		return origin.send(reply);
 	end
