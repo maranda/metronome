@@ -327,7 +327,8 @@ module:hook("iq/bare/http://jabber.org/protocol/pubsub:pubsub", handle_pubsub_iq
 module:hook("iq/bare/http://jabber.org/protocol/pubsub#owner:pubsub", handle_pubsub_iq);
 
 local function append_disco_features(stanza)
-	stanza:tag("identity", {category = "pubsub", type = "pep"}):up();
+	stanza:tag("identity", { category = "pubsub", type = "pep" }):up();
+	stanza:tag("feature", { var = "http:/jabber.org/protocol/pubsub#pubsub-on-a-jid" }):up();
 	for _, feature in ipairs(features) do stanza:tag("feature", { var = feature }):up(); end
 end
 
