@@ -15,7 +15,7 @@ local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
 local load_roster = require "util.rostermanager".load_roster;
-local ipairs, now, pairs, ripairs, select, t_remove, tostring = ipairs, os.time, pairs, ripairs, select, table.remove, tostring;
+local ipairs, next, now, pairs, ripairs, select, t_remove, tostring = ipairs, next, os.time, pairs, ripairs, select, table.remove, tostring;
       
 local xmlns = "urn:xmpp:mam:tmp";
 local delay_xmlns = "urn:xmpp:delay";
@@ -28,6 +28,7 @@ local markers_xmlns = "urn:xmpp:chat-markers:0";
 local store_time = module:get_option_number("mam_save_time", 300);
 local stores_cap = module:get_option_number("mam_stores_cap", 5000);
 local max_length = module:get_option_number("mam_message_max_length", 3000);
+local store_elements = module:get_option_set("mam_allowed_elements");
 
 local session_stores = {};
 local storage = {};
@@ -37,6 +38,14 @@ local valid_markers = {
 	markable = "markable", received = "received",
 	displayed = "displayed", acknowledged = "acknowledged"
 };
+if store_elements then
+	store_elements:remove("acknowledged");
+	store_elements:remove("body");
+	store_elements:remove("displayed");
+	store_elements:remove("markable");
+	store_elements:remove("received");
+	if store_elements:empty() then store_elements = nil; end
+end
 
 local _M = {};
 
@@ -56,7 +65,7 @@ local function save_stores()
 	end	
 end
 
-local function log_entry(session_archive, to, bare_to, from, bare_from, id, body, marker, marker_id)
+local function log_entry(session_archive, to, bare_to, from, bare_from, id, body, marker, marker_id, tags)
 	local uid = uuid();
 	local entry = {
 		from = from,
@@ -70,6 +79,10 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, body
 		timestamp = now(),
 		uid = uid
 	};
+	if tags then
+		for i, stanza in ipairs(tags) do tags[i] = st.deserialize(stanza); end
+		entry.tags = tags;
+	end
 
 	local logs = session_archive.logs;
 	
@@ -123,6 +136,9 @@ local function append_stanzas(stanzas, entry, qid)
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id });
 
 	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
+	if entry.tags then
+		for i = 1, #entry.tags do to_forward:add_child(st.serialize(entry.tags[i])):up(); end
+	end
 	if entry.marker then to_forward:tag(entry.marker, { xmlns = markers_xmlns, id = entry.marker_id }):up(); end
 	
 	stanzas[#stanzas + 1] = to_forward;
@@ -383,19 +399,30 @@ local function process_message(event, outbound)
 
 	if archive and add_to_store(archive, user, outbound and bare_to or bare_from) then
 		local replace = message:get_child("replace", "urn:xmpp:message-correct:0");
-		local id;
+		local id, tags;
+
+		if store_elements then
+			tags = {};
+			local elements = message.tags;
+			for i = 1, #elements do
+				if store_elements:contains(elements[i].name) then tags[#tags + 1] = elements[i]; end
+			end
+			if not next(tags) then tags = nil; end
+		end
+
 		if replace then
 			id = log_entry_with_replace(archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, body);
 		else
 			if body then
 				id = marker == "markable" and log_entry(
 					archive, to, bare_to, from, bare_from, message.attr.id, body,
-					marker, marker_id
-				) or log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body);
+					marker, marker_id, tags
+				) or log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body, nil, nil, tags);
 			elseif marker and marker ~= "markable" then
 				id = log_marker(archive, to, bare_to, from, bare_from, message.attr.id, marker, marker_id);
 			end
 		end
+
 		if not bare_session then storage:set(user, archive); end
 		if not outbound and id then message:tag("archived", { jid = bare_to, id = id }):up(); end
 	else
