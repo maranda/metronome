@@ -26,6 +26,7 @@ local period = math.max(module:get_option_number("muc_event_rate", 0.5), 0);
 local burst = math.max(module:get_option_number("muc_burst_factor", 6), 1);
 local exclusion_list = module:get_option_set("muc_throttle_host_exclusion");
 local parent_host = module:get_option_boolean("muc_whitelist_parent_peers") == true and module.host:match("%.(.*)");
+local disconnect_after = module:get_option_number("muc_disconnect_after_throttles", 20);
 
 local rooms = metronome.hosts[module.host].modules.muc.rooms;
 local hosts = metronome.hosts;
@@ -66,9 +67,15 @@ local function handle_stanza(event)
 		room.throttle = throttle;
 	end
 	if not throttle:poll(1) then
+		local trigger = origin.muc_limits_trigger;
 		module:log("warn", "Dropping stanza for %s@%s from %s, over rate limit", dest_room, dest_host, from_jid);
 		if stanza.attr.type == "error" then return true; end -- drop errors silently
+		if trigger and trigger >= disconnect_after then
+			origin:close{ condition = "policy-violation", text = "Exceeded number of allowed throttled stanzas" };
+			return true;
+		end
 
+		origin.muc_limits_trigger = (not trigger and 1) or trigger + 1;
 		local reply = st.error_reply(stanza, "wait", "policy-violation", "The room is currently overactive, please try again later");
 		local body = stanza:get_child_text("body");
 		if body then
