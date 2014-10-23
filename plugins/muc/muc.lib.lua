@@ -999,6 +999,8 @@ function room_mt:get_role(nick)
 	return session and session.role or nil;
 end
 function room_mt:can_set_role(actor_jid, occupant_jid, role)
+	if actor_jid == true then return true; end
+
 	local actor = self._occupants[self._jid_nick[actor_jid]];
 	local occupant = self._occupants[occupant_jid];
 	
