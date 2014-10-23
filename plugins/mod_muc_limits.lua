@@ -55,7 +55,8 @@ local function handle_stanza(event)
 	local room = rooms[dest_room.."@"..dest_host];
 	if not room or not room:get_option("limits_enabled") then return; end
 	local from_jid = stanza.attr.from;
-	local occupant = room._occupants[room._jid_nick[from_jid]];
+	local occupant_jid = room._jid_nick[from_jid];
+	local occupant = room._occupants[occupant_jid];
 	if (occupant and occupant.affiliation) or (not(occupant) and room._affiliations[jid_bare(from_jid)]) then
 		module:log("debug", "Skipping stanza from affiliated user...");
 		return;
@@ -71,6 +72,7 @@ local function handle_stanza(event)
 		module:log("warn", "Dropping stanza for %s@%s from %s, over rate limit", dest_room, dest_host, from_jid);
 		if stanza.attr.type == "error" then return true; end -- drop errors silently
 		if trigger and trigger >= disconnect_after then
+			room:set_role(true, occupant_jid, "none", nil, "Exceeded number of allowed throttled stanzas");
 			origin:close{ condition = "policy-violation", text = "Exceeded number of allowed throttled stanzas" };
 			return true;
 		end
