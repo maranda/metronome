@@ -30,7 +30,7 @@ local disconnect_after = module:get_option_number("muc_disconnect_after_throttle
 
 local rooms = metronome.hosts[module.host].modules.muc.rooms;
 local hosts = metronome.hosts;
-local _parent, _default_period, _default_burst = nil, period*2, _default_burst*10;
+local _parent, _default_period, _default_burst = nil, period*2, burst*10;
 
 -- Handlers
 
