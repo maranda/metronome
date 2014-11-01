@@ -30,7 +30,7 @@ local disconnect_after = module:get_option_number("muc_disconnect_after_throttle
 
 local rooms = metronome.hosts[module.host].modules.muc.rooms;
 local hosts = metronome.hosts;
-local _parent;
+local _parent, _default_period, _default_burst = nil, period*2, _default_burst*10;
 
 -- Handlers
 
@@ -53,7 +53,7 @@ local function handle_stanza(event)
 
 	local dest_room, dest_host, dest_nick = jid_split(stanza.attr.to);
 	local room = rooms[dest_room.."@"..dest_host];
-	if not room or not room:get_option("limits_enabled") then return; end
+	if not room then return; end
 	local from_jid = stanza.attr.from;
 	local occupant_jid = room._jid_nick[from_jid];
 	local occupant = room._occupants[occupant_jid];
@@ -63,7 +63,12 @@ local function handle_stanza(event)
 	end
 	local throttle = room.throttle;
 	if not room.throttle then
-		local _period, _burst = room:get_option("limits_seconds") or period, room:get_option("limits_stanzas") or burst;
+		local _period, _burst;
+		if not room:get_option("limits_enabled") then
+			_period, _burst = _default_period, _default_burst;
+		else
+			_period, _burst = room:get_option("limits_seconds") or period, room:get_option("limits_stanzas") or burst;
+		end
 		throttle = new_throttle(_period*_burst, _burst);
 		room.throttle = throttle;
 	end
