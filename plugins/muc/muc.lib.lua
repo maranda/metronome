@@ -23,6 +23,7 @@ local t_insert, t_remove = table.insert, table.remove;
 local setmetatable = setmetatable;
 local base64 = require "util.encodings".base64;
 local md5 = require "util.hashes".md5;
+local add_timer = require "util.timer".add_task;
 
 local muc_domain = nil; --module:get_host();
 local default_history_length = 20;
@@ -842,15 +843,17 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 			local _from, _to = stanza.attr.from, stanza.attr.to;
 			local _recipient = jid_prep(payload.attr.to);
 			if _recipient then
-				local _reason = payload.tags[1] and payload.tags[1].name == "reason" and #payload.tags[1].tags == 0 and payload.tags[1][1];
+				local _reason = payload
 				local invite, decline;
-				local _from_bare, _inviter, _declineto = jid_bare(_from), self._jid_nick[_from], self._jid_nick[_recipient];
+				local _from_bare, _inviter = jid_bare(_from), self._jid_nick[_from];
 				if payload.name == "invite" and _inviter then
 					invite = st.message({from = _to, to = _recipient, id = stanza.attr.id})
 						:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
 							:tag("invite", {from = _from})
-								:tag("reason"):text(_reason or ""):up()
-							:up();
+							if _reason then
+								invite:tag("reason"):text(_reason):up();
+							end
+							invite:up();
 							if self:get_option("password") then
 								invite:tag("password"):text(self:get_option("password")):up();
 							end
@@ -866,24 +869,30 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 						self:set_affiliation(_from, _recipient, "member", nil, "Invited by " .. self._jid_nick[_from]);
 					end
 					if self._occupants[_inviter] then
-						if not self._occupants[_inviter].invited_users then self._occupants[_inviter].invited_users = {}; end
-						self._occupants[_inviter].invited_users[_recipient] = true;
+						if not self._invites then self._invites = {}; end
+						self._invites[_recipient] = _from;
+						add_timer(60, function()
+							if self._invites then
+								self._invites[_recipient] = nil;
+								if not next(self._invites) then self._invites = nil; end
+							end
+						end);
 					end 
-				elseif payload.name == "decline" and 
-				       self._occupants[_declineto] and 
-				       self._occupants[_declineto].invited_users and 
-				       (self._occupants[_declineto].invited_users[_from] or self._occupants[_declineto].invited_users[_from_bare]) then
+				elseif payload.name == "decline" and self._invites then
+					_recipient = self._invites[_from] or self._invites[_from_bare];
+					if not self._jid_nick[_recipient] then return; end
+					-- Work around buggy clients sending declines to the room jid
 					decline = st.message({from = _to, to = _recipient, id = stanza.attr.id})
 						:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
-							:tag("decline", {from = _from})
-								:tag("reason"):text(_reason or ""):up()
-							:up();
-						decline:up()
+							:tag("decline", {from = _from});
+							if _reason then
+								decline:tag("reason"):text(_reason):up();
+							end
+						decline:up():up()
 						:tag("body") -- Add a plain message for clients which don"t support formal declines
 							:text(_from.." declined your invite to the room ".._to..(_reason and (" (".._reason..")") or ""))
 						:up();
-					self._occupants[_declineto].invited_users[_from] = nil; self._occupants[_declineto].invited_users[_from_bare] = nil;
-					if not next(self._occupants[_declineto].invited_users) then self._occupants[_declineto].invited_users = nil; end
+					self._invites[_from] = nil;
 				else
 					return;
 				end
