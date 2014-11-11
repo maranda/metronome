@@ -823,8 +823,10 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 		end
 	elseif stanza.name == "message" and type == "error" and is_kickable_error(stanza) then
 		local current_nick = self._jid_nick[stanza.attr.from];
-		log("debug", "%s kicked from %s for sending an error message", current_nick, self.jid);
-		self:handle_to_occupant(origin, build_unavailable_presence_from_error(stanza)); -- send unavailable
+		if current_nick then
+			log("debug", "%s kicked from %s for sending an error message", current_nick, self.jid);
+			self:handle_to_occupant(origin, build_unavailable_presence_from_error(stanza)); -- send unavailable
+		end
 	elseif stanza.name == "presence" then -- hack - some buggy clients send presence updates to the room rather than their nick
 		local to = stanza.attr.to;
 		local current_nick = self._jid_nick[stanza.attr.from];
@@ -843,7 +845,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 			local _from, _to = stanza.attr.from, stanza.attr.to;
 			local _recipient = jid_prep(payload.attr.to);
 			if _recipient then
-				local _reason = payload
+				local _reason = payload:get_child_text("reason");
 				local invite, decline;
 				local _from_bare, _inviter = jid_bare(_from), self._jid_nick[_from];
 				if payload.name == "invite" and _inviter then
