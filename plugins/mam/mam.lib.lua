@@ -351,6 +351,7 @@ local function set_prefs(stanza, store)
 		for jid in never:childtags("jid") do _prefs[jid:get_text()] = false; end
 	end
 	
+	store.changed = true;
 	local reply = st.reply(stanza);
 	reply:add_child(get_prefs(store));
 
