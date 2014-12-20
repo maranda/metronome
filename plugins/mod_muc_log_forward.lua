@@ -4,6 +4,8 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
+-- XEP-297 Interface for mod_muc_log.
+
 local modulemanager = modulemanager;
 if not modulemanager.is_loaded(module.host, "muc") then
 	module:log("error", "mod_muc_log_forward can only be loaded on a muc component!")
