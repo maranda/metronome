@@ -679,6 +679,9 @@ function room_mt:destroy(newjid, reason, password)
 		end
 		self._occupants[nick] = nil;
 	end
+	module:fire_event("muc-room-destroyed",
+		{ room = self, data = { newjid = newjid, reason = reason, password = password } }
+	);
 	if self:set_option("persistent", false) and self.save then self:save(true); end
 end
 
