@@ -108,11 +108,11 @@ module:hook("iq-get/bare/"..xmlns..":query", function(event)
 		start = tonumber(x_start) or (max > #data and 1 or #data - max);
 		if start < 1 or tostring(start):match("^%d+%p.*") then
 			return origin.send(st.error_reply(
-				stanza, "modify", "bad-request", "You need to supply positive integers as indexes."
+				stanza, "modify", "bad-request", "You need to supply positive integers as indexes"
 			));
 		elseif start > #data then
 			return origin.send(st.error_reply(
-				stanza, "modify", "bad-request", "Specified index is too large."
+				stanza, "modify", "bad-request", "Specified index is too large"
 			));
 		end
 
