@@ -32,12 +32,14 @@ local datamanager = require "util.datamanager";
 local fire_event = metronome.events.fire_event;
 local um_is_admin = require "core.usermanager".is_admin;
 local hosts = hosts;
-local pairs = pairs;
+local pairs, ipairs = pairs, ipairs;
 
 rooms = {};
 local host_session = hosts[muc_host];
 local rooms = rooms;
 local persistent_rooms = datamanager.load(nil, muc_host, "persistent") or {};
+
+module:add_feature("http://jabber.org/protocol/muc");
 
 -- Configurable options
 local max_history_messages = module:get_option_number("max_history_messages", 100);
@@ -143,13 +145,22 @@ host_room.route_stanza = room_route_stanza;
 host_room.save = room_save;
 
 local function get_disco_info(stanza)
-	return st.iq({type = "result", id = stanza.attr.id, from = muc_host, to = stanza.attr.from}):query("http://jabber.org/protocol/disco#info")
-		:tag("identity", {category = "conference", type = "text", name = muc_name}):up()
-		:tag("feature", {var = "http://jabber.org/protocol/commands"}):up()
-		:tag("feature", {var = "http://jabber.org/protocol/muc"}):up(); -- TODO cache disco reply
+	local done = {};
+	local reply = st.iq({type = "result", id = stanza.attr.id, from = muc_host, to = stanza.attr.from})
+		:query("http://jabber.org/protocol/disco#info")
+			:tag("identity", {category = "conference", type = "text", name = muc_name}):up();
+
+	for _, feature in ipairs(module:get_items("feature")) do
+		if not done[feature] then
+			reply:tag("feature", {var = feature}):up();
+			done[feature] = true;
+		end
+	end
+	return reply;
 end
 local function get_disco_items(stanza)
-	local reply = st.iq({type = "result", id = stanza.attr.id, from = muc_host, to = stanza.attr.from}):query("http://jabber.org/protocol/disco#items");
+	local reply = st.iq({type = "result", id = stanza.attr.id, from = muc_host, to = stanza.attr.from})
+		:query("http://jabber.org/protocol/disco#items");
 	for jid, room in pairs(rooms) do
 		if not room:get_option("hidden") then
 			reply:tag("item", {jid = jid, name = room:get_name()}):up();
