@@ -29,6 +29,8 @@ local xmlns = "http://metronome.im/protocol/muc-logs-forward";
 local delay_xmlns = "urn:xmpp:delay";
 local forward_xmlns = "urn:xmpp:forward:0";
 
+module:add_feature(xmlns);
+
 local max_forwarded = module:get_option_number("muc_max_forwarded", 100);
 if max_forwarded > 1000 then max_forwarded = 1000; end
 
