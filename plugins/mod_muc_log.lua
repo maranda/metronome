@@ -4,7 +4,7 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 --
--- Additional Contributors: John Regan
+-- Additional Contributors: John Regan, Oscar Padilla
 
 -- Imported from prosody-modules, mod_muc_log
 
@@ -91,7 +91,7 @@ end
 
 function clear_logs(event) -- clear logs from disk
 	local node = jid_section(event.room.jid, "node");
-	for store in datamanager_stores(node, mod_host, "keyval", datastore) do
+	for store in data_stores(node, mod_host, "keyval", datastore) do
 		data_store(node, mod_host, store, nil);
 	end
 end
