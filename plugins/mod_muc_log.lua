@@ -128,7 +128,7 @@ module:hook("muc-fields-submitted", function(room, message)
 	end
 	return message;
 end, -100);
-module:hook("muc-occupant-joined", function(room, presence)
+module:hook("muc-occupant-join-presence", function(room, presence)
 	if room:get_option("logging") then presence:tag("status", {code = "170"}):up(); end
 end, -100);
 
