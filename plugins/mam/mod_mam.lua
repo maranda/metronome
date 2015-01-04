@@ -29,8 +29,6 @@ module:add_feature(legacy_xmlns);
 module:add_feature(purge_xmlns);
 
 local forbid_purge = module:get_option_boolean("mam_forbid_purge", false);
-local max_results = module:get_option_number("mam_max_retrievable_results", 50);
-if max_results >= 100 then max_results = 100; end
 
 local mamlib = module:require("mam");
 local validate_query = module:require("validate").validate_query;

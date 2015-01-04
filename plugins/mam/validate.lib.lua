@@ -17,7 +17,10 @@ local xmlns = "urn:xmpp:mam:0";
 local df_xmlns = "jabber:x:data";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
-local function rsm_parse(origin, stanza, query)
+local max_results = module:get_option_number("mam_max_retrievable_results", 50);
+if max_results >= 100 then max_results = 100; end
+
+local function rsm_parse(stanza, query)
 	local rsm = query:get_child("set", rsm_xmlns);
 	local max = rsm and rsm:get_child_text("max");
 	local after = rsm and rsm:get_child_text("after");
@@ -57,14 +60,14 @@ local function validate_query(stanza, archive, query, qid)
 	if (start and not vstart) or (fin and not vfin) then
 		return false, st.error_reply(stanza, "modify", "bad-request", "Supplied timestamp is invalid")
 	end
-	start, fin = vstart, vend;
+	start, fin = vstart, vfin;
 	if with and not vwith then
 		return false, st.error_reply(stanza, "modify", "bad-request", "Supplied JID is invalid");
 	end
 	with = jid_bare(vwith);
 	
 	-- Get RSM set
-	local after, before, max = rsm_parse(origin, stanza, query);
+	local after, before, max = rsm_parse(stanza, query);
 	if (before and after) or (before == true and not max) or max == "" or after == "" then
 		return false, st.error_reply(stanza, "modify", "bad-request");
 	end
