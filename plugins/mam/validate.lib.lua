@@ -41,6 +41,7 @@ local function df_parse(query)
 	local start = data:child_with_attr_value("field", "var", "start");
 	local fin = data:child_with_attr_value("field", "var", "end");
 	local with = data:child_with_attr_value("field", "var", "with");
+	start, fin, with = start and start:get_text(), fin and fin:get_text(), with and with:get_text()
 	return start, fin, with;
 end
 
