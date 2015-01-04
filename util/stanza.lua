@@ -101,6 +101,15 @@ function stanza_mt:get_child_text(name, xmlns)
 	return nil;
 end
 
+function stanza_mt:child_with_attr_value(name, attr, value)
+	for _, child in ipairs(self.tags) do
+		if child.name == name and child.attr[attr] and
+		   child.attr[attr] == value then
+			 return child;
+		end
+	end
+end
+
 function stanza_mt:child_with_name(name)
 	for _, child in ipairs(self.tags) do
 		if child.name == name then return child; end
