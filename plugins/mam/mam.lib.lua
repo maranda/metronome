@@ -129,9 +129,9 @@ local function log_marker(session_archive, to, bare_to, from, bare_from, id, mar
 	end
 end
 
-local function append_stanzas(stanzas, entry, qid)
+local function append_stanzas(stanzas, entry, qid, legacy)
 	local to_forward = st.message()
-		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.id })
+		:tag("result", { xmlns = legacy and legacy_xmlns or xmlns, queryid = qid, id = entry.id })
 			:tag("forwarded", { xmlns = forward_xmlns })
 				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id });
@@ -260,7 +260,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 			local timestamp = entry.timestamp;
 			local uid = entry.uid
 			if not dont_add(entry, with, start, fin, timestamp) then
-				append_stanzas(stanzas, entry, qid);
+				append_stanzas(stanzas, entry, qid, legacy);
 			end
 		end
 		if #stanzas ~= 0 then
@@ -286,7 +286,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		local timestamp = entry.timestamp;
 		local uid = entry.uid;
 		if not dont_add(entry, with, start, fin, timestamp) then
-			append_stanzas(stanzas, entry, qid);
+			append_stanzas(stanzas, entry, qid, legacy);
 			if max then
 				if _at == 1 then 
 					first = uid;
