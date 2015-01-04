@@ -1,0 +1,80 @@
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information about copyright and licensing.
+
+-- MAM Query parsing tools.
+
+local dt_parse = require "util.datetime".parse;
+local st = require "util.stanza";
+local jid_bare = require "util.jid".bare;
+local jid_prep = require "util.jid".prep;
+local jid_split = require "util.jid".split;
+local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
+
+local xmlns = "urn:xmpp:mam:0";
+local df_xmlns = "jabber:x:data";
+local rsm_xmlns = "http://jabber.org/protocol/rsm";
+
+local function rsm_parse(origin, stanza, query)
+	local rsm = query:get_child("set", rsm_xmlns);
+	local max = rsm and rsm:get_child_text("max");
+	local after = rsm and rsm:get_child_text("after");
+	local before = rsm and rsm:get_child_text("before");
+	before = (before == "" and true) or before;
+	max = max and tonumber(max);
+	
+	return after, before, max;
+end
+
+local function legacy_parse(query)
+	local start, fin, with = query:get_child_text("start"), query:get_child_text("end"), query:get_child_text("with");
+	return start, fin, with;
+end
+
+local function df_parse(query)
+	local data = query:get_child("x", df_xmlns);
+	local start = data:child_with_attr_value("field", "var", "start");
+	local fin = data:child_with_attr_value("field", "var", "end");
+	local with = data:child_with_attr_value("field", "var", "with");
+	return start, fin, with;
+end
+
+local function validate_query(stanza, archive, query, qid)
+	local start, fin, with;
+	if query.attr.xmlns == xmlns then
+		start, fin, with = df_parse(query);
+	else
+		start, fin, with = legacy_parse(query);
+	end
+
+	module:log("debug", "MAM query received, %s with %s from %s until %s",
+		(qid and "id "..tostring(qid)) or "idless,", with or "anyone", start or "epoch", fin or "now");
+
+	-- Validate attributes
+	local vstart, vfin, vwith = (start and dt_parse(start)), (fin and dt_parse(fin)), (with and jid_prep(with));
+	if (start and not vstart) or (fin and not vfin) then
+		return false, st.error_reply(stanza, "modify", "bad-request", "Supplied timestamp is invalid")
+	end
+	start, fin = vstart, vend;
+	if with and not vwith then
+		return false, st.error_reply(stanza, "modify", "bad-request", "Supplied JID is invalid");
+	end
+	with = jid_bare(vwith);
+	
+	-- Get RSM set
+	local after, before, max = rsm_parse(origin, stanza, query);
+	if (before and after) or (before == true and not max) or max == "" or after == "" then
+		return false, st.error_reply(stanza, "modify", "bad-request");
+	end
+	
+	local logs = archive.logs;
+	if max and max > max_results then
+		return false, st.error_reply(stanza, "cancel", "policy-violation", "Max retrievable results' count is "..max_results);
+	end
+
+	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before };
+end
+
+return { validate_query = validate_query };

@@ -19,18 +19,21 @@ local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
 
-local xmlns = "urn:xmpp:mam:tmp";
+local xmlns = "urn:xmpp:mam:0";
+local legacy_xmlns = "urn:xmpp:mam:tmp";
 local purge_xmlns = "http://metronome.im/protocol/mam-purge";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
 module:add_feature(xmlns);
+module:add_feature(legacy_xmlns);
 module:add_feature(purge_xmlns);
 
 local forbid_purge = module:get_option_boolean("mam_forbid_purge", false);
 local max_results = module:get_option_number("mam_max_retrievable_results", 50);
 if max_results >= 100 then max_results = 100; end
 
-local mamlib = module:require "mam";
+local mamlib = module:require("mam");
+local validate_query = module:require("validate").validate_query;
 local initialize_storage, save_stores =	mamlib.initialize_storage, mamlib.save_stores;
 local get_prefs, set_prefs = mamlib.get_prefs, mamlib.set_prefs;
 local generate_stanzas, process_message, purge_messages =
@@ -104,57 +107,51 @@ local function purge_handler(event)
 		return origin.send(st.error_reply(stanza, "cancel", "not-allowed", "Purging message archives is not allowed"));
 	end
 	
-	local _id, _jid, _start, _end = purge:get_child_text("id"), purge:get_child_text("jid"), purge:get_child_text("start"), purge:get_child_text("end");
-	local vjid, vstart, vend = (_jid and jid_prep(_jid)), (_start and dt_parse(_start)), (_end and dt_parse(_end));
-	if (_start and not vstart) or (_end and not vend) or (_jid and not vjid) then
+	local id, jid, start, fin =
+		purge:get_child_text("id"), purge:get_child_text("jid"), purge:get_child_text("start"), purge:get_child_text("end");
+
+	local vjid, vstart, vfin = (jid and jid_prep(jid)), (start and dt_parse(start)), (fin and dt_parse(fin));
+	if (start and not vstart) or (fin and not vfin) or (jid and not vjid) then
 		return origin.send(st.error_reply(stanza, "modify", "bad-request", "Supplied parameters failed verification"));
 	end
 	
-	purge_messages(archive, _id, vjid, vstart, vend);
+	purge_messages(archive, id, vjid, vstart, vfin);
 	module:log("debug", "%s purged Archives", bare_jid);
 	return origin.send(st.reply(stanza));
+end
+
+local function features_handler(event)
+	local origin, stanza = event.origin, event.stanza;
+	return origin.send(
+		st.reply(stanza)
+			:tag("query", { xmlns = xmlns })
+				:tag("x", { xmlns = "jabber:x:data" })
+					:tag("field", { type = "hidden", var = "FORM_TYPE" })
+						:tag("value"):text(xmlns):up():up()
+					:tag("field", { type = "jid-single", var = "with" }):up()
+					:tag("field", { type = "text", var = "start" }):up()
+					:tag("field", { type = "text", var = "end" }):up()
+	);
 end
 
 local function query_handler(event)
 	local origin, stanza = event.origin, event.stanza;
 	local query = stanza.tags[1];
 	local qid = query.attr.queryid;
+	local legacy = query.attr.xmlns == legacy_xmlns;
 	
 	local bare_session = bare_sessions[jid_bare(origin.full_jid)];
 	local archive = bare_session.archiving;
-	
-	local _start, _end, _with = query:get_child_text("start"), query:get_child_text("end"), query:get_child_text("with");
-	module:log("debug", "MAM query received, %s with %s from %s until %s", 
-		(qid and "id "..tostring(qid)) or "idless,", _with or "anyone", _start or "epoch", _end or "now");
 
-	-- Validate attributes
-	local vstart, vend, vwith = (_start and dt_parse(_start)), (_end and dt_parse(_end)), (_with and jid_prep(_with));
-	if (_start and not vstart) or (_end and not vend) then
-		return origin.send(st.error_reply(stanza, "modify", "bad-request", "Supplied timestamp is invalid"));
-	end
-	_start, _end = vstart, vend;
-	if _with and not vwith then
-		return origin.send(st.error_reply(stanza, "modify", "bad-request", "Supplied JID is invalid"));
-	end
-	_with = jid_bare(vwith);
-	
-	-- Get RSM set
-	local rsm = query:get_child("set", rsm_xmlns);
-	local max = rsm and rsm:get_child_text("max");
-	local after = rsm and rsm:get_child_text("after");
-	local before = rsm and rsm:get_child_text("before");
-	before = (before == "" and true) or before;
-	if (before and after) or (before == true and not max) or max == "" or after == "" then
-		return origin.send(st.error_reply(stanza, "modify", "bad-request"));
-	end
-	max = max and tonumber(max);
-	
-	local logs = archive.logs;
-	if max and max > max_results then
-		return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Max retrievable results' count is "..max_results));
+	local start, fin, with, after, before, max;
+	local ok, ret = validate_query(stanza, archive, query, qid);
+	if not ok then
+		return origin.send(ret);
+	else
+		start, fin, with, after, before, max = ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max;
 	end
 	
-	local messages, rq = generate_stanzas(archive, _start, _end, _with, max, after, before, qid);
+	local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, qid, legacy);
 	if messages == false then -- Exceeded limit
 		return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Too many results"));
 	elseif not messages then -- RSM item-not-found
@@ -162,16 +159,25 @@ local function query_handler(event)
 		rsm_error:add_child(query);
 		return origin.send(rsm_error);
 	end
+
+	local reply = st.reply(stanza);
+
+	if not legacy then origin.send(reply); end
 	for _, message in ipairs(messages) do
 		message.attr.to = origin.full_jid;
 		origin.send(message);
 	end
-	
-	local reply = st.reply(stanza);
-	if rq then reply:add_child(rq); end
-	
+	if rq and legacy then
+		reply:add_child(rq);
+		origin.send(reply);
+	else
+		origin.send(
+			st.message({ to = origin.full_jid, queryid = qid }):add_child(rq)
+		);
+	end
+
 	module:log("debug", "MAM query %scompleted", qid and tostring(qid).." " or "");
-	return origin.send(reply);
+	return true;
 end
 
 function module.load()
@@ -211,6 +217,8 @@ module:hook("pre-message/full", process_outbound_messages, 30);
 
 module:hook("iq/self/"..xmlns..":prefs", prefs_handler);
 module:hook("iq-set/self/"..purge_xmlns..":purge", purge_handler);
-module:hook("iq-get/self/"..xmlns..":query", query_handler);
+module:hook("iq-get/self/"..legacy_xmlns..":query", query_handler);
+module:hook("iq-set/self/"..xmlns..":query", query_handler);
+module:hook("iq-get/self/"..xmlns..":query", features_handler);
 
 module:hook_global("server-stopping", save_stores);
