@@ -162,7 +162,7 @@ local function generate_query(stanzas, start, fin, set, first, last, count)
 end
 
 local function generate_fin(stanzas, set, first, last, count)
-	local fin = st.stanza("fin", { xmlns = xmlns, complete = count == 0 and "true" });
+	local fin = st.stanza("fin", { xmlns = xmlns, complete = count == 0 and "true" or nil });
 	if set and #stanzas ~= 0 then generate_set(fin, first, last, count); end
 
 	return fin;
