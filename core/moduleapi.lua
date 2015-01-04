@@ -111,11 +111,13 @@ end
 api.hook_stanza = api.hook_tag;
 
 function api:require(lib)
+	local e;
 	local f, n = pluginloader.load_code(self.name, lib..".lib.lua", self.environment);
 	if not f then
+		e = n;
 		f, n = pluginloader.load_code(lib, lib..".lib.lua", self.environment);
 	end
-	if not f then error("Failed to load plugin library '"..lib.."', error: "..n); end -- FIXME better error message
+	if not f then error("Failed to load plugin library '"..lib.."', error 1: "..e..", error 2: "..n); end
 	return f();
 end
 
