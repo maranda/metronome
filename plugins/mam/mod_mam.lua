@@ -165,8 +165,8 @@ local function query_handler(event)
 		message.attr.to = origin.full_jid;
 		origin.send(message);
 	end
-	if rq and legacy then
-		reply:add_child(rq);
+	if legacy then
+		if rq then reply:add_child(rq); end
 		origin.send(reply);
 	else
 		origin.send(
