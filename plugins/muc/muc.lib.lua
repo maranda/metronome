@@ -931,12 +931,22 @@ end
 function room_mt:route_stanza(stanza) end
 
 function room_mt:get_affiliation(jid)
-	local node, host, resource = jid_split(jid);
+	local node, host = jid_split(jid);
 	local bare = node and node.."@"..host or host;
 	local result = self._affiliations[bare]; -- Affiliations are granted, revoked, and maintained based on the user's bare JID.
 	if not result and self._affiliations[host] == "outcast" then result = "outcast"; end -- host banned
 	return result;
 end
+
+function room_mt:is_affiliated(jid)
+	jid = jid_bare(jid);
+	local affiliation = self._affiliations[jid];
+	if affiliation then
+		return (affiliation ~= "outcast" and true);
+	end
+	return nil;
+end
+
 function room_mt:set_affiliation(actor, jid, affiliation, callback, reason, dummy)
 	jid = jid_bare(jid);
 	if affiliation == "none" then affiliation = nil; end
