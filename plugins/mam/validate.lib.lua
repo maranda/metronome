@@ -62,10 +62,12 @@ local function validate_query(stanza, archive, query, qid)
 	-- Validate attributes
 	local vstart, vfin, vwith = (start and dt_parse(start)), (fin and dt_parse(fin)), (with and jid_prep(with));
 	if (start and not vstart) or (fin and not vfin) then
+		module:log("debug", "Failed to validate timestamp on query, aborting");
 		return false, st.error_reply(stanza, "modify", "bad-request", "Supplied timestamp is invalid")
 	end
 	start, fin = vstart, vfin;
 	if with and not vwith then
+		module:log("debug", "Failed to validate 'with' JIDs on query, aborting");
 		return false, st.error_reply(stanza, "modify", "bad-request", "Supplied JID is invalid");
 	end
 	with = jid_bare(vwith);
@@ -73,11 +75,14 @@ local function validate_query(stanza, archive, query, qid)
 	-- Get RSM set
 	local after, before, max = rsm_parse(stanza, query);
 	if (before and after) or (before == true and not max) or max == "" or after == "" then
+		module:log("debug", "MAM Query RSM parameters were invalid: After - %s, Before - %s, Max - %s",
+			tostring(after), tostring(before), tostring(max));
 		return false, st.error_reply(stanza, "modify", "bad-request");
 	end
 	
 	if max and max > max_results then
-		return false, st.error_reply(stanza, "cancel", "policy-violation", "Max retrievable results' count is "..max_results);
+		module:log("debug", "MAM Query RSM supplied 'max' results parameter is above the allowed limit (%d)", max_results);
+		return false, st.error_reply(stanza, "cancel", "policy-violation", "Max retrievable results' count is "..tostring(max_results));
 	end
 
 	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before };
