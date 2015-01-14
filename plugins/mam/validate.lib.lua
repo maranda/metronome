@@ -76,7 +76,6 @@ local function validate_query(stanza, archive, query, qid)
 		return false, st.error_reply(stanza, "modify", "bad-request");
 	end
 	
-	local logs = archive.logs;
 	if max and max > max_results then
 		return false, st.error_reply(stanza, "cancel", "policy-violation", "Max retrievable results' count is "..max_results);
 	end
