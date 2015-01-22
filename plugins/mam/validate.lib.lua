@@ -38,6 +38,7 @@ end
 
 local function df_parse(query)
 	local data = query:get_child("x", df_xmlns);
+	if not data then return; end
 	local start = data:child_with_attr_value("field", "var", "start");
 	local fin = data:child_with_attr_value("field", "var", "end");
 	local with = data:child_with_attr_value("field", "var", "with");
