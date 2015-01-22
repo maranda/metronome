@@ -80,7 +80,7 @@ module:hook("iq-get/bare/"..xmlns..":query", function(event)
 					stanza, "modify", "bad-request", "Date format must be yyyy-mm-dd"
 				));
 			else
-				date, f_date = y..m..d, ("%d-%d-%d"):format(y, m, d);
+				date, f_date = y..m..d, y.."-"..m.."-"..d;
 			end
 		else
 			date, f_date = os_date("!%Y%m%d"), os_date("!%Y-%m-%d");
@@ -106,7 +106,7 @@ module:hook("iq-get/bare/"..xmlns..":query", function(event)
 		end
 		
 		max = tonumber(x_max) or max_forwarded;
-		if max > 1000 then max = max_forwarded; end
+		if max > max_forwarded then max = max_forwarded; end
 		start = tonumber(x_start) or (max > #data and 1 or #data - max);
 		if start < 1 or tostring(start):match("^%d+%p.*") then
 			return origin.send(st.error_reply(
