@@ -28,7 +28,7 @@ local function rsm_parse(stanza, query)
 	before = (before == "" and true) or before;
 	max = max and tonumber(max);
 	
-	return after, before, max;
+	return after, before, max, true;
 end
 
 local function legacy_parse(query)
@@ -73,7 +73,7 @@ local function validate_query(stanza, archive, query, qid)
 	with = jid_bare(vwith);
 	
 	-- Get RSM set
-	local after, before, max = rsm_parse(stanza, query);
+	local after, before, max, rsm = rsm_parse(stanza, query);
 	if (before and after) or max == "" or after == "" then
 		module:log("debug", "MAM Query RSM parameters were invalid: After - %s, Before - %s, Max - %s",
 			tostring(after), tostring(before), tostring(max));
@@ -87,7 +87,11 @@ local function validate_query(stanza, archive, query, qid)
 		return false, st.error_reply(stanza, "cancel", "policy-violation", "Max retrievable results' count is "..tostring(max_results));
 	end
 
-	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before };
+	if not start and not fin and not before and not max then -- Assume safe defaults
+		before, max = true, 30;
+	end
+
+	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before, rsm = rsm };
 end
 
 return { validate_query = validate_query };

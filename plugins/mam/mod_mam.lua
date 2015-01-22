@@ -146,10 +146,10 @@ local function query_handler(event)
 	if not ok then
 		return origin.send(ret);
 	else
-		start, fin, with, after, before, max = ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max;
+		start, fin, with, after, before, max, rsm = ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.rsm;
 	end
 	
-	local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, qid, legacy);
+	local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, qid, rsm, legacy);
 	if messages == false then -- Exceeded limit
 		module:log("debug", "MAM Query yields too many results, aborted");
 		return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Too many results"));
