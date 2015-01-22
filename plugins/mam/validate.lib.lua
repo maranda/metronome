@@ -74,10 +74,13 @@ local function validate_query(stanza, archive, query, qid)
 	
 	-- Get RSM set
 	local after, before, max = rsm_parse(stanza, query);
-	if (before and after) or (before == true and not max) or max == "" or after == "" then
+	if (before and after) or max == "" or after == "" then
 		module:log("debug", "MAM Query RSM parameters were invalid: After - %s, Before - %s, Max - %s",
 			tostring(after), tostring(before), tostring(max));
 		return false, st.error_reply(stanza, "modify", "bad-request");
+	end
+	if before == true and not max then -- Assume max is equal to max_results
+		max = max_results;
 	end
 	
 	if max and max > max_results then
