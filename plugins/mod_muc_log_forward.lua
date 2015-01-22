@@ -100,7 +100,7 @@ module:hook("iq-get/bare/"..xmlns..":query", function(event)
 		
 		if x_entries then
 			return origin.send(st.reply(stanza):tag("query", { xmlns = xmlns })
-				:tag("date"):text(date):up()
+				:tag("date"):text(f_date):up()
 				:tag("count"):text(tostring(#data)):up()
 			);
 		end
