@@ -270,7 +270,9 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		end
 
 		_count = max and _entries_count - max or 0;
-		query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last, (_count < 0 and 0) or _count);
+		query = legacy and
+			generate_query(stanzas, (start or _start), (fin or _end), rsm, first, last, (_count < 0 and 0) or _count) or
+			generate_fin(stanzas, rsm, first, last, (_count < 0 and 0) or _count);
 		return stanzas, query;
 	elseif after then
 		entry_index = get_index(logs, after);
