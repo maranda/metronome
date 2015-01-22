@@ -141,7 +141,7 @@ local function query_handler(event)
 	local bare_session = bare_sessions[jid_bare(origin.full_jid)];
 	local archive = bare_session.archiving;
 
-	local start, fin, with, after, before, max;
+	local start, fin, with, after, before, max, rsm;
 	local ok, ret = validate_query(stanza, archive, query, qid);
 	if not ok then
 		return origin.send(ret);
