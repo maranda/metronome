@@ -161,9 +161,9 @@ local function generate_query(stanzas, start, fin, set, first, last, count)
 	return (((start or fin) or (set and #stanzas ~= 0)) and query) or nil;
 end
 
-local function generate_fin(stanzas, set, first, last, count)
+local function generate_fin(stanzas, first, last, count)
 	local fin = st.stanza("fin", { xmlns = xmlns, complete = count == 0 and "true" or nil });
-	if set and #stanzas ~= 0 then generate_set(fin, first, last, count); end
+	generate_set(fin, first, last, count);
 
 	return fin;
 end
@@ -272,7 +272,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		_count = max and _entries_count - max or 0;
 		query = legacy and
 			generate_query(stanzas, (start or _start), (fin or _end), rsm, first, last, (_count < 0 and 0) or _count) or
-			generate_fin(stanzas, rsm, first, last, (_count < 0 and 0) or _count);
+			generate_fin(stanzas, first, last, (_count < 0 and 0) or _count);
 		return stanzas, query;
 	elseif after then
 		entry_index = get_index(logs, after);
@@ -308,7 +308,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 	_count = max and _entries_count - max or 0;
 	query = legacy and
 		generate_query(stanzas, (start or _start), (fin or _end), rsm, first, last, (_count < 0 and 0) or _count) or
-		generate_fin(stanzas, rsm, first, last, (_count < 0 and 0) or _count);
+		generate_fin(stanzas, first, last, (_count < 0 and 0) or _count);
 	return stanzas, query;
 end
 
