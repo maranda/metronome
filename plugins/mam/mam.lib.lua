@@ -267,16 +267,16 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			_entries_count = count_relevant_entries(to_process, with, start, fin);
 		end
 
-		if index then
-			to_process = remove_upto_index(to_process, index);
-			if #to_process == 0 then return nil; end
-		end
 		for i, entry in ipairs(to_process) do
 			local timestamp = entry.timestamp;
 			local uid = entry.uid
 			if not dont_add(entry, with, start, fin, timestamp) then
 				append_stanzas(stanzas, entry, qid, legacy);
 			end
+		end
+		if index then
+			stanzas = remove_upto_index(stanzas, index);
+			if #stanzas == 0 then return nil; end
 		end
 		if #stanzas ~= 0 then
 			local first_e, last_e = to_process[1], to_process[#to_process];
