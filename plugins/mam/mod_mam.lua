@@ -141,21 +141,22 @@ local function query_handler(event)
 	local bare_session = bare_sessions[jid_bare(origin.full_jid)];
 	local archive = bare_session.archiving;
 
-	local start, fin, with, after, before, max, rsm;
+	local start, fin, with, after, before, max, index, rsm;
 	local ok, ret = validate_query(stanza, archive, query, qid);
 	if not ok then
 		return origin.send(ret);
 	else
-		start, fin, with, after, before, max, rsm = ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.rsm;
+		start, fin, with, after, before, max, index, rsm =
+			ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.index, ret.rsm;
 	end
 	
-	local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, qid, rsm, legacy);
+	local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, rsm, legacy);
 	if messages == false then -- Exceeded limit
 		module:log("debug", "MAM Query yields too many results, aborted");
 		return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Too many results"));
 	elseif not messages then -- RSM item-not-found
-		module:log("debug", "MAM Query RSM parameters were out of bounds: After - %s, Before - %s, Max - %s",
-			tostring(after), tostring(before), tostring(max));
+		module:log("debug", "MAM Query RSM parameters were out of bounds: After - %s, Before - %s, Max - %s, Index - %s",
+			tostring(after), tostring(before), tostring(max), tostring(index));
 		local rsm_error = st.error_reply(stanza, "cancel", "item-not-found");
 		rsm_error:add_child(query);
 		return origin.send(rsm_error);

@@ -26,10 +26,12 @@ local function rsm_parse(stanza, query)
 	local max = rsm and rsm:get_child_text("max");
 	local after = rsm and rsm:get_child_text("after");
 	local before = rsm and rsm:get_child_text("before");
+	local index = rsm and rsm:get_child_text("index");
 	before = (before == "" and true) or before;
 	max = max and tonumber(max);
+	index = index and tonumber(index);
 	
-	return after, before, max, true;
+	return after, before, max, index, true;
 end
 
 local function legacy_parse(query)
@@ -75,10 +77,10 @@ local function validate_query(stanza, archive, query, qid)
 	with = jid_bare(vwith);
 	
 	-- Get RSM set
-	local after, before, max, rsm = rsm_parse(stanza, query);
+	local after, before, max, index, rsm = rsm_parse(stanza, query);
 	if (before and after) or max == "" or after == "" then
-		module:log("debug", "MAM Query RSM parameters were invalid: After - %s, Before - %s, Max - %s",
-			tostring(after), tostring(before), tostring(max));
+		module:log("debug", "MAM Query RSM parameters were invalid: After - %s, Before - %s, Max - %s, Index - %s",
+			tostring(after), tostring(before), tostring(max), tostring(index));
 		return false, st.error_reply(stanza, "modify", "bad-request");
 	elseif before == true and not max then -- Assume max is equal to max_results
 		max = max_results;
@@ -93,7 +95,7 @@ local function validate_query(stanza, archive, query, qid)
 		before, max = true, 30;
 	end
 
-	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before, rsm = rsm };
+	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before, index = index, rsm = rsm };
 end
 
 return { validate_query = validate_query };
