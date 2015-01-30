@@ -375,7 +375,7 @@ local function handle_verify(event, path)
 
 				if use_cleanlist and dea_checks[username] then
 					module:log("warn", "%s (%s) attempted to register using a disposable mail address, denying", username, ip)
-					pending[uuid] = nil ; pending_node[username] = nil ; dea_checks[username] = nil
+					pending[uuid] = nil ; pending_node[username] = nil ; dea_checks[username] = nil ; hashes:remove(username)
 					return r_template(event, "verify_fail")
 				end
 
