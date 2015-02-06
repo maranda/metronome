@@ -103,4 +103,13 @@ function html_escape(t)
 	return t;
 end
 
+function load_file(f, mode)
+	local file, err = open(f, mode or "r");
+	if file then
+		file = file:read("*a");
+		file:close();
+	end
+	return file, err;
+end
+
 return _M;
