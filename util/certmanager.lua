@@ -13,6 +13,7 @@ local ssl = ssl;
 local ssl_newcontext = ssl and ssl.newcontext;
 
 local openssl_version = require "util.auxiliary".get_openssl_version();
+local load_file = require "util.auxiliary".load_file;
 local tostring = tostring;
 
 local metronome = metronome;
@@ -60,6 +61,12 @@ function create_context(host, mode, user_ssl_config)
 
 	if not ssl then return nil, "LuaSec (required for encryption) was not found"; end
 	if not user_ssl_config then return nil, "No SSL/TLS configuration present for "..host; end
+
+	if user_ssl_config.dhparam then
+		-- test if it's a file
+		local f = load_file(resolve_path(config_path, user_ssl_config.dhparam));
+		if f then user_ssl_config.dhparam = f; end
+	end
 	
 	local ssl_config = {
 		mode = mode;
