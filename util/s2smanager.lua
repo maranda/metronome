@@ -65,10 +65,16 @@ function make_authenticated(session, host)
 	end
 
 	local direction, from, to = session.direction, session.from_host, session.to_host;
+	local ctx;
+	if direction == "incoming" and hosts[to] then
+		ctx = hosts[to].ssl_ctx_in;
+	elseif hosts[from] then
+		ctx = hosts[from].ssl_ctx;
+	end
 	local authed = hosts[direction == "incoming" and to or from].events.fire_event("s2s-authenticated", {
 		session = session,
 		direction = direction,
-		ctx = direction == "incoming" and hosts[session.to_host].ssl_ctx_in or hosts[session.from_host].ssl_ctx,
+		ctx = ctx,
 		from = from, to = to
 	});
 	if not authed then return false; end
