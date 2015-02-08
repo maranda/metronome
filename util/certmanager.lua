@@ -62,10 +62,11 @@ function create_context(host, mode, user_ssl_config)
 	if not ssl then return nil, "LuaSec (required for encryption) was not found"; end
 	if not user_ssl_config then return nil, "No SSL/TLS configuration present for "..host; end
 
+	local dhparam;
 	if user_ssl_config.dhparam then
 		-- test if it's a file
 		local f = load_file(resolve_path(config_path, user_ssl_config.dhparam));
-		if f then user_ssl_config.dhparam = f; end
+		if f then dhparam = f; else dhparam = user_ssl_config.dhparam; end
 	end
 	
 	local ssl_config = {
@@ -81,7 +82,7 @@ function create_context(host, mode, user_ssl_config)
 		options = user_ssl_config.options or default_options;
 		depth = user_ssl_config.depth;
 		curve = user_ssl_config.curve or (supports_ecdh and "secp384r1");
-		dhparam = user_ssl_config.dhparam;
+		dhparam = dhparam;
 	};
 
 	local ctx, err = ssl_newcontext(ssl_config);
