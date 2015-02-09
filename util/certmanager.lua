@@ -32,7 +32,7 @@ module "certmanager"
 
 local default_ssl_config = configmanager.get("*", "ssl");
 local default_capath = "/etc/ssl/certs";
-	default_ciphers = "HIGH:!DES:!3DES:!PSK:!SRP:!aNULL:@STRENGTH";
+local default_ciphers = "HIGH:!DES:!3DES:!PSK:!SRP:!aNULL:@STRENGTH";
 if openssl_version and openssl_version >= 101 then
 	disable_sslv3 = true;
 end
