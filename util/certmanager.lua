@@ -14,7 +14,7 @@ local ssl_newcontext = ssl and ssl.newcontext;
 
 local openssl_version = require "util.auxiliary".get_openssl_version();
 local load_file = require "util.auxiliary".load_file;
-local tostring = tostring;
+local tostring, type = tostring, type;
 
 local metronome = metronome;
 local resolve_path = configmanager.resolve_relative_path;
@@ -63,10 +63,14 @@ function create_context(host, mode, user_ssl_config)
 	if not user_ssl_config then return nil, "No SSL/TLS configuration present for "..host; end
 
 	local dhparam;
-	if user_ssl_config.dhparam then
+	if type(user_ssl_config.dhparam) == "string" then
 		-- test if it's a file
 		local f = load_file(resolve_path(config_path, user_ssl_config.dhparam));
-		if f then dhparam = f; else dhparam = user_ssl_config.dhparam; end
+		if f then
+			dhparam = function() return f; end
+		else
+			dhparam = function() return user_ssl_config.dhparam; end
+		end
 	end
 	
 	local ssl_config = {
