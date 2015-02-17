@@ -1,3 +1,9 @@
+metronome (3.6-3) testing; urgency=low
+
+  * Revert "Do not close a non-existing bug"
+
+ -- Julien Malik <julien.malik@paraiso.me>  Tue, 17 Feb 2015 23:59:14 +0100
+
 metronome (3.6-2) testing; urgency=low
 
   * Do not close a non-existing bug
