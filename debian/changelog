@@ -1,3 +1,12 @@
+metronome (3.6-2) testing; urgency=low
+
+  * Do not close a non-existing bug
+  * Properly override possible-gpl-code-linked-with-openssl
+  * Fix permissions issue with metronome.version
+  * Implement status in LSB script
+
+ -- Julien Malik <julien.malik@paraiso.me>  Tue, 17 Feb 2015 23:26:42 +0100
+
 metronome (3.6-1) testing; urgency=medium
 
   * Initial release based on prosody-0.9.4-1~bpo70+1.
