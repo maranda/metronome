@@ -13,6 +13,7 @@ set -e
 
 # /etc/init.d/metronome: start and stop Metronome XMPP server
 
+NAME=metronome
 USER=metronome
 DAEMON=/usr/bin/metronome
 PIDPATH=/var/run/metronome
@@ -107,8 +108,11 @@ case "$1" in
   		log_end_msg 1;
   	fi
   	;;
+  status)
+        status_of_proc -p $PIDFILE $DAEMON $NAME
+        ;;
   *)
-  	log_action_msg "Usage: /etc/init.d/metronome {start|stop|restart|reload}"
+  	log_action_msg "Usage: /etc/init.d/metronome {start|stop|restart|reload|status}"
   	exit 1
 esac
 
