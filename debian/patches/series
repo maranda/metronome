@@ -1,1 +1,2 @@
 do-not-make-localhost-cert.patch
+fix_metronome_version_permissions.patch

@@ -1,0 +1,14 @@
+Description: Fix permission on metronome.version
+Author: Julien Malik <julien.malik@paraiso.me>
+
+--- metronome-3.6.orig/Makefile
++++ metronome-3.6/Makefile
+@@ -44,7 +44,7 @@ install: metronome.install metronomectl.
+ 	umask 0022 && cp -r plugins/* $(MODULES)
+ 	install -m644 certs/* $(CONFIG)/certs
+ 	test -e $(CONFIG)/metronome.cfg.lua || install -m644 metronome.cfg.lua.install $(CONFIG)/metronome.cfg.lua
+-	test -e metronome.version && install metronome.version $(SOURCE)/metronome.version || true
++	test -e metronome.version && install -m644 metronome.version $(SOURCE)/metronome.version || true
+ 	$(MAKE) install -C util-src
+ 
+ git-upgrade:
