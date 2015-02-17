@@ -1,0 +1,5 @@
+metronome (3.6-1) testing; urgency=medium
+
+  * Initial release based on prosody-0.9.4-1~bpo70+1. (Closes: #1)
+
+ -- Jérôme Lebleu <jerome@yunohost.org>  Tue, 17 Feb 2015 14:15:43 +0100

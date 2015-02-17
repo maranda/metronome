@@ -1,0 +1,18 @@
+NAME
+	metronome - Metronome XMPP Server
+
+SYNOPSIS
+	metronome
+
+DESCRIPTION
+	Metronome is an XMPP server.
+	It should be started using the startup script in /etc/init.d/metronome.
+
+SEE ALSO
+	metronomectl(8)
+
+FILES
+	/etc/metronome/metronome.cfg.lua
+
+AUTHOR
+	Matthew Wild <mwild1@gmail.com>

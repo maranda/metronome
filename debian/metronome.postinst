@@ -1,0 +1,92 @@
+#!/bin/sh
+# postinst script for metronome
+
+set -e
+
+# summary of how this script can be called:
+#        * <postinst> `configure' <most-recently-configured-version>
+#        * <old-postinst> `abort-upgrade' <new version>
+#        * <conflictor's-postinst> `abort-remove' `in-favour' <package>
+#          <new-version>
+#        * <deconfigured's-postinst> `abort-deconfigure' `in-favour'
+#          <failed-install-package> <version> `removing'
+#          <conflicting-package> <version>
+# for details, see http://www.debian.org/doc/debian-policy/ or
+# the debian-policy package
+
+case "$1" in
+  configure)
+ 	if ! getent passwd metronome >/dev/null; then
+ 	  adduser --disabled-password --quiet --system \
+ 	    --home "/var/lib/metronome" --no-create-home \
+ 	    --gecos "Metronome XMPP Server" --group metronome
+ 	fi
+
+	# Adding metronome user to the ssl-cert group to use the snakeoil
+	# SSL certificate
+	if getent group ssl-cert >/dev/null ; then
+	    adduser --quiet metronome ssl-cert
+	fi
+
+ 	# Create directory for log files
+ 	if [ ! -d "/var/log/metronome" ]; then
+ 		install -d -o metronome -g adm -m 750 "/var/log/metronome";
+ 	fi
+	if ! dpkg-statoverride --list "/var/log/metronome" >/dev/null; then
+		chown metronome:adm "/var/log/metronome"
+		chmod 750 "/var/log/metronome"
+	fi
+
+ 	# Create data directory
+ 	if [ ! -d "/var/lib/metronome" ]; then
+ 		install -d -o metronome -g metronome -m 750 "/var/lib/metronome";
+ 	fi
+	if ! dpkg-statoverride --list "/var/lib/metronome" >/dev/null; then
+		chown metronome:metronome "/var/lib/metronome"
+		chmod 750 "/var/lib/metronome"
+	fi
+
+	# Fix config directory permissions
+	if ! dpkg-statoverride --list "/etc/metronome" >/dev/null; then
+		chown root:root "/etc/metronome"
+		chmod 755 "/etc/metronome"
+	fi
+
+	# Fix config file permissions
+	if ! dpkg-statoverride --list "/etc/metronome/metronome.cfg.lua" >/dev/null; then
+		for f in "/etc/metronome/metronome.cfg.lua" \
+			 /etc/metronome/metronome.cfg.lua.dpkg*; do
+			if [ -f $f ]; then
+			    chown root:metronome $f
+			    chmod 640 $f
+			fi
+		done
+	fi
+
+	# Create subdirs for conf files
+ 	if [ ! -d "/etc/metronome/conf.d" ]; then
+ 		install -d -o root -g metronome -m 754 "/etc/metronome/conf.d";
+ 	fi
+	if ! dpkg-statoverride --list "/etc/metronome/conf.d" >/dev/null; then
+		chown root:metronome "/etc/metronome/conf.d"
+		chmod 754 "/etc/metronome/conf.d"
+	fi
+
+	# Create directory for SSL certificate and key
+ 	if [ ! -d "/etc/metronome/certs" ]; then
+ 		install -d -o root -g metronome -m 750 "/etc/metronome/certs";
+ 	fi
+	if ! dpkg-statoverride --list "/etc/metronome/certs" >/dev/null; then
+		chown root:metronome "/etc/metronome/certs"
+		chmod 750 "/etc/metronome/certs"
+	fi
+  ;;
+  abort-upgrade|abort-remove|abort-deconfigure)
+  ;;
+  *)
+    echo "postinst called with unknown argument \`$1'" >&2
+    exit 1
+  ;;
+esac
+
+#DEBHELPER#

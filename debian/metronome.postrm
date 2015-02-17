@@ -1,0 +1,32 @@
+#!/bin/sh
+
+set -e
+
+#DEBHELPER#
+
+if [ "$1" = "purge" ] ; then
+	# Delete configs directory
+	if [ -d "/etc/metronome/conf.d" ]; then
+		rmdir --ignore-fail-on-non-empty "/etc/metronome/conf.d";
+	fi
+
+	# Delete directory for .pid
+	if [ -d "/var/run/metronome" ]; then
+		rm -rf "/var/run/metronome";
+	fi
+
+	# Delete directory for users data
+	if [ -d "/var/lib/metronome" ]; then
+		rm -rf "/var/lib/metronome";
+	fi
+
+	# Delete directory for log files
+	if [ -d "/var/log/metronome" ]; then
+		rm -rf "/var/log/metronome";
+	fi
+
+	# Delete user 'metronome'
+	userdel metronome > /dev/null || true
+	groupdel metronome > /dev/null || true
+
+fi

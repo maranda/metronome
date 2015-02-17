@@ -1,0 +1,7 @@
+# test this watch file using:
+# uscan --watchfile debian/watch --upstream-version 0.0.1 --package metronome
+#
+version=3
+opts=filenamemangle=s/.+\/v?(\d\S*)\.tar\.gz/metronome-$1\.tar\.gz/ \
+  https://github.com/maranda/metronome/releases .*/v?(\d\S*)\.tar\.gz
+#  https://github.com/maranda/metronome/releases /maranda/metronome/archive/v(.+)\.tar\.gz
