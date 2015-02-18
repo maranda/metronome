@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-CFLAGS:="$(shell dpkg-buildflags --get CPPFLAGS) $(shell dpkg-buildflags --get CFLAGS) -fPIC -Wall"
+CFLAGS:="$(shell dpkg-buildflags --get CPPFLAGS) $(shell dpkg-buildflags --get CFLAGS) -fPIC -Wall -D_GNU_SOURCE"
 LDFLAGS:="$(shell dpkg-buildflags --get LDFLAGS) -shared"
 
 %:
