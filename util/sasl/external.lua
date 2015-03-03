@@ -15,7 +15,7 @@ Supported Authentication Backends
 
 external:
 		function(sasl, session, authid)
-			return nil or false or username, err.
+			return nil (internal-server-error) or true (invalid-authzid) or false or username, err.
 		end
 ]]--
 
@@ -26,6 +26,7 @@ local function external(self, authid)
 		log("debug", "A server error was caught while attempting EXTERNAL SASL: %s", err);
 		return "failure", "internal-server-error", err;
 	end
+	if username == true then return "failure", "invalid-authzid", err; end
 	if username == false then return "failure", "not-authorized", err; end
 	
 	self.username = nodeprep(username);

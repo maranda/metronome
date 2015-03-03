@@ -11,6 +11,7 @@ local st = require "util.stanza";
 local sm_make_authenticated = require "core.sessionmanager".make_authenticated;
 local base64 = require "util.encodings".base64;
 local usermanager_get_sasl_handler = require "core.usermanager".get_sasl_handler;
+local offer_external = module:require "sasl_aux".offer_external;
 local tostring = tostring;
 local host_session = hosts[module.host];
 
@@ -146,8 +147,11 @@ module:hook("stream-features", function(event)
 		origin.sasl_handler = usermanager_get_sasl_handler(module.host, origin);
 		local mechanisms = st.stanza("mechanisms", mechanisms_attr);
 		for mechanism in pairs(origin.sasl_handler:mechanisms()) do
-			if (not blacklisted_mechanisms or not blacklisted_mechanisms:contains(mechanism)) and
-			   (mechanism ~= "PLAIN" or origin.secure or allow_unencrypted_plain_auth) then
+			if mechanism == "EXTERNAL" and offer_external(origin) then
+				mechanisms:tag("mechanism"):text(mechanism):up()
+			elseif (not blacklisted_mechanisms or not blacklisted_mechanisms:contains(mechanism)) and
+			       (mechanism ~= "PLAIN" or origin.secure or allow_unencrypted_plain_auth) and
+			       mechanism ~= "EXTERNAL" then
 				mechanisms:tag("mechanism"):text(mechanism):up();
 			end
 		end

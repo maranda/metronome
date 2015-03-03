@@ -16,6 +16,8 @@ local jid_split = require "util.jid".prepped_split;
 local log = require "util.logger".init("sasl");
 local get_time, ipairs, t_concat, unpack = os.time, ipairs, table.concat, unpack;
 
+local no_valid_address = "Couldn't find a valid address which could be associated with a xmpp account";
+
 -- Util functions
 
 local function replace_byte_with_hex(byte) return ("%02x"):format(byte:byte()); end
@@ -27,6 +29,13 @@ end
 
 local function from_hex(hex_string)
 	return hex_string:gsub("..", replace_hex_with_byte);
+end
+
+local function get_address(address, sasl_host, authid)
+	if authid == "" or jid_compare(authid, address) then
+		local username, host = jid_split(address);
+		if host == sasl_host and user_exists(username, host) then return username; end
+	end
 end
 
 local function extract_data(cert)
@@ -47,23 +56,26 @@ local function extract_data(cert)
 	return xmpp_addresses;
 end
 
--- Backends
-
-local function external_backend(sasl, session, authid)
-	local sasl_host = sasl.profile.host;
+local function offer_external(session)
+	local sasl = session.sasl_handler;
+	local sasl_profile = sasl.profile;
+	local sasl_host = sasl_profile.host;
 	local socket = session.conn:socket();
 	if not socket.getpeercertificate or not socket.getpeerverification then
-		log("error", "LuaSec 0.5+ is required in order to perform SASL external");
-		return nil, "Unable to perform external certificate authentications at this time";
+		sasl_profile.ext_user, sasl_profile.ext_err =
+			nil, "Unable to perform external certificate authentications at this time";
+		return false;
 	end
 
-	local verified = module:fire_event("auth-external-proxy", sasl, session, authid, socket);
+	local verified = module:fire_event("auth-external-proxy", sasl, session, socket);
 	if verified then -- certificate was verified pre-emptively by a plugin
 		local state, err = unpack(verified);
 		if not state then
-			return false, err;
+			sasl_profile.ext_user, sasl_profile.ext_err = false, err;
+			return false;
 		else
-			return state;
+			sasl_profile.ext_user = state;
+			return true;
 		end
 	end
 
@@ -72,26 +84,57 @@ local function external_backend(sasl, session, authid)
 		local _log = session.log or log;
 		_log("debug", "Invalid client certificate chain detected");
 		for i, error in ipairs(errors) do _log("debug", "%d: %s", i, t_concat(error, ", ")); end
-		return false, "Invalid client certificate chain";
+		sasl_profile.ext_user, sasl_profile.ext_err = false, "Invalid client certificate chain";
+		return false;
 	end
 
 	local cert = socket:getpeercertificate();
 	if not cert then
-		return false, "No certificate found";
+		sasl_profile.ext_user, sasl_profile.ext_err = false, "No certificate found";
+		return false;
 	end
 	if not cert:validat(get_time()) then
-		return false, "Supplied certificate is expired";
+		sasl_profile.ext_user, sasl_profile.ext_err = false, "Supplied certificate is expired";
+		return false;
 	end
 
 	local data = extract_data(cert);
-	for _, address in ipairs(data) do
-		if authid == "" or jid_compare(authid, address) then
-			local username, host = jid_split(address);
-			if host == sasl_host and user_exists(username, host) then return username; end
-		end
+	if #data == 1 then
+		local address = data[1];
+		sasl_profile.ext_user = get_address(address, sasl_host);
+		return true;
+	elseif #data ~= 0 then
+		sasl_profile.cert = data;
+		return true;
 	end
 	
-	return false, "Couldn't find a valid address which could be associated with a xmpp account";
+	sasl_profile.ext_user, sasl_profile.ext_err = false, no_valid_address;
+	return false;
+end
+
+-- Backends
+
+local function external_backend(sasl, session, authid)
+	local sasl_profile = sasl.profile;
+	local sasl_host = sasl_profile.host;
+	local username, cert, err;
+	if module:fire_event("auth-external-proxy-withid", sasl, authid) then
+		username, err = sasl_profile.ext_user, sasl_profile.ext_err;
+		return username, err;
+	end
+
+	username, cert, err = sasl_profile.ext_user, sasl_profile.cert, sasl_profile.ext_err;
+	if username then -- user is verified
+		return username;
+	elseif cert then -- user cert has multiple identities
+		if not authid then return true; end
+		for _, address in ipairs(cert) do
+			username = get_address(address, sasl_host, authid);
+			if username then return username; else return false, no_valid_address; end
+		end
+	else
+		return username, err;
+	end
 end
 
 local function hashed_plain_test(sasl, username, password, realm)
@@ -133,7 +176,9 @@ end
 return {
 	from_hex = from_hex,
 	to_hex = to_hex,
+	get_address = get_address,
 	extract_data = extract_data,
+	offer_external = offer_external,
 	external_backend = external_backend,
 	hashed_plain_test = hashed_plain_test,
 	hashed_scram_backend = hashed_scram_backend,
