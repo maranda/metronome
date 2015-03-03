@@ -32,7 +32,7 @@ local function from_hex(hex_string)
 end
 
 local function get_address(address, sasl_host, authid)
-	if authid == "" or jid_compare(authid, address) then
+	if not authid or authid == "" or jid_compare(authid, address) then
 		local username, host = jid_split(address);
 		if host == sasl_host and user_exists(username, host) then return username; end
 	end
