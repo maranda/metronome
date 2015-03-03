@@ -147,12 +147,12 @@ module:hook("stream-features", function(event)
 		origin.sasl_handler = usermanager_get_sasl_handler(module.host, origin);
 		local mechanisms = st.stanza("mechanisms", mechanisms_attr);
 		for mechanism in pairs(origin.sasl_handler:mechanisms()) do
-			if mechanism == "EXTERNAL" and offer_external(origin) then
-				mechanisms:tag("mechanism"):text(mechanism):up()
-			elseif (not blacklisted_mechanisms or not blacklisted_mechanisms:contains(mechanism)) and
-			       (mechanism ~= "PLAIN" or origin.secure or allow_unencrypted_plain_auth) and
-			       mechanism ~= "EXTERNAL" then
-				mechanisms:tag("mechanism"):text(mechanism):up();
+			if not blacklisted_mechanisms or not blacklisted_mechanisms:contains(mechanism) then
+				if ((mechanism == "PLAIN" and origin.secure) or allow_unencrypted_plain_auth) or
+				   (mechanism == "EXTERNAL" and offer_external(origin)) or
+				   (mechanism ~= "EXTERNAL" and mechanism ~= "PLAIN") then
+					mechanisms:tag("mechanism"):text(mechanism):up();
+				end
 			end
 		end
 		if mechanisms[1] then features:add_child(mechanisms); end
