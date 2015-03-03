@@ -12,6 +12,7 @@ local jid_compare = require "util.jid".compare;
 local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".prepped_split;
 local extract_data = module:require("sasl_aux").extract_data;
+local get_address = module:require("sasl_aux").get_address;
 local user_exists = require "core.usermanager".user_exists;
 local t_insert, time = table.insert, os.time;
 
@@ -125,7 +126,7 @@ module:provides("adhoc", list_descriptor);
 
 -- Verify handler
 
-module:hook("auth-external-proxy", function(sasl, session, authid, socket)
+module:hook("auth-external-proxy", function(sasl, session, socket)
 	session.log("debug", "Certificate verification is being handled by mod_adhoc_cm...");
 
 	local cert = socket:getpeercertificate();
@@ -141,12 +142,8 @@ module:hook("auth-external-proxy", function(sasl, session, authid, socket)
 	local data = extract_data(cert);
 	local node;
 	for _, address in ipairs(data) do
-		if authid == "" or jid_compare(authid, address) then
-			local username, host = jid_split(address);
-			if host == my_host and user_exists(username, host) then 
-				node = username; break;
-			end
-		end
+		node = get_address(address, my_host);
+		if node then break; end
 	end
 	if not node then 
 		return { false, "Couldn't find a valid address which could be associated with a xmpp account" };
