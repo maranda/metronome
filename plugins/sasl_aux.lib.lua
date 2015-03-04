@@ -16,8 +16,6 @@ local jid_split = require "util.jid".prepped_split;
 local log = require "util.logger".init("sasl");
 local get_time, ipairs, t_concat, unpack = os.time, ipairs, table.concat, unpack;
 
-local no_valid_address = "Couldn't find a valid address which could be associated with a xmpp account";
-
 -- Util functions
 
 local function replace_byte_with_hex(byte) return ("%02x"):format(byte:byte()); end
@@ -104,11 +102,18 @@ local function offer_external(session)
 		sasl_profile.ext_user = get_address(address, sasl_host);
 		return true;
 	elseif #data ~= 0 then
-		sasl_profile.cert = data;
-		return true;
+		local valid_ids = {};
+		for _, address in ipairs(data) do
+			valid_ids[#valid_ids + 1] = get_address(address, sasl_host);
+		end
+		if #valid_ids > 0 then
+			sasl_profile.valid_identities = valid_ids;
+			return true;
+		end
 	end
 	
-	sasl_profile.ext_user, sasl_profile.ext_err = false, no_valid_address;
+	sasl_profile.ext_user, sasl_profile.ext_err =
+		false, "Couldn't find a valid address which could be associated with a xmpp account";
 	return false;
 end
 
@@ -117,21 +122,24 @@ end
 local function external_backend(sasl, session, authid)
 	local sasl_profile = sasl.profile;
 	local sasl_host = sasl_profile.host;
-	local username, cert, err;
+	local username, identities, err;
 	if module:fire_event("auth-external-proxy-withid", sasl, authid) then
 		username, err = sasl_profile.ext_user, sasl_profile.ext_err;
 		return username, err;
 	end
 
-	username, cert, err = sasl_profile.ext_user, sasl_profile.cert, sasl_profile.ext_err;
+	username, identities, err =
+		sasl_profile.ext_user, sasl_profile.valid_identities, sasl_profile.ext_err;
+
 	if username then -- user is verified
 		return username;
-	elseif cert then -- user cert has multiple identities
+	elseif identities then -- user cert has multiple identities
 		if not authid then return true; end
-		for _, address in ipairs(cert) do
-			username = get_address(address, sasl_host, authid);
-			if username then return username; else return false, no_valid_address; end
+		for i = 1, #identities do
+			local identity = identities[i];
+			if identity == authid then return identity; end
 		end
+		return true;
 	else
 		return username, err;
 	end
