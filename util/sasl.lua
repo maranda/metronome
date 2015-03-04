@@ -43,6 +43,7 @@ function new(realm, profile)
 			if backend_mechanism[backend] then
 				for _, mechanism in ipairs(backend_mechanism[backend]) do
 					t_insert(mechanisms, mechanism);
+					mechanisms[mechanism] = true;
 				end
 			end
 		end
