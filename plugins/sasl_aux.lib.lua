@@ -58,6 +58,11 @@ local function offer_external(session)
 	local sasl = session.sasl_handler;
 	local sasl_profile = sasl.profile;
 	local sasl_host = sasl_profile.host;
+	if not session.conn.socket then
+		sasl_profile.ext_user = false;
+		return false;
+	end
+
 	local socket = session.conn:socket();
 	if not socket.getpeercertificate or not socket.getpeerverification then
 		sasl_profile.ext_user, sasl_profile.ext_err =
