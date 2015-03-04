@@ -36,18 +36,17 @@ end
 
 -- create a new SASL object which can be used to authenticate clients
 function new(realm, profile)
-	local mechanisms = profile.mechanisms;
-	if not mechanisms then
-		mechanisms = {};
-		for backend, f in pairs(profile) do
-			if backend_mechanism[backend] then
-				for _, mechanism in ipairs(backend_mechanism[backend]) do
-					t_insert(mechanisms, mechanism);
-					mechanisms[mechanism] = true;
-				end
+	local order = profile.order;
+	local mechanisms = {};
+	for b = 1, #order do
+		local backend = backend_mechanism[order[b]];
+		if backend then
+			for i = 1, #backend do
+				local sasl = backend[i];
+				t_insert(mechanisms, sasl);
+				mechanisms[sasl] = true;
 			end
 		end
-		profile.mechanisms = mechanisms;
 	end
 	return setmetatable({ profile = profile, realm = realm, mechs = mechanisms }, method);
 end
