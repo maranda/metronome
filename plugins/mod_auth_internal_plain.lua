@@ -64,8 +64,8 @@ function new_default_provider(host)
 
 	function provider.get_sasl_handler(session)
 		local getpass_authentication_profile = {
-			plain = plain_backend,
 			external = session.secure and external_backend,
+			plain = plain_backend,
 			host = module.host,
 			session = session
 		};

@@ -100,9 +100,9 @@ function new_hashpass_provider(host)
 
 	function provider.get_sasl_handler(session)
 		local testpass_authentication_profile = {
-			plain_test = plain_test,
-			scram_sha_1 = scram_backend,
 			external = session.secure and external_backend,
+			scram_sha_1 = scram_backend,
+			plain_test = plain_test,
 			host = module.host,
 			session = session
 		};

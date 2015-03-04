@@ -206,7 +206,7 @@ end
 
 function init(registerMechanism)
 	local function registerSCRAMMechanism(hash_name, hash, hmac_hash)
-		registerMechanism("SCRAM-"..hash_name, {"plain", "scram_"..(hashprep(hash_name))}, scram_gen(hash_name:lower(), hash, hmac_hash));
+		registerMechanism("SCRAM-"..hash_name, {"scram_"..(hashprep(hash_name)), "plain"}, scram_gen(hash_name:lower(), hash, hmac_hash));
 	end
 
 	registerSCRAMMechanism("SHA-1", sha1, hmac_sha1);
