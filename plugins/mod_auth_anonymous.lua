@@ -66,7 +66,7 @@ function new_default_provider(host)
 				return username;
 			end,
 			session = session,
-			host, = my_host
+			host = my_host
 		};
 		return new_sasl(module.host, anonymous_authentication_profile);
 	end
