@@ -103,9 +103,14 @@ function new_hashpass_provider(host)
 			external = session.secure and external_backend,
 			scram_sha_1 = scram_backend,
 			plain_test = plain_test,
-			host = module.host,
-			session = session
+			session = session,
+			host = module.host
 		};
+		if session.secure then
+			testpass_authentication_profile.order = { "external", "scram_sha_1", "plain_test" };
+		else
+			testpass_authentication_profile.order = { "scram_sha_1", "plain_test" };
+		end
 		return new_sasl(module.host, testpass_authentication_profile);
 	end
 	

@@ -69,6 +69,11 @@ function new_default_provider(host)
 			host = module.host,
 			session = session
 		};
+		if session.secure then
+			getpass_authentication_profile.order = { "external", "plain" };
+		else
+			getpass_authentication_profile.order = { "plain" };
+		end
 		return new_sasl(module.host, getpass_authentication_profile);
 	end
 	
