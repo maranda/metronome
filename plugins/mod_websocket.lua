@@ -44,7 +44,7 @@ function handle_request(event, path)
 
 	if not request.headers.sec_websocket_key then
 		response.headers.content_type = "text/html";
-		return [[<!DOCTYPE html><html><head><title>Websocket</title></head><body>
+		return [[<!DOCTYPE html><html><head><title>Metronome's WebSocket Interface</title></head><body>
 			<p>It works! Now point your WebSocket client to this URL to connect to the XMPP server.</p>
 			</body></html>]];
 	end

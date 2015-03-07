@@ -473,7 +473,10 @@ local function handle_GET(event)
 	end	
 
 	response.headers = { ["Content-Type"] = "text/html; charset=utf-8" };
-	response.body = "<html><body><p>It works! Now point your BOSH client to this URL to connect to the XMPP Server.</p></body></html>";
+	response.body =
+		[[<!DOCTYPE html><html><head><title>Metronome's BOSH Interface</title></head><body>
+		<p>It works! Now point your BOSH client to this URL to connect to the XMPP Server.</p>
+		</body></html>]];
 	return response:send();
 end
 
