@@ -385,7 +385,7 @@ end
 
 local function parse_day(bare_room_jid, room_subject, bare_day)
 	if bare_day then
-		local ret = "";
+		local ret;
 		local node, host = split_jid(bare_room_jid);
 		local year, month, day = bare_day:match("^(%d%d%d%d)-(%d%d)-(%d%d)$");
 		local previous_day = find_previous_day(bare_room_jid, bare_day);
@@ -406,7 +406,7 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 		);
 		
 		ret = get_page:read("*a"); get_page:close(); get_page = nil;
-		if ret ~= "" then
+		if ret ~= "\n" then
 			if next_day then
 				next_day = html_day.dayLink:gsub("###DAY###", next_day):gsub("###TEXT###", "&gt;")
 			end
@@ -424,6 +424,8 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 			tmp = tmp:gsub("###PREVIOUS_LINK###", previous_day or "");
 
 			return tmp, "Chatroom logs for "..bare_room_jid.." ("..tostring(os_date("%A, %B %d, %Y", os_time(temptime)))..")";
+		else
+			ret = "";
 		end
 	end
 end
@@ -475,7 +477,7 @@ function handle_request(event)
 			local y,m,d = day:match("^(%d%d%d%d)(%d%d)(%d%d)$");
 			if not y then
 				response.status_code = 404;
-				return response:send(handle_error(response.status_code, "No entries for that year."));
+				return response:send(handle_error(response.status_code, "No entries, or invalid year"));
 			end
 			response.status_code = 301;
 			response.headers = { ["Location"] = request_path:match("^/"..url_base.."/+[^/]*").."/"..y.."-"..m.."-"..d.."/" };
@@ -485,7 +487,7 @@ function handle_request(event)
 		local body = create_doc(parse_day(node.."@"..my_host, room._data.subject or "", day));
 		if body == "" then
 			response.status_code = 404;
-			return response:send(handle_error(response.status_code, "Day entry doesn't exist."));
+			return response:send(handle_error(response.status_code, "Specified entry doesn't exist."));
 		end
 		return response:send(body);
 	end
