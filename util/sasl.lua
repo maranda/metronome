@@ -34,17 +34,22 @@ function registerMechanism(name, backends, f)
 	end
 end
 
--- create a new SASL object which can be used to authenticate clients
+-- create a new SASL object which can be used to authenticate clients,
+-- new() expects an array, profile.order, to be present in the profile
+-- and which specifies the order of preference in which mechanisms are
+-- presented by the server
 function new(realm, profile)
 	local order = profile.order;
 	local mechanisms = {};
-	for b = 1, #order do
-		local backend = backend_mechanism[order[b]];
-		if backend then
-			for i = 1, #backend do
-				local sasl = backend[i];
-				t_insert(mechanisms, sasl);
-				mechanisms[sasl] = true;
+	if type(order) == "table" and #order ~= 0 then
+		for b = 1, #order do
+			local backend = backend_mechanism[order[b]];
+			if backend then
+				for i = 1, #backend do
+					local sasl = backend[i];
+					t_insert(mechanisms, sasl);
+					mechanisms[sasl] = true;
+				end
 			end
 		end
 	end
@@ -71,7 +76,6 @@ end
 
 -- feed new messages to process into the library
 function method:process(message)
-	--if message == "" or message == nil then return "failure", "malformed-request" end
 	return mechanisms[self.selected](self, message);
 end
 
