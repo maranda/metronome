@@ -13,13 +13,14 @@ INSTALLEDDATA = $(DATADIR)
 
 .PHONY: all clean install upgrade uninstall
 
-all: metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
+all: generate_log.install metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
 	$(MAKE) -C util-src install
 	$(MAKE) -C certs localhost.cnf
 	$(MAKE) -C certs localhost.key
 	$(MAKE) -C certs localhost.cert
 
 clean:
+	rm -f generate_log.install
 	rm -f metronome.install
 	rm -f metronomectl.install
 	rm -f metronome.cfg.lua.install
@@ -42,6 +43,7 @@ install: metronome.install metronomectl.install metronome.cfg.lua.install metron
 	install -d $(SOURCE)/util/sasl
 	install -m644 util/sasl/* $(SOURCE)/util/sasl
 	umask 0022 && cp -r plugins/* $(MODULES)
+	install -m755 ./generate_log.install $(MODULES)/muc_log_http/generate_log
 	install -m644 certs/* $(CONFIG)/certs
 	test -e $(CONFIG)/metronome.cfg.lua || install -m644 metronome.cfg.lua.install $(CONFIG)/metronome.cfg.lua
 	test -e metronome.version && install metronome.version $(SOURCE)/metronome.version || true
@@ -84,6 +86,9 @@ util/%.so:
 		s|^CFG_CONFIGDIR=.*;$$|CFG_CONFIGDIR='$(INSTALLEDCONFIG)';|; \
 		s|^CFG_DATADIR=.*;$$|CFG_DATADIR='$(INSTALLEDDATA)';|; \
 		s|^CFG_PLUGINDIR=.*;$$|CFG_PLUGINDIR='$(INSTALLEDMODULES)/';|;" < $^ > $@
+
+generate_log.install: plugins/muc_log_http/generate_log
+	sed 's|^#!\/usr\/bin\/env lua$$|#!\/usr\/bin\/env lua$(LUA_SUFFIX)|' $^ > $@
 
 metronome.cfg.lua.install: metronome.cfg.lua.dist
 	sed 's|certs/|$(INSTALLEDCONFIG)/certs/|' $^ > $@
