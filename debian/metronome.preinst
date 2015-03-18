@@ -13,11 +13,13 @@ set -e
 
 case "$1" in
   install|upgrade)
-	# Uninstall orphelan compiled and conf files
+	# Uninstall orphan compiled and conf files
  	if [ -d "/usr/share/yunohost/metronome-src" ]; then
 	  cd /usr/share/yunohost/metronome-src && make uninstall && make clean && rm -f config.unix
-	  mv /etc/init.d/metronome /etc/init.d/metronome.dist-old
+	  rm -f /etc/metronome/certs/{Makefile,openssl.cnf}
+	  rm -f /etc/init.d/metronome
 	  rm -f /etc/logrotate.d/metronome
+	  mv /etc/metronome/metronome.cfg.lua /etc/metronome/metronome.cfg.lua.old
 	fi
   ;;
   abort-upgrade)
