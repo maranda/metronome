@@ -1,3 +1,10 @@
+metronome (3.6-5) testing; urgency=medium
+
+  [ Jérôme Lebleu ]
+  * Clean remaining orphaned files at install/upgrade
+
+ -- Julien Malik <julien.malik@paraiso.me>  Thu, 19 Mar 2015 12:06:49 +0100
+
 metronome (3.6-4) testing; urgency=low
 
   * Restore -D_GNU_SOURCE 
