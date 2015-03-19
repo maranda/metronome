@@ -13,7 +13,7 @@ set -e
 
 case "$1" in
   install|upgrade)
-	# Uninstall orphan compiled and conf files
+	# Uninstall orphaned compiled and conf files
  	if [ -d "/usr/share/yunohost/metronome-src" ]; then
 	  cd /usr/share/yunohost/metronome-src && make uninstall && make clean && rm -f config.unix
 	  rm -f /etc/metronome/certs/{Makefile,openssl.cnf}
