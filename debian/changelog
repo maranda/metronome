@@ -1,3 +1,9 @@
+metronome (3.6-6) testing; urgency=medium
+
+  * lintian : remove possible-bashism-in-maintainer-script* 
+
+ -- Julien Malik <julien.malik@paraiso.me>  Fri, 20 Mar 2015 09:21:28 +0100
+
 metronome (3.6-5) testing; urgency=medium
 
   [ Jérôme Lebleu ]
