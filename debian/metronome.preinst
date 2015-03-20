@@ -16,7 +16,8 @@ case "$1" in
 	# Uninstall orphaned compiled and conf files
  	if [ -d "/usr/share/yunohost/metronome-src" ]; then
 	  cd /usr/share/yunohost/metronome-src && make uninstall && make clean && rm -f config.unix
-	  rm -f /etc/metronome/certs/{Makefile,openssl.cnf}
+	  rm -f /etc/metronome/certs/Makefile
+	  rm -f /etc/metronome/certs/openssl.cnf
 	  rm -f /etc/init.d/metronome
 	  rm -f /etc/logrotate.d/metronome
 	  mv /etc/metronome/metronome.cfg.lua /etc/metronome/metronome.cfg.lua.old
