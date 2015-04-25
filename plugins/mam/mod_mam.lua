@@ -217,6 +217,7 @@ module:hook("pre-message/bare", process_outbound_messages, 30);
 module:hook("message/full", process_inbound_messages, 30);
 module:hook("pre-message/full", process_outbound_messages, 30);
 
+module:hook("iq/self/"..legacy_xmlns..":prefs", prefs_handler);
 module:hook("iq/self/"..xmlns..":prefs", prefs_handler);
 module:hook("iq-set/self/"..purge_xmlns..":purge", purge_handler);
 module:hook("iq-get/self/"..legacy_xmlns..":query", query_handler);
