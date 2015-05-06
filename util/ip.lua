@@ -6,6 +6,8 @@
 --
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2011-2013, Florian Zeitz, Matthew Wild
+--
+-- Additional Contributors: Alban Bedel
 
 local ip_methods = {};
 local ip_mt = { __index = function (ip, key) return (ip_methods[key])(ip); end,

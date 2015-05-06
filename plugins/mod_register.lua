@@ -6,6 +6,8 @@
 --
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2012, Kim Alvefur, Florian Zeitz, Glenn Maynard, Jeff Mitchell, Matthew Wild, Waqas Hussain
+--
+-- Additional Contributors: Alban Bedel
 
 local hosts = _G.hosts;
 local st = require "util.stanza";
