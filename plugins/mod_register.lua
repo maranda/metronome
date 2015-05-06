@@ -18,6 +18,8 @@ local usermanager_delete_user = require "core.usermanager".delete_user;
 local os_time = os.time;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local jid_bare = require "util.jid".bare;
+local new_ip = require "util.ip".new_ip;
+local match_subnet = require "util.ip".match_subnet;
 
 local compat = module:get_option_boolean("registration_compat", true);
 local allow_registration = module:get_option_boolean("allow_registration", false);
@@ -168,14 +170,40 @@ local function parse_response(query)
 	end
 end
 
+local function parse_subnet(subnet)
+	local ip, mask = subnet:match("^([%x.:]*)/?(%d*)$");
+	ip = ip and new_ip(ip) or nil;
+	return ip and { addr = ip, mask = tonumber(mask) } or nil;
+end
+
+local function parse_subnets(lst)
+	local subnets = {};
+	for _, s in ipairs(lst) do
+		s = parse_subnet(s);
+		if s then
+			table.insert(subnets, s);
+		end
+	end
+	return subnets;
+end
+
+local function subnets_match_ip(subnets, ip)
+	ip = new_ip(ip);
+	if ip then
+		for _, s in ipairs(subnets) do
+			if match_subnet(ip, s.addr, s.mask) then
+				return true;
+			end
+		end
+	end
+	return false;
+end
+
 local recent_ips = {};
 local min_seconds_between_registrations = module:get_option("min_seconds_between_registrations");
 local whitelist_only = module:get_option("whitelist_registration_only");
-local whitelisted_ips = module:get_option("registration_whitelist") or { "127.0.0.1" };
-local blacklisted_ips = module:get_option("registration_blacklist") or {};
-
-for _, ip in ipairs(whitelisted_ips) do whitelisted_ips[ip] = true; end
-for _, ip in ipairs(blacklisted_ips) do blacklisted_ips[ip] = true; end
+local whitelisted_ips = parse_subnets(module:get_option("registration_whitelist") or { "127.0.0.1" });
+local blacklisted_ips = parse_subnets(module:get_option("registration_blacklist") or {});
 
 module:hook("stanza/iq/jabber:iq:register:query", function(event)
 	local session, stanza = event.origin, event.stanza;
@@ -199,10 +227,14 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 					-- Check that the user is not blacklisted or registering too often
 					if not session.ip then
 						module:log("debug", "User's IP not known; can't apply blacklist/whitelist");
-					elseif blacklisted_ips[session.ip] or (whitelist_only and not whitelisted_ips[session.ip]) then
+						if whitelist_only then
+							session.send(st.error_reply(stanza, "cancel", "not-acceptable", "You are not allowed to register an account."));
+							return true;
+						end
+					elseif subnets_match_ip(blacklisted_ips, session.ip) or (whitelist_only and not subnets_match_ip(whitelisted_ips, session.ip)) then
 						session.send(st.error_reply(stanza, "cancel", "not-acceptable", "You are not allowed to register an account."));
 						return true;
-					elseif min_seconds_between_registrations and not whitelisted_ips[session.ip] then
+					elseif min_seconds_between_registrations and not subnets_match_ip(whitelisted_ips, session.ip) then
 						if not recent_ips[session.ip] then
 							recent_ips[session.ip] = { time = os_time(), count = 1 };
 						else
