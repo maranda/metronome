@@ -196,7 +196,9 @@ local function match_ip(ip, whitelist)
 			end
 		end
 	else
-		if ips[ip] then return true; end
+		for _, address in ipairs(ips) do
+			if address == ip then return true; end
+		end
 	end
 	return false;
 end
