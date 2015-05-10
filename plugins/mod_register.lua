@@ -181,6 +181,7 @@ local whitelist_only = module:get_option_boolean("whitelist_registration_only", 
 local whitelisted_ips = module:get_option_table("registration_whitelist", { "127.0.0.1" });
 local blacklisted_ips = module:get_option_table("registration_blacklist", {});
 if match_type ~= "single" then
+	whitelisted_ips, blacklisted_ips = parse_subnets(whitelisted_ips), parse_subnets(blacklisted_ips);
 end 
 
 local function match_ip(ip, whitelist)
@@ -188,6 +189,7 @@ local function match_ip(ip, whitelist)
 	if match_type == "range" then
 		ip = new_ip(ip);
 		if ip then
+			for _, s in ipairs(ips) do
 				if match_subnet(ip, s.addr, s.mask) then
 					return true;
 				end
