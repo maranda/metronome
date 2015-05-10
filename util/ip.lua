@@ -9,6 +9,8 @@
 --
 -- Additional Contributors: Alban Bedel
 
+local table, ipairs;
+
 local ip_methods = {};
 local ip_mt = { __index = function (ip, key) return (ip_methods[key])(ip); end,
 		__tostring = function (ip) return ip.addr; end,
@@ -72,6 +74,23 @@ end
 local function match_prefix(ipA, ipB)
 	local len = commonPrefixLength(ipA, ipB);
 	return len < 64 and len or 64;
+end
+
+local function parse_subnet(subnet)
+	local ip, mask = subnet:match("^([%x.:]*)/?(%d*)$");
+	ip = ip and new_ip(ip) or nil;
+	return ip and { addr = ip, mask = tonumber(mask) } or nil;
+end
+
+local function parse_subnets(lst)
+	local subnets = {};
+	for _, s in ipairs(lst) do
+		s = parse_subnet(s);
+		if s then
+			table.insert(subnets, s);
+		end
+	end
+	return subnets;
 end
 
 local function match_subnet(ipA, subnet, len)
@@ -300,5 +319,6 @@ return {
 	compare_destination = compare_destination,
 	compare_source = compare_source,
 	match_prefix = match_prefix,
-	match_subnet = match_subnet
+	match_subnet = match_subnet,
+	parse_subnets = parse_subnets
 };

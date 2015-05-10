@@ -21,6 +21,7 @@ local os_time = os.time;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local jid_bare = require "util.jid".bare;
 local new_ip = require "util.ip".new_ip;
+local parse_subnets = require "util.ip".parse_subnets;
 local match_subnet = require "util.ip".match_subnet;
 
 local compat = module:get_option_boolean("registration_compat", true);
@@ -172,45 +173,36 @@ local function parse_response(query)
 	end
 end
 
-local function parse_subnet(subnet)
-	local ip, mask = subnet:match("^([%x.:]*)/?(%d*)$");
-	ip = ip and new_ip(ip) or nil;
-	return ip and { addr = ip, mask = tonumber(mask) } or nil;
-end
+local recent_ips = {};
+local min_seconds_between_registrations = module:get_option("min_seconds_between_registrations");
+local match_type = module:get_option_string("registration_ip_match_type", "range");
+if match_type ~= "range" and match_type ~= "single" then match_type = "range" end
+local whitelist_only = module:get_option_boolean("whitelist_registration_only", false);
+local whitelisted_ips = module:get_option_table("registration_whitelist", { "127.0.0.1" });
+local blacklisted_ips = module:get_option_table("registration_blacklist", {});
+if match_type ~= "single" then
+end 
 
-local function parse_subnets(lst)
-	local subnets = {};
-	for _, s in ipairs(lst) do
-		s = parse_subnet(s);
-		if s then
-			table.insert(subnets, s);
-		end
-	end
-	return subnets;
-end
-
-local function subnets_match_ip(subnets, ip)
-	ip = new_ip(ip);
-	if ip then
-		for _, s in ipairs(subnets) do
-			if match_subnet(ip, s.addr, s.mask) then
-				return true;
+local function match_ip(ip, whitelist)
+	local ips = whitelist and whitelisted_ips or blacklisted_ips;
+	if match_type == "range" then
+		ip = new_ip(ip);
+		if ip then
+				if match_subnet(ip, s.addr, s.mask) then
+					return true;
+				end
 			end
 		end
+	else
+		if ips[ip] then return true; end
 	end
 	return false;
 end
 
-local recent_ips = {};
-local min_seconds_between_registrations = module:get_option("min_seconds_between_registrations");
-local whitelist_only = module:get_option("whitelist_registration_only");
-local whitelisted_ips = parse_subnets(module:get_option("registration_whitelist") or { "127.0.0.1" });
-local blacklisted_ips = parse_subnets(module:get_option("registration_blacklist") or {});
-
 module:hook("stanza/iq/jabber:iq:register:query", function(event)
 	local session, stanza = event.origin, event.stanza;
 
-	if not(allow_registration) or session.type ~= "c2s_unauthed" then
+	if not allow_registration or session.type ~= "c2s_unauthed" then
 		session.send(st.error_reply(stanza, "cancel", "service-unavailable"));
 	else
 		local query = stanza.tags[1];
@@ -227,16 +219,10 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 					session.send(st.error_reply(stanza, "modify", "not-acceptable"));
 				else
 					-- Check that the user is not blacklisted or registering too often
-					if not session.ip then
-						module:log("debug", "User's IP not known; can't apply blacklist/whitelist");
-						if whitelist_only then
-							session.send(st.error_reply(stanza, "cancel", "not-acceptable", "You are not allowed to register an account."));
-							return true;
-						end
-					elseif subnets_match_ip(blacklisted_ips, session.ip) or (whitelist_only and not subnets_match_ip(whitelisted_ips, session.ip)) then
+					if match_ip(session.ip) or (whitelist_only and not match_ip(session.ip, true)) then
 						session.send(st.error_reply(stanza, "cancel", "not-acceptable", "You are not allowed to register an account."));
 						return true;
-					elseif min_seconds_between_registrations and not subnets_match_ip(whitelisted_ips, session.ip) then
+					elseif min_seconds_between_registrations and not match_ip(session.ip, true) then
 						if not recent_ips[session.ip] then
 							recent_ips[session.ip] = { time = os_time(), count = 1 };
 						else
