@@ -9,7 +9,7 @@
 --
 -- Additional Contributors: Alban Bedel
 
-local table, ipairs;
+local ipairs, table = ipairs, table;
 
 local ip_methods = {};
 local ip_mt = { __index = function (ip, key) return (ip_methods[key])(ip); end,
