@@ -1,24 +1,11 @@
 Description: Do not make localhost certificate
-Author: Jérôme Lebleu <jerome.lebleu@mailoo.org>
+Author: Jérôme Lebleu <jerome@yunohost.org>
 
----
-The information above should follow the Patch Tagging Guidelines, please
-checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
-are templates for supplementary fields that you might want to add:
+--- metronome.orig/Makefile
++++ metronome/Makefile
+@@ -15,9 +15,9 @@
 
-Origin: <vendor|upstream|other>, <url of original patch>
-Bug: <url in upstream bugtracker>
-Bug-Debian: http://bugs.debian.org/<bugnumber>
-Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
-Forwarded: <no|not-needed|url proving that it has been forwarded>
-Reviewed-By: <name and email of someone who approved the patch>
-Last-Update: <YYYY-MM-DD>
-
---- metronome-3.6.orig/Makefile
-+++ metronome-3.6/Makefile
-@@ -15,9 +15,9 @@ INSTALLEDDATA = $(DATADIR)
- 
- all: metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
+ all: generate_log.install metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
  	$(MAKE) -C util-src install
 -	$(MAKE) -C certs localhost.cnf
 -	$(MAKE) -C certs localhost.key
@@ -28,4 +15,4 @@ Last-Update: <YYYY-MM-DD>
 +#	$(MAKE) -C certs localhost.cert
  
  clean:
- 	rm -f metronome.install
+	rm -f generate_log.install
