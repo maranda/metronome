@@ -1,3 +1,9 @@
+metronome (3.7-1) testing; urgency=medium
+
+  * New upstream release
+
+ -- Jérôme Lebleu <jerome@yunohost.org>  Wed, 27 May 2015 22:34:05 +0200
+
 metronome (3.6-6) testing; urgency=medium
 
   * lintian : remove possible-bashism-in-maintainer-script* 
