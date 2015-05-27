@@ -13,7 +13,8 @@ local ssl = ssl;
 local ssl_newcontext = ssl and ssl.newcontext;
 
 local openssl_version = require "util.auxiliary".get_openssl_version();
-local tostring = tostring;
+local load_file = require "util.auxiliary".load_file;
+local tostring, type = tostring, type;
 
 local metronome = metronome;
 local resolve_path = configmanager.resolve_relative_path;
@@ -31,9 +32,8 @@ module "certmanager"
 
 local default_ssl_config = configmanager.get("*", "ssl");
 local default_capath = "/etc/ssl/certs";
-local default_ciphers = "HIGH:!aNULL:@STRENGTH";
+local default_ciphers = "HIGH:!DES:!3DES:!PSK:!SRP:!aNULL:@STRENGTH";
 if openssl_version and openssl_version >= 101 then
-	default_ciphers = "HIGH:!CAMELLIA:!DES:!3DES:!aNULL:@STRENGTH";
 	disable_sslv3 = true;
 end
 local supports_ecdh = true;
@@ -60,6 +60,17 @@ function create_context(host, mode, user_ssl_config)
 
 	if not ssl then return nil, "LuaSec (required for encryption) was not found"; end
 	if not user_ssl_config then return nil, "No SSL/TLS configuration present for "..host; end
+
+	local dhparam;
+	if type(user_ssl_config.dhparam) == "string" then
+		-- test if it's a file
+		local f = load_file(resolve_path(config_path, user_ssl_config.dhparam));
+		if f then
+			dhparam = function() return f; end
+		else
+			dhparam = function() return user_ssl_config.dhparam; end
+		end
+	end
 	
 	local ssl_config = {
 		mode = mode;
@@ -74,7 +85,7 @@ function create_context(host, mode, user_ssl_config)
 		options = user_ssl_config.options or default_options;
 		depth = user_ssl_config.depth;
 		curve = user_ssl_config.curve or (supports_ecdh and "secp384r1");
-		dhparam = user_ssl_config.dhparam;
+		dhparam = dhparam;
 	};
 
 	local ctx, err = ssl_newcontext(ssl_config);

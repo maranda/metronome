@@ -49,6 +49,7 @@ function new_default_provider(host)
 
 	function provider.get_sasl_handler(session)
 		local anonymous_authentication_profile = {
+			order = { "anonymous" },
 			anonymous = function(sasl, session, realm)
 				local username;
 				if randomize_for_trusted and randomize_for_trusted:contains(session.ip) then
@@ -60,9 +61,12 @@ function new_default_provider(host)
 				if not multi_resourcing and my_host.sessions[username] then
 					return nil, "You're allowed to have only one anonymous session at any given time, good bye.";
 				end
+
+				session.is_anonymous = true;
 				return username;
 			end,
-			session = session
+			session = session,
+			host = my_host
 		};
 		return new_sasl(module.host, anonymous_authentication_profile);
 	end
@@ -91,9 +95,11 @@ end
 
 function module.load()
 	datamanager.add_callback(dm_callback);
+	my_host.anonymous_host = true;
 end
 function module.unload()
 	datamanager.remove_callback(dm_callback);
+	my_host.anonymous_host = nil;
 end
 
 module:add_item("auth-provider", new_default_provider(module.host));

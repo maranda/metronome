@@ -19,9 +19,7 @@ local log = logger_init("s2smanager");
 local config = require "core.configmanager";
 
 local metronome = _G.metronome;
-incoming_s2s = {};
-metronome.incoming_s2s = incoming_s2s;
-local incoming_s2s = incoming_s2s;
+local incoming_s2s = metronome.incoming_s2s;
 
 module "s2smanager"
 
@@ -65,10 +63,24 @@ function make_authenticated(session, host)
 	else
 		return false;
 	end
+
+	local direction, from, to = session.direction, session.from_host, session.to_host;
+	local ctx;
+	if direction == "incoming" and hosts[to] then
+		ctx = hosts[to].ssl_ctx_in;
+	elseif hosts[from] then
+		ctx = hosts[from].ssl_ctx;
+	end
+	local authed = hosts[direction == "incoming" and to or from].events.fire_event("s2s-authenticated", {
+		session = session,
+		direction = direction,
+		ctx = ctx,
+		from = from, to = to
+	});
+	if not authed then return false; end
+	
 	session.log("debug", "connection %s->%s is now authenticated for %s", session.from_host, session.to_host, host);
-	
 	mark_connected(session);
-	
 	return true;
 end
 

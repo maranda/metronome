@@ -15,9 +15,10 @@ local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
 local load_roster = require "util.rostermanager".load_roster;
-local ipairs, now, pairs, ripairs, select, t_remove, tostring = ipairs, os.time, pairs, ripairs, select, table.remove, tostring;
+local ipairs, next, now, pairs, ripairs, select, t_remove, tostring = ipairs, next, os.time, pairs, ripairs, select, table.remove, tostring;
       
-local xmlns = "urn:xmpp:mam:tmp";
+local xmlns = "urn:xmpp:mam:0";
+local legacy_xmlns = "urn:xmpp:mam:tmp";
 local delay_xmlns = "urn:xmpp:delay";
 local e2e_xmlns = "http://www.xmpp.org/extensions/xep-0200.html#ns";
 local forward_xmlns = "urn:xmpp:forward:0";
@@ -28,6 +29,7 @@ local markers_xmlns = "urn:xmpp:chat-markers:0";
 local store_time = module:get_option_number("mam_save_time", 300);
 local stores_cap = module:get_option_number("mam_stores_cap", 5000);
 local max_length = module:get_option_number("mam_message_max_length", 3000);
+local store_elements = module:get_option_set("mam_allowed_elements");
 
 local session_stores = {};
 local storage = {};
@@ -37,6 +39,14 @@ local valid_markers = {
 	markable = "markable", received = "received",
 	displayed = "displayed", acknowledged = "acknowledged"
 };
+if store_elements then
+	store_elements:remove("acknowledged");
+	store_elements:remove("body");
+	store_elements:remove("displayed");
+	store_elements:remove("markable");
+	store_elements:remove("received");
+	if store_elements:empty() then store_elements = nil; end
+end
 
 local _M = {};
 
@@ -56,7 +66,7 @@ local function save_stores()
 	end	
 end
 
-local function log_entry(session_archive, to, bare_to, from, bare_from, id, body, marker, marker_id)
+local function log_entry(session_archive, to, bare_to, from, bare_from, id, body, marker, marker_id, tags)
 	local uid = uuid();
 	local entry = {
 		from = from,
@@ -70,6 +80,10 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, body
 		timestamp = now(),
 		uid = uid
 	};
+	if tags then
+		for i, stanza in ipairs(tags) do tags[i] = st.deserialize(stanza); end
+		entry.tags = tags;
+	end
 
 	local logs = session_archive.logs;
 	
@@ -115,31 +129,43 @@ local function log_marker(session_archive, to, bare_to, from, bare_from, id, mar
 	end
 end
 
-local function append_stanzas(stanzas, entry, qid)
+local function append_stanzas(stanzas, entry, qid, legacy)
 	local to_forward = st.message()
-		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.id })
+		:tag("result", { xmlns = legacy and legacy_xmlns or xmlns, queryid = qid, id = entry.id })
 			:tag("forwarded", { xmlns = forward_xmlns })
 				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id });
 
 	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
+	if entry.tags then
+		for i = 1, #entry.tags do to_forward:add_child(st.preserialize(entry.tags[i])):up(); end
+	end
 	if entry.marker then to_forward:tag(entry.marker, { xmlns = markers_xmlns, id = entry.marker_id }):up(); end
 	
 	stanzas[#stanzas + 1] = to_forward;
 end
 
-local function generate_query(stanzas, start, fin, set, first, last, count)
-	local query = st.stanza("query", { xmlns = xmlns });
+local function generate_set(stanza, first, last, count, index)
+	stanza:tag("set", { xmlns = rsm_xmlns })
+		:tag("first", { index = index or 0 }):text(first):up()
+		:tag("last"):text(last or first):up()
+		:tag("count"):text(tostring(count)):up();
+end
+
+local function generate_query(stanzas, start, fin, set, first, last, count, index)
+	local query = st.stanza("query", { xmlns = legacy_xmlns });
 	if start then query:tag("start"):text(dt(start)):up(); end
 	if fin then query:tag("end"):text(dt(fin)):up(); end
-	if set and #stanzas ~= 0 then
-		query:tag("set", { xmlns = rsm_xmlns })
-			:tag("first", { index = 0 }):text(first):up()
-			:tag("last"):text(last or first):up()
-			:tag("count"):text(tostring(count)):up();
-	end
+	if set and #stanzas ~= 0 then generate_set(query, first, last, count); end
 	
 	return (((start or fin) or (set and #stanzas ~= 0)) and query) or nil;
+end
+
+local function generate_fin(stanzas, first, last, count, index, complete)
+	local fin = st.stanza("fin", { xmlns = xmlns, complete = (complete or count == 0) and "true" or nil });
+	generate_set(fin, first, last, count, index);
+
+	return fin;
 end
 
 local function dont_add(entry, with, start, fin, timestamp)
@@ -160,6 +186,17 @@ local function get_index(logs, index)
 	for i, entry in ipairs(logs) do 
 		if entry.uid == index then return i; end
 	end
+end
+
+local function remove_upto_index(logs, index)
+	if index > #logs then
+		logs = {};
+	else
+		for i = 1, #logs do
+			if i ~= index then t_remove(logs, i); else break; end
+		end
+	end
+	return logs;
 end
 
 local function count_relevant_entries(logs, with, start, fin)
@@ -192,7 +229,7 @@ local function count_relevant_entries(logs, with, start, fin)
 	return count;
 end
 
-local function generate_stanzas(store, start, fin, with, max, after, before, qid)
+local function generate_stanzas(store, start, fin, with, max, after, before, index, qid, rsm, legacy)
 	local logs = store.logs;
 	local stanzas = {};
 	local query;
@@ -229,13 +266,17 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 			for i = (sub < 0 and 1) or sub, entry_index do to_process[#to_process + 1] = logs[i]; end
 			_entries_count = count_relevant_entries(to_process, with, start, fin);
 		end
-		
+
 		for i, entry in ipairs(to_process) do
 			local timestamp = entry.timestamp;
 			local uid = entry.uid
 			if not dont_add(entry, with, start, fin, timestamp) then
-				append_stanzas(stanzas, entry, qid);
+				append_stanzas(stanzas, entry, qid, legacy);
 			end
+		end
+		if index then
+			stanzas = remove_upto_index(stanzas, index);
+			if #stanzas == 0 then return nil; end
 		end
 		if #stanzas ~= 0 then
 			local first_e, last_e = to_process[1], to_process[#to_process];
@@ -244,7 +285,9 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		end
 
 		_count = max and _entries_count - max or 0;
-		query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last, (_count < 0 and 0) or _count);
+		query = legacy and
+			generate_query(stanzas, (start or _start), (fin or _end), rsm, first, last, (_count < 0 and 0) or _count, index) or
+			generate_fin(stanzas, first, last, (_count < 0 and 0) or _count, index, before == true);
 		return stanzas, query;
 	elseif after then
 		entry_index = get_index(logs, after);
@@ -260,7 +303,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		local timestamp = entry.timestamp;
 		local uid = entry.uid;
 		if not dont_add(entry, with, start, fin, timestamp) then
-			append_stanzas(stanzas, entry, qid);
+			append_stanzas(stanzas, entry, qid, legacy);
 			if max then
 				if _at == 1 then 
 					first = uid;
@@ -274,11 +317,16 @@ local function generate_stanzas(store, start, fin, with, max, after, before, qid
 		end
 		if max and _at ~= 1 and _at > max then break; end
 	end
-	
+	if index then
+		stanzas = remove_upto_index(stanzas, index);
+		if #stanzas == 0 then return nil; end
+	end
 	if not max and #stanzas > 30 then return false; end
 	
 	_count = max and _entries_count - max or 0;
-	query = generate_query(stanzas, (start or _start), (fin or _end), (max and true), first, last, (_count < 0 and 0) or _count);
+	query = legacy and
+		generate_query(stanzas, (start or _start), (fin or _end), rsm, first, last, (_count < 0 and 0) or _count, index) or
+		generate_fin(stanzas, first, last, (_count < 0 and 0) or _count, index);
 	return stanzas, query;
 end
 
@@ -335,6 +383,7 @@ local function set_prefs(stanza, store)
 		for jid in never:childtags("jid") do _prefs[jid:get_text()] = false; end
 	end
 	
+	store.changed = true;
 	local reply = st.reply(stanza);
 	reply:add_child(get_prefs(store));
 
@@ -354,7 +403,7 @@ local function process_message(event, outbound)
 			return;
 		end
 		if body then
-			body = body:get_text();
+			body = body:get_text() or "";
 			if body:len() > max_length then return; end
 			-- COMPAT, Drop OTR/E2E messages for clients not implementing XEP-334
 			if message:get_child("c", e2e_xmlns) or body:match("^%?OTR%:[^%s]*%.$") then return; end
@@ -383,19 +432,30 @@ local function process_message(event, outbound)
 
 	if archive and add_to_store(archive, user, outbound and bare_to or bare_from) then
 		local replace = message:get_child("replace", "urn:xmpp:message-correct:0");
-		local id;
+		local id, tags;
+
+		if store_elements then
+			tags = {};
+			local elements = message.tags;
+			for i = 1, #elements do
+				if store_elements:contains(elements[i].name) then tags[#tags + 1] = elements[i]; end
+			end
+			if not next(tags) then tags = nil; end
+		end
+
 		if replace then
 			id = log_entry_with_replace(archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, body);
 		else
 			if body then
 				id = marker == "markable" and log_entry(
 					archive, to, bare_to, from, bare_from, message.attr.id, body,
-					marker, marker_id
-				) or log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body);
+					marker, marker_id, tags
+				) or log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body, nil, nil, tags);
 			elseif marker and marker ~= "markable" then
 				id = log_marker(archive, to, bare_to, from, bare_from, message.attr.id, marker, marker_id);
 			end
 		end
+
 		if not bare_session then storage:set(user, archive); end
 		if not outbound and id then message:tag("archived", { jid = bare_to, id = id }):up(); end
 	else

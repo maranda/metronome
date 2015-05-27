@@ -34,19 +34,24 @@ function registerMechanism(name, backends, f)
 	end
 end
 
--- create a new SASL object which can be used to authenticate clients
+-- create a new SASL object which can be used to authenticate clients,
+-- new() expects an array, profile.order, to be present in the profile
+-- and which specifies the order of preference in which mechanisms are
+-- presented by the server
 function new(realm, profile)
-	local mechanisms = profile.mechanisms;
-	if not mechanisms then
-		mechanisms = {};
-		for backend, f in pairs(profile) do
-			if backend_mechanism[backend] then
-				for _, mechanism in ipairs(backend_mechanism[backend]) do
-					mechanisms[mechanism] = true;
+	local order = profile.order;
+	local mechanisms = {};
+	if type(order) == "table" and #order ~= 0 then
+		for b = 1, #order do
+			local backend = backend_mechanism[order[b]];
+			if backend then
+				for i = 1, #backend do
+					local sasl = backend[i];
+					t_insert(mechanisms, sasl);
+					mechanisms[sasl] = true;
 				end
 			end
 		end
-		profile.mechanisms = mechanisms;
 	end
 	return setmetatable({ profile = profile, realm = realm, mechs = mechanisms }, method);
 end
@@ -71,15 +76,14 @@ end
 
 -- feed new messages to process into the library
 function method:process(message)
-	--if message == "" or message == nil then return "failure", "malformed-request" end
 	return mechanisms[self.selected](self, message);
 end
 
 -- load the mechanisms
-require "util.sasl.plain".init(registerMechanism);
-require "util.sasl.digest-md5".init(registerMechanism);
 require "util.sasl.external".init(registerMechanism);
-require "util.sasl.anonymous".init(registerMechanism);
 require "util.sasl.scram".init(registerMechanism);
+require "util.sasl.digest-md5".init(registerMechanism);
+require "util.sasl.plain".init(registerMechanism);
+require "util.sasl.anonymous".init(registerMechanism);
 
 return _M;

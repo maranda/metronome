@@ -8,6 +8,8 @@ local datetime = require "util.datetime".datetime;
 local events = require "util.events";
 local keys = require "util.iterators".keys;
 local st = require "util.stanza";
+local clean_table = require "util.auxiliary".clean_table;
+local clone_table = require "util.auxiliary".clone_table;
 local ipairs, next, now, pairs, table = ipairs, next, os.time, pairs, table;
 
 module("pubsub", package.seeall);
@@ -29,6 +31,14 @@ local function deserialize_data(data)
 	end
 
 	return restored_data;
+end
+
+local function get_persistent_nodes(nodes)
+	local self_nodes = {};
+	for name, node in pairs(nodes) do
+		if node.config.persist_items then self_nodes[name] = node; end
+	end
+	return self_nodes;
 end
 
 function new(config)
@@ -309,7 +319,7 @@ end
 
 function service:remove_all_subscriptions(actor, jid)
 	local normal_jid = self.config.normalize_jid(jid);
-	local subs = self.subscriptions[normal_jid]
+	local subs = self.subscriptions[normal_jid];
 	subs = subs and subs[jid];
 	if subs then
 		for node in pairs(subs) do
@@ -697,18 +707,10 @@ end
 function service:save()
 	if not self.config.store then return true; end
 
-	local function get_persistent_nodes(nodes)
-		local self_nodes = {};
-		for name, node in pairs(nodes) do
-			if node.config.persist_items then self_nodes[name] = node; end
-		end
-		return self_nodes;
-	end
-
 	self.config.store:set(nil, {
 		nodes = array.collect(keys(get_persistent_nodes(self.nodes)));
 		affiliations = self.affiliations;
-		subscriptions = self.subscriptions;
+		subscriptions = self:sanitize_subscriptions();
 	});
 	return true;
 end
@@ -722,15 +724,12 @@ function service:restore(delayed)
 	for i, node in ipairs(data.nodes) do
 		self:restore_node(node, delayed);
 	end
-	self:sanitize_subscriptions();
 	return true;
 end
 
 function service:sanitize_subscriptions()
-	local nodes, subscriptions = self.nodes, self.subscriptions;
-	-- clean unexisting nodes, those that weren't persistant
-	-- this should be done far more cleanly, but it's still less expensive
-	-- then pre-hand checks, FIXME.
+	local nodes, subscriptions = get_persistent_nodes(self.nodes), clone_table(self.subscriptions);
+
 	for normal_jid, entry in pairs(subscriptions) do
 		for jid, subs in pairs(entry) do
 			for node in pairs(subs) do
@@ -740,17 +739,9 @@ function service:sanitize_subscriptions()
 			end
 		end
 	end
+	clean_table(subscriptions);
 
-	for normal_jid in pairs(subscriptions) do
-		for jid in pairs(subscriptions[normal_jid]) do
-			if not next(subscriptions[normal_jid][jid]) then
-				subscriptions[normal_jid][jid] = nil;
-			end
-		end
-		if not next(subscriptions[normal_jid]) then
-			subscriptions[normal_jid] = nil;
-		end
-	end
+	return subscriptions;
 end
 
 function service:save_node(node)

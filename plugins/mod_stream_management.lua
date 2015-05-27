@@ -122,7 +122,7 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 			local reply = st_reply(queued);
 			if reply.attr.to ~= session.full_jid then
 				reply.attr.type = "error";
-				reply:tag("error", attr):tag("recipient-unavaible", { xmlns = xmlns_e });
+				reply:tag("error", attr):tag("recipient-unavailable", { xmlns = xmlns_e });
 				fire_event("route/process", session, reply);
 			end
 		end

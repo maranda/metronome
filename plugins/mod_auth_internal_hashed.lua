@@ -17,6 +17,7 @@ local scram_backend = module:require "sasl_aux".hashed_scram_backend;
 local external_backend = module:require "sasl_aux".external_backend;
 local from_hex = module:require "sasl_aux".from_hex;
 local to_hex = module:require "sasl_aux".to_hex;
+local my_host = module.host;
 
 -- Default; can be set per-user
 local iteration_count = 4096;
@@ -100,12 +101,17 @@ function new_hashpass_provider(host)
 
 	function provider.get_sasl_handler(session)
 		local testpass_authentication_profile = {
-			plain_test = plain_test,
-			scram_sha_1 = scram_backend,
 			external = session.secure and external_backend,
-			host = module.host,
-			session = session
+			scram_sha_1 = scram_backend,
+			plain_test = plain_test,
+			session = session,
+			host = my_host
 		};
+		if session.secure then
+			testpass_authentication_profile.order = { "external", "scram_sha_1", "plain_test" };
+		else
+			testpass_authentication_profile.order = { "scram_sha_1", "plain_test" };
+		end
 		return new_sasl(module.host, testpass_authentication_profile);
 	end
 	

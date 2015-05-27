@@ -35,7 +35,7 @@ if CFG_DATADIR then
 	end
 end
 
-local metronome = { events = require "util.events".new(); };
+local metronome = { events = require "util.events".new(); incoming_s2s = {} };
 _G.metronome = metronome;
 
 local dependencies = require "util.dependencies";
@@ -247,7 +247,7 @@ function init_global_state()
 		collectgarbage("restart");
 	end
 	
-	local certmanager = require "core.certmanager";
+	local certmanager = require "util.certmanager";
 	local global_ssl_ctx = certmanager.create_context("*", "server");
 	metronome.global_ssl_ctx = global_ssl_ctx;
 	metronome.set_gc();

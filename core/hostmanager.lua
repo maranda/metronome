@@ -22,10 +22,6 @@ local log = require "util.logger".init("hostmanager");
 
 local hosts = hosts;
 local metronome_events = metronome.events;
-if not metronome.incoming_s2s then
-	require "core.s2smanager";
-end
-local incoming_s2s = metronome.incoming_s2s;
 local fire_event = metronome_events.fire_event;
 
 local pairs, tostring, type = pairs, tostring, type;
@@ -103,7 +99,6 @@ function activate(host)
 	if not host_config.component_module then
 		host_session.type = "local";
 		host_session.sessions = {};
-		if host_config.authentication == "anonymous" then host_session.anonymous = true; end
 	else
 		host_session.type = "component";
 	end
@@ -126,44 +121,10 @@ function deactivate(host, reason)
 	local host_session = hosts[host];
 	if not host_session then return nil, "The host "..tostring(host).." is not activated"; end
 	log("info", "Deactivating host: %s", host);
-	metronome_events.fire_event("host-deactivating", { host = host, host_session = host_session, reason = reason });
-	
 	if type(reason) ~= "table" then
 		reason = { condition = "host-gone", text = tostring(reason or "This server has stopped serving "..host) };
 	end
-	
-	-- Disconnect local users, s2s connections
-	-- TODO: These should move to mod_c2s and mod_s2s (how do they know they're being unloaded and not reloaded?)
-	if host_session.sessions then
-		for username, user in pairs(host_session.sessions) do
-			for resource, session in pairs(user.sessions) do
-				log("debug", "Closing connection for %s@%s/%s", username, host, resource);
-				session:close(reason);
-			end
-		end
-	end
-	if host_session.s2sout then
-		for remotehost, session in pairs(host_session.s2sout) do
-			if session.close then
-				log("debug", "Closing outgoing connection to %s", remotehost);
-				if session.srv_hosts then session.srv_hosts = nil; end
-				session:close(reason);
-			end
-		end
-	end
-	for remote_session in pairs(incoming_s2s) do
-		if remote_session.to_host == host then
-			log("debug", "Closing incoming connection from %s", remote_session.from_host or "<unknown>");
-			remote_session:close(reason);
-		end
-	end
-
-	-- TODO: This should be done in modulemanager
-	if host_session.modules then
-		for module in pairs(host_session.modules) do
-			modulemanager.unload(host, module);
-		end
-	end
+	metronome_events.fire_event("host-deactivating", { host = host, host_session = host_session, reason = reason });
 
 	hosts[host] = nil;
 	if not host:match("[@/]") then

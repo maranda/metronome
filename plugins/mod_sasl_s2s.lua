@@ -5,7 +5,7 @@
 -- information about copyright and licensing.
 
 local st = require "util.stanza";
-local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
+local s2s_make_authenticated = require "util.s2smanager".make_authenticated;
 local base64 = require "util.encodings".base64;
 local cert_verify_identity = require "util.x509".verify_identity;
 

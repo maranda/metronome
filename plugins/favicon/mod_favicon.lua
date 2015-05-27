@@ -9,14 +9,14 @@ module:set_global()
 local server = require "net.http.server"
 
 local favicon = module:get_option_string("favicon_path", (metronome.paths.plugins or "./").."favicon/favicon.ico")
-local open = io.open
+local load = require "util.auxiliary".load_file
 
 local function serve_icon(event)
 	local response = event.response
-        local file = open(favicon, "rb") ; local icon
-	if file then icon = file:read("*a") ; file:close() else module:log("error","Couldn't find favicon in %s", favicon) end
+    	local icon = load(favicon, "rb")
 
 	if not icon then
+		module:log("error","Couldn't find favicon in %s", favicon)
 		return 404
 	else
 		response.headers.content_type = "image/x-icon"

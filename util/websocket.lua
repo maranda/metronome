@@ -10,7 +10,7 @@
 -- This is an object adaptation of websocket parsing routines in mod_websocket
 -- from Prosody Modules.
 
-local log = require "util.logger".init("websockets");
+local log = require "util.logger".init("websocket");
 local softreq = require "util.dependencies".softreq;
 
 local bit;
@@ -28,7 +28,7 @@ local char = string.char;
 local concat = table.concat;
 local setmetatable = setmetatable;
 
-module "websockets";
+module "websocket";
 
 local ws = {};
 local mt = { __index = ws };

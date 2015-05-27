@@ -26,10 +26,11 @@ local period = math.max(module:get_option_number("muc_event_rate", 0.5), 0);
 local burst = math.max(module:get_option_number("muc_burst_factor", 6), 1);
 local exclusion_list = module:get_option_set("muc_throttle_host_exclusion");
 local parent_host = module:get_option_boolean("muc_whitelist_parent_peers") == true and module.host:match("%.(.*)");
+local disconnect_after = module:get_option_number("muc_disconnect_after_throttles", 20);
 
 local rooms = metronome.hosts[module.host].modules.muc.rooms;
 local hosts = metronome.hosts;
-local _parent;
+local _parent, _default_period, _default_burst = nil, period*2, burst*10;
 
 -- Handlers
 
@@ -52,23 +53,36 @@ local function handle_stanza(event)
 
 	local dest_room, dest_host, dest_nick = jid_split(stanza.attr.to);
 	local room = rooms[dest_room.."@"..dest_host];
-	if not room or not room:get_option("limits_enabled") then return; end
+	if not room then return; end
 	local from_jid = stanza.attr.from;
-	local occupant = room._occupants[room._jid_nick[from_jid]];
+	local occupant_jid = room._jid_nick[from_jid];
+	local occupant = room._occupants[occupant_jid];
 	if (occupant and occupant.affiliation) or (not(occupant) and room._affiliations[jid_bare(from_jid)]) then
 		module:log("debug", "Skipping stanza from affiliated user...");
 		return;
 	end
 	local throttle = room.throttle;
 	if not room.throttle then
-		local _period, _burst = room:get_option("limits_seconds") or period, room:get_option("limits_stanzas") or burst;
+		local _period, _burst;
+		if not room:get_option("limits_enabled") then
+			_period, _burst = _default_period, _default_burst;
+		else
+			_period, _burst = room:get_option("limits_seconds") or period, room:get_option("limits_stanzas") or burst;
+		end
 		throttle = new_throttle(_period*_burst, _burst);
 		room.throttle = throttle;
 	end
 	if not throttle:poll(1) then
+		local trigger = origin.muc_limits_trigger;
 		module:log("warn", "Dropping stanza for %s@%s from %s, over rate limit", dest_room, dest_host, from_jid);
 		if stanza.attr.type == "error" then return true; end -- drop errors silently
+		if trigger and trigger >= disconnect_after then
+			room:set_role(true, occupant_jid, "none", nil, "Exceeded number of allowed throttled stanzas");
+			origin:close{ condition = "policy-violation", text = "Exceeded number of allowed throttled stanzas" };
+			return true;
+		end
 
+		origin.muc_limits_trigger = (not trigger and 1) or trigger + 1;
 		local reply = st.error_reply(stanza, "wait", "policy-violation", "The room is currently overactive, please try again later");
 		local body = stanza:get_child_text("body");
 		if body then

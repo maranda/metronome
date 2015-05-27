@@ -32,6 +32,7 @@ local open = io.open;
 local select = select;
 local stat = lfs.attributes;
 local hosts = metronome.hosts;
+local incoming_s2s = metronome.incoming_s2s;
 
 module:set_global();
 

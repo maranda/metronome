@@ -16,13 +16,13 @@ local add_filter = require "util.filters".add_filter;
 local sha1 = require "util.hashes".sha1;
 local base64 = require "util.encodings".base64.encode;
 local portmanager = require "core.portmanager";
-local websockets = require "util.websockets";
+local websocket = require "util.websocket";
 
 local t_concat = table.concat;
 
-local raw_log = module:get_option_boolean("websockets_no_raw_requests_logging", true) ~= true and true or nil;
-local consider_secure = module:get_option_boolean("consider_websockets_secure");
-local cross_domain = module:get_option("cross_domain_websockets");
+local raw_log = module:get_option_boolean("websocket_no_raw_requests_logging", true) ~= true and true or nil;
+local consider_secure = module:get_option_boolean("consider_websocket_secure");
+local cross_domain = module:get_option("cross_domain_websocket");
 if cross_domain then
 	if cross_domain == true then
 		cross_domain = "*";
@@ -44,7 +44,7 @@ function handle_request(event, path)
 
 	if not request.headers.sec_websocket_key then
 		response.headers.content_type = "text/html";
-		return [[<!DOCTYPE html><html><head><title>Websocket</title></head><body>
+		return [[<!DOCTYPE html><html><head><title>Metronome's WebSocket Interface</title></head><body>
 			<p>It works! Now point your WebSocket client to this URL to connect to the XMPP server.</p>
 			</body></html>]];
 	end
@@ -60,7 +60,7 @@ function handle_request(event, path)
 	c2s_listener.onconnect(conn);
 
 	local session = sessions[conn];
-	local ws = websockets.new(conn, raw_log);
+	local ws = websocket.new(conn, raw_log);
 
 	session.secure = consider_secure or session.secure;
 	session.ws_session = true;
@@ -98,8 +98,8 @@ end
 function module.add_host(module)
 	module:depends("http");
 	module:provides("http", {
-		name = "websockets";
-		default_path = "xmpp-websockets";
+		name = "websocket";
+		default_path = "xmpp-websocket";
 		route = {
 			["GET"] = handle_request;
 			["GET /"] = handle_request;

@@ -4,7 +4,7 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 --
--- Additional Contributors: John Regan
+-- Additional Contributors: John Regan, Oscar Padilla
 
 -- Imported from prosody-modules, mod_muc_log
 
@@ -19,12 +19,10 @@ local hosts = metronome.hosts;
 local tostring = tostring;
 local jid_bare = require "util.jid".bare;
 local jid_section = require "util.jid".section;
-local cm = require "core.configmanager";
 local datamanager = require "util.datamanager";
-local data_load, data_store, data_getpath = datamanager.load, datamanager.store, datamanager.getpath;
+local data_load, data_store, data_stores = datamanager.load, datamanager.store, datamanager.stores;
 local datastore = "muc_log";
 local error_reply = require "util.stanza".error_reply;
-local storagemanager = storagemanager;
 local ripairs, t_insert, t_remove = ripairs, table.insert, table.remove;
 
 local mod_host = module:get_host();
@@ -45,13 +43,10 @@ function log_if_needed(e)
 		local bare = jid_bare(to_room);
 		if muc.rooms[bare] then
 			local room = muc.rooms[bare];
-			local today = os.date("!%y%m%d");
+			local today = os.date("!%Y%m%d");
 			local now = os.date("!%X");
 			local muc_from = nil;
 			
-			if room._data.hidden then -- do not log any data of private rooms
-				return;
-			end
 			if not room._data.logging then -- do not log where logging is not enabled
 				return;
 			end
@@ -94,7 +89,15 @@ function log_if_needed(e)
 	end
 end
 
+function clear_logs(event) -- clear logs from disk
+	local node = jid_section(event.room.jid, "node");
+	for store in data_stores(node, mod_host, "keyval", datastore) do
+		data_store(node, mod_host, store, nil);
+	end
+end
+
 module:hook("message/bare", log_if_needed, 50);
+module:hook("muc-room-destroyed", clear_logs);
 
 -- Define config methods
 
@@ -109,9 +112,11 @@ module:hook("muc-fields", function(room, layout)
 	});
 end, -100);
 module:hook("muc-fields-process", function(room, fields, stanza, changed)
-	local config = fields[field_xmlns];	
-	if room:get_option("hidden") and config then
-		return error_reply(stanza, "cancel", "forbidden", "You can enable logging only into public rooms!");
+	local config = fields[field_xmlns];
+	if not room:get_option("persistent") and config then
+		return error_reply(stanza, "cancel", "forbidden", "You can enable logging only into persistent rooms!");
+	elseif not config then
+		clear_logs({ room = room });
 	end
 	room:set_option("logging", config, changed);
 end, -100);
@@ -123,7 +128,7 @@ module:hook("muc-fields-submitted", function(room, message)
 	end
 	return message;
 end, -100);
-module:hook("muc-occupant-joined", function(room, presence)
+module:hook("muc-occupant-join-presence", function(room, presence)
 	if room:get_option("logging") then presence:tag("status", {code = "170"}):up(); end
 end, -100);
 

@@ -163,9 +163,6 @@ end
 local function create_year(year, callback)
 	local year = year;
 	local tmp;
-	if tonumber(year) <= 99 then
-		year = year + 2000;
-	end
 	local html_str = "";
 	for i=1, 12 do
 		tmp = create_month(i, year, callback);
@@ -182,10 +179,7 @@ end
 local function day_callback(path, day, month, year, host, room, webpath)
 	local webpath = webpath or ""
 	local year = year;
-	if year > 2000 then
-		year = year - 2000;
-	end
-	local bare_day = str_format("20%.02d-%.02d-%.02d", year, month, day);
+	local bare_day = str_format("%.02d-%.02d-%.02d", year, month, day);
 	if(data_store_exists(room, host, datastore .. "/" .. str_format("%.02d%.02d%.02d", year, month, day))) then
 		local s = html.days.bit;
 		s = s:gsub("###BARE_DAY###", webpath .. bare_day);
@@ -249,9 +243,9 @@ local function generate_day_room_content(bare_room_jid)
 		t_sort(stores);
 		
 		for _, store in ipairs(stores) do
-			local year, month, day = store:match("^"..datastore.."/(%d%d)(%d%d)(%d%d)");
+			local year, month, day = store:match("^"..datastore.."/(%d%d%d%d)(%d%d)(%d%d)");
 			if year then
-				to = tostring(os_date("%B %Y", os_time({ day=tonumber(day), month=tonumber(month), year=2000+tonumber(year) })));
+				to = tostring(os_date("%B %Y", os_time({ day=tonumber(day), month=tonumber(month), year=tonumber(year) })));
 				if since == "" then since = to; end
 				if not already_done_years[year] then
 					module:log("debug", "creating overview for: %s", to);
@@ -273,7 +267,7 @@ local function generate_day_room_content(bare_room_jid)
 end
 
 local function increment_day(bare_day)
-	local year, month, day = bare_day:match("^20(%d%d)-(%d%d)-(%d%d)$");
+	local year, month, day = bare_day:match("^(%d%d%d%d)-(%d%d)-(%d%d)$");
 	local leapyear = false;
 	module:log("debug", tostring(day).."/"..tostring(month).."/"..tostring(year))
 
@@ -309,7 +303,7 @@ local function increment_day(bare_day)
 	else
 		day = day + 1;
 	end
-	return strformat("20%.02d-%.02d-%.02d", year, month, day);
+	return strformat("%.02d-%.02d-%.02d", year, month, day);
 end
 
 local function find_next_day(bare_room_jid, bare_day)
@@ -333,7 +327,7 @@ local function find_next_day(bare_room_jid, bare_day)
 end
 
 local function decrement_day(bare_day)
-	local year, month, day = bare_day:match("^20(%d%d)-(%d%d)-(%d%d)$");
+	local year, month, day = bare_day:match("^(%d%d%d%d)-(%d%d)-(%d%d)$");
 	local leapyear = false;
 	module:log("debug", tostring(day).."/"..tostring(month).."/"..tostring(year))
 
@@ -367,7 +361,7 @@ local function decrement_day(bare_day)
 	else
 		day = day - 1;
 	end
-	return strformat("20%.02d-%.02d-%.02d", year, month, day);
+	return strformat("%.02d-%.02d-%.02d", year, month, day);
 end
 
 local function find_previous_day(bare_room_jid, bare_day)
@@ -391,10 +385,9 @@ end
 
 local function parse_day(bare_room_jid, room_subject, bare_day)
 	if bare_day then
-		local ret = "";
+		local ret;
 		local node, host = split_jid(bare_room_jid);
-		local year, month, day = bare_day:match("^20(%d%d)-(%d%d)-(%d%d)$");
-		local _year = year;
+		local year, month, day = bare_day:match("^(%d%d%d%d)-(%d%d)-(%d%d)$");
 		local previous_day = find_previous_day(bare_room_jid, bare_day);
 		local next_day = find_next_day(bare_room_jid, bare_day);
 		local temptime = {day=0, month=0, year=0};
@@ -403,21 +396,17 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 		local calendar = "";
 		local html_day = html.day;
 
-		if tonumber(year) <= 99 then
-			year = year + 2000;
-		end
-
 		temptime.day = tonumber(day);
 		temptime.month = tonumber(month);
 		temptime.year = tonumber(year);
 		calendar = create_month(temptime.month, temptime.year, {callback=day_callback, path=path, host=host, room=node, webpath="../"}) or "";
 		
 		local get_page = open_pipe(
-			module_path.."/generate_log '"..metronome_paths.source.."' "..metronome_paths.data.." "..theme_path.." "..bare_room_jid.." ".._year..month..day.." "..metronome.serialization
+			module_path.."/generate_log '"..metronome_paths.source.."' "..metronome_paths.data.." "..theme_path.." "..bare_room_jid.." "..year..month..day.." "..metronome.serialization
 		);
 		
 		ret = get_page:read("*a"); get_page:close(); get_page = nil;
-		if ret ~= "" then
+		if ret ~= "\n" then
 			if next_day then
 				next_day = html_day.dayLink:gsub("###DAY###", next_day):gsub("###TEXT###", "&gt;")
 			end
@@ -435,6 +424,8 @@ local function parse_day(bare_room_jid, room_subject, bare_day)
 			tmp = tmp:gsub("###PREVIOUS_LINK###", previous_day or "");
 
 			return tmp, "Chatroom logs for "..bare_room_jid.." ("..tostring(os_date("%A, %B %d, %Y", os_time(temptime)))..")";
+		else
+			ret = "";
 		end
 	end
 end
@@ -482,21 +473,21 @@ function handle_request(event)
 	elseif not day then -- room's listing
 		return response:send(create_doc(generate_day_room_content(node.."@"..my_host)));
 	else
-		if not day:match("^20(%d%d)-(%d%d)-(%d%d)$") then
-			local y,m,d = day:match("^(%d%d)(%d%d)(%d%d)$");
+		if not day:match("^(%d%d%d%d)-(%d%d)-(%d%d)$") then
+			local y,m,d = day:match("^(%d%d%d%d)(%d%d)(%d%d)$");
 			if not y then
 				response.status_code = 404;
-				return response:send(handle_error(response.status_code, "No entries for that year."));
+				return response:send(handle_error(response.status_code, "No entries, or invalid year"));
 			end
 			response.status_code = 301;
-			response.headers = { ["Location"] = request_path:match("^/"..url_base.."/+[^/]*").."/20"..y.."-"..m.."-"..d.."/" };
+			response.headers = { ["Location"] = request_path:match("^/"..url_base.."/+[^/]*").."/"..y.."-"..m.."-"..d.."/" };
 			return response:send();
 		end
 
 		local body = create_doc(parse_day(node.."@"..my_host, room._data.subject or "", day));
 		if body == "" then
 			response.status_code = 404;
-			return response:send(handle_error(response.status_code, "Day entry doesn't exist."));
+			return response:send(handle_error(response.status_code, "Specified entry doesn't exist."));
 		end
 		return response:send(body);
 	end

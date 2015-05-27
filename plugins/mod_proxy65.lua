@@ -95,12 +95,6 @@ function module.add_host(module)
 	local proxy_port = next(portmanager.get_active_services():search("proxy65", nil)[1] or {});
 	local proxy_acl = module:get_option("proxy65_acl");
 
-	-- COMPAT w/pre-0.9 where proxy65_port was specified the components section of the config
-	local legacy_config = module:get_option_number("proxy65_port");
-	if legacy_config then
-		module:log("warn", "proxy65_port is deprecated, please put proxy65_ports = { %d } into the global section instead", legacy_config);
-	end
-
 	module:add_identity("proxy", "bytestreams", name);
 	module:add_feature("http://jabber.org/protocol/bytestreams");
 	
@@ -163,9 +157,6 @@ function module.add_host(module)
 			elseif not transfers[sha].initiator then
 				module:log("debug", "The sender was not connected to the proxy; activation failed (%s)", info);
 				origin.send(st.error_reply(stanza, "cancel", "not-allowed", "The sender (you) is not connected to the proxy"));
-			--elseif not transfers[sha].target then -- can't happen, as target is set when a transfer object is created
-			--	module:log("debug", "The recipient was not connected to the proxy; activation failed (%s)", info);
-			--	origin.send(st.error_reply(stanza, "cancel", "not-allowed", "The recipient is not connected to the proxy"));
 			else -- if transfers[sha].initiator ~= nil and transfers[sha].target ~= nil then
 				module:log("debug", "Transfer activated (%s)", info);
 				transfers[sha].activated = true;

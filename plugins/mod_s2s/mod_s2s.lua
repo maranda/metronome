@@ -23,10 +23,10 @@ local nameprep = require "util.encodings".stringprep.nameprep;
 local new_xmpp_stream = require "util.xmppstream".new;
 local is_module_loaded = modulemanager.is_loaded;
 local load_module = modulemanager.load;
-local s2s_new_incoming = require "core.s2smanager".new_incoming;
-local s2s_new_outgoing = require "core.s2smanager".new_outgoing;
-local s2s_destroy_session = require "core.s2smanager".destroy_session;
-local s2s_mark_connected = require "core.s2smanager".mark_connected;
+local s2s_new_incoming = require "util.s2smanager".new_incoming;
+local s2s_new_outgoing = require "util.s2smanager".new_outgoing;
+local s2s_destroy_session = require "util.s2smanager".destroy_session;
+local s2s_mark_connected = require "util.s2smanager".mark_connected;
 local uuid_gen = require "util.uuid".generate;
 local cert_verify_identity = require "util.x509".verify_identity;
 
@@ -38,8 +38,10 @@ local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
 local require_encryption = module:get_option_boolean("s2s_require_encryption", not metronome.no_encryption);
 local max_inactivity = module:get_option_number("s2s_max_inactivity", 1800);
 local check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
+local encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 
 local sessions = module:shared("sessions");
+local multiplexed_sessions = setmetatable({}, { __mode = "v" });
 
 local log = module._log;
 local last_inactive_clean = now();
@@ -139,7 +141,7 @@ local function session_open_stream(session, from, to)
 	local from = from or session.from_host;
 	local to = to or session.to_host;
 	local direction = session.direction;
-	local db = (not s2s_strict_mode and true) or is_module_loaded((direction == "outgoing" and from) or to, "dialback");
+	local db = (not s2s_strict_mode and true) or hosts[direction == "outgoing" and from or to].dialback_capable;
 	local attr = {
 		xmlns = "jabber:server", 
 		["xmlns:db"] = db and "jabber:server:dialback" or nil,
@@ -162,7 +164,10 @@ function route_to_new_session(event)
 	-- Store in buffer
 	host_session.bounce_sendq = bounce_sendq;
 	host_session.open_stream = session_open_stream;
-	if multiplexed_from then host_session.multiplexed_from = multiplexed_from; end
+	if multiplexed_from then
+		host_session.multiplexed_from = multiplexed_from;
+		multiplexed_sessions[to_host] = host_session;
+	end
 
 	host_session.sendq = { {tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza)} };
 	log("debug", "stanza [%s] queued until connection complete", tostring(stanza.name));
@@ -196,6 +201,27 @@ function module.add_host(module)
 	end, -100)
 	module:hook("route/remote", route_to_existing_session, 200);
 	module:hook("route/remote", route_to_new_session, 100);
+	module:hook("s2s-authenticated", function(event)
+		local ctx, direction, session, from, to = event.ctx, event.direction, event.session, event.from, event.to;
+		if require_encryption and ctx and not session.secure then
+			local multiplexed_from;
+			if multiplexed_sessions[to] then
+				multiplexed_from =
+					multiplexed_sessions[to].multiplexed_from and
+					multiplexed_sessions[to].multiplexed_from.from_host;
+			end
+			if direction == "outgoing" and encryption_exceptions:contains(multiplexed_from) then
+				return true;
+			elseif not encryption_exceptions:contains(direction == "outgoing" and to or from) then
+				local text = direction == "outgoing" and "offered" or "used";
+				session:close({
+					condition = "policy-violation",
+					text = "TLS encryption is mandatory but wasn't "..text }, "authentication failure");
+				return false;
+			end
+		end
+		return true;
+	end)
 	module:hook("s2sout-destroyed", function(event)
 		local session = event.session;
 		local multiplexed_from = session.multiplexed_from;
@@ -335,12 +361,6 @@ function stream_callbacks.streamopened(session, attr)
 			
 			log("debug", "Sending stream features: %s", tostring(features));
 			send(features);
-		elseif session.version < 1.0 and require_encryption and (not to or hosts[to].ssl_ctx_in) then
-			session:close(
-				{ condition = "unsupported-version", text = "To connect to this server xmpp streams of version 1 or above are required" }, 
-				"error communicating with the remote server"
-			);
-			return;
 		end
 	elseif session.direction == "outgoing" then
 		-- If we are just using the connection for verifying dialback keys, we won't try and auth it
@@ -362,16 +382,19 @@ function stream_callbacks.streamopened(session, attr)
 	
 		-- If server is pre-1.0, don't wait for features, just do dialback
 		if session.version < 1.0 then
-			if require_encryption and hosts[session.from_host].ssl_ctx then
+			local from, to = session.from_host, session.to_host;
+			if require_encryption and hosts[from].ssl_ctx and
+			   not encryption_exceptions:contains(to) and not multiplexed_sessions[to] then
 				-- pre-1.0 servers won't support tls perhaps they should be excluded
 				session:close("unsupported-version", "error communicating with the remote server");
 				return;
 			end
 		
-			if not session.legacy_dialback then
-				hosts[session.from_host].events.fire_event("s2s-authenticate-legacy", { origin = session });
+			if hosts[from].dialback_capable then
+				hosts[from].events.fire_event("s2s-authenticate-legacy", session);
 			else
-				s2s_mark_connected(session);
+				session:close("internal-server-error", "unable to authenticate, dialback is not available");
+				return;
 			end
 		end
 	end
@@ -597,14 +620,34 @@ end
 
 s2sout.set_listener(listener);
 
-module:hook_global("config-reloaded", function()
+module:hook("config-reloaded", function()
 	connect_timeout = module:get_option_number("s2s_timeout", 90);
 	stream_close_timeout = module:get_option_number("s2s_close_timeout", 5);
 	s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
 	require_encryption = module:get_option_boolean("s2s_require_encryption", not metronome.no_encryption);
 	max_inactivity = module:get_option_number("s2s_max_inactivity", 1800);
 	check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
+	encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 end);
+
+module:hook("host-deactivating", function(event)
+	local host, host_session, reason = event.host, event.host_session, event.reason;
+	if host_session.s2sout then
+		for remotehost, session in pairs(host_session.s2sout) do
+			if session.close then
+				log("debug", "Closing outgoing connection to %s", remotehost);
+				if session.srv_hosts then session.srv_hosts = nil; end
+				session:close(reason);
+			end
+		end
+	end
+	for remote_session in pairs(metronome.incoming_s2s) do
+		if remote_session.to_host == host then
+			module:log("debug", "Closing incoming connection from %s", remote_session.from_host or "<unknown>");
+			remote_session:close(reason);
+		end
+	end
+end, -2);
 
 module:add_item("net-provider", {
 	name = "s2s";
@@ -616,3 +659,7 @@ module:add_item("net-provider", {
 	};
 });
 
+function module.save() return { multiplexed_sessions = multiplexed_sessions }; end
+function module.restore(data)
+	multiplexed_sessions = data.multiplexed_sessions or setmetatable({}, { __mode = "v" });
+end

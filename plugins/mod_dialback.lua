@@ -10,12 +10,13 @@
 local hosts = metronome.hosts;
 local incoming = metronome.incoming_s2s;
 local host_session = hosts[module.host];
-local s2s_make_authenticated = require "core.s2smanager".make_authenticated;
+local s2s_make_authenticated = require "util.s2smanager".make_authenticated;
 
 local log = module._log;
 local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
 local no_encryption = metronome.no_encryption;
 local require_encryption = module:get_option_boolean("s2s_require_encryption", not no_encryption);
+local encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 
 local st = require "util.stanza";
 local sha256_hash = require "util.hashes".sha256;
@@ -47,12 +48,6 @@ function verify_dialback(id, to, from, key)
 end
 
 function make_authenticated(session, host)
-	if require_encryption and not session.secure and
-	   (session.direction == "incoming" and hosts[session.to_host].ssl_ctx_in or hosts[session.from_host].ssl_ctx) then
-		local t = session.direction == "outgoing" and "offered" or "used";
-		session:close({ condition = "policy-violation", text = "TLS encryption is mandatory but wasn't "..t }, "authentication failure");
-		return false;
-	end
 	if session.type == "s2sout_unauthed" then
 		local multiplexed_from = session.multiplexed_from;
 		if multiplexed_from and not multiplexed_from.destroyed then
@@ -270,7 +265,7 @@ module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 		local tls = stanza:child_with_ns(xmlns_starttls);
 		if can_do_dialback(origin) then
 			local tls_required = tls and tls:get_child("required");
-			if tls_required and not origin.secure then
+			if tls_required and not origin.secure and not encryption_exceptions:contains(to) then
 				local to, from = origin.to_host, origin.from_host;
 				module:log("warn", "Remote server mandates to encrypt streams but TLS is not available for this host,");
 				module:log("warn", "please check your configuration and that mod_tls is loaded correctly");
@@ -294,10 +289,9 @@ module:hook("s2s-stream-features", function (data)
 	data.features:tag("dialback", { xmlns = "urn:xmpp:features:dialback" }):tag("errors"):up():up();
 end, 98);
 
-module:hook("s2s-authenticate-legacy", function (event)
-	event.origin.legacy_dialback = true;
+module:hook("s2s-authenticate-legacy", function (session)
 	module:log("debug", "Initiating dialback...");
-	initiate_dialback(event.origin);
+	initiate_dialback(session);
 	return true;
 end, 100);
 
@@ -306,14 +300,11 @@ function module.load()
 end
 
 function module.unload(reload)
-	if not reload and not s2s_strict_mode then
-		module:log("warn", "In interoperability mode mod_s2s directly depends on mod_dialback for its local instances.");
-		module:log("warn", "Perhaps it will be unloaded as well for this host. (To prevent this set s2s_strict_mode = true in the config)");
-	end
 	host_session.dialback_capable = nil;
 end
 
 module:hook_global("config-reloaded", function()
 	s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
 	require_encryption = module:get_option_boolean("s2s_require_encryption", not no_encryption);
+	encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 end);
