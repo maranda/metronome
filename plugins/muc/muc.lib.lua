@@ -913,18 +913,22 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 		else
 			origin.send(st.error_reply(stanza, "cancel", "bad-request"));
 		end
-	else
-		if type == "error" or type == "result" then return; end
+	elseif stanza.name ~= "iq" and type ~= "error" then
 		origin.send(st.error_reply(stanza, "cancel", "service-unavailable"));
 	end
 end
 
 function room_mt:handle_stanza(origin, stanza)
 	local to_node, to_host, to_resource = jid_split(stanza.attr.to);
+	local name, type = stanza.name, stanza.attr.type;
 	if to_resource then
 		self:handle_to_occupant(origin, stanza);
 	else
-		self:handle_to_room(origin, stanza);
+		if name == "iq" and (type ~= "error" and type ~= "result") or name ~= "iq" then
+			self:handle_to_room(origin, stanza);
+		else
+			log("debug", "discaring iq %s sent to the room by %s", type, stanza.attr.from);
+		end
 	end
 end
 
