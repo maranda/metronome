@@ -927,7 +927,7 @@ function room_mt:handle_stanza(origin, stanza)
 		if name == "iq" and (type ~= "error" and type ~= "result") or name ~= "iq" then
 			self:handle_to_room(origin, stanza);
 		else
-			log("debug", "discaring iq %s sent to the room by %s", type, stanza.attr.from);
+			log("debug", "discarding iq %s sent to the room by %s", type, stanza.attr.from);
 		end
 	end
 end
