@@ -4,7 +4,7 @@ Author: Jérôme Lebleu <jerome@yunohost.org>
 --- metronome.orig/Makefile
 +++ metronome/Makefile
 @@ -15,9 +15,9 @@
-
+ 
  all: generate_log.install metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
  	$(MAKE) -C util-src install
 -	$(MAKE) -C certs localhost.cnf
@@ -15,4 +15,4 @@ Author: Jérôme Lebleu <jerome@yunohost.org>
 +#	$(MAKE) -C certs localhost.cert
  
  clean:
-	rm -f generate_log.install
+ 	rm -f generate_log.install
