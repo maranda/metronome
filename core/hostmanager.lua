@@ -16,7 +16,7 @@ local disco_items = mt_new();
 local NULL = {};
 
 local jid_section = require "util.jid".section;
-local uuid_gen = require "util.uuid".generate;
+local generate_secret = require "util.auxiliary".generate_secret;
 
 local log = require "util.logger".init("hostmanager");
 
@@ -92,7 +92,7 @@ function activate(host)
 		host = host;
 		s2sout = {};
 		events = events_new();
-		dialback_secret = configmanager.get(host, "dialback_secret") or uuid_gen();
+		dialback_secret = configmanager.get(host, "dialback_secret") or generate_secret();
 		send = host_send;
 		modules = {};
 	};

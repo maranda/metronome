@@ -8,7 +8,8 @@
 
 local CFG_SOURCEDIR, metronome = _G.CFG_SOURCEDIR, _G.metronome;
 local open, popen = io.open, io.popen;
-local char, next, pairs, tonumber, type = string.char, next, pairs, tonumber, type;
+local base64 = require "util.encodings".base64.encode;
+local char, next, pairs, tonumber, tostring, type = string.char, next, pairs, tonumber, tostring, type;
 
 module "auxiliary"
 
@@ -110,6 +111,11 @@ function load_file(f, mode)
 		file:close();
 	end
 	return ret, err;
+end
+
+function generate_secret(bytes)
+	local urandom = popen("head -c "..tostring(bytes or 256).." /dev/urandom"):read();
+	return base64(urandom);
 end
 
 return _M;
