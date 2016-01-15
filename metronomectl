@@ -256,10 +256,9 @@ for hostname, config in pairs(config.getconfig()) do
 	hosts[hostname] = make_host(hostname);
 end
 	
-local modulemanager = require "core.modulemanager"
-
-local metronomectl = require "util.metronomectl"
-require "socket"
+local modulemanager = require "core.modulemanager";
+local metronomectl = require "util.metronomectl";
+local socket = require "socket";
 -----------------------
 
 read_version = require "util.auxiliary".read_version;
