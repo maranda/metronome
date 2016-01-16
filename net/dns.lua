@@ -581,8 +581,17 @@ function resolver:getsocket(servernum)
 	local sock = self.socket[servernum];
 	if sock then return sock; end
 
-	local err;
-	sock, err = socket.udp();
+	local err, peer, inet6;
+	peer = self.server[servernum];
+	inet6 = peer:find(":");
+
+	if inet6 and not socket.udp6 then
+		-- LuaSocket doesn't support IPv6
+		sock, err = nil, "unable to connect to IPv6 resolvers";
+	else
+		sock, err = ((inet6 and socket.udp6) or (socket.udp4 or socket.udp))();
+	end
+
 	if not sock then
 		return nil, err;
 	end
@@ -590,7 +599,7 @@ function resolver:getsocket(servernum)
 	sock:settimeout(0);
 	-- todo: attempt to use a random port, fallback to 0
 	sock:setsockname('*', 0);
-	sock:setpeername(self.server[servernum], 53);
+	sock:setpeername(peer, 53);
 	self.socket[servernum] = sock;
 	self.socketset[sock] = servernum;
 	return sock;
