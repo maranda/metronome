@@ -1,0 +1,13 @@
+data
+local
+metronome.lua
+metronome.cfg.lua
+*.patch
+*.diff
+*.orig
+*~
+*.sw[op]
+*.pid
+*.log
+*.err
+*.debug
