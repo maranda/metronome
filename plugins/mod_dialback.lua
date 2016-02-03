@@ -264,9 +264,9 @@ module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 	if origin.type == "s2sout_unauthed" and (not origin.external_auth or origin.external_auth == "failed") then
 		local tls = stanza:child_with_ns(xmlns_starttls);
 		if can_do_dialback(origin) then
+			local to, from = origin.to_host, origin.from_host;
 			local tls_required = tls and tls:get_child("required");
 			if tls_required and not origin.secure and not encryption_exceptions:contains(to) then
-				local to, from = origin.to_host, origin.from_host;
 				module:log("warn", "Remote server mandates to encrypt streams but TLS is not available for this host,");
 				module:log("warn", "please check your configuration and that mod_tls is loaded correctly");
 				-- Close paired incoming stream

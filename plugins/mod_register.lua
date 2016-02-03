@@ -6,6 +6,8 @@
 --
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2012, Kim Alvefur, Florian Zeitz, Glenn Maynard, Jeff Mitchell, Matthew Wild, Waqas Hussain
+--
+-- Additional Contributors: Alban Bedel
 
 local hosts = _G.hosts;
 local st = require "util.stanza";
@@ -18,6 +20,9 @@ local usermanager_delete_user = require "core.usermanager".delete_user;
 local os_time = os.time;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local jid_bare = require "util.jid".bare;
+local new_ip = require "util.ip".new_ip;
+local parse_subnets = require "util.ip".parse_subnets;
+local match_subnet = require "util.ip".match_subnet;
 
 local compat = module:get_option_boolean("registration_compat", true);
 local allow_registration = module:get_option_boolean("allow_registration", false);
@@ -170,17 +175,38 @@ end
 
 local recent_ips = {};
 local min_seconds_between_registrations = module:get_option("min_seconds_between_registrations");
-local whitelist_only = module:get_option("whitelist_registration_only");
-local whitelisted_ips = module:get_option("registration_whitelist") or { "127.0.0.1" };
-local blacklisted_ips = module:get_option("registration_blacklist") or {};
+local match_type = module:get_option_string("registration_ip_match_type", "range");
+if match_type ~= "range" and match_type ~= "single" then match_type = "range" end
+local whitelist_only = module:get_option_boolean("whitelist_registration_only", false);
+local whitelisted_ips = module:get_option_table("registration_whitelist", { "127.0.0.1" });
+local blacklisted_ips = module:get_option_table("registration_blacklist", {});
+if match_type ~= "single" then
+	whitelisted_ips, blacklisted_ips = parse_subnets(whitelisted_ips), parse_subnets(blacklisted_ips);
+end 
 
-for _, ip in ipairs(whitelisted_ips) do whitelisted_ips[ip] = true; end
-for _, ip in ipairs(blacklisted_ips) do blacklisted_ips[ip] = true; end
+local function match_ip(ip, whitelist)
+	local ips = whitelist and whitelisted_ips or blacklisted_ips;
+	if match_type == "range" then
+		ip = new_ip(ip);
+		if ip then
+			for _, s in ipairs(ips) do
+				if match_subnet(ip, s.addr, s.mask) then
+					return true;
+				end
+			end
+		end
+	else
+		for _, address in ipairs(ips) do
+			if address == ip then return true; end
+		end
+	end
+	return false;
+end
 
 module:hook("stanza/iq/jabber:iq:register:query", function(event)
 	local session, stanza = event.origin, event.stanza;
 
-	if not(allow_registration) or session.type ~= "c2s_unauthed" then
+	if not allow_registration or session.type ~= "c2s_unauthed" then
 		session.send(st.error_reply(stanza, "cancel", "service-unavailable"));
 	else
 		local query = stanza.tags[1];
@@ -197,12 +223,10 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 					session.send(st.error_reply(stanza, "modify", "not-acceptable"));
 				else
 					-- Check that the user is not blacklisted or registering too often
-					if not session.ip then
-						module:log("debug", "User's IP not known; can't apply blacklist/whitelist");
-					elseif blacklisted_ips[session.ip] or (whitelist_only and not whitelisted_ips[session.ip]) then
+					if match_ip(session.ip) or (whitelist_only and not match_ip(session.ip, true)) then
 						session.send(st.error_reply(stanza, "cancel", "not-acceptable", "You are not allowed to register an account."));
 						return true;
-					elseif min_seconds_between_registrations and not whitelisted_ips[session.ip] then
+					elseif min_seconds_between_registrations and not match_ip(session.ip, true) then
 						if not recent_ips[session.ip] then
 							recent_ips[session.ip] = { time = os_time(), count = 1 };
 						else

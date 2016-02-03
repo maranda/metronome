@@ -6,6 +6,10 @@
 --
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2011-2013, Florian Zeitz, Matthew Wild
+--
+-- Additional Contributors: Alban Bedel
+
+local ipairs, table = ipairs, table;
 
 local ip_methods = {};
 local ip_mt = { __index = function (ip, key) return (ip_methods[key])(ip); end,
@@ -14,7 +18,10 @@ local ip_mt = { __index = function (ip, key) return (ip_methods[key])(ip); end,
 local hex2bits = { ["0"] = "0000", ["1"] = "0001", ["2"] = "0010", ["3"] = "0011", ["4"] = "0100", ["5"] = "0101", ["6"] = "0110", ["7"] = "0111", ["8"] = "1000", ["9"] = "1001", ["A"] = "1010", ["B"] = "1011", ["C"] = "1100", ["D"] = "1101", ["E"] = "1110", ["F"] = "1111" };
 
 local function new_ip(ipStr, proto)
-	if proto ~= "IPv4" and proto ~= "IPv6" then
+	-- If no protocol was given try to autodetect
+	if not proto then
+		proto = ipStr:match(":") and "IPv6" or "IPv4";
+	elseif proto ~= "IPv4" and proto ~= "IPv6" then
 		return nil, "invalid protocol";
 	end
 	if proto == "IPv6" and ipStr:find('.', 1, true) then
@@ -67,6 +74,32 @@ end
 local function match_prefix(ipA, ipB)
 	local len = commonPrefixLength(ipA, ipB);
 	return len < 64 and len or 64;
+end
+
+local function parse_subnet(subnet)
+	local ip, mask = subnet:match("^([%x.:]*)/?(%d*)$");
+	ip = ip and new_ip(ip) or nil;
+	return ip and { addr = ip, mask = tonumber(mask) } or nil;
+end
+
+local function parse_subnets(lst)
+	local subnets = {};
+	for _, s in ipairs(lst) do
+		s = parse_subnet(s);
+		if s then
+			table.insert(subnets, s);
+		end
+	end
+	return subnets;
+end
+
+local function match_subnet(ipA, subnet, len)
+	if len and subnet.proto == "IPv4" then
+		len = len + 128 - 32;
+	end
+	ipA, subnet = toBits(ipA), toBits(subnet);
+	len = (len == nil or len > 128) and 128 or len;
+	return ipA:sub(1, len) == subnet:sub(1, len);
 end
 
 local function v4scope(ip)
@@ -285,5 +318,7 @@ return {
 	new_ip = new_ip,
 	compare_destination = compare_destination,
 	compare_source = compare_source,
-	match_prefix = match_prefix
+	match_prefix = match_prefix,
+	match_subnet = match_subnet,
+	parse_subnets = parse_subnets
 };

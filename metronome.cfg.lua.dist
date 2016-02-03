@@ -55,7 +55,7 @@ modules_enabled = {
 			--"incidents_handling"; -- Enable Incidents Handling support (can be administered via adhoc commands)
 			--"mam"; -- Enable server-side message archives using Message Archive Management
 			--"server_presence"; -- Enables Server Buddies extension support
-			--"websockets"; -- Enable support for WebSocket clients, aka "XMPP over WebSockets"
+			--"websocket"; -- Enable support for WebSocket clients, aka "XMPP over WebSockets"
 			
 };
 
