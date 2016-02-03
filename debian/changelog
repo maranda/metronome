@@ -1,3 +1,9 @@
+metronome (3.7.9+33b7572-1) testing; urgency=medium
+
+  * New upstream release.
+
+ -- Jérôme Lebleu <jerome@yunohost.org>  Wed, 03 Feb 2016 21:29:49 +0100
+
 metronome (3.7-1) testing; urgency=medium
 
   * New upstream release

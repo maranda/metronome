@@ -6,7 +6,7 @@ Build-Depends:
  lua5.1, liblua5.1-dev,
  libidn11-dev, libssl-dev, debhelper (>> 8.1.3), txt2man, quilt (>= 0.46-7)
 Standards-Version: 3.9.4
-Homepage: http://www.lightwitch.org/metronome
+Homepage: https://lightwitch.org/metronome
 
 Package: metronome
 Architecture: any
@@ -26,4 +26,3 @@ Replaces: prosody-xmpp-server, prosody
 Description: Lightweight XMPP server with advanced microblogging features
  Metronome IM is a simple-to-use XMPP server initiated as a fork of prosody. It
  offers better performances under load.
-
