@@ -71,6 +71,8 @@ local hashes_mt = {} ; hashes_mt.__index = hashes_mt
 function hashes_mt:add(node, mail)
 	local _hash = b64_encode(sha1(mail))
 	if not self[_hash] then
+		-- check for eventual dupes
+		self:remove(node, true);
 		self[_hash] = node ; self._index[node] = _hash ; self:save()
 		return true
 	else
@@ -78,11 +80,12 @@ function hashes_mt:add(node, mail)
 	end
 end
 
-function hashes_mt:remove(node)
+function hashes_mt:remove(node, check)
 	local _hash = self._index[node]
 	if _hash then
-		self[_hash] = nil ; self._index[node] = nil ; self:save()
+		self[_hash] = nil ; self._index[node] = nil
 	end
+	if not check then self:save() end
 end
 
 function hashes_mt:save()
@@ -265,7 +268,7 @@ local function handle_password_reset(data, event)
 	end
 	
 	local node = hashes[b64_encode(sha1(mail))]
-	if node then
+	if node and usermanager.user_exists(node, module.host) then
 		local uuid = uuid_gen()
 		reset_tokens[uuid] = { node = node }
 	
@@ -276,6 +279,7 @@ local function handle_password_reset(data, event)
 		module:log("info", "%s submitted a password reset request, waiting for the change", node);
 		return uuid
 	else
+		if node then hashes:remove(node) end -- user got deleted.
 		module:log("warn", "%s submitted a password reset request for a mail address which has no account association (%s)", ip, mail);
 		return http_error_reply(event, 404, "No account associated with the specified E-Mail address found.")
 	end
