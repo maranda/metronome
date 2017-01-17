@@ -1,4 +1,4 @@
-![alt text](http://www.lightwitch.org/varlogos/metronome-banner.png)
+![alt text](https://lightwitch.org/sites/default/files/metronome-logo-90x90.png)
 -
 
 This software codebase initiated as a fork of prosody trunk (to be 0.9) merged with LW.Org's custom, patches initiating from August 7th 2012 (see first commit).
