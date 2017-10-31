@@ -295,7 +295,7 @@ local function handle_req(event)
 	
 	local data
 	-- We check that what we have is valid JSON wise else we throw an error...
-	if not pcall(function() data = json_decode(b64_decode(request.body)) end) then
+	if not pcall(function() data = json_decode(request.body) end) then
 		module:log("debug", "Data submitted by %s failed to Decode", user)
 		return http_error_reply(event, 400, "Decoding failed.")
 	end
