@@ -34,6 +34,7 @@ local fm_patterns = module:get_option_table("reg_servlet_filtered_mails", {})
 local fn_patterns = module:get_option_table("reg_servlet_filtered_nodes", {})
 local use_cleanlist = module:get_option_boolean("reg_servlet_use_cleanlist", false)
 local cleanlist_ak = module:get_option_string("reg_servlet_cleanlist_apikey")
+local plain_errors = module:get_option_boolean("reg_servlet_plain_http_errors", false)
 if use_cleanlist and not cleanlist_ak then use_cleanlist = false end
 
 local files_base = module.path:gsub("/[^/]+$","") .. "/template/"
@@ -186,7 +187,11 @@ local function http_error_reply(event, code, message, headers)
 	end
 
 	response.status_code = code
-	response:send(http_event("http-error", { code = code, message = message }))
+	if plain_errors then
+		response:send(message)
+	else
+		response:send(http_event("http-error", { code = code, message = message }))
+	end
 end
 
 -- Handlers
