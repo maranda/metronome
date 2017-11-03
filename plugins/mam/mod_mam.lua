@@ -19,13 +19,11 @@ local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
 
-local xmlns = "urn:xmpp:mam:0";
-local legacy_xmlns = "urn:xmpp:mam:tmp";
+local xmlns = "urn:xmpp:mam:2";
 local purge_xmlns = "http://metronome.im/protocol/mam-purge";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
 module:add_feature(xmlns);
-module:add_feature(legacy_xmlns);
 module:add_feature(purge_xmlns);
 
 local forbid_purge = module:get_option_boolean("mam_forbid_purge", false);
@@ -136,8 +134,7 @@ local function query_handler(event)
 	local origin, stanza = event.origin, event.stanza;
 	local query = stanza.tags[1];
 	local qid = query.attr.queryid;
-	local legacy = query.attr.xmlns == legacy_xmlns;
-	
+		
 	local bare_session = bare_sessions[jid_bare(origin.full_jid)];
 	local archive = bare_session.archiving;
 
@@ -150,7 +147,7 @@ local function query_handler(event)
 			ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.index, ret.rsm;
 	end
 	
-	local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, rsm, legacy);
+	local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, rsm);
 	if messages == false then -- Exceeded limit
 		module:log("debug", "MAM Query yields too many results, aborted");
 		return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Too many results"));
@@ -162,21 +159,13 @@ local function query_handler(event)
 		return origin.send(rsm_error);
 	end
 
-	local reply = st.reply(stanza);
+	local reply = st.reply(stanza):add_child(rq);
 
-	if not legacy then origin.send(reply); end
 	for _, message in ipairs(messages) do
 		message.attr.to = origin.full_jid;
 		origin.send(message);
 	end
-	if legacy then
-		if rq then reply:add_child(rq); end
-		origin.send(reply);
-	else
-		origin.send(
-			st.message({ to = origin.full_jid, queryid = qid }):add_child(rq)
-		);
-	end
+	origin.send(reply);
 
 	module:log("debug", "MAM query %s completed", qid and tostring(qid).." " or "");
 	return true;
@@ -217,10 +206,8 @@ module:hook("pre-message/bare", process_outbound_messages, 30);
 module:hook("message/full", process_inbound_messages, 30);
 module:hook("pre-message/full", process_outbound_messages, 30);
 
-module:hook("iq/self/"..legacy_xmlns..":prefs", prefs_handler);
 module:hook("iq/self/"..xmlns..":prefs", prefs_handler);
 module:hook("iq-set/self/"..purge_xmlns..":purge", purge_handler);
-module:hook("iq-get/self/"..legacy_xmlns..":query", query_handler);
 module:hook("iq-set/self/"..xmlns..":query", query_handler);
 module:hook("iq-get/self/"..xmlns..":query", features_handler);
 

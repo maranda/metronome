@@ -13,7 +13,7 @@ local jid_prep = require "util.jid".prep;
 local jid_split = require "util.jid".split;
 local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
 
-local xmlns = "urn:xmpp:mam:0";
+local xmlns = "urn:xmpp:mam:2";
 local df_xmlns = "jabber:x:data";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
@@ -34,11 +34,6 @@ local function rsm_parse(stanza, query)
 	return after, before, max, index, true;
 end
 
-local function legacy_parse(query)
-	local start, fin, with = query:get_child_text("start"), query:get_child_text("end"), query:get_child_text("with");
-	return start, fin, with;
-end
-
 local function df_parse(query)
 	local data = query:get_child("x", df_xmlns);
 	if not data then return; end
@@ -53,12 +48,7 @@ local function df_parse(query)
 end
 
 local function validate_query(stanza, archive, query, qid)
-	local start, fin, with;
-	if query.attr.xmlns == xmlns then
-		start, fin, with = df_parse(query);
-	else
-		start, fin, with = legacy_parse(query);
-	end
+	local start, fin, with = df_parse(query);
 
 	module:log("debug", "MAM query received, %s with %s from %s until %s",
 		(qid and "id "..tostring(qid)) or "idless,", with or "anyone", start or "epoch", fin or "now");
