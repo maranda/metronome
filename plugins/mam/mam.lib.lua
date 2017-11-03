@@ -24,7 +24,7 @@ local forward_xmlns = "urn:xmpp:forward:0";
 local hints_xmlns = "urn:xmpp:hints";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 local markers_xmlns = "urn:xmpp:chat-markers:0";
-local sid_xlmns = "urn:xmpp:sid:0";
+local sid_xmlns = "urn:xmpp:sid:0";
 
 local store_time = module:get_option_number("mam_save_time", 300);
 local stores_cap = module:get_option_number("mam_stores_cap", 5000);
