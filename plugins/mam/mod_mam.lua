@@ -23,7 +23,6 @@ local xmlns = "urn:xmpp:mam:2";
 local purge_xmlns = "http://metronome.im/protocol/mam-purge";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
-module:add_feature(xmlns);
 module:add_feature(purge_xmlns);
 
 local forbid_purge = module:get_option_boolean("mam_forbid_purge", false);
@@ -74,6 +73,10 @@ end
 
 local function process_outbound_messages(event)
 	process_message(event, true);
+end
+
+local function feature_handler(event)
+	event.stanza:tag("feature", { var = xmlns }):up();
 end
 
 local function prefs_handler(event)
@@ -206,6 +209,7 @@ module:hook("pre-message/bare", process_outbound_messages, 30);
 module:hook("message/full", process_inbound_messages, 30);
 module:hook("pre-message/full", process_outbound_messages, 30);
 
+module:hook("account-disco-info", feature_handler);
 module:hook("iq/self/"..xmlns..":prefs", prefs_handler);
 module:hook("iq-set/self/"..purge_xmlns..":purge", purge_handler);
 module:hook("iq-set/self/"..xmlns..":query", query_handler);
