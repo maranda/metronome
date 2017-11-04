@@ -22,6 +22,7 @@ local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
 local xmlns = "urn:xmpp:mam:2";
 local purge_xmlns = "http://metronome.im/protocol/mam-purge";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
+local sid_xmlns = "urn:xmpp:sid:0";
 
 module:add_feature(purge_xmlns);
 
@@ -76,7 +77,9 @@ local function process_outbound_messages(event)
 end
 
 local function feature_handler(event)
-	event.stanza:tag("feature", { var = xmlns }):up();
+	local stanza = event.stanza;
+	stanza:tag("feature", { var = xmlns }):up();
+	stanza:tag("feature", { var = sid_xmlns }):up();
 end
 
 local function prefs_handler(event)
