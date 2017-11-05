@@ -96,7 +96,7 @@ function log_if_needed(e)
 				
 				data_store(node, mod_host, datastore .. "/" .. today, data);
 				module:fire_event("muc-log-add-to-mamcache", { room = room, entry = data_entry });
-				message:tag("stanza-id", { xmlns = sid_xmlns, by = bare, id = uid }):up();
+				stanza:tag("stanza-id", { xmlns = sid_xmlns, by = bare, id = uid }):up();
 			end
 		end
 	end
