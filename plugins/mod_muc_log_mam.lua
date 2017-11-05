@@ -48,8 +48,11 @@ local function initialize_mam_cache(jid)
 		local cache = room.mam_cache;
 		local yearmonth = os_date("!%Y%m");
 
+		module:log("debug", "Initialize MAM cache for %s", jid);
 		for day=1,31 do
-			local data = data_load(node, host, datastore .. "/" .. yearmonth .. tostring(day));
+			local fday;
+			if day < 10 then fday = "0" .. tostring(day); else fday = tostring(day); end 
+			local data = data_load(node, host, datastore .. "/" .. yearmonth .. fday);
 
 			if data then
 				for n, entry in ipairs(data) do	cache[#cache + 1] = entry; end
