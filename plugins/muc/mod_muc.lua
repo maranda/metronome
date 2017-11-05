@@ -32,7 +32,7 @@ local datamanager = require "util.datamanager";
 local fire_event = metronome.events.fire_event;
 local um_is_admin = require "core.usermanager".is_admin;
 local hosts = hosts;
-local pairs, ipairs = pairs, ipairs;
+local pairs, ipairs, now = pairs, ipairs, os.time;
 
 rooms = {};
 local host_session = hosts[muc_host];
@@ -207,17 +207,20 @@ function stanza_handler(event)
 			room = muc_new_room(bare);
 			room.route_stanza = room_route_stanza;
 			room.save = room_save;
+			room.last_used = now();
 			rooms[bare] = room;
 		end
 	end
 	if room then
 		room:handle_stanza(origin, stanza);
+		room.last_used = now();
 		if not next(room._occupants) and not persistent_rooms[room.jid] then -- empty, non-persistent room
 			rooms[bare] = nil; -- discard room
 		end
 	else
 		origin.send(st.error_reply(stanza, "cancel", "not-allowed"));
 	end
+	module:fire_event("muc-host-used", rooms, now(), bare);
 	return true;
 end
 
@@ -267,6 +270,7 @@ module.restore = function(data)
 		room._affiliations = oldroom._affiliations;
 		room.route_stanza = room_route_stanza;
 		room.save = room_save;
+		room.last_used = now();
 		rooms[jid] = room;
 	end
 	hosts[module:get_host()].muc = { rooms = rooms };
