@@ -128,7 +128,8 @@ for jid in pairs(persistent_rooms) do
 		room._affiliations = data._affiliations;
 		if history_length and history_length > max_history_messages then
 			room._data.history_length = 20;
-		end 
+		end
+		room.last_used = now();
 		room.route_stanza = room_route_stanza;
 		room.save = room_save;
 		rooms[jid] = room;
