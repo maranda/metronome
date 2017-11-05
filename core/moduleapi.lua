@@ -110,9 +110,9 @@ function api:hook_tag(xmlns, name, handler, priority)
 end
 api.hook_stanza = api.hook_tag;
 
-function api:require(lib)
+function api:require(lib, path)
 	local e;
-	local f, n = pluginloader.load_code(self.name, lib..".lib.lua", self.environment);
+	local f, n = pluginloader.load_code(path or self.name, lib..".lib.lua", self.environment);
 	if not f then
 		e = n;
 		f, n = pluginloader.load_code(lib, lib..".lib.lua", self.environment);
