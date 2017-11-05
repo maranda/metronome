@@ -24,7 +24,7 @@ local data_load, data_store, data_stores = datamanager.load, datamanager.store, 
 local datastore = "muc_log";
 local error_reply = require "util.stanza".error_reply;
 local uuid = require "util.uuid".generate;
-local ripairs, t_insert, t_remove = ripairs, table.insert, table.remove;
+local os_time, ripairs, t_insert, t_remove = os.time, ripairs, table.insert, table.remove;
 
 local hints_xmlns = "urn:xmpp:hints";
 local sid_xmlns = "urn:xmpp:sid:0";
@@ -84,18 +84,19 @@ function log_if_needed(e)
 				
 				local uid = uuid();
 				local data_entry = {
-					timestamp = now,
+					time = now,
+					timestamp = os_time(),
 					from = muc_from,
 					resource = from_room,
 					id = stanza.attr.id,
-					uid = uid;
+					uid = uid,
 					body = body and body:get_text(),
 					subject = subject and subject:get_text()
 				};
 				data[#data + 1] = data_entry;
 				
 				data_store(node, mod_host, datastore .. "/" .. today, data);
-				module:fire_event("muc-log-add-to-mamcache", { room = room, entry = data_entry });
+				module:fire_event("muc-log-add-to-mamcache", room, data_entry);
 				stanza:tag("stanza-id", { xmlns = sid_xmlns, by = bare, id = uid }):up();
 			end
 		end
