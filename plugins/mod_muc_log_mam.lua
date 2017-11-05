@@ -71,6 +71,8 @@ local function clean_inactive_room_caches(rooms, time_now)
 				room.mam_cache = nil;
 			end
 		end
+		
+		last_caches_clean = os_time();
 	end
 end
 
