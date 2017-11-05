@@ -74,6 +74,12 @@ local function clean_inactive_room_caches(rooms, time_now)
 	end
 end
 
+function module.unload()
+	-- remove all caches when the module is unloaded.
+	local rooms = muc_object.rooms;
+	for jid, room in pairs(rooms) do room.mam_cache = nil; end
+end
+
 module:hook("muc-disco-info-features", function(room, reply)
 	reply:tag("feature", { var = xmlns }):up()
 end, -100);
