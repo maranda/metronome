@@ -58,8 +58,8 @@ function log_if_needed(e)
 			local body, subject = stanza:child_with_name("body"), stanza:child_with_name("subject");
 			
 			if (not body and not subject) or
-				message:get_child("no-store", hints_xmlns) or
-				message:get_child("no-permanent-storage", hints_xmlns) then
+				stanza:get_child("no-store", hints_xmlns) or
+				stanza:get_child("no-permanent-storage", hints_xmlns) then
 				return;
 			end
 			muc_from = room._jid_nick[from_room];
