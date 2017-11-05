@@ -77,7 +77,7 @@ if not data then
 	ret = "";
 elseif data and #data <= 3000 then
 	for i, entry in ipairs(data) do
-		local tmp = parse_message(entry.body, entry.subject, entry.timestamp, entry.from, day_t, day_m, day_mm, day_title);
+		local tmp = parse_message(entry.body, entry.subject, entry.time, entry.from, day_t, day_m, day_mm, day_title);
 		if tmp then ret = ret .. tmp; end
 	end
 else
