@@ -84,6 +84,8 @@ module:hook("muc-disco-info-features", function(room, reply)
 	reply:tag("feature", { var = xmlns }):up()
 end, -100);
 
+module:hook("muc-host-used", clean_inactive_room_caches, -100);
+
 module:hook("muc-log-add-to-mamcache", function(room, entry)
 	local cache = room.mam_cache;
 	if cache then cache[#cache + 1] = entry; end
