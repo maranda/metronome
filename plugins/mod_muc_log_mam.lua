@@ -4,7 +4,7 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
--- Message Archive Management interface for MUC
+-- Message Archive Management interface for mod_muc_log
 
 local modulemanager = modulemanager;
 if not modulemanager.is_loaded(module.host, "muc") then
