@@ -377,6 +377,20 @@ local function set_prefs(stanza, store)
 	return reply;
 end
 
+local function fields_handler(event)
+	local origin, stanza = event.origin, event.stanza;
+	return origin.send(
+		st.reply(stanza)
+			:tag("query", { xmlns = xmlns })
+				:tag("x", { xmlns = "jabber:x:data" })
+					:tag("field", { type = "hidden", var = "FORM_TYPE" })
+						:tag("value"):text(xmlns):up():up()
+					:tag("field", { type = "jid-single", var = "with" }):up()
+					:tag("field", { type = "text", var = "start" }):up()
+					:tag("field", { type = "text", var = "end" }):up()
+	);
+end
+
 local function process_message(event, outbound)
 	local message, origin = event.stanza, event.origin;
 	if message.attr.type ~= "chat" and message.attr.type ~= "normal" then return; end
@@ -488,6 +502,7 @@ _M.initialize_storage = initialize_storage;
 _M.save_stores = save_stores;
 _M.get_prefs = get_prefs;
 _M.set_prefs = set_prefs;
+_M.fields_handler = fields_handler;
 _M.generate_stanzas = generate_stanzas;
 _M.process_message = process_message;
 _M.purge_messages = purge_messages;

@@ -32,8 +32,8 @@ local mamlib = module:require("mam");
 local validate_query = module:require("validate").validate_query;
 local initialize_storage, save_stores =	mamlib.initialize_storage, mamlib.save_stores;
 local get_prefs, set_prefs = mamlib.get_prefs, mamlib.set_prefs;
-local generate_stanzas, process_message, purge_messages =
-	mamlib.generate_stanzas, mamlib.process_message, mamlib.purge_messages;
+local fields_handler, generate_stanzas, process_message, purge_messages =
+	mamlib.fields_handler, mamlib.generate_stanzas, mamlib.process_message, mamlib.purge_messages;
 
 local session_stores = mamlib.session_stores;
 local storage = initialize_storage();
@@ -122,20 +122,6 @@ local function purge_handler(event)
 	return origin.send(st.reply(stanza));
 end
 
-local function features_handler(event)
-	local origin, stanza = event.origin, event.stanza;
-	return origin.send(
-		st.reply(stanza)
-			:tag("query", { xmlns = xmlns })
-				:tag("x", { xmlns = "jabber:x:data" })
-					:tag("field", { type = "hidden", var = "FORM_TYPE" })
-						:tag("value"):text(xmlns):up():up()
-					:tag("field", { type = "jid-single", var = "with" }):up()
-					:tag("field", { type = "text", var = "start" }):up()
-					:tag("field", { type = "text", var = "end" }):up()
-	);
-end
-
 local function query_handler(event)
 	local origin, stanza = event.origin, event.stanza;
 	local query = stanza.tags[1];
@@ -216,6 +202,6 @@ module:hook("account-disco-info", feature_handler);
 module:hook("iq/self/"..xmlns..":prefs", prefs_handler);
 module:hook("iq-set/self/"..purge_xmlns..":purge", purge_handler);
 module:hook("iq-set/self/"..xmlns..":query", query_handler);
-module:hook("iq-get/self/"..xmlns..":query", features_handler);
+module:hook("iq-get/self/"..xmlns..":query", fields_handler);
 
 module:hook_global("server-stopping", save_stores);
