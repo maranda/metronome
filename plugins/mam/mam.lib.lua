@@ -66,7 +66,7 @@ local function save_stores()
 	end	
 end
 
-local function log_entry(session_archive, to, bare_to, from, bare_from, id, body, marker, marker_id, tags)
+local function log_entry(session_archive, to, bare_to, from, bare_from, id, type, body, marker, marker_id, tags)
 	local uid = uuid();
 	local entry = {
 		from = from,
@@ -74,6 +74,7 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, body
 		to = to,
 		bare_to = bare_to,
 		id = id,
+		type = type,
 		body = body,
 		marker = marker,
 		marker_id = marker_id,
@@ -95,7 +96,7 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, body
 	return uid;
 end
 
-local function log_entry_with_replace(session_archive, to, bare_to, from, bare_from, id, rid, body)
+local function log_entry_with_replace(session_archive, to, bare_to, from, bare_from, id, rid, type, body)
 	-- handle XEP-308 or try to...
 	local count = 0;
 	local logs = session_archive.logs;
@@ -109,10 +110,10 @@ local function log_entry_with_replace(session_archive, to, bare_to, from, bare_f
 		end
 	end
 	
-	return log_entry(session_archive, to, bare_to, from, bare_from, id, body);
+	return log_entry(session_archive, to, bare_to, from, bare_from, id, type, body);
 end
 
-local function log_marker(session_archive, to, bare_to, from, bare_from, id, marker, marker_id)
+local function log_marker(session_archive, to, bare_to, from, bare_from, id, type, marker, marker_id)
 	local count = 0;
 
 	for i, entry in ripairs(session_archive.logs) do
@@ -124,7 +125,7 @@ local function log_marker(session_archive, to, bare_to, from, bare_from, id, mar
 		   (entry_to == bare_to or entry_to == bare_from) and
 		   (entry_marker == "markable" or entry_marker == "received") and
 		   entry_marker ~= marker then
-			return log_entry(session_archive, to, bare_to, from, bare_from, id, nil, marker, marker_id);
+			return log_entry(session_archive, to, bare_to, from, bare_from, id, type, nil, marker, marker_id);
 		end
 	end
 end
@@ -445,15 +446,15 @@ local function process_message(event, outbound)
 		end
 
 		if replace then
-			id = log_entry_with_replace(archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, body);
+			id = log_entry_with_replace(archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, message.attr.type, body);
 		else
 			if body then
 				id = marker == "markable" and log_entry(
-					archive, to, bare_to, from, bare_from, message.attr.id, body,
+					archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, body,
 					marker, marker_id, tags
-				) or log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body, nil, nil, tags);
+				) or log_entry(archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, body, nil, nil, tags);
 			elseif marker and marker ~= "markable" then
-				id = log_marker(archive, to, bare_to, from, bare_from, message.attr.id, marker, marker_id);
+				id = log_marker(archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, marker, marker_id);
 			end
 		end
 

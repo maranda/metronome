@@ -137,6 +137,7 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 	
 		for _, message in ipairs(messages) do
 			message.attr.to = origin.full_jid;
+			message.attr.type = "groupchat";
 			origin.send(message);
 		end
 		origin.send(reply);
