@@ -102,6 +102,7 @@ end);
 module:hook("iq-get/bare/"..xmlns..":query", fields_handler);
 module:hook("iq-set/bare/"..xmlns..":query", function(event)
 	local origin, stanza = event.origin, event.stanza;
+	local from = stanza.attr.from or origin.full_jid;
 	local to = stanza.attr.to;
 	local query = stanza.tags[1];
 	local qid = query.attr.queryid;
@@ -109,6 +110,13 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 	local room = muc_object.rooms[to];
 	
 	if room._data.logging then
+	  -- check that requesting entity has access
+	  if (room:get_option("members_only") and not room:is_affiliated(from)) or
+	  	room:get_affiliation(from) == "outcast" then
+	  		origin.send(st.error_reply(stanza, "auth", "not-authorized"));
+	  		return true;
+	  end
+	
 		initialize_mam_cache(to);
 		local archive = { logs = room.mam_cache };
 	
