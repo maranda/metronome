@@ -135,7 +135,7 @@ local function append_stanzas(stanzas, entry, qid)
 		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.id })
 			:tag("forwarded", { xmlns = forward_xmlns })
 				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
-				:tag("message", { to = entry.to, from = entry.from, id = entry.id });
+				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
 
 	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
 	if entry.tags then
