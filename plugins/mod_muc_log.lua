@@ -90,6 +90,7 @@ function log_if_needed(e)
 					resource = from_room,
 					id = stanza.attr.id,
 					uid = uid,
+					type = stanza.attr.type, -- needed for mod_muc_log_mam
 					body = body and body:get_text(),
 					subject = subject and subject:get_text()
 				};
