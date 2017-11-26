@@ -1095,6 +1095,10 @@ function room_mt:set_role(actor, occupant_jid, role, callback, reason)
 	return true;
 end
 
+function room_mt:is_occupant(jid)
+	return self._jid_nick[jid] and true or nil;
+end
+
 function room_mt:_route_stanza(stanza)
 	local muc_child;
 	local to_occupant = self._occupants[self._jid_nick[stanza.attr.to]];
