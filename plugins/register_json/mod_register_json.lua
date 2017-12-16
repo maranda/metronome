@@ -392,7 +392,7 @@ local function handle_verify(event, path)
 				if ok then 
 					module:fire_event(
 						"user-registered", 
-						{ username = username, host = module.host, source = "mod_register_json", session = { ip = ip } }
+						{ username = username, host = module.host, uuid = uuid, source = "mod_register_json", session = { ip = ip } }
 					)
 					module:log("info", "Account %s@%s is successfully verified and activated", username, module.host)
 					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
