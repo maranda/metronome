@@ -168,9 +168,8 @@ local function r_template(event, type)
 end
 
 local function http_file_get(event, type, path)
-	event.response.headers["Content-Type"] = "application/xhtml+xml"
-
 	if path == "" then
+		event.response.headers["Content-Type"] = "application/xhtml+xml"
 		return r_template(event, type.."_form")
 	end		
 
