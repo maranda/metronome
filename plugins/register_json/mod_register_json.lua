@@ -168,6 +168,8 @@ local function r_template(event, type)
 end
 
 local function http_file_get(event, type, path)
+	event.response.headers["Content-Type"] = "application/xhtml+xml"
+
 	if path == "" then
 		return r_template(event, type.."_form")
 	end		
@@ -188,8 +190,10 @@ local function http_error_reply(event, code, message, headers)
 
 	response.status_code = code
 	if plain_errors then
+		response.headers["Content-Type"] = nil
 		response:send(message)
 	else
+		response.headers["Content-Type"] = "text/html"
 		response:send(http_event("http-error", { code = code, message = message }))
 	end
 end
