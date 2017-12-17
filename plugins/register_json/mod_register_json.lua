@@ -105,6 +105,7 @@ local function generate_secret(bytes)
 	end
 	str = str:gsub("/", "$")
 	str = str:gsub("\\", "-")
+	str = str:gsub("+", "_")
 
 	return str
 end
