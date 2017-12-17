@@ -17,7 +17,7 @@ local ipairs, pairs, pcall, open, os_time, setmt, tonumber =
 local sha1 = require "util.hashes".sha1
 local urldecode = http.urldecode
 local usermanager = usermanager
-local uuid_gen = require "util.uuid".generate
+local generate_secret = require "util.auxiliary".generate_secret
 local timer = require "util.timer"
 
 module:depends("http")
@@ -243,20 +243,20 @@ local function handle_register(data, event)
 			-- asynchronously run dea filtering if applicable
 			if use_cleanlist then check_dea(mail, username) end
 
-			local uuid = uuid_gen()
-			pending[uuid] = { node = username, password = password, ip = ip }
-			pending_node[username] = uuid
+			local id_token = generate_secret(20)
+			pending[id_token] = { node = username, password = password, ip = ip }
+			pending_node[username] = id_token
 
 			timer.add_task(300, function()
 				if use_cleanlist then dea_checks[username] = nil end
-				if pending[uuid] then
-					pending[uuid] = nil
+				if pending[id_token] then
+					pending[id_token] = nil
 					pending_node[username] = nil
 					hashes:remove(username)
 				end
 			end)
-			module:log("info", "%s (%s) submitted a registration request and is awaiting final verification", username, uuid)
-			return uuid
+			module:log("info", "%s (%s) submitted a registration request and is awaiting final verification", username, id_token)
+			return id_token
 		else
 			module:log("debug", "%s registration data submission failed (user already exists)", username)
 			return http_error_reply(event, 409, "User already exists.")
@@ -274,15 +274,15 @@ local function handle_password_reset(data, event)
 	
 	local node = hashes[b64_encode(sha1(mail))]
 	if node and usermanager.user_exists(node, module.host) then
-		local uuid = uuid_gen()
-		reset_tokens[uuid] = { node = node }
+		local id_token = generate_secret(20)
+		reset_tokens[id_token] = { node = node }
 	
 		timer.add_task(300, function()
-			reset_tokens[uuid] = nil
+			reset_tokens[id_token] = nil
 		end)
 		
 		module:log("info", "%s submitted a password reset request, waiting for the change", node);
-		return uuid
+		return id_token
 	else
 		if node then hashes:remove(node) end -- user got deleted.
 		module:log("warn", "%s submitted a password reset request for a mail address which has no account association (%s)", ip, mail);
@@ -334,18 +334,18 @@ local function handle_reset(event, path)
 	elseif request.method == "POST" then
 		if path == "" then
 			if not body then return http_error_reply(event, 400, "Bad Request.") end
-			local uuid, password, verify = body:match("^uuid=(.*)&password=(.*)&verify=(.*)$")
-			if uuid and password and verify then
-				uuid, password, verify = urldecode(uuid), urldecode(password), urldecode(verify)
+			local id_token, password, verify = body:match("^id_token=(.*)&password=(.*)&verify=(.*)$")
+			if id_token and password and verify then
+				id_token, password, verify = urldecode(id_token), urldecode(password), urldecode(verify)
 				if password ~= verify then 
 					return r_template(event, "reset_nomatch")
 				else
-					local node = reset_tokens[uuid] and reset_tokens[uuid].node
+					local node = reset_tokens[id_token] and reset_tokens[id_token].node
 					if node then
 						local ok, error = usermanager.set_password(node, password, module.host)
 						if ok then
 							module:log("info", "User %s successfully changed the account password", node)
-							reset_tokens[uuid] = nil
+							reset_tokens[id_token] = nil
 							return r_template(event, "reset_success")
 						else
 							module:log("error", "Password change for %s failed: %s", node, error)
@@ -374,17 +374,17 @@ local function handle_verify(event, path)
 	elseif request.method == "POST" then
 		if path == "" then
 			if not body then return http_error_reply(event, 400, "Bad Request.") end
-			local uuid = urldecode(body):match("^uuid=(.*)$")
+			local id_token = urldecode(body):match("^id_token=(.*)$")
 
-			if not pending[uuid] then
+			if not pending[id_token] then
 				return r_template(event, "verify_fail")
 			else
 				local username, password, ip = 
-				      pending[uuid].node, pending[uuid].password, pending[uuid].ip
+				      pending[id_token].node, pending[id_token].password, pending[id_token].ip
 
 				if use_cleanlist and dea_checks[username] then
 					module:log("warn", "%s (%s) attempted to register using a disposable mail address, denying", username, ip)
-					pending[uuid] = nil ; pending_node[username] = nil ; dea_checks[username] = nil ; hashes:remove(username)
+					pending[id_token] = nil ; pending_node[username] = nil ; dea_checks[username] = nil ; hashes:remove(username)
 					return r_template(event, "verify_fail")
 				end
 
@@ -392,11 +392,11 @@ local function handle_verify(event, path)
 				if ok then 
 					module:fire_event(
 						"user-registered", 
-						{ username = username, host = module.host, uuid = uuid, source = "mod_register_json", session = { ip = ip } }
+						{ username = username, host = module.host, id_token = id_token, source = "mod_register_json", session = { ip = ip } }
 					)
 					module:log("info", "Account %s@%s is successfully verified and activated", username, module.host)
 					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
-					pending[uuid] = nil ; pending_node[username] = nil
+					pending[id_token] = nil ; pending_node[username] = nil
 					return r_template(event, "verify_success")				
 				else
 					module:log("error", "User creation failed: "..error)
