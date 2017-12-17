@@ -17,7 +17,7 @@ local ipairs, pairs, pcall, open, os_time, setmt, tonumber =
 local sha1 = require "util.hashes".sha1
 local urldecode = http.urldecode
 local usermanager = usermanager
-local generate_secret = require "util.auxiliary".generate_secret
+local generate = require "util.auxiliary".generate_secret
 local timer = require "util.timer"
 
 module:depends("http")
@@ -96,6 +96,18 @@ function hashes_mt:save()
 end
 
 -- Utility functions
+
+local function generate_secret(bytes)
+	local str = generate(bytes)
+
+	if str:len() < 20 then
+		repeat str = generate(bytes) until str:len() >= 20
+	end
+	str = str:gsub("/", "$")
+	str = str:gsub("\\", "-")
+
+	return str
+end
 
 local function check_mail(address)
 	for _, pattern in ipairs(fm_patterns) do 
