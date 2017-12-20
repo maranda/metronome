@@ -32,10 +32,10 @@ local whitelist = module:get_option_set("reg_servlet_wl", {})
 local blacklist = module:get_option_set("reg_servlet_bl", {})
 local fm_patterns = module:get_option_table("reg_servlet_filtered_mails", {})
 local fn_patterns = module:get_option_table("reg_servlet_filtered_nodes", {})
-local use_cleanlist = module:get_option_boolean("reg_servlet_use_cleanlist", false)
-local cleanlist_ak = module:get_option_string("reg_servlet_cleanlist_apikey")
+local use_nameapi = module:get_option_boolean("reg_servlet_use_nameapi", false)
+local nameapi_ak = module:get_option_string("reg_servlet_nameapi_apikey")
 local plain_errors = module:get_option_boolean("reg_servlet_plain_http_errors", false)
-if use_cleanlist and not cleanlist_ak then use_cleanlist = false end
+if use_nameapi and not nameapi_ak then use_nameapi = false end
 
 local files_base = module.path:gsub("/[^/]+$","") .. "/template/"
 
@@ -50,7 +50,7 @@ local pending_node = {}
 local reset_tokens = {}
 local default_whitelist, whitelisted, dea_checks;
 
-if use_cleanlist then
+if use_nameapi then
 	default_whitelist = {
 		["fastmail.fm"] = true,
 		["gmail.com"] = true,
@@ -117,13 +117,13 @@ local function check_mail(address)
 	return true
 end
 
-local cleanlist_api = "http://app.cleanli.st/api/%s/pattern/check/%s"
+local api_url = "http://rc50-api.nameapi.org/rest/v5.0/email/disposableemailaddressdetector?apiKey=%s&emailAddress=%s"
 local function check_dea(address, username)
 	local domain = address:match("@+(.*)$")
 	if whitelisted[domain] then return end	
 
-	module:log("debug", "Submitting domain to cleanli.st API for checking...")
-	http_request(cleanlist_api:format(cleanlist_ak, domain), nil, function(data, code)
+	module:log("debug", "Submitting domain to NameAPI for checking...")
+	http_request(api_url:format(nameapi_ak, address), nil, function(data, code)
 		if code == 200 then
 			local ret = json_decode(data)
 			if not ret then
@@ -132,7 +132,7 @@ local function check_dea(address, username)
 				return
 			end
 
-			if tonumber(ret.code) > 3000 then
+			if ret.disposable == "YES" then
 				dea_checks[username] = true
 			else
 				module:log("debug", "Mail domain %s is valid, whitelisting", domain)
