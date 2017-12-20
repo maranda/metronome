@@ -257,14 +257,14 @@ local function handle_register(data, event)
 			end
 
 			-- asynchronously run dea filtering if applicable
-			if use_cleanlist then check_dea(mail, username) end
+			if use_nameapi then check_dea(mail, username) end
 
 			local id_token = generate_secret(20)
 			pending[id_token] = { node = username, password = password, ip = ip }
 			pending_node[username] = id_token
 
 			timer.add_task(300, function()
-				if use_cleanlist then dea_checks[username] = nil end
+				if use_nameapi then dea_checks[username] = nil end
 				if pending[id_token] then
 					pending[id_token] = nil
 					pending_node[username] = nil
@@ -398,7 +398,7 @@ local function handle_verify(event, path)
 				local username, password, ip = 
 				      pending[id_token].node, pending[id_token].password, pending[id_token].ip
 
-				if use_cleanlist and dea_checks[username] then
+				if use_nameapi and dea_checks[username] then
 					module:log("warn", "%s (%s) attempted to register using a disposable mail address, denying", username, ip)
 					pending[id_token] = nil ; pending_node[username] = nil ; dea_checks[username] = nil ; hashes:remove(username)
 					return r_template(event, "verify_fail")
@@ -460,5 +460,5 @@ module:hook_global("user-deleted", handle_user_deletion, 10);
 module.save = function() return { hashes = hashes, whitelisted = whitelisted } end
 module.restore = function(data) 
 	hashes = data.hashes or { _index = {} } ; setmt(hashes, hashes_mt)
-	whitelisted = use_cleanlist and (data.whitelisted or default_whitelist) or nil
+	whitelisted = use_nameapi and (data.whitelisted or default_whitelist) or nil
 end
