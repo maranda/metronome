@@ -234,7 +234,7 @@ function room_mt:get_disco_info(stanza)
 		:tag("feature", {var = self:get_option("moderated") and "muc_moderated" or "muc_unmoderated"}):up()
 		:tag("feature", {var = self:get_option("members_only") and "muc_membersonly" or "muc_open"}):up()
 		:tag("feature", {var = self:get_option("persistent") and "muc_persistent" or "muc_temporary"}):up()
-		:tag("feature", {var = not self:get_option("public") and "muc_hidden" or "muc_public"}):up()
+		:tag("feature", {var = self:get_option("hidden") and "muc_hidden" or "muc_public"}):up()
 		:tag("feature", {var = self._data.whois ~= "anyone" and "muc_semianonymous" or "muc_nonanonymous"}):up();
 	
 	-- pass features to module handlers
@@ -559,7 +559,7 @@ function room_mt:get_form_layout()
 			name = "muc#roomconfig_publicroom",
 			type = "boolean",
 			label = "Make Room Publicly Searchable?",
-			value = not self:get_option("public")
+			value = not self:get_option("hidden")
 		},
 		{
 			name = "muc#roomconfig_changesubject",
