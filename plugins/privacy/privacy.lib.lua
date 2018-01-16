@@ -261,6 +261,7 @@ local function simple_delete_entry(privacy_lists, jid)
 			t_remove(list, i);
 			break;
 		end
+	end
 end
 
 local function simple_process_entries(block)
