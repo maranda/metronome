@@ -99,9 +99,13 @@ end
 
 local function generate_secret(bytes)
 	local str = generate(bytes)
-
-	if str:len() < 20 then
-		repeat str = generate(bytes) until str:len() >= 20
+	
+	if not str or str:len() < 20 then
+		repeat str = generate(bytes) until not str or str:len() >= 20
+	end
+	
+	if not str then -- System issue just abort it
+		return nil
 	end
 	str = str:gsub("/", "$")
 	str = str:gsub("\\", "-")
@@ -256,10 +260,15 @@ local function handle_register(data, event)
 				return http_error_reply(event, 409, "The E-Mail Address provided matches the hash associated to an existing account.")
 			end
 
+			local id_token = generate_secret(20)
+			if not id_token then
+				module:log("error", "Failed to pipe from /dev/urandom to generate the account registration token")
+				return http_error_reply(event, 500, "The xmpp server encountered an error trying to fullfil your request, please try again later.")
+			end
+
 			-- asynchronously run dea filtering if applicable
 			if use_nameapi then check_dea(mail, username) end
 
-			local id_token = generate_secret(20)
 			pending[id_token] = { node = username, password = password, ip = ip }
 			pending_node[username] = id_token
 
@@ -291,6 +300,10 @@ local function handle_password_reset(data, event)
 	local node = hashes[b64_encode(sha1(mail))]
 	if node and usermanager.user_exists(node, module.host) then
 		local id_token = generate_secret(20)
+		if not id_token then
+			module:log("error", "Failed to pipe from /dev/urandom to generate the password reset token")
+			return http_error_reply(event, 500, "The xmpp server encountered an error trying to fullfil your request, please try again later.")
+		end
 		reset_tokens[id_token] = { node = node }
 	
 		timer.add_task(300, function()

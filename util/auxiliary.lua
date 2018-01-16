@@ -120,7 +120,7 @@ function generate_secret(bytes)
 		n = n + 1;
 	until urandom ~= nil or n == 30;
 
-	return base64(urandom);
+	return (urandom and base64(urandom)) or nil;
 end
 
 return _M;

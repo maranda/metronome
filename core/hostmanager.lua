@@ -96,6 +96,9 @@ function activate(host)
 		send = host_send;
 		modules = {};
 	};
+	if not host_session.dialback_secret then -- secret generation failed, out of file descriptors?
+		return nil, "Failed to generate dialback secret for host "..host;
+	end
 	if not host_config.component_module then
 		host_session.type = "local";
 		host_session.sessions = {};
