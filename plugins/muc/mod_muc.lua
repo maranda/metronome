@@ -293,7 +293,6 @@ function shutdown_component()
 		for roomjid, room in pairs(rooms) do
 			shutdown_room(room, stanza);
 		end
-		shutdown_room(host_room, stanza);
 	end
 end
 module.unload = shutdown_component;
