@@ -7,17 +7,14 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2011, Florian Zeitz, Matthew Wild, Waqas Hussain
 
-module:add_feature("jabber:iq:privacy");
-
-local metronome = metronome;
 local st = require "util.stanza";
-local datamanager = require "util.datamanager";
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
-local jid_bare, jid_split, jid_join = require "util.jid".bare, require "util.jid".split, require "util.jid".join;
-local rm = require "util.rostermanager";
-local tonumber, t_sort = tonumber, table.sort;
+local ipairs, pairs, tonumber, tostring, t_insert, t_remove, t_sort = 
+	ipairs, pairs, tonumber, tostring, table.insert, table.remove, table.sort;
 
-function is_list_used(origin, name, privacy_lists)
+-- Privacy List Functions
+
+local function priv_is_list_used(origin, name, privacy_lists)
 	local user = bare_sessions[origin.username.."@"..origin.host];
 	if user then
 		for resource, session in pairs(user.sessions) do
@@ -32,7 +29,7 @@ function is_list_used(origin, name, privacy_lists)
 	end
 end
 
-function is_defaultlist_used(origin)
+local function priv_is_defaultlist_used(origin)
 	local user = bare_sessions[origin.username.."@"..origin.host];
 	if user then
 		for resource, session in pairs(user.sessions) do
@@ -43,9 +40,13 @@ function is_defaultlist_used(origin)
 	end
 end
 
-function decline_list(privacy_lists, origin, stanza, which)
+local function priv_decline_list(privacy_lists, origin, stanza, which)
 	if which == "default" then
-		if is_defaultlist_used(origin) then
+		if privacy_lists.default == "simple" then
+			return {"cancel", "forbidden", "Can't decline current default list via privacy lists."};
+		end
+		
+		if priv_is_defaultlist_used(origin) then
 			return { "cancel", "conflict", "Another session is online and using the default list."};
 		end
 		privacy_lists.default = nil;
@@ -54,16 +55,20 @@ function decline_list(privacy_lists, origin, stanza, which)
 		origin.active_privacylist = nil;
 		origin.send(st.reply(stanza));
 	else
-		return {"modify", "bad-request", "Neither default nor active list specifed to decline."};
+		return {"modify", "bad-request", "Neither default nor active list specified to decline."};
 	end
 	return true;
 end
 
-function activate_list(privacy_lists, origin, stanza, which, name)
+local function priv_activate_list(privacy_lists, origin, stanza, which, name)
 	local list = privacy_lists.lists[name];
 
 	if which == "default" and list then
-		if is_defaultlist_used(origin) then
+		if privacy_lists.default == "simple" then
+			return {"cancel", "forbidden", "Can't change current default list via privacy lists."};
+		end
+	
+		if priv_is_defaultlist_used(origin) then
 			return {"cancel", "conflict", "Another session is online and using the default list."};
 		end
 		privacy_lists.default = name;
@@ -82,11 +87,15 @@ function activate_list(privacy_lists, origin, stanza, which, name)
 	return true;
 end
 
-function delete_list(privacy_lists, origin, stanza, name)
+local function priv_delete_list(privacy_lists, origin, stanza, name)
 	local list = privacy_lists.lists[name];
 
 	if list then
-		if is_list_used(origin, name, privacy_lists) then
+		if name == "simple" then
+			return {"modify", "policy-violation", "This list cannot be deleted via privacy lists."};
+		end
+
+		if priv_is_list_used(origin, name, privacy_lists) then
 			return {"cancel", "conflict", "Another session is online and using the list which should be deleted."};
 		end
 		if privacy_lists.default == name then
@@ -104,7 +113,11 @@ function delete_list(privacy_lists, origin, stanza, name)
 	return {"modify", "bad-request", "Not existing list specifed to be deleted."};
 end
 
-function create_list(privacy_lists, origin, stanza, name, entries)
+local function priv_create_list(privacy_lists, origin, stanza, name, entries)
+	if name == "simple" then
+		return {"modify", "policy-violation", "This list name is reserved and can't be created via privacy lists."};
+	end
+
 	local bare_jid = origin.username.."@"..origin.host;
 	
 	if privacy_lists.lists == nil then
@@ -165,7 +178,7 @@ function create_list(privacy_lists, origin, stanza, name, entries)
 
 	origin.send(st.reply(stanza));
 	if bare_sessions[bare_jid] then
-		local iq = st.iq({ type = "set", id="push1" })
+		local iq = st.iq({ type = "set", id="privacy-lists-push" })
 				:tag ("query", { xmlns = "jabber:iq:privacy" })
 					:tag ("list", { name = list.name }):up():up();
 
@@ -180,7 +193,7 @@ function create_list(privacy_lists, origin, stanza, name, entries)
 	return true;
 end
 
-function get_list(privacy_lists, origin, stanza, name)
+local function priv_get_list(privacy_lists, origin, stanza, name)
 	local reply = st.reply(stanza);
 	reply:tag("query", {xmlns = "jabber:iq:privacy"});
 
@@ -217,66 +230,84 @@ function get_list(privacy_lists, origin, stanza, name)
 	return true;
 end
 
-module:hook("iq/bare/jabber:iq:privacy:query", function(data)
-	local origin, stanza = data.origin, data.stanza;
-	
-	if stanza.attr.to == nil then -- only service requests to own bare JID
-		local query = stanza.tags[1]; -- the query element
-		local valid = false;
-		local privacy_lists = datamanager.load(origin.username, origin.host, "privacy") or { lists = {} };
+-- Simple Blocking Command Functions
 
-		if stanza.attr.type == "set" then
-			if #query.tags == 1 then --  the <query/> element MUST NOT include more than one child element
-				for _,tag in ipairs(query.tags) do
-					if tag.name == "active" or tag.name == "default" then
-						if tag.attr.name == nil then -- Client declines the use of active / default list
-							valid = decline_list(privacy_lists, origin, stanza, tag.name);
-						else -- Client requests change of active / default list
-							valid = activate_list(privacy_lists, origin, stanza, tag.name, tag.attr.name);
-						end
-					elseif tag.name == "list" and tag.attr.name then -- Client adds / edits a privacy list
-						if #tag.tags == 0 then -- Client removes a privacy list
-							valid = delete_list(privacy_lists, origin, stanza, tag.attr.name);
-						else -- Client edits a privacy list
-							valid = create_list(privacy_lists, origin, stanza, tag.attr.name, tag.tags);
-						end
-					end
-				end
-			end
-		elseif stanza.attr.type == "get" then
-			local name = nil;
-			local _to_retrieve = 0;
-			if #query.tags >= 1 then
-				for _, tag in ipairs(query.tags) do
-					if tag.name == "list" then -- Client requests a privacy list from server
-						name = tag.attr.name;
-						_to_retrieve = _to_retrieve + 1;
-					end
-				end
-			end
-			if _to_retrieve == 0 or _to_retrieve == 1 then
-				valid = get_list(privacy_lists, origin, stanza, name);
-			end
-		end
-
-		if valid ~= true then
-			valid = valid or { "cancel", "bad-request", "Couldn't understand request" };
-			if valid[1] == nil then
-				valid[1] = "cancel";
-			end
-			if valid[2] == nil then
-				valid[2] = "bad-request";
-			end
-			origin.send(st.error_reply(stanza, valid[1], valid[2], valid[3]));
-		else
-			datamanager.store(origin.username, origin.host, "privacy", privacy_lists);
-		end
-
-		return true;
+local function simple_create_list(privacy_lists)
+	if not privacy_lists.lists.simple then
+		privacy_lists.default = "simple";
+		privacy_lists.lists.simple = {
+			name = "Simple Blocking Command (XEP-0191) List",
+			items = {}
+		};
 	end
-end);
+end
 
-function check_stanza(e, session)
+local function simple_delete_list(privacy_lists)
+	privacy_lists.default = nil;
+	privacy_lists.lists["simple"] = nil;
+end
+
+local function simple_add_entry(privacy_lists, jid)
+	local list = privacy_lists.lists.simple.items;
+	t_insert(list, {
+		action = "deny", type = "jid", value = jid, order = tostring(#list+1)
+	});
+end
+
+local function simple_delete_entry(privacy_lists, jid)
+	local list = privacy_lists.lists.simple.items;
+	for i = 1, #list do
+		if list[i].value == jid then
+			t_remove(list, i);
+			break;
+		end
+end
+
+local function simple_process_entries(block)
+		local entries = {};
+
+		for item in block:childtags() do
+			local jid = item.attr.jid;
+			if not jid then	return nil; end
+			
+			t_insert(entries, item.attr.jid);
+		end
+		
+		return entries;
+end
+
+local function simple_generate_stanza(stanza, entries, payload)
+		stanza:tag(payload, { xmlns = "urn:xmpp:blocking" });
+		if entries then
+			for _, jid in ipairs(entries) do stanza:tag("item", { jid = jid }):up(); end
+		end
+		stanza:up();
+		
+		return stanza;
+end
+
+local function simple_push_entries(self_bare, self_resource, payload, entries)
+		local push = simple_generate_stanza(st.iq({ type = "set", id = "simple-blocking-cmd-push" }), entries, payload);
+		
+		for resource, session in pairs(bare_sessions[self_bare].sessions) do
+			if resource ~= self_resource then
+				push.attr.to = session.full_jid;
+				session.send(push);
+			end
+		end
+end
+
+local function simple_reorder_list(privacy_lists)
+	local simple_list = privacy_lists.lists.simple;
+	if simple_list then
+		local items = simple_list.items;
+		for i = 1, #items do items[i].order = i; end
+	end
+end
+
+-- Stanza Handlers
+
+local function check_stanza(e, session)
 	local origin, stanza = e.origin, e.stanza;
 	local privacy_lists = datamanager.load(session.username, session.host, "privacy") or {};
 	local session_username, session_host = session.username, session.host;
@@ -330,9 +361,9 @@ function check_stanza(e, session)
 				apply = true;
 				block = (item.action == "deny");
 			elseif item.type == "group" then
-				local roster = rm.load_roster(session_username, session_host);
+				local roster = rostermanager.load_roster(session_username, session_host);
 				local roster_entry = roster[jid_join(node, host)] or 
-						     rm.get_readonly_item(session_username, session_host, jid_join(node, host));
+						     rostermanager.get_readonly_item(session_username, session_host, jid_join(node, host));
 				if roster_entry then
 					local groups = roster_entry.groups;
 					for group in pairs(groups) do
@@ -344,9 +375,9 @@ function check_stanza(e, session)
 					end
 				end
 			elseif item.type == "subscription" then -- we need a valid bare evil jid
-				local roster = rm.load_roster(session_username, session_host);
+				local roster = rostermanager.load_roster(session_username, session_host);
 				local roster_entry = roster[jid_join(node, host)] or 
-						     rm.get_readonly_item(session_username, session_host, jid_join(node, host));
+						     rostermanager.get_readonly_item(session_username, session_host, jid_join(node, host));
 				if (not(roster_entry) and item.value == "none")
 				   or (roster_entry and roster_entry.subscription == item.value) then
 					apply = true;
@@ -361,7 +392,9 @@ function check_stanza(e, session)
 			if block then
 				module:log("debug", "stanza blocked: %s, to: %s, from: %s", tostring(stanza.name), tostring(to), tostring(from));
 				if stanza.name == "message" and stanza.attr.type ~= "groupchat" then
-					origin.send(st.error_reply(stanza, "cancel", "service-unavailable"));
+					local reply = st.error_reply(stanza, "cancel", "not-acceptable");
+					reply:child_with_name("error"):tag("blocked", { xmlns = blocking_xmlns..":errors" }):up();
+					origin.send(reply);
 				elseif stanza.name == "iq" and (stanza.attr.type == "get" or stanza.attr.type == "set") then
 					origin.send(st.error_reply(stanza, "cancel", "service-unavailable"));
 				end
@@ -373,7 +406,7 @@ function check_stanza(e, session)
 	end
 end
 
-function check_incoming(e)
+local function stanza_check_incoming(e)
 	local session;
 	if e.stanza.attr.to then
 		local node, host, resource = jid_split(e.stanza.attr.to);
@@ -399,7 +432,7 @@ function check_incoming(e)
 	end
 end
 
-function check_outgoing(e)
+local function stanza_check_outgoing(e)
 	local session = e.origin;
 	if e.stanza.attr.from == nil then
 		e.stanza.attr.from = session.username.."@".. session.host;
@@ -407,27 +440,25 @@ function check_outgoing(e)
 		 	e.stanza.attr.from = e.stanza.attr.from.."/".. session.resource;
 		end
 	end
-	if session.username then -- FIXME do properly
+	if session.username then
 		return check_stanza(e, session);
 	end
 end
 
-module:hook("pre-message/full", check_outgoing, 500);
-module:hook("pre-message/bare", check_outgoing, 500);
-module:hook("pre-message/host", check_outgoing, 500);
-module:hook("pre-iq/full", check_outgoing, 500);
-module:hook("pre-iq/bare", check_outgoing, 500);
-module:hook("pre-iq/host", check_outgoing, 500);
-module:hook("pre-presence/full", check_outgoing, 500);
-module:hook("pre-presence/bare", check_outgoing, 500);
-module:hook("pre-presence/host", check_outgoing, 500);
+_M.priv_decline_list = priv_decline_list;
+_M.priv_activate_list = priv_activate_list;
+_M.priv_delete_list = priv_delete_list;
+_M.priv_create_list = priv_create_list;
+_M.priv_get_list = priv_get_list;
+_M.simple_create_list = simple_create_list;
+_M.simple_delete_list = simple_delete_list;
+_M.simple_add_entry = simple_add_entry;
+_M.simple_delete_entry = simple_delete_entry;
+_M.simple_process_entries = simple_process_entries;
+_M.simple_generate_stanza = simple_generate_stanza;
+_M.simple_push_entries = simple_push_entries;
+_M.simple_reorder_list = simple_reorder_list;
+_M.stanza_check_incoming = stanza_check_incoming;
+_M.stanza_check_outgoing = stanza_check_outgoing;
 
-module:hook("message/full", check_incoming, 500);
-module:hook("message/bare", check_incoming, 500);
-module:hook("message/host", check_incoming, 500);
-module:hook("iq/full", check_incoming, 500);
-module:hook("iq/bare", check_incoming, 500);
-module:hook("iq/host", check_incoming, 500);
-module:hook("presence/full", check_incoming, 500);
-module:hook("presence/bare", check_incoming, 500);
-module:hook("presence/host", check_incoming, 500);
+return _M;
