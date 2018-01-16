@@ -11,6 +11,8 @@ local st = require "util.stanza";
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local ipairs, pairs, tonumber, tostring, t_insert, t_remove, t_sort = 
 	ipairs, pairs, tonumber, tostring, table.insert, table.remove, table.sort;
+local jid_bare, jid_join, jid_split =
+	require "util.jid".bare, require "util.jid".join, require "util.jid".split;
 
 local privacy_xmlns = "jabber:iq:privacy";
 local blocking_xmlns = "urn:xmpp:blocking";

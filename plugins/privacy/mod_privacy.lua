@@ -10,8 +10,7 @@
 local st = require "util.stanza";
 local datamanager = require "util.datamanager";
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
-local jid_bare, jid_join, jid_section, jid_split = 
-	require "util.jid".bare, require "util.jid".join, require "util.jid".section, require "util.jid".split;
+local jid_bare, jid_section = require "util.jid".bare, require "util.jid".section;
 local ipairs, pairs, tonumber, t_sort = ipairs, pairs, tonumber, table.sort;
 
 local lib = module:require("privacy");
