@@ -114,7 +114,11 @@ function load_file(f, mode)
 end
 
 function generate_secret(bytes)
-	local urandom = popen("head -c "..tostring(bytes or 256).." /dev/urandom"):read();
+	local urandom;
+	repeat
+		urandom = popen("head -c "..tostring(bytes or 256).." /dev/urandom"):read();
+	until urandom ~= nil;
+
 	return base64(urandom);
 end
 
