@@ -446,6 +446,7 @@ local function stanza_check_outgoing(e)
 	end
 end
 
+local _M = {};
 _M.priv_decline_list = priv_decline_list;
 _M.priv_activate_list = priv_activate_list;
 _M.priv_delete_list = priv_delete_list;
