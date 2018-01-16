@@ -12,6 +12,9 @@ local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local ipairs, pairs, tonumber, tostring, t_insert, t_remove, t_sort = 
 	ipairs, pairs, tonumber, tostring, table.insert, table.remove, table.sort;
 
+local privacy_xmlns = "jabber:iq:privacy";
+local blocking_xmlns = "urn:xmpp:blocking";
+
 -- Privacy List Functions
 
 local function priv_is_list_used(origin, name, privacy_lists)
@@ -43,11 +46,11 @@ end
 local function priv_decline_list(privacy_lists, origin, stanza, which)
 	if which == "default" then
 		if privacy_lists.default == "simple" then
-			return {"cancel", "forbidden", "Can't decline current default list via privacy lists."};
+			return { "cancel", "forbidden", "Can't decline current default list via privacy lists." };
 		end
 		
 		if priv_is_defaultlist_used(origin) then
-			return { "cancel", "conflict", "Another session is online and using the default list."};
+			return { "cancel", "conflict", "Another session is online and using the default list." };
 		end
 		privacy_lists.default = nil;
 		origin.send(st.reply(stanza));
@@ -55,7 +58,7 @@ local function priv_decline_list(privacy_lists, origin, stanza, which)
 		origin.active_privacylist = nil;
 		origin.send(st.reply(stanza));
 	else
-		return {"modify", "bad-request", "Neither default nor active list specified to decline."};
+		return { "modify", "bad-request", "Neither default nor active list specified to decline." };
 	end
 	return true;
 end
@@ -65,11 +68,11 @@ local function priv_activate_list(privacy_lists, origin, stanza, which, name)
 
 	if which == "default" and list then
 		if privacy_lists.default == "simple" then
-			return {"cancel", "forbidden", "Can't change current default list via privacy lists."};
+			return { "cancel", "forbidden", "Can't change current default list via privacy lists." };
 		end
 	
 		if priv_is_defaultlist_used(origin) then
-			return {"cancel", "conflict", "Another session is online and using the default list."};
+			return { "cancel", "conflict", "Another session is online and using the default list." };
 		end
 		privacy_lists.default = name;
 
@@ -79,9 +82,9 @@ local function priv_activate_list(privacy_lists, origin, stanza, which, name)
 
 		origin.send(st.reply(stanza));
 	elseif not list then
-		return {"cancel", "item-not-found", "No such list: "..name};
+		return { "cancel", "item-not-found", "No such list: "..name };
 	else
-		return {"modify", "bad-request", "No list chosen to be active or default."};
+		return { "modify", "bad-request", "No list chosen to be active or default." };
 	end
 
 	return true;
@@ -92,11 +95,11 @@ local function priv_delete_list(privacy_lists, origin, stanza, name)
 
 	if list then
 		if name == "simple" then
-			return {"modify", "policy-violation", "This list cannot be deleted via privacy lists."};
+			return { "modify", "policy-violation", "This list cannot be deleted via privacy lists." };
 		end
 
 		if priv_is_list_used(origin, name, privacy_lists) then
-			return {"cancel", "conflict", "Another session is online and using the list which should be deleted."};
+			return { "cancel", "conflict", "Another session is online and using the list which should be deleted." };
 		end
 		if privacy_lists.default == name then
 			privacy_lists.default = nil;
@@ -110,12 +113,12 @@ local function priv_delete_list(privacy_lists, origin, stanza, name)
 		return true;
 	end
 
-	return {"modify", "bad-request", "Not existing list specifed to be deleted."};
+	return { "modify", "bad-request", "Not existing list specifed to be deleted." };
 end
 
 local function priv_create_list(privacy_lists, origin, stanza, name, entries)
 	if name == "simple" then
-		return {"modify", "policy-violation", "This list name is reserved and can't be created via privacy lists."};
+		return { "modify", "policy-violation", "This list name is reserved and can't be created via privacy lists." };
 	end
 
 	local bare_jid = origin.username.."@"..origin.host;
@@ -133,12 +136,12 @@ local function priv_create_list(privacy_lists, origin, stanza, name, entries)
 
 	for _, item in ipairs(entries) do
 		if tonumber(item.attr.order) == nil or tonumber(item.attr.order) < 0 or order_check[item.attr.order] then
-			return {"modify", "bad-request", "Order attribute not valid."};
+			return { "modify", "bad-request", "Order attribute not valid." };
 		end
 		
 		if item.attr.type ~= "jid" and item.attr.type ~= "subscription" and
 		   item.attr.type ~= "group" and item.attr.type ~= nil then
-			return {"modify", "bad-request", "Type attribute not valid."};
+			return { "modify", "bad-request", "Type attribute not valid." };
 		end
 		
 		local tmp = {};
@@ -164,12 +167,12 @@ local function priv_create_list(privacy_lists, origin, stanza, name, entries)
 				tmp.value ~= "to" and
 				tmp.value ~= "from" and
 				tmp.value ~= "none" then
-				return {"cancel", "bad-request", "Subscription value must be both, to, from or none."};
+				return { "cancel", "bad-request", "Subscription value must be both, to, from or none." };
 			end
 		end
 		
 		if tmp.action ~= "deny" and tmp.action ~= "allow" then
-			return {"cancel", "bad-request", "Action must be either deny or allow."};
+			return { "cancel", "bad-request", "Action must be either deny or allow." };
 		end
 		list.items[#list.items + 1] = tmp;
 	end
@@ -179,7 +182,7 @@ local function priv_create_list(privacy_lists, origin, stanza, name, entries)
 	origin.send(st.reply(stanza));
 	if bare_sessions[bare_jid] then
 		local iq = st.iq({ type = "set", id="privacy-lists-push" })
-				:tag ("query", { xmlns = "jabber:iq:privacy" })
+				:tag ("query", { xmlns = privacy_xmlns })
 					:tag ("list", { name = list.name }):up():up();
 
 		for resource, session in pairs(bare_sessions[bare_jid].sessions) do
@@ -187,7 +190,7 @@ local function priv_create_list(privacy_lists, origin, stanza, name, entries)
 			session.send(iq);
 		end
 	else
-		return {"cancel", "bad-request", "internal error."};
+		return { "cancel", "bad-request", "internal error." };
 	end
 
 	return true;
@@ -195,26 +198,26 @@ end
 
 local function priv_get_list(privacy_lists, origin, stanza, name)
 	local reply = st.reply(stanza);
-	reply:tag("query", {xmlns = "jabber:iq:privacy"});
+	reply:tag("query", { xmlns = privacy_xmlns });
 
 	if name == nil then
 		if privacy_lists.lists then
 			if origin.active_privacylist then
-				reply:tag("active", {name=origin.active_privacylist}):up();
+				reply:tag("active", { name = origin.active_privacylist }):up();
 			end
 			if privacy_lists.default then
-				reply:tag("default", {name=privacy_lists.default}):up();
+				reply:tag("default", { name = privacy_lists.default }):up();
 			end
 			for name,list in pairs(privacy_lists.lists) do
-				reply:tag("list", {name=name}):up();
+				reply:tag("list", { name = name }):up();
 			end
 		end
 	else
 		local list = privacy_lists.lists[name];
 		if list then
-			reply = reply:tag("list", {name=list.name});
+			reply = reply:tag("list", { name = list.name });
 			for _, item in ipairs(list.items) do
-				reply:tag("item", {type=item.type, value=item.value, action=item.action, order=item.order});
+				reply:tag("item", { type = item.type, value = item.value, action = item.action, order = item.order });
 				if item["message"] then reply:tag("message"):up(); end
 				if item["iq"] then reply:tag("iq"):up(); end
 				if item["presence-in"] then reply:tag("presence-in"):up(); end
@@ -278,7 +281,7 @@ local function simple_process_entries(block)
 end
 
 local function simple_generate_stanza(stanza, entries, payload)
-		stanza:tag(payload, { xmlns = "urn:xmpp:blocking" });
+		stanza:tag(payload, { xmlns = blocking_xmlns });
 		if entries then
 			for _, jid in ipairs(entries) do stanza:tag("item", { jid = jid }):up(); end
 		end
