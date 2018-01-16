@@ -170,7 +170,7 @@ module:hook("iq-get/self/"..blocking_xmlns..":blocklist", function(data)
 		local reply = simple_generate_stanza(st.reply_stanza(stanza), entries, "blocklist");
 		origin.send(reply);
 	else
-		origin.send(st.reply_stanza(stanza):tag("blocklist", { xmlns = blocking_xmlns }));
+		origin.send(st.reply(stanza):tag("blocklist", { xmlns = blocking_xmlns }));
 	end
 	
 	datamanager.store(origin.username, origin.host, "privacy", privacy_lists);
