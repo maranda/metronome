@@ -116,7 +116,11 @@ end
 function generate_secret(bytes)
 	local n, urandom = 0;
 	repeat
-		urandom = popen("head -c "..tostring(bytes or 256).." /dev/urandom"):read();
+		local f = open("/dev/urandom", "r");
+		if f then
+			urandom = f:read(bytes or 256);
+			f:close();
+		end
 		n = n + 1;
 	until urandom ~= nil or n == 30;
 
