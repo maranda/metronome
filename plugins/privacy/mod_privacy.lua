@@ -116,6 +116,7 @@ module:hook("iq-set/self/"..blocking_xmlns..":block", function(data)
 		origin.send(st.error_reply(stanza, "modify", "bad-request", "You need to specify at least one item to add."));
 	end
 	
+	datamanager.store(origin.username, origin.host, "privacy", privacy_lists);
 	return true;
 end);
 
@@ -152,6 +153,7 @@ module:hook("iq-set/self/"..blocking_xmlns..":unblock", function(data)
 		simple_push_entries(self_bare, self_resource, "unblock");
 	end
 	
+	datamanager.store(origin.username, origin.host, "privacy", privacy_lists);
 	origin.send(st.reply(stanza));
 	return true;
 end);
@@ -172,6 +174,7 @@ module:hook("iq-get/self/"..blocking_xmlns..":blocklist", function(data)
 		origin.send(st.reply_stanza(stanza):tag("blocklist", { xmlns = blocking_xmlns }):up());
 	end
 	
+	datamanager.store(origin.username, origin.host, "privacy", privacy_lists);
 	return true;
 end);
 
