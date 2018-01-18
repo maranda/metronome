@@ -144,7 +144,8 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 		local reply = st.reply(stanza):add_child(rq);
 	
 		for _, message in ipairs(messages) do
-			message.attr.to = origin.full_jid;
+			message.attr.from = to;
+			message.attr.to = from;
 			origin.send(message);
 		end
 		origin.send(reply);
