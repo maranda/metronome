@@ -253,7 +253,7 @@ function handlers.set_publish(service, origin, stanza, publish, config)
 	return origin.send(reply);
 end
 
-function handlers["get_publish-options"](service, origin, stanza, action)
+handlers["get_publish-options"] = function(service, origin, stanza, action)
 	local node = action.attr.node;
 	if not node then
 		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
