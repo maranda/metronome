@@ -232,7 +232,7 @@ function handlers.set_publish(service, origin, stanza, publish, config)
 		end
 		service:create(node, from, node_config);
 		pep_autosubscribe_recs(service, node);
-	elseif services.nodes[node] and config then
+	elseif service.nodes[node] and config then
 		-- Test preconditions
 		form = config:get_child("x", "jabber:x:data");
 		ok, ret = process_options_form(service, node, form);
