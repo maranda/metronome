@@ -70,7 +70,7 @@ local function build_server_disco_info()
 	local contact_info = module:get_option_table("contact_info");
 	if contact_info then
 		query:tag("x", { xmlns = "jabber:x:data", type = "result" })
-			:tag("field", { type = "hidden", var = "FORM_TYPE" }
+			:tag("field", { type = "hidden", var = "FORM_TYPE" })
 				:tag("value"):text("http://jabber.org/network/serverinfo"):up():up();
 		for type, addresses in pairs(contact_info) do
 			query:tag("field", { var = type });
