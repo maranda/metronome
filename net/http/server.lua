@@ -171,7 +171,7 @@ function handle_request(conn, request, finish_cb)
 	local response = {
 		request = request;
 		status_code = 200;
-		headers = { server = "Metronome IM/"..metronome.version.." (net.http.server; https://metronome.im)", date = date_header };
+		headers = { server = "Metronome IM/3.7 (net.http.server; https://metronome.im)", date = date_header };
 		keep_alive = keep_alive;
 		conn = conn;
 		send = _M.send_response;
