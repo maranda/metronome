@@ -39,9 +39,12 @@ local subscription_presence = pep_lib.subscription_presence;
 local get_caps_hash_from_presence = pep_lib.get_caps_hash_from_presence;
 local pep_send = pep_lib.pep_send;
 local pep_autosubscribe_recs = pep_lib.pep_autosubscribe_recs;
-local form_layout = pep_lib.form_layout;
 local send_config_form = pep_lib.send_config_form;
 local process_config_form = pep_lib.process_config_form;
+local send_config_form = pep_lib.send_config_form;
+local process_config_form = pep_lib.process_config_form;
+local send_options_form = pep_lib.send_options_form;
+local process_options_form = pep_lib.process_options_form;
 local pep_new = pep_lib.pep_new;
 
 -- Helpers.
@@ -99,7 +102,12 @@ function handle_pubsub_iq(event)
 	local action = pubsub.tags[1];
 	if not action then return origin.send(pep_error_reply(stanza, "bad-request")); end
 	local handler = handlers[stanza.attr.type.."_"..action.name];
-	local config = (pubsub.tags[2] and pubsub.tags[2].name == "configure") and pubsub.tags[2];
+	local config;
+	if action.name == "create" then
+		config = (pubsub.tags[2] and pubsub.tags[2].name == "configure") and pubsub.tags[2];
+	elseif action.name == "publish" then
+		config = (pubsub.tags[2] and pubsub.tags[2].name == "publish-options") and pubsub.tags[2];
+	end
 	local handler;
 
 	if pubsub.attr.xmlns == xmlns_pubsub_owner then
@@ -199,26 +207,42 @@ function handlers.set_create(service, origin, stanza, create, config)
 	return origin.send(reply);
 end
 
-function handlers.set_publish(service, origin, stanza, publish)
+function handlers.set_publish(service, origin, stanza, publish, config)
 	local node = publish.attr.node;
 	local from = stanza.attr.from or origin.full_jid;
 	local item = publish:get_child("item");
 	local recs = {};
 	local recs_count = 0;
 	local id = (item and item.attr.id) or uuid_generate();
+	local form, ok, ret, reply;
+	
 	if item and not item.attr.id then item.attr.id = id; end
 	if not service.nodes[node] then
 	-- normally this would be handled just by publish() but we have to preceed its broadcast,
 	-- so since autocreate on publish is in place, do create and then resubscribe interested items.
 		local node_config;
-		if singleton_nodes:contains(node) then node_config = { max_items = 1 }; end
+		if config then
+			form = config:get_child("x", "jabber:x:data");
+			ok, node_config = process_options_form(service, node, form);
+			if not ok then return origin.send(pep_error_reply(stanza, node_config)); end
+		end
+		
+		if not node_config and singleton_nodes:contains(node) then 
+			node_config = { max_items = 1 };
+		elseif node_config and not node_config.max_items and singleton_nodes:contains(node) then
+			node_config.max_items = 1;
+		end
 		service:create(node, from, node_config);
 		pep_autosubscribe_recs(service, node);
+	elseif services.nodes[node] and config then
+		-- Test preconditions
+		form = config:get_child("x", "jabber:x:data");
+		ok, ret = process_options_form(service, node, form);
+		if not ok then return origin.send(pep_error_reply(stanza, ret)); end
 	end
 
-	local ok, ret = service:publish(node, from, id, item);
-	local reply;
-	
+	ok, ret = service:publish(node, from, id, item);
+		
 	if ok then
 		reply = st.reply(stanza)
 			:tag("pubsub", { xmlns = xmlns_pubsub })
@@ -229,6 +253,24 @@ function handlers.set_publish(service, origin, stanza, publish)
 	end
 
 	return origin.send(reply);
+end
+
+function handlers["get_publish-options"](service, origin, stanza, action)
+	local node = action.attr.node;
+	if not node then
+		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
+	end
+
+	local node_obj = service.nodes[node];
+	if not node_obj then
+		return origin.send(pep_error_reply(stanza, "item-not-found"));
+	end
+
+	if node_obj.config.publish_model == "open" or service:may(node, from, "publish") then
+		return send_options_form(service, node, origin, stanza);
+	else
+		return origin.send(pep_error_reply(stanza, "forbidden"));
+	end
 end
 
 function handlers.set_retract(service, origin, stanza, retract)

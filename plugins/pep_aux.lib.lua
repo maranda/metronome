@@ -34,6 +34,7 @@ local features = {
 	"http://jabber.org/protocol/pubsub#meta-data",
 	"http://jabber.org/protocol/pubsub#persistent-items",
 	"http://jabber.org/protocol/pubsub#publish",
+	"http://jabber.org/protocol/pubsub#publish-options",
 	"http://jabber.org/protocol/pubsub#purge-nodes",
 	"http://jabber.org/protocol/pubsub#retrieve-items"
 };
@@ -59,6 +60,7 @@ local pep_errors = {
 	["forbidden"] = { "cancel", "forbidden" };
 	["not-subscribed"] = { "modify", "unexpected-request", nil, "not-subscribed" };
 	["bad-request"] = { "cancel", "bad-request" };
+	["precondition-not-met"] = { "cancel", "conflict", nil, "precondition-not-met"}
 };
 
 -- Functions
@@ -176,7 +178,7 @@ local function pep_autosubscribe_recs(service, node)
 	end
 end
 
-local function form_layout(service, name)
+local function config_form_layout(service, name)
 	local c_name = "Node configuration for "..name;
 	local node = service.nodes[name];
 
@@ -231,12 +233,12 @@ local function form_layout(service, name)
 		{
 			name = "pubsub#publish_model",
 			type = "list-single",
-			label = "Publisher Model for the node, currently supported models are publisher and open",
+			label = "Publisher Model for the node, currently supported models are publishers and open",
 			value = {
 				{ value = "publishers", default = (node.config.publish_model == "publishers" or node.config.publish_model == nil) and true },
 				{ value = "open", default = node.config.publish_model == "open" and true }
 			}
-		},				
+		}				
 	});
 end
 
@@ -244,7 +246,7 @@ local function send_config_form(service, name, origin, stanza)
 	return origin.send(st.reply(stanza)
 		:tag("pubsub", { xmlns = "http://jabber.org/protocol/pubsub#owner" })
 			:tag("configure", { node = name })
-				:add_child(form_layout(service, name):form()):up()
+				:add_child(config_form_layout(service, name):form()):up()
 	);
 end
 
@@ -261,31 +263,113 @@ local function process_config_form(service, name, form, new)
 	if not form or form.attr.type ~= "submit" then return false, "bad-request" end
 
 	for _, field in ipairs(form.tags) do
+		local value = field:get_child_text("value");
 		if field.attr.var == "pubsub#title" then
-			node_config.title = (field:get_child_text("value") ~= "" and field:get_child_text("value")) or nil;
+			node_config.title = (value ~= "" and value) or nil;
 		elseif field.attr.var == "pubsub#description" then
-			node_config.description = (field:get_child_text("value") ~= "" and field:get_child_text("value")) or nil;
+			node_config.description = (value ~= "" and value) or nil;
 		elseif field.attr.var == "pubsub#type" then
-			node_config.type = (field:get_child_text("value") ~= "" and field:get_child_text("value")) or nil;
+			node_config.type = (value ~= "" and value) or nil;
 		elseif field.attr.var == "pubsub#max_items" then
-			node_config.max_items = tonumber(field:get_child_text("value")) or 20;
+			node_config.max_items = tonumber(value) or 20;
 		elseif field.attr.var == "pubsub#persist_items" then
-			local persist = field:get_child_text("value");
-			node_config.persist_items = ((persist == 0 or persist == "false") and false) or ((persist == "1" or persist == "true") and true);
+			node_config.persist_items = ((value == 0 or value == "false") and false) or ((value == "1" or value == "true") and true);
 		elseif field.attr.var == "pubsub#access_model" then
-			local value = field:get_child_text("value");
 			if value == "presence" or value == "open" or value == "whitelist" then node_config.access_model = value; end
 		elseif field.attr.var == "pubsub#publish_model" then
-			local value = field:get_child_text("value");
 			if value == "publishers" or value == "open" then node_config.publish_model = value; end
 		end
 	end
 
-	if new then return true, node_config end
+	if new then return true, node_config; end
 
 	service:save_node(name);
 	service:save();
 	return true;
+end
+
+local function options_form_layout(service, name)
+	local c_name = "Node publish options for "..name;
+	local node = service.nodes[name];
+
+	return dataforms.new({
+		title = c_name,
+		instructions = c_name,
+		{
+			name = "FORM_TYPE",
+			type = "hidden",
+			value = "http://jabber.org/protocol/pubsub#publish-options"
+		},
+		{
+			name = "pubsub#max_items",
+			type = "text-single",
+			label = "Precondition: Max number of items to persist",
+			value = type(node.config.max_items) == "number" and tostring(node.config.max_items) or "0"
+		},
+		{
+			name = "pubsub#persist_items",
+			type = "boolean",
+			label = "Precondition: Whether to persist items to storage or not",
+			value = node.config.persist_items or false
+		},
+		{
+			name = "pubsub#access_model",
+			type = "list-single",
+			label = "Precondition: Access Model for the node, currently supported models are presence, open and whitelist",
+			value = {
+				{ value = "presence", default = (node.config.access_model == "presence" or node.config.access_model == nil) and true },
+				{ value = "open", default = node.config.access_model == "open" and true },
+				{ value = "whitelist", default = node.config.access_model == "whitelist" and true }
+			}
+		},
+		{
+			name = "pubsub#publish_model",
+			type = "list-single",
+			label = "Precondition: Publisher Model for the node, currently supported models are publishers and open",
+			value = {
+				{ value = "publishers", default = (node.config.publish_model == "publishers" or node.config.publish_model == nil) and true },
+				{ value = "open", default = node.config.publish_model == "open" and true }
+			}
+		}
+	});
+end
+
+local function send_options_form(service, name, origin, stanza)
+	return origin.send(st.reply(stanza)
+		:tag("pubsub", { xmlns = "http://jabber.org/protocol/pubsub" })
+			:tag("publish-options", { node = name })
+				:add_child(options_form_layout(service, name):form()):up()
+	);
+end
+
+local function process_options_form(service, name, form)
+	local node_config, node;
+	node_config = {};
+	node = service.nodes[name];
+
+	if not form or form.attr.type ~= "submit" then return false, "bad-request"; end
+
+	for _, field in ipairs(form.tags) do
+		local value = field:get_child_text("value");
+		if field.attr.var == "pubsub#max_items" then
+			node_config.max_items = tonumber(value) or 20;
+		elseif field.attr.var == "pubsub#persist_items" then
+			node_config.persist_items = ((value == 0 or value == "false") and false) or ((value == "1" or value == "true") and true);
+		elseif field.attr.var == "pubsub#access_model" then
+			if value == "presence" or value == "open" or value == "whitelist" then node_config.access_model = value; end
+		elseif field.attr.var == "pubsub#publish_model" then
+			if value == "publishers" or value == "open" then node_config.publish_model = value; end
+		end
+	end
+
+	if node then -- just compare that publish-options match configuration
+		local config = node.config;
+		for option, value in pairs(node_config) do
+			if config[option] ~= value then return false, "precondition-not-met"; end
+		end
+	else
+		return true, node_config;
+	end
 end
 
 local function send_event(self, node, message, jid)
@@ -472,8 +556,9 @@ return {
 	get_caps_hash_from_presence = get_caps_hash_from_presence,
 	pep_send = pep_send,
 	pep_autosubscribe_recs = pep_autosubscribe_recs,
-	form_layout = form_layout;
 	send_config_form = send_config_form;
 	process_config_form = process_config_form;
+	send_options_form = send_config_form;
+	process_options_form = process_config_form;
 	pep_new = pep_new
 };
