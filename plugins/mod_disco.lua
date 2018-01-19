@@ -74,7 +74,7 @@ local function build_server_disco_info()
 				:tag("value"):text("http://jabber.org/network/serverinfo"):up():up();
 		for type, addresses in pairs(contact_info) do
 			query:tag("field", { var = type });
-			for _, address in ipairs(address) do query:tag("value"):text(address):up();	end
+			for _, address in ipairs(addresses) do query:tag("value"):text(address):up();	end
 			query:up();
 		end
 		query:up();
