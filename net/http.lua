@@ -150,7 +150,7 @@ function request(u, ex, callback)
 	
 	headers = {
 		["Host"] = req.host;
-		["User-Agent"] = "Metronome XMPP Server";
+		["User-Agent"] = "Metronome IM/"..metronome.version.." (net.http; https://metronome.im)";
 	};
 	
 	if req.userinfo then
