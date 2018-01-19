@@ -138,7 +138,7 @@ function log_warnings()
 	if ssl then
 		local major, minor, veryminor, patched = ssl._VERSION:match("(%d+)%.(%d+)%.?(%d*)(M?)");
 		if not major or ((tonumber(major) == 0 and (tonumber(minor) or 0) <= 3 and (tonumber(veryminor) or 0) <= 2) and patched ~= "M") then
-			log("error", "This version of LuaSec contains a known bug that causes disconnects, see http://lightwitch.org/metronome/building");
+			log("error", "This version of LuaSec contains a known bug that causes disconnects, see https://metronome.im/building");
 		end
 	end
 	if lxp then
@@ -146,7 +146,7 @@ function log_warnings()
 			log("error", "The version of LuaExpat on your system leaves Metronome "
 				.."vulnerable to denial-of-service attacks. You should upgrade to "
 				.."LuaExpat 1.1.1 or higher as soon as possible. See "
-				.."http://lightwitch.org/metronome/building for more information.");
+				.."https://metronome.im/building for more information.");
 		end
 	end
 end
