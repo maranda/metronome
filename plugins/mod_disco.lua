@@ -57,7 +57,7 @@ local function build_server_disco_info()
 	end
 	for _, feature in ipairs(module:get_items("feature")) do
 		if not done[feature] then
-			query:tag("feature", {var=feature}):up();
+			query:tag("feature", { var = feature }):up();
 			done[feature] = true;
 		end
 	end
@@ -66,6 +66,18 @@ local function build_server_disco_info()
 			query:add_child(extension);
 			done[extension] = true;
 		end
+	end
+	local contact_info = module:get_option_table("contact_info");
+	if contact_info then
+		query:tag("x", { xmlns = "jabber:x:data", type = "result" })
+			:tag("field", { type = "hidden", var = "FORM_TYPE" }
+				:tag("value"):text("http://jabber.org/network/serverinfo"):up():up();
+		for type, addresses in pairs(contact_info) do
+			query:tag("field", { var = type });
+			for _, address in ipairs(address) do query:tag("value"):text(address):up();	end
+			query:up();
+		end
+		query:up();
 	end
 	_cached_server_disco_info = query;
 	_cached_server_caps_hash = calculate_hash(query);
