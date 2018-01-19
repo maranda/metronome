@@ -139,34 +139,30 @@ local function process_config_form(service, name, form, new)
 		node_config = node.config;
 	end
 
-	if not form or form.attr.type ~= "submit" then return false, "bad-request" end
+	if not form or form.attr.type ~= "submit" then return false, "bad-request"; end
 
 	for _, field in ipairs(form.tags) do
+		local value = field:get_child_text("value");
 		if field.attr.var == "pubsub#title" then
-			node_config.title = (field:get_child_text("value") ~= "" and field:get_child_text("value")) or nil;
+			node_config.title = (value ~= "" and value) or nil;
 		elseif field.attr.var == "pubsub#description" then
-			node_config.description = (field:get_child_text("value") ~= "" and field:get_child_text("value")) or nil;
+			node_config.description = (value ~= "" and value) or nil;
 		elseif field.attr.var == "pubsub#type" then
-			node_config.type = (field:get_child_text("value") ~= "" and field:get_child_text("value")) or nil;
+			node_config.type = (value ~= "" and value) or nil;
 		elseif field.attr.var == "pubsub#deliver_notifications" then
-			local notify = field:get_child_text("value");
-			node_config.deliver_notifications = ((notify == 0 or notify == "false") and false) or
-				((notify == "1" or notify == "true") and true);
+			node_config.deliver_notifications = ((value == 0 or value == "false") and false) or
+				((value == "1" or value == "true") and true);
 		elseif field.attr.var == "pubsub#deliver_payloads" then
-			local payloads = field:get_child_text("value");
-			node_config.deliver_payloads = ((payloads == 0 or payloads == "false") and false) or
-				((payloads == "1" or payloads == "true") and true);
+			node_config.deliver_payloads = ((value == 0 or value == "false") and false) or
+				((value == "1" or value == "true") and true);
 		elseif field.attr.var == "pubsub#max_items" then
-			node_config.max_items = tonumber(field:get_child_text("value"));
+			node_config.max_items = tonumber(value);
 		elseif field.attr.var == "pubsub#persist_items" then
-			local persist = field:get_child_text("value");
-			node_config.persist_items = ((persist == 0 or persist == "false") and false) or
-				((persist == "1" or persist == "true") and true);
+			node_config.persist_items = ((value == 0 or value == "false") and false) or
+				((value == "1" or value == "true") and true);
 		elseif field.attr.var == "pubsub#access_model" then
-			local value = field:get_child_text("value");
 			if value == "open" or value == "whitelist" then node_config.access_model = value; end
 		elseif field.attr.var == "pubsub#publish_model" then
-			local value = field:get_child_text("value");
 			if value == "open" or value == "publishers" or value == "subscribers" then node_config.publish_model = value; end
 		end
 	end
