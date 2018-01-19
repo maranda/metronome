@@ -167,7 +167,7 @@ module:hook("iq-get/self/"..blocking_xmlns..":blocklist", function(data)
 		local entries = {};
 		
 		for i = 1, #items do t_insert(entries, items[i].jid) end
-		local reply = simple_generate_stanza(st.reply_stanza(stanza), entries, "blocklist");
+		local reply = simple_generate_stanza(st.reply(stanza), entries, "blocklist");
 		origin.send(reply);
 	else
 		origin.send(st.reply(stanza):tag("blocklist", { xmlns = blocking_xmlns }));
