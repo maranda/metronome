@@ -64,6 +64,7 @@ module:hook("stanza/urn:xmpp:csi:0:active", function(event)
 			for i = 1, #queue do send(queue[i]) end
 		end
 		session.csi_queue, session.presence_block, session.to_block, queue = nil, nil, nil, nil;
+		module:fire_event("client-state-changed", { session = session, state = session.csi });
 		return true;
 	end
 end);
@@ -75,6 +76,7 @@ module:hook("stanza/urn:xmpp:csi:0:inactive", function(event)
 			session.full_jid or jid_join(session.username, session.host));
 		session.csi = "inactive";
 		session.csi_queue, session.to_block, session.presence_block = {}, {}, true;
+		module:fire_event("client-state-changed", { session = session, state = session.csi });
 		return true;
 	end
 end);
