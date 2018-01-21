@@ -558,7 +558,7 @@ return {
 	pep_autosubscribe_recs = pep_autosubscribe_recs,
 	send_config_form = send_config_form;
 	process_config_form = process_config_form;
-	send_options_form = send_config_form;
-	process_options_form = process_config_form;
+	send_options_form = send_options_form;
+	process_options_form = process_options_form;
 	pep_new = pep_new
 };
