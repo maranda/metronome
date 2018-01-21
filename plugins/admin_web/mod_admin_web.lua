@@ -77,6 +77,13 @@ function generate_item(name, session, id)
 	if session.sm then
 		item:tag("sm"):up();
 	end
+	if session.csi then
+		if session.csi == "active" then
+			item:tag("csi"):tag("active"):up():up();
+		else
+			item:tag("csi"):tag("inactive"):up():up();
+		end
+	end
 	return item;
 end
 
