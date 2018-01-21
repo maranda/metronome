@@ -129,7 +129,7 @@ module:hook("iq-set/self/"..blocking_xmlns..":unblock", function(data)
 	end
 	
 	local unblock = stanza.tags[1];
-	if unblock.tags > 0 then -- remove single entries;
+	if #unblock.tags > 0 then -- remove single entries;
 		local self_bare = jid_bare(origin.full_jid);
 		local self_resource = jid_section(origin.full_jid, "resource");
 	
