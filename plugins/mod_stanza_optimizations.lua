@@ -16,7 +16,7 @@ module:add_feature("urn:xmpp:sift:stanzas:presence");
 
 module:hook("stream-features", function(event)
 	if event.origin.type == "c2s" then event.features:tag("csi", { xmlns = "urn:xmpp:csi:0" }):up(); end
-end, 95);
+end, 97);
 	
 module:hook("iq-set/self/urn:xmpp:sift:2:sift", function(event)
 	local stanza, session = event.stanza, event.origin;
