@@ -9,6 +9,7 @@
 
 local NULL = {};
 local pairs, t_insert = pairs, table.insert;
+local jid_join = require "util.jid".join;
 	
 module:add_feature("urn:xmpp:csi:0");
 module:add_feature("urn:xmpp:sift:2");
@@ -22,7 +23,7 @@ module:hook("iq-set/self/urn:xmpp:sift:2:sift", function(event)
 	local stanza, session = event.stanza, event.origin;
 
 	if session.csi then
-		session.send(st.error_reply(stanza, "cancel", "forbidden", "Can't handle filtering via SIFT when Client State Indication is used."));
+		session.send(st.error_reply(stanza, "cancel", "forbidden", "Can't handle filtering via SIFT when Client State Indication is used"));
 		return true;
 	end
 
@@ -35,6 +36,7 @@ module:hook("iq-set/self/urn:xmpp:sift:2:sift", function(event)
 		session.send(st.error_reply(stanza, "cancel", "feature-not-implemented", "Only sifting presences is currently supported"));
 		return true;
 	elseif #sift.tags == 0 then
+		module:log("info", "%s removing all SIFT filters", session.full_jid or jid_join(session.username, session.host));
 		session.presence_block, session.to_block = nil, nil;
 		session.send(st.reply(stanza));
 		return true;
@@ -44,6 +46,7 @@ module:hook("iq-set/self/urn:xmpp:sift:2:sift", function(event)
 		session.send(st.error_reply(stanza, "cancel", "feature-not-implemented", "Only blocking all presences is supported not granular filtering"));
 		return true;
 	else
+		module:log("info", "%s enabling SIFT filtering of all incoming presences", session.full_jid or jid_join(session.username, session.host));
 		session.presence_block, session.to_block = true, {};
 		session.send(st.reply(stanza));
 		return true;
@@ -53,9 +56,11 @@ end);
 module:hook("stanza/urn:xmpp:csi:0:active", function(event)
 	local session = event.origin;
 	if session.type == "c2s" and session.csi ~= "active" then
+		module:log("info", "%s signaling client is active", session.full_jid or jid_join(session.username, session.host));
 		session.csi = "active";
 		local send, queue = session.send, session.csi_queue;
 		if queue and #queue > 0 then -- flush queue
+			module:log("debug", "flushing queued stanzas");
 			for i = 1, #queue do send(queue[i]) end
 		end
 		session.csi_queue, session.presence_block, session.to_block, queue = nil, nil, nil, nil;
@@ -66,6 +71,8 @@ end);
 module:hook("stanza/urn:xmpp:csi:0:inactive", function(event)
 	local session = event.origin;
 	if session.type == "c2s" and session.csi ~= "inactive" then
+		module:log("info", "%s signaling client is inactive blocking and queuing incoming presences", 
+			session.full_jid or jid_join(session.username, session.host));
 		session.csi = "inactive";
 		session.csi_queue, session.to_block, session.presence_block = {}, {}, true;
 		return true;
