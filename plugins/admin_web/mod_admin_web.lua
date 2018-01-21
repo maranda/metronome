@@ -330,17 +330,13 @@ function module.add_host(module)
 		return origin.send(reply);
 	end);
 
-	-- Add/remove c2s sessions
+	-- Add/remove/update c2s sessions
 	module:hook("resource-bind", function(event)
 		add_client(event.session, module.host);
 	end);
-
-	module:hook("c2s-compressed", function(session)
-		add_client(session, module.host, true);
-	end);
-
-	module:hook("c2s-sm-enabled", function(session)
-		add_client(session, module.host, true);
+	
+	module:hook("client-state-changed", function(event)
+		add_client(event.session, module.host, true);
 	end);
 
 	module:hook("resource-unbind", function(event)
@@ -349,10 +345,10 @@ function module.add_host(module)
 		service[module.host]:remove_subscription(xmlns_s2s_session, module.host, event.session.full_jid);
 	end);
 
-	-- Add/remove s2s sessions
+	-- Add/remove/update s2s sessions
 	module:hook("bidi-established", function(event)
 		if event.type == "outgoing" then
-			add_host(event.origin, "out", module.host, true);
+			add_host(event.session, "out", module.host, true);
 		else
 			add_host(event.session, "in", module.host, true);
 		end
@@ -366,19 +362,11 @@ function module.add_host(module)
 		add_host(session, "out", module.host, true);
 	end);
 
-	module:hook("s2sout-sm-enabled", function(session)
-		add_host(session, "out", module.host, true);
-	end);
-
 	module:hook("s2sin-established", function(event)
 		add_host(event.session, "in", module.host);
 	end);
 
 	module:hook("s2sin-compressed", function(session)
-		add_host(session, "in", module.host, true);
-	end);
-
-	module:hook("s2sin-sm-enabled", function(session)
 		add_host(session, "in", module.host, true);
 	end);
 
