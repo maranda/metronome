@@ -138,16 +138,16 @@ end
 module:hook("stream-features", function(event)
 	local session = event.origin;
 	if session.type == "c2s" and not session.sm then
-		event.features:tag("sm", { xmlns = xmlns_sm2 }):tag("optional"):up():up();
-		event.features:tag("sm", { xmlns = xmlns_sm3 }):tag("optional"):up():up();
+		event.features:tag("sm", { xmlns = xmlns_sm2 }):up();
+		event.features:tag("sm", { xmlns = xmlns_sm3 }):up();
 	end
 end);
 
 module:hook("s2s-stream-features", function(event)
 	local session = event.origin;
 	if not session.sm then
-		event.features:tag("sm", { xmlns = xmlns_sm2 }):tag("optional"):up():up();
-		event.features:tag("sm", { xmlns = xmlns_sm3 }):tag("optional"):up():up();
+		event.features:tag("sm", { xmlns = xmlns_sm2 }):up();
+		event.features:tag("sm", { xmlns = xmlns_sm3 }):up();
 	end
 end, 97);
 
