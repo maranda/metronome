@@ -35,14 +35,14 @@ module:hook("stream-features", function(event)
 	if not origin.compressed and origin.type == "c2s" then
 		features:add_child(compression_stream_feature);
 	end
-end, 97);
+end, 100);
 
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;
 	if not origin.compressed and (host_session.dialback_capable or session.type == "s2sin") then
 		features:add_child(compression_stream_feature);
 	end
-end, 97);
+end, 100);
 
 -- Hook to activate compression if remote server supports it.
 module:hook_stanza(xmlns_stream, "features", function(session, stanza)
