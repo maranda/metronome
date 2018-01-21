@@ -51,7 +51,7 @@ module:hook("iq-set/self/urn:xmpp:sift:2:sift", function(event)
 end);
 
 module:hook("stanza/urn:xmpp:csi:0:active", function(event)
-	local session = event.session;
+	local session = event.origin;
 	if session.type == "c2s" and session.csi ~= "active" then
 		session.csi = "active";
 		local send, queue = session.send, session.csi_queue;
@@ -64,7 +64,7 @@ module:hook("stanza/urn:xmpp:csi:0:active", function(event)
 end);
 
 module:hook("stanza/urn:xmpp:csi:0:inactive", function(event)
-	local session = event.session;
+	local session = event.origin;
 	if session.type == "c2s" and session.csi ~= "inactive" then
 		session.csi = "inactive";
 		session.csi_queue, session.to_block, session.presence_block = {}, {}, true;
