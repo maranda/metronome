@@ -12,6 +12,7 @@ local zlib = require "zlib";
 local add_task = require "util.timer".add_task;
 local pcall = pcall;
 local tostring = tostring;
+local config_get, module_unload = require "core.configmanager".get, require "core.modulemanager".unload;
 
 local xmlns_compression_feature = "http://jabber.org/features/compress";
 local xmlns_compression_protocol = "http://jabber.org/protocol/compress";
@@ -21,14 +22,35 @@ local add_filter = require "util.filters".add_filter;
 
 local compression_level = module:get_option_number("compression_level", 7);
 local size_limit = module:get_option_number("compressed_data_max_size", 131072);
+local ssl_compression = config_get("*", "ssl_compression");
 
 local host_session = hosts[module.host];
 
-if not compression_level or compression_level < 1 or compression_level > 9 then
-	module:log("warn", "Invalid compression level in config: %s", tostring(compression_level));
-	module:log("warn", "Module loading aborted. Compression won't be available");
+if ssl_compression then
+	module:log("error", "TLS compression is enabled, mod_compression won't work with this setting on");
 	return;
 end
+
+if compression_level < 1 or compression_level > 9 then
+	module:log("warn", "Valid compression level range is 1-9, found in config: %s", tostring(compression_level));
+	module:log("warn", "Using standard level (7) instead");
+	compression_level = 7;
+end
+
+module:hook("config-reloaded", function()
+	compression_level = module:get_option_number("compression_level", 7);
+	size_limit = module:get_option_number("compressed_data_max_size", 131072);
+	ssl_compression = config_get("*", "ssl_compression");
+	if ssl_compression then
+		module:log("error", "mod_compression won't work with TLS compression enabled, unloading module");
+		module_unload(module.host, "compression");
+	end
+	if compression_level < 1 or compression_level > 9 then
+		module:log("warn", "mod_compression valid compression value range is 1-9");
+		module:log("warn", "value in config is: %s, replacing with standard", tostring(compression_level));
+		compression_level = 7;
+	end
+end);
 
 module:hook("stream-features", function(event)
 	local origin, features = event.origin, event.features;
