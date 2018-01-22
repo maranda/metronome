@@ -118,6 +118,9 @@ end
 
 function add_host(session, type, host, update)
 	local name = (type == "out" and session.to_host) or (type == "in" and session.from_host);
+	if name == host then --FIX ME, why is it happening on BIDI?
+		return;
+	end
 	local id = idmap[name.."_"..type];
 	if not id then
 		id = uuid_generate();
