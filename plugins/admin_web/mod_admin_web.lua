@@ -118,7 +118,6 @@ end
 
 function add_host(session, type, host, update)
 	local name = (type == "out" and session.to_host) or (type == "in" and session.from_host);
-	if name == host then return; end
 	local id = idmap[name.."_"..type];
 	if not id then
 		id = uuid_generate();
@@ -335,7 +334,11 @@ function module.add_host(module)
 	module:hook("resource-bind", function(event)
 		add_client(event.session, module.host);
 	end);
-	
+
+	module:hook("c2s-compressed", function(event)
+		add_client(event.session, module.host, true);
+	end);	
+
 	module:hook("c2s-sm-enabled", function(event)
 		add_client(event.session, module.host, true);
 	end);
@@ -353,7 +356,7 @@ function module.add_host(module)
 	-- Add/remove/update s2s sessions
 	module:hook("bidi-established", function(event)
 		if event.type == "outgoing" then
-			add_host(event.session, "out", module.host, true);
+			add_host(event.origin, "out", module.host, true);
 		else
 			add_host(event.session, "in", module.host, true);
 		end
