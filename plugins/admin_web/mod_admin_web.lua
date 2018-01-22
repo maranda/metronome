@@ -335,12 +335,12 @@ function module.add_host(module)
 		add_client(event.session, module.host);
 	end);
 
-	module:hook("c2s-compressed", function(event)
-		add_client(event.session, module.host, true);
+	module:hook("c2s-compressed", function(session)
+		add_client(session, module.host, true);
 	end);	
 
-	module:hook("c2s-sm-enabled", function(event)
-		add_client(event.session, module.host, true);
+	module:hook("c2s-sm-enabled", function(session)
+		add_client(session, module.host, true);
 	end);
 
 	module:hook("client-state-changed", function(event)
