@@ -335,6 +335,10 @@ function module.add_host(module)
 		add_client(event.session, module.host);
 	end);
 	
+	module:hook("c2s-sm-enabled", function(event)
+		add_client(event.session, module.host, true);
+	end);
+
 	module:hook("client-state-changed", function(event)
 		add_client(event.session, module.host, true);
 	end);
@@ -361,12 +365,20 @@ function module.add_host(module)
 	module:hook("s2sout-compressed", function(session)
 		add_host(session, "out", module.host, true);
 	end);
+	
+	module:hook("s2sout-sm-enabled", function(session)
+		add_host(session, "out", module.host, true);
+	end);
 
 	module:hook("s2sin-established", function(event)
 		add_host(event.session, "in", module.host);
 	end);
 
 	module:hook("s2sin-compressed", function(session)
+		add_host(session, "in", module.host, true);
+	end);
+	
+	module:hook("s2sin-sm-enabled", function(session)
 		add_host(session, "in", module.host, true);
 	end);
 
