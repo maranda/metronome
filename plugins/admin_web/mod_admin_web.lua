@@ -118,9 +118,7 @@ end
 
 function add_host(session, type, host, update)
 	local name = (type == "out" and session.to_host) or (type == "in" and session.from_host);
-	if name == host then --FIX ME, why is it happening on BIDI?
-		return;
-	end
+	if name == host then return; end
 	local id = idmap[name.."_"..type];
 	if not id then
 		id = uuid_generate();
@@ -357,7 +355,7 @@ function module.add_host(module)
 		if event.type == "outgoing" then
 			add_host(event.session, "out", module.host, true);
 		else
-			add_host(event.origin, "in", module.host, true);
+			add_host(event.session, "in", module.host, true);
 		end
 	end);
 
