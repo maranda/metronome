@@ -260,7 +260,7 @@ local function process_config_form(service, name, form, new)
 		node_config = node.config;
 	end
 
-	if not form or form.attr.type ~= "submit" or #form.tags == 0 then return false, "bad-request" end
+	if not form or form.attr.type ~= "submit" or #form.tags == 0 then return false, "bad-request"; end
 
 	for _, field in ipairs(form.tags) do
 		local value = field:get_child_text("value");
