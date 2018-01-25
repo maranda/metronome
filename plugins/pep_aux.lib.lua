@@ -260,7 +260,7 @@ local function process_config_form(service, name, form, new)
 		node_config = node.config;
 	end
 
-	if not form or form.attr.type ~= "submit" then return false, "bad-request" end
+	if not form or form.attr.type ~= "submit" or #form.tags == 0 then return false, "bad-request" end
 
 	for _, field in ipairs(form.tags) do
 		local value = field:get_child_text("value");
@@ -347,7 +347,7 @@ local function process_options_form(service, name, form)
 	node_config = {};
 	node = service.nodes[name];
 
-	if not form or form.attr.type ~= "submit" then return false, "bad-request"; end
+	if not form or form.attr.type ~= "submit" or #form.tags == 0 then return false, "bad-request"; end
 
 	for _, field in ipairs(form.tags) do
 		local value = field:get_child_text("value");
@@ -367,9 +367,9 @@ local function process_options_form(service, name, form)
 		for option, value in pairs(node_config) do
 			if config[option] ~= value then return false, "precondition-not-met"; end
 		end
-	else
-		return true, node_config;
 	end
+	
+	return true, node_config;
 end
 
 local function send_event(self, node, message, jid)
