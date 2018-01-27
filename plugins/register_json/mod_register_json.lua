@@ -8,7 +8,7 @@ local datamanager = datamanager
 local b64_decode = require "util.encodings".base64.decode
 local b64_encode = require "util.encodings".base64.encode
 local http_event = require "net.http.server".fire_server_event
-local http_request = require "net.http".request;
+local http_request = require "net.http".request
 local jid_prep = require "util.jid".prep
 local json_decode = require "util.json".decode
 local nodeprep = require "util.encodings".stringprep.nodeprep
@@ -179,16 +179,14 @@ end
 local function r_template(event, type)
 	local data = open_file(files_base..type.."_t.html")
 	if data then
+		event.response.headers["Content-Type"] = "application/xhtml+xml"
 		data = data:gsub("%%REG%-URL", base_path..type:match("^(.*)_").."/")
 		return data
 	else return http_error_reply(event, 500, "Failed to obtain template.") end
 end
 
 local function http_file_get(event, type, path)
-	if path == "" then
-		event.response.headers["Content-Type"] = "application/xhtml+xml"
-		return r_template(event, type.."_form")
-	end		
+	if path == "" then return r_template(event, type.."_form") end		
 
 	if valid_files[path] then
 		local data = open_file(valid_files[path])
@@ -454,7 +452,7 @@ hashes = datamanager.load("register_json", module.host, "hashes") or hashes ; se
 
 module:provides("http", {
 	default_path = base_path,
-        route = {
+	route = {
 		["GET /"] = handle_req,
 		["POST /"] = handle_req,
 		["GET /reset"] = slash_redirect,
