@@ -188,10 +188,13 @@ local function handle_outgoing(event)
 		end
 		
 		local user, host = origin.username, origin.host;
+		local from_bare = jid_join(user, host);
+		local from_allow_list = allow_list[from_bare];
+		
+		if from_allow_list and from_allow_list[to_bare] then return; end
 		
 		if not is_contact_subscribed(user, host, to_bare) then
-			local from_bare = jid_join(user, host);
-			if not allow_list[from_bare] then allow_list[from_bare] = {}; end
+			if not from_allow_list then allow_list[from_bare] = {}; end
 			module:log("debug", "adding exception for %s to message %s, since conversation was started locally",
 				to_bare, from_bare);
 			allow_list[from_bare][to_bare] = true;
