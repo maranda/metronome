@@ -147,7 +147,7 @@ local function handle_incoming(event)
 		if to_allow_list and to_allow_list[from_bare] then return; end
 		
 		if block_list[from_bare] then
-			module:log("info", "blocking unsolicited message from %s", from_bare);
+			module:log("info", "blocking unsolicited message to %s from %s", to_bare, from_bare);
 			return true; 
 		end
 
