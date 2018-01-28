@@ -180,9 +180,9 @@ local function handle_outgoing(event)
 	
 	if origin.type == "c2s" and stanza.attr.type == "chat" then
 		local to_bare = jid_bare(stanza.attr.to);
-		local user, host = origin.username, origin.host;
+		if not to_bare or (origin.joined_mucs and origin.joined_mucs[to_bare]) then return; end
 		
-		if origin.joined_mucs and origin.joined_mucs[to_bare] then return; end -- don't deal with mucs
+		local user, host = origin.username, origin.host;
 		
 		if not is_contact_subscribed(user, host, to_bare) then
 			local from_bare = jid_join(user, host);
