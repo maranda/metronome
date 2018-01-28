@@ -183,7 +183,9 @@ local function handle_outgoing(event)
 	if origin.type == "c2s" and stanza.attr.type == "chat" then
 		local to_bare = jid_bare(stanza.attr.to);
 		if not to_bare or (origin.joined_mucs and origin.joined_mucs[to_bare]) or
-			hosts[jid_section(to_bare, "host")] then return; end
+			hosts[jid_section(to_bare, "host")] then
+			return;
+		end
 		
 		local user, host = origin.username, origin.host;
 		
