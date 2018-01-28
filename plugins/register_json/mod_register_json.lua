@@ -5,7 +5,6 @@
 -- information about copyright and licensing.
 
 local datamanager = datamanager
-local b64_decode = require "util.encodings".base64.decode
 local b64_encode = require "util.encodings".base64.encode
 local http_event = require "net.http.server".fire_server_event
 local http_request = require "net.http".request

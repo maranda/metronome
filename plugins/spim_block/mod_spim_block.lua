@@ -10,7 +10,6 @@ if not base_url then
 	return;
 end
 
-local b64_encode = require "util.encodings".base64.encode;
 local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
 local ipairs, pairs, open, os_time, tonumber = 
