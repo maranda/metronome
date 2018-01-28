@@ -56,7 +56,7 @@ local valid_files = {
 local function generate_secret(bytes)
 	local secret = generate(bytes);
 	if secret then
-		return b64_encode(secret);
+		return secret;
 	else
 		module:log("warn", "Failed to generate secret for SPIM token, the stanza will be allowed through.");
 		return nil;
