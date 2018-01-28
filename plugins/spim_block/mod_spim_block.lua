@@ -15,8 +15,9 @@ local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
 local ipairs, pairs, open, os_time, tonumber = 
 	ipairs, pairs, io.open, os.time, tonumber
-local jid_bare, jid_section, jid_split =
-	require "util.jid".bare, require "util.jid".section, require "util.jid".split;
+local jid_bare, jid_join, jid_section, jid_split =
+	require "util.jid".bare, require "util.jid".join,
+	require "util.jid".section, require "util.jid".split;
 local sha1 = require "util.hashes".sha1;
 local urldecode = http.urldecode;
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
@@ -31,7 +32,7 @@ module:depends("http");
 auth_list = {};
 block_list = {};
 allow_list = {};
-local count = 0;
+count = 0;
 local bare_sessions = bare_sessions;
 local full_sessions = full_sessions;
 
@@ -121,7 +122,7 @@ end
 
 -- XMPP Handlers
 
-local function handle_message(event)
+local function handle_incoming(event)
 	local origin, stanza = event.origin, event.stanza;
 		
 	if origin.type == "s2sin" or origin.bidirectional then -- don't handle local traffic.
@@ -174,8 +175,29 @@ local function handle_message(event)
 	end
 end
 
-module:hook("message/bare", handle_message, 100);
-module:hook("message/full", handle_message, 100);
+local function handle_outgoing(event)
+	local origin, stanza = event.origin, event.stanza;
+	
+	if origin.type == "c2s" and stanza.attr.type == "chat" then
+		local to_bare = jid_bare(stanza.attr.to);
+		local user, host = origin.username, origin.host;
+		
+		if origin.joined_mucs and origin.joined_mucs[to_bare] then return; end -- don't deal with mucs
+		
+		if not is_contact_subscribed(user, host, to_bare) then
+			local from_bare = jid_join(user, host);
+			if not allow_list[from_bare] then allow_list[from_bare] = {}; end
+			module:log("debug", "adding exception for %s to message %s, since conversation was started locally",
+				to_bare, from_bare);
+			allow_list[from_bare][to_bare] = true;
+		end
+	end
+end
+
+module:hook("pre-message/bare", handle_outgoing, 100);
+module:hook("pre-message/full", handle_outgoing, 100);
+module:hook("message/bare", handle_incoming, 100);
+module:hook("message/full", handle_incoming, 100);
 module:hook("resource-unbind", function(event)
 	local username, host = event.session.username, event.session.host;
 	local jid = username.."@"..host;
@@ -237,7 +259,7 @@ module:provides("http", {
 
 -- Reloadability
 
-module.save = function() return { auth_list = auth_list, block_list = block_list, allow_list = allow_list }; end
+module.save = function() return { auth_list = auth_list, block_list = block_list, allow_list = allow_list, count = count }; end
 module.restore = function(data)
-	auth_list, block_list, allow_list = data.auth_list, data.block_list, data.allow_list;
+	auth_list, block_list, allow_list, count = data.auth_list, data.block_list, data.allow_list, data.count;
 end
