@@ -217,7 +217,7 @@ local function handle_spim(event, path)
 	local request = event.request;
 	local body = request.body;
 	
-	if secure and not request.secure then	return nil; end
+	if secure and not request.secure then return nil; end
 	
 	if request.method == "GET" then
 		return http_file_get(event, "form", path);
