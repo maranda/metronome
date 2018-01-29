@@ -12,12 +12,10 @@ end
 
 local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
-local ipairs, pairs, open, os_time, tonumber = 
-	ipairs, pairs, io.open, os.time, tonumber
+local pairs, open, os_time = pairs, io.open, os.time;
 local jid_bare, jid_join, jid_section, jid_split =
 	require "util.jid".bare, require "util.jid".join,
 	require "util.jid".section, require "util.jid".split;
-local sha1 = require "util.hashes".sha1;
 local urldecode = http.urldecode;
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 local generate = require "util.auxiliary".generate_secret;
@@ -209,6 +207,7 @@ module:hook("resource-unbind", function(event)
 	local jid = username.."@"..host;
 	if not bare_sessions[jid] then
 		module:log("debug", "removing SPIM exemptions of %s as all resources went offline", jid);
+		for blocked_jid in pairs(allow_list[jid]) do blocked_list[blocked_jid] = nil; end
 		allow_list[jid] = nil;
 	end
 end);
