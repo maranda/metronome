@@ -25,7 +25,7 @@ local function clear_flag(session)
 	local has_carbons;
 	local bare_session = bare_sessions[jid_join(session.username, session.host)];
 	if not bare_session then return; end
-	for _, _session in pairs(bare_session) do
+	for _, _session in pairs(bare_session.sessions) do
 		if _session.carbons then has_carbons = true; break; end
 	end
 	if not has_carbons then bare_session.has_carbons = nil; end
