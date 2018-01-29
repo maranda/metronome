@@ -21,6 +21,15 @@ module:add_feature(xmlns);
 local received = st.stanza("received", { xmlns = xmlns });
 local sent = st.stanza("sent", { xmlns = xmlns });
 
+local function clear_flag(session)
+	local has_carbons;
+	local bare_session = bare_sessions[jid_join(session.username, session.host)];
+	for _, _session in pairs(bare_session) do
+		if _session.carbons then has_carbons = true; break; end
+	end
+	if not has_carbons then bare_session.has_carbons = nil; end
+end
+
 local function fwd(bare, session, stanza, s)
 	local to = jid_join(session.username, session.host, session.resource);
 	local f = st.clone(s and sent or received):tag("forwarded", { xmlns = "urn:xmpp:forward:0" }):add_child(stanza);
@@ -79,12 +88,7 @@ module:hook("iq-set/self/"..xmlns..":disable", function(event)
 		return origin.send(st.error_reply(stanza, "cancel", "forbidden", "Message Carbons are already disabled"));
 	else
 		origin.carbons = nil;
-		-- has other carbons resources?
-		local has_carbons;
-		for _, session in pairs(bare_sessions[jid_join(origin.username, origin.host)]) do
-			if session.carbons then has_carbons = true; break; end
-		end
-		if not has_carbons then bare_sessions.has_carbons = nil; end
+		clear_flag(origin);
 		
 		return origin.send(st.reply(stanza));
 	end
@@ -123,6 +127,7 @@ module:hook("pre-message/full", function(event)
 		process_message(origin, stanza, true, bare_to);
 	end
 end, 1);
+module:hook("resource-unbind", function(event) clear_flag(event.session); end);
 
 function module.unload(reload)
 	if not reload then 
