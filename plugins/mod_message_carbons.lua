@@ -24,6 +24,7 @@ local sent = st.stanza("sent", { xmlns = xmlns });
 local function clear_flag(session)
 	local has_carbons;
 	local bare_session = bare_sessions[jid_join(session.username, session.host)];
+	if not bare_session then return; end
 	for _, _session in pairs(bare_session) do
 		if _session.carbons then has_carbons = true; break; end
 	end
