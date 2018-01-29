@@ -130,9 +130,8 @@ local function handle_incoming(event)
 		local to, from = stanza.attr.to, stanza.attr.from;
 		
 		if stanza.attr.type == "error" then return; end
-		if not stanza.attr.type and stanza:get_child("forwarded", "urn:xmpp:forward:0") and
-			not stanza:child_with_name("body") then -- probable MAM archive result, still a hack.
-			return;
+		if stanza:child_with_name("result") and	not stanza:child_with_name("body") then
+			return; -- probable MAM archive result, still a hack.
 		end
 
 		local from_bare, to_bare = jid_bare(from), jid_bare(to);
@@ -208,7 +207,10 @@ module:hook("message/full", handle_incoming, 100);
 module:hook("resource-unbind", function(event)
 	local username, host = event.session.username, event.session.host;
 	local jid = username.."@"..host;
-	if not bare_sessions[jid] then allow_list[jid] = nil; end
+	if not bare_sessions[jid] then
+		module:log("debug", "removing SPIM exemptions of %s as all resources went offline", jid);
+		allow_list[jid] = nil;
+	end
 end);
 
 -- HTTP Handlers
