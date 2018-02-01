@@ -209,7 +209,7 @@ module:hook("resource-unbind", function(event)
 	local jid = username.."@"..host;
 	if not bare_sessions[jid] then
 		module:log("debug", "removing SPIM exemptions of %s as all resources went offline", jid);
-		for blocked_jid in pairs(allow_list[jid] or NULL) do blocked_list[blocked_jid] = nil; end
+		for blocked_jid in pairs(allow_list[jid] or NULL) do block_list[blocked_jid] = nil; end
 		allow_list[jid] = nil;
 	end
 end);
