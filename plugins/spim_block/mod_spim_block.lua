@@ -12,7 +12,7 @@ end
 
 local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
-local pairs, open, os_time = pairs, io.open, os.time;
+local pairs, next, open, os_time = pairs, next, io.open, os.time;
 local jid_bare, jid_join, jid_section, jid_split =
 	require "util.jid".bare, require "util.jid".join,
 	require "util.jid".section, require "util.jid".split;
@@ -25,8 +25,6 @@ local timer = require "util.timer";
 local user_exists = usermanager.user_exists;
 
 module:depends("http");
-
-local NULL = {};
 
 auth_list = {};
 block_list = {};
@@ -113,6 +111,16 @@ local function send_message(origin, to, from, token)
 	return true;
 end
 
+local function set_block(token, to, from)
+	auth_list[token] = { user = to, from = from };
+	if block_list[to] then
+		block_list[to][from] = true;
+	else
+		block_list[to] = { [from] = true };
+	end
+	count = count + 1;
+end
+
 local function reset_tables()
 	module:log("debug", "module reached iterations threshold, cleaning up data");
 	auth_list = {};
@@ -127,9 +135,9 @@ local function handle_incoming(event)
 	local origin, stanza = event.origin, event.stanza;
 		
 	if origin.type == "s2sin" or origin.bidirectional then -- don't handle local traffic.
-		local to, from = stanza.attr.to, stanza.attr.from;
+		local to, from, type = stanza.attr.to, stanza.attr.from, stanza.attr.type;
 		
-		if stanza.attr.type == "error" then return; end
+		if type == "error" or type == "groupchat" then return; end
 		if stanza:child_with_name("result") and	not stanza:child_with_name("body") then
 			return; -- probable MAM archive result, still a hack.
 		end
@@ -144,7 +152,7 @@ local function handle_incoming(event)
 		local to_allow_list = allow_list[to_bare];
 		if to_allow_list and to_allow_list[from_bare] then return; end
 		
-		if block_list[from_bare] then
+		if block_list[to_bare] and block_list[to_bare][from_bare] then
 			module:log("info", "blocking unsolicited message to %s from %s", to_bare, from_bare);
 			return true; 
 		end
@@ -153,9 +161,7 @@ local function handle_incoming(event)
 			if user_exists(user, host) then
 				local token = generate_secret(20);
 				if not token then return; end
-				auth_list[token] = { user = to, from = from_bare };
-				block_list[from_bare] = true;
-				count = count + 1;
+				set_block(token, to, from_bare);
 				return send_message(origin, to, from, token);
 			end
 		else
@@ -164,9 +170,7 @@ local function handle_incoming(event)
 				if full_session.joined_mucs and full_session.joined_mucs[from_bare] then return; end
 				local token = generate_secret(20);
 				if not token then return; end
-				auth_list[token] = { user = to_bare, from = from_bare };
-				block_list[from_bare] = true;
-				count = count + 1;
+				set_block(token, to_bare, from_bare);
 				return send_message(origin, to, from, token);
 			end
 		end
@@ -209,7 +213,7 @@ module:hook("resource-unbind", function(event)
 	local jid = username.."@"..host;
 	if not bare_sessions[jid] then
 		module:log("debug", "removing SPIM exemptions of %s as all resources went offline", jid);
-		for blocked_jid in pairs(allow_list[jid] or NULL) do block_list[blocked_jid] = nil; end
+		block_list[jid] = nil;
 		allow_list[jid] = nil;
 	end
 end);
@@ -240,7 +244,8 @@ local function handle_spim(event, path)
 							allow_list[to] = nil;
 						end);
 					end
-					block_list[from] = nil;
+					if block_list[to] then block_list[to][from] = nil; end
+					if not next(block_list[to]) then block_list[to] = nil; end
 					auth_list[spim_token] = nil;
 					has_auth = nil;
 					module:log("info", "%s (%s) is now allowed to send messages to %s", from, request.conn:ip(), to);
