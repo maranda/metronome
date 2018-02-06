@@ -144,6 +144,8 @@ local function handle_incoming(event)
 
 		local from_bare, to_bare = jid_bare(from), jid_bare(to);
 		local user, host, resource = jid_split(to);
+
+		if not jid_section(from_bare, "node") then return; end -- allow (PubSub) components
 		
 		if is_contact_subscribed(user, host, from_bare) then return; end
 		
