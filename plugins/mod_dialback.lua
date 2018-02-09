@@ -75,14 +75,14 @@ local errors_map = {
 	["remote-server-not-found"] = "received item-not-found or host-unknown while attempting to dialback",
 	["remote-server-timeout"] = "time exceeded while attempting to contact the authoritative server",
 	["policy-violation"] = "the receiving entity requires to enable TLS before executing dialback",
-	["not-authorized"] = "the receiving entity denied dialback, probably  because it requires a valid certificate",
+	["not-authorized"] = "the receiving entity denied dialback, probably because it requires a valid certificate",
 	["forbidden"] = "received a response of type invalid while authenticating with the authoritative server",
 	["not-acceptable"] = "the receiving entity was unable to assert our identity"
 };
 local function handle_db_errors(origin, stanza)
 	local attr = stanza.attr;
 	local condition = stanza:child_with_name("error") and stanza:child_with_name("error")[1];
-	local err = condition and errors_map[condition];
+	local err = condition and errors_map[condition.name];
 	local type = origin.type;
 	local format;
 	
