@@ -246,9 +246,9 @@ local function handle_register(data, event)
 			return http_error_reply(event, 401, "Another user registration by that username is pending.")
 		end
 
-		if password:len() > min_pass_len then
+		if password:len() < min_pass_len then
 			module:log("debug", "%s submitted password is not long enough minimun is %d characters", ip, min_pass_len)
-			return http_error_reply(event, 406, "Supplied password is not long enough minimum is" .. tostring(min_pass_len) .. " characters.")
+			return http_error_reply(event, 406, "Supplied password is not long enough minimum is " .. tostring(min_pass_len) .. " characters.")
 		elseif password:len() > max_pass_len then
 			module:log("debug", "%s submitted password is exceeding max length (%d characters)", ip, max_pass_len)
 			return http_error_reply(event, 406, "Supplied password is exceeding max length (" .. tostring(max_pass_len) .. " characters).")
