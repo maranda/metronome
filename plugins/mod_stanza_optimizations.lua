@@ -10,6 +10,7 @@
 local NULL = {};
 local pairs, t_insert = pairs, table.insert;
 local jid_join = require "util.jid".join;
+local st = require "util.stanza";
 	
 module:add_feature("urn:xmpp:csi:0");
 module:add_feature("urn:xmpp:sift:2");
@@ -56,12 +57,16 @@ end);
 module:hook("stanza/urn:xmpp:csi:0:active", function(event)
 	local session = event.origin;
 	if session.type == "c2s" and session.csi ~= "active" then
-		module:log("info", "%s signaling client is active", session.full_jid or jid_join(session.username, session.host));
+		local jid = session.full_jid or jid_join(session.username, session.host);
+		module:log("info", "%s signaling client is active", jid);
 		session.csi = "active";
 		local send, queue = session.send, session.csi_queue;
 		if queue and #queue > 0 then -- flush queue
-			module:log("debug", "flushing queued stanzas");
-			for i = 1, #queue do send(queue[i]) end
+			module:log("debug", "flushing queued stanzas to %s", jid);
+			for i = 1, #queue do
+				module:log("debug", "sending presence: %s", queue[i]:top_tag());
+				send(queue[i]);
+			end
 		end
 		session.csi_queue, session.presence_block, session.to_block, queue = nil, nil, nil, nil;
 		module:fire_event("client-state-changed", { session = session, state = session.csi });
@@ -92,7 +97,10 @@ module:hook("presence/bare", function(event)
 	else
 		for _, resource in pairs(to_bare.sessions or NULL) do
 			if resource.presence_block then
-				if resource.csi == "inactive" then t_insert(resource.csi_queue, stanza); end
+				if resource.csi == "inactive" then
+					module:log("debug", "queuing presence for %s: %s", resource.full_jid, stanza:top_tag());
+					t_insert(resource.csi_queue, st.clone(stanza)); 
+				end
 				resource.to_block[stanza] = true; 
 			end
 		end
@@ -106,7 +114,10 @@ module:hook("presence/full", function(event)
 	
 	local to_full = full_sessions[stanza.attr.to];
 	if to_full then
-		if to_full.csi == "inactive" then t_insert(to_full.csi_queue, stanza); end
+		if to_full.csi == "inactive" then
+			module:log("debug", "queuing presence for %s: %s", to_full.full_jid, stanza:top_tag());
+			t_insert(to_full.csi_queue, st.clone(stanza));
+		end
 		if to_full.presence_block then return true; end
 	end
 end, 100);
