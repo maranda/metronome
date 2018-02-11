@@ -377,7 +377,7 @@ local function handle_reset(event, path)
 				else
 					local node = reset_tokens[id_token] and reset_tokens[id_token].node
 					if node then
-						if not (password:find("^[%d]+$") and password:find("^[%u]+$")) or 
+						if not (password:find("%d+") and password:find("%u+")) or 
 							password:len() < min_pass_len or password:len() > max_pass_len then
 							return r_template(event, "reset_password_check")
 						end
