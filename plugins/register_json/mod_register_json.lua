@@ -387,7 +387,7 @@ local function handle_reset(event, path)
 							module:log("info", "User %s successfully changed the account password", node)
 							module:fire_event(
 								"user-changed-password", 
-								{ username = username, host = module.host, id_token = id_token, password = password, source = "mod_register_json" }
+								{ username = node, host = module.host, id_token = id_token, password = password, source = "mod_register_json" }
 							)
 							reset_tokens[id_token] = nil
 							return r_template(event, "reset_success")
