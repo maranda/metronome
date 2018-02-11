@@ -29,6 +29,8 @@ local base_path = module:get_option_string("reg_servlet_base", "/register_accoun
 local throttle_time = module:get_option_number("reg_servlet_ttime", nil)
 local whitelist = module:get_option_set("reg_servlet_wl", {})
 local blacklist = module:get_option_set("reg_servlet_bl", {})
+local min_pass_len = module:get_option_number("reg_servlet_min_pass_length", 8)
+local max_pass_len = module:get_option_number("reg_servlet_max_pass_length", 30)
 local fm_patterns = module:get_option_table("reg_servlet_filtered_mails", {})
 local fn_patterns = module:get_option_table("reg_servlet_filtered_nodes", {})
 local use_nameapi = module:get_option_boolean("reg_servlet_use_nameapi", false)
@@ -106,9 +108,6 @@ local function generate_secret(bytes)
 	if not str then -- System issue just abort it
 		return nil
 	end
-	str = str:gsub("/", "$")
-	str = str:gsub("\\", "-")
-	str = str:gsub("+", "_")
 
 	return str
 end
@@ -179,7 +178,9 @@ local function r_template(event, type)
 	local data = open_file(files_base..type.."_t.html")
 	if data then
 		event.response.headers["Content-Type"] = "application/xhtml+xml"
-		data = data:gsub("%%REG%-URL", base_path..type:match("^(.*)_").."/")
+		data = data:gsub("%%REG_URL%%", base_path..type:match("^(.*)_").."/")
+		data = data:gsub("%%MIN_LEN%%", tostring(min_pass_len))
+		data = data:gsub("%%MAX_LEN%%", tostring(max_pass_len))
 		return data
 	else return http_error_reply(event, 500, "Failed to obtain template.") end
 end
@@ -243,6 +244,14 @@ local function handle_register(data, event)
 		if pending_node[username] then
 			module:log("warn", "%s attempted to submit a registration request but another request for that user (%s) is pending", ip, username)
 			return http_error_reply(event, 401, "Another user registration by that username is pending.")
+		end
+
+		if password:len() > min_pass_len then
+			module:log("debug", "%s submitted password is not long enough minimun is %d characters", ip, min_pass_len)
+			return http_error_reply(event, 406, "Supplied password is not long enough minimum is" .. tostring(min_pass_len) .. " characters.")
+		elseif password:len() > max_pass_len then
+			module:log("debug", "%s submitted password is exceeding max length (%d characters)", ip, max_pass_len)
+			return http_error_reply(event, 406, "Supplied password is exceeding max length (" .. tostring(max_pass_len) .. " characters).")
 		end
 
 		if not usermanager.user_exists(username, module.host) then
@@ -368,9 +377,18 @@ local function handle_reset(event, path)
 				else
 					local node = reset_tokens[id_token] and reset_tokens[id_token].node
 					if node then
+						if not (password:find("^[%d]+$") and password:find("^[%u]+$")) or 
+							password:len() < min_pass_len or password:len() > max_pass_len then
+							return r_template(event, "reset_password_check")
+						end
+
 						local ok, error = usermanager.set_password(node, password, module.host)
 						if ok then
 							module:log("info", "User %s successfully changed the account password", node)
+							module:fire_event(
+								"user-changed-password", 
+								{ username = username, host = module.host, id_token = id_token, password = password, source = "mod_register_json" }
+							)
 							reset_tokens[id_token] = nil
 							return r_template(event, "reset_success")
 						else
@@ -418,7 +436,7 @@ local function handle_verify(event, path)
 				if ok then 
 					module:fire_event(
 						"user-registered", 
-						{ username = username, host = module.host, id_token = id_token, source = "mod_register_json", session = { ip = ip } }
+						{ username = username, host = module.host, id_token = id_token, password = password, source = "mod_register_json", session = { ip = ip } }
 					)
 					module:log("info", "Account %s@%s is successfully verified and activated", username, module.host)
 					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
