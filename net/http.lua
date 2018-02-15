@@ -150,7 +150,7 @@ function request(u, ex, callback)
 	
 	headers = {
 		["Host"] = req.host;
-		["User-Agent"] = "Metronome IM/3.7 (net.http; https://metronome.im)";
+		["User-Agent"] = "Metronome/3.7 (net.http; https://metronome.im)";
 	};
 	
 	if req.userinfo then
