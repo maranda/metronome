@@ -61,7 +61,7 @@ end, 100);
 
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;
-	if not origin.compressed and session.type == "s2sin" then
+	if not origin.compressed and origin.type == "s2sin" then
 		features:add_child(compression_stream_feature);
 	end
 end, 100);
