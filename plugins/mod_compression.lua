@@ -188,7 +188,12 @@ end);
 module:hook("stanza/http://jabber.org/protocol/compress:compress", function(event)
 	local session, stanza = event.origin, event.stanza;
 
-	if session.type == "c2s" or session.type == "s2sin" then
+	if session.type == "c2s" or (session.type == "s2sin_unauthed" and session.type == "s2sin") then
+		if session.type == "s2sin_unauthed" then
+			-- This is mainly a compat for M-Link
+			module:log("warn", "%s is enabling compression before authenticating!", session.from_host);
+		end
+
 		if session.compressed then
 			local error_st = st.stanza("failure", {xmlns = xmlns_compression_protocol}):tag("setup-failed");
 			(session.sends2s or session.send)(error_st);
