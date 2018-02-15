@@ -102,7 +102,8 @@ local function handle_db_errors(origin, stanza)
 	return true;
 end
 local function send_db_error(origin, name, condition, from, to, id)
-	local db_error = st.stanza(name, { from = from, to = to, id = id })
+	module:log("debug", "sending dialback error (%s) to %s...", condition, to);
+	local db_error = st.stanza(name, { from = from, to = to, id = id, type = "error" })
 		:tag("error", { type = "cancel" })
 			:tag(condition, { xmlns = xmlns_stanzas });
 	
