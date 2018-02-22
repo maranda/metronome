@@ -38,6 +38,7 @@ function generate_dialback(id, to, from)
 end
 
 function initiate_dialback(session)
+	session.doing_db = true;
 	session.dialback_key = generate_dialback(session.streamid, session.to_host, session.from_host);
 	session.sends2s(st.stanza("db:result", { from = session.from_host, to = session.to_host }):text(session.dialback_key));
 	session.log("info", "sent dialback key on outgoing s2s stream");
@@ -86,6 +87,7 @@ local function handle_db_errors(origin, stanza)
 	local type = origin.type;
 	local format;
 
+	origin.doing_db = nil;
 	origin.db_errors = (origin.db_errors or 0) + 1;
 
 	if origin.db_errors >= 10 then
@@ -218,6 +220,7 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 		else
 			send_db_error(origin, "db:verify", "remote-server-not-found", attr.to, attr.from, attr.id);
 		end
+		origin.doing_db = nil;
 		return true;
 	end
 end);
@@ -242,6 +245,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		else
 			send_db_error(origin, "db:result", "not-authorized", attr.to, attr.from, attr.id);
 		end
+		origin.doing_db = nil;
 		return true;
 	end
 end);
@@ -293,6 +297,14 @@ module:hook("s2s-authenticate-legacy", function (session)
 	initiate_dialback(session);
 	return true;
 end, 100);
+
+module:hook("dialback-again", function (session)
+	if not session.doing_db then
+		module:log("debug", "Attempting to perform dialback again... as more stanzas are being queued.");
+		initiate_dialback(session);
+	end
+	return true;
+end);
 
 function module.load()
 	host_session.dialback_capable = true;

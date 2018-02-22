@@ -116,6 +116,8 @@ function route_to_existing_session(event)
 			if host.sendq then t_insert(host.sendq, {tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza)});
 			else host.sendq = { {tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza)} }; end
 			host.log("debug", "stanza [%s] queued ", stanza.name);
+			-- Retry to authenticate using dialback...
+			if host.can_do_dialback then hosts[from_host].events.fire_event("dialback-again", host); end
 			return true;
 		elseif host.type == "local" or host.type == "component" then
 			log("error", "Trying to send a stanza to ourselves??")
