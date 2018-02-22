@@ -298,7 +298,7 @@ module:hook("s2s-authenticate-legacy", function (session)
 	return true;
 end, 100);
 
-module:hook("dialback-again", function (session)
+module:hook("s2s-dialback-again", function (session)
 	if not session.doing_db then
 		module:log("debug", "Attempting to perform dialback again... as more stanzas are being queued.");
 		initiate_dialback(session);
