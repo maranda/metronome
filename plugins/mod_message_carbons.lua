@@ -47,10 +47,17 @@ local function process_message(origin, stanza, s, t)
 	if bare_session and bare_session.has_carbons and stanza.attr.type == "chat" then
 		local private = s and stanza:get_child("private", xmlns) and true;
 		local r = s and jid_section(origin.full_jid, "resource") or jid_section(stanza.attr.to, "resource");
+		local is_muc_sent, muc_nick = origin.joined_mucs and origin.joined_mucs[to_bare];
+
+		if is_muc_sent then
+			for entry in pairs(origin.directed) do
+				if jid_bare(entry) == to_bare then muc_nick = entry; break; end
+			end
+		end
 			
 		if not private and not stanza:get_child("no-copy", "urn:xmpp:hints") then
 			for resource, session in pairs(bare_session.sessions) do 
-				if session.carbons and resource ~= r then 
+				if session.carbons and resource ~= r and (not is_muc_sent or (is_muc_sent and session.directed[muc_nick])) then
 					fwd(from_bare or to_bare, session, stanza, s);
 				end
 			end
@@ -124,9 +131,7 @@ module:hook("pre-message/bare", function(event) process_message(event.origin, ev
 module:hook("pre-message/full", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local bare_to = jid_bare(stanza.attr.to);
-	if (not origin.joined_mucs or not origin.joined_mucs[bare_to]) then
-		process_message(origin, stanza, true, bare_to);
-	end
+	process_message(origin, stanza, true, bare_to);
 end, 1);
 module:hook("resource-unbind", function(event) clear_flag(event.session); end);
 
