@@ -85,6 +85,16 @@ local function handle_db_errors(origin, stanza)
 	local err = condition and errors_map[condition.name];
 	local type = origin.type;
 	local format;
+
+	origin.db_errors = (origin.db_errors or 0) + 1;
+
+	if origin.db_errors >= 10 then
+		origin:close(
+			{ condition = "policy-violation", text = "Number of max allowed dialback failures exceeded, good bye" },
+			"stream failure"
+		);
+		return true;
+	end
 	
 	if err then
 		format = ("Dialback non-fatal error: "..err.." (%s)"):format(type:find("s2sin.*") and attr.from or attr.to);
