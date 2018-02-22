@@ -355,16 +355,11 @@ local function outbound_presence_handler(data)
 			origin.joined_mucs = origin.joined_mucs or {};
 			if t then -- removing from directed presence list on sending an error or unavailable
 				origin.directed[to] = nil;
-				if origin.joined_mucs[to_bare] and to_resource then
-					local joined_muc = origin.joined_mucs[to_bare];
-					joined_muc[to_resource] = nil;
-					if not next(joined_muc) then origin.joined_mucs[to_bare] = nil; end
-				end
+				if origin.joined_mucs[to_bare] and to_resource then origin.joined_mucs[to_bare] = nil; end
 			else
 				origin.directed[to] = true;
 				if stanza:get_child("x", "http://jabber.org/protocol/muc") and to_resource then
-					origin.joined_mucs[to_bare] = origin.joined_mucs[to_bare] or {};
-					origin.joined_mucs[to_bare][to_resource] = true;
+					origin.joined_mucs[to_bare] = true;
 				end
 			end
 		end
