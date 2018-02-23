@@ -311,7 +311,6 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		stanzas = remove_upto_index(stanzas, index);
 		if #stanzas == 0 then return nil; end
 	end
-	if not max and #stanzas > 30 then return false; end
 	
 	_count = max and _entries_count - max or 0;
 	query = generate_fin(stanzas, first, last, (_count < 0 and 0) or _count, index);

@@ -83,6 +83,8 @@ local function validate_query(stanza, archive, query, qid)
 
 	if not start and not fin and not before and not max then -- Assume safe defaults
 		before, max = true, 30;
+	elseif not max then
+		max = 30;
 	end
 
 	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before, index = index, rsm = rsm };
