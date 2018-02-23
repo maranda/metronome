@@ -274,7 +274,6 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		if #stanzas ~= 0 then
 			local first_e, last_e = to_process[1], to_process[#to_process];
 			first, last = first_e.uid, last_e.uid;
-			_start, _end = first_e.timestamp, last_e.timestamp;
 		end
 
 		_count = max and (type(before) == "string" and entry_index - _entries_count) or _entries_count - max;
@@ -297,10 +296,8 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			append_stanzas(stanzas, entry, qid);
 			if _at == 1 then 
 				first = uid;
-				_start = timestamp;
 			elseif _at == max then
 				last = uid;
-				_end = timestamp;
 			end
 			_at = _at + 1;
 		end
