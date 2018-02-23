@@ -15,7 +15,8 @@ local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
 local load_roster = require "util.rostermanager".load_roster;
-local ipairs, next, now, pairs, ripairs, select, t_remove, tostring = ipairs, next, os.time, pairs, ripairs, select, table.remove, tostring;
+local ipairs, next, now, pairs, ripairs, select, t_remove, tostring, type = 
+	ipairs, next, os.time, pairs, ripairs, select, table.remove, tostring, type;
       
 local xmlns = "urn:xmpp:mam:2";
 local delay_xmlns = "urn:xmpp:delay";
@@ -255,7 +256,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			to_process = {};
 			local sub = (max and entry_index - max) or 1;
 			-- we clone the table upto index
-			for i = (sub < 0 and 1) or sub, entry_index do to_process[#to_process + 1] = logs[i]; end
+			for i = (sub < 0 and 1) or sub, entry_index - 1 do to_process[#to_process + 1] = logs[i]; end
 			_entries_count = count_relevant_entries(to_process, with, start, fin);
 		end
 
@@ -276,7 +277,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			_start, _end = first_e.timestamp, last_e.timestamp;
 		end
 
-		_count = max and _entries_count - max or 0;
+		_count = max and (type(before) == "string" and entry_index - _entries_count) or _entries_count - max;
 		query = generate_fin(stanzas, first, last, (_count < 0 and 0) or _count, index, before == true);
 		return stanzas, query;
 	elseif after then
@@ -294,25 +295,23 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		local uid = entry.uid;
 		if not dont_add(entry, with, start, fin, timestamp) then
 			append_stanzas(stanzas, entry, qid);
-			if max then
-				if _at == 1 then 
-					first = uid;
-					_start = timestamp;
-				elseif _at == max then
-					last = uid;
-					_end = timestamp;
-				end
-				_at = _at + 1;
+			if _at == 1 then 
+				first = uid;
+				_start = timestamp;
+			elseif _at == max then
+				last = uid;
+				_end = timestamp;
 			end
+			_at = _at + 1;
 		end
-		if max and _at ~= 1 and _at > max then break; end
+		if _at ~= 1 and _at > max then break; end
 	end
 	if index then
 		stanzas = remove_upto_index(stanzas, index);
 		if #stanzas == 0 then return nil; end
 	end
 	
-	_count = max and _entries_count - max or 0;
+	_count = _entries_count - max;
 	query = generate_fin(stanzas, first, last, (_count < 0 and 0) or _count, index);
 	return stanzas, query;
 end
