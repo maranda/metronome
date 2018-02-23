@@ -118,6 +118,8 @@ local function send_db_error(origin, name, condition, from, to, id)
 	local db_error = st.stanza(name, { from = from, to = to, id = id, type = "error" })
 		:tag("error", { type = "cancel" })
 			:tag(condition, { xmlns = xmlns_stanzas });
+
+	origin.db_errors = (origin.db_errors or 0) + 1;
 	
 	origin.sends2s(db_error);
 	return true;
