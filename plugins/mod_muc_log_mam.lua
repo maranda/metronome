@@ -130,10 +130,7 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 		end
 		
 		local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, rsm);
-		if messages == false then
-			module:log("debug", "%s MAM query yields too many results, aborted", to);
-			return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Too many results"));
-		elseif not messages then
+		if not messages then
 			module:log("debug", "%s MAM query RSM parameters were out of bounds: After - %s, Before - %s, Max - %s, Index - %s",
 				to, tostring(after), tostring(before), tostring(max), tostring(index));
 			local rsm_error = st.error_reply(stanza, "cancel", "item-not-found");

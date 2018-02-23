@@ -140,10 +140,7 @@ local function query_handler(event)
 	end
 	
 	local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, rsm);
-	if messages == false then -- Exceeded limit
-		module:log("debug", "MAM Query yields too many results, aborted");
-		return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Too many results"));
-	elseif not messages then -- RSM item-not-found
+	if not messages then -- RSM item-not-found
 		module:log("debug", "MAM Query RSM parameters were out of bounds: After - %s, Before - %s, Max - %s, Index - %s",
 			tostring(after), tostring(before), tostring(max), tostring(index));
 		local rsm_error = st.error_reply(stanza, "cancel", "item-not-found");
