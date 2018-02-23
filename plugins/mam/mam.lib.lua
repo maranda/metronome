@@ -228,7 +228,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 	local query;
 	
 	local _at = 1;
-	local first, last, _after, _start, _end, _entries_count, _count;
+	local first, last, _after, _entries_count, _count;
 	local entry_index, to_process;
 	
 	-- handle paging
