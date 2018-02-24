@@ -55,12 +55,13 @@ local function handle_vcard(event)
 				return session.send(st.error_reply(stanza, "modify", "policy-violation", "The vCard data exceeded the max allowed size!"));
 			end
 			
-			if datamanager.store(session.username, session.host, "vcard", st.preserialize(vCard)) then
+			local ok, err = datamanager.store(session.username, session.host, "vcard", st.preserialize(vCard));
+			if ok then
 				session.send(st.reply(stanza));
 				metronome.events.fire_event("vcard-updated", { node = session.username, host = session.host, vcard = vCard });
 			else
 				-- TODO unable to write file, file may be locked, etc, what's the correct error?
-				session.send(st.error_reply(stanza, "wait", "internal-server-error"));
+				session.send(st.error_reply(stanza, "wait", "internal-server-error", err));
 			end
 		else
 			session.send(st.error_reply(stanza, "auth", "forbidden"));

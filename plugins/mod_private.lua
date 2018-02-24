@@ -22,7 +22,7 @@ module:hook("iq/self/jabber:iq:private:query", function(event)
 		local key = tag.name..":"..tag.attr.xmlns;
 		local data, err = datamanager.load(origin.username, origin.host, "private");
 		if err then
-			origin.send(st.error_reply(stanza, "wait", "internal-server-error"));
+			origin.send(st.error_reply(stanza, "wait", "internal-server-error", err));
 			return true;
 		end
 		if stanza.attr.type == "get" then
