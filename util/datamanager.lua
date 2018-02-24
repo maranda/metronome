@@ -218,6 +218,8 @@ function store(username, host, datastore, data)
 	username, host, datastore, data = callback(username, host, datastore, data);
 	if username == false then
 		return true; -- Don't save this data at all
+	elseif username == true then
+		return nil, "Storage is disabled"; -- Output error
 	end
 
 	-- save the datastore
