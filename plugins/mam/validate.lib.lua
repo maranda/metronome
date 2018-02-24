@@ -76,10 +76,7 @@ local function validate_query(stanza, archive, query, qid)
 		max = max_results;
 	end
 	
-	if max and max > max_results then
-		module:log("debug", "MAM Query RSM supplied 'max' results parameter is above the allowed limit (%d)", max_results);
-		return false, st.error_reply(stanza, "cancel", "policy-violation", "Max retrievable results' count is "..tostring(max_results));
-	end
+	if max and max > max_results then max = max_results; end
 
 	if not start and not fin and not before and not max then -- Assume safe defaults
 		before, max = true, 30;
