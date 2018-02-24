@@ -150,7 +150,7 @@ end
 local function generate_set(stanza, first, last, count, index)
 	stanza:tag("set", { xmlns = rsm_xmlns })
 		:tag("first", { index = index or 0 }):text(first):up()
-		:tag("last"):text(last or first):up()
+		:tag("last"):text(last):up()
 		:tag("count"):text(tostring(count)):up();
 end
 
@@ -228,7 +228,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 	local query;
 	
 	local _at = 1;
-	local first, last, _after, _entries_count, _count;
+	local first, last, _after, _entries_count, _count, _last_uid;
 	local entry_index, to_process;
 	
 	-- handle paging
@@ -294,15 +294,13 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		local uid = entry.uid;
 		if not dont_add(entry, with, start, fin, timestamp) then
 			append_stanzas(stanzas, entry, qid);
-			if _at == 1 then 
-				first = uid;
-			elseif _at == max then
-				last = uid;
-			end
+			if _at == 1 then first = uid; end
 			_at = _at + 1;
+			_last_uid = uid;
 		end
 		if _at ~= 1 and _at > max then break; end
 	end
+	last = _last_uid;
 	if index then
 		stanzas = remove_upto_index(stanzas, index);
 		if #stanzas == 0 then return nil; end
