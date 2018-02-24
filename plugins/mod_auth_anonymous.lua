@@ -59,7 +59,7 @@ function new_default_provider(host)
 				end
 
 				if not multi_resourcing and my_host.sessions[username] then
-					return nil, "You're allowed to have only one anonymous session at any given time, good bye.";
+					return nil, "not-authorized", "You're allowed to have only one anonymous session at any given time, good bye.";
 				end
 
 				session.is_anonymous = true;
@@ -76,7 +76,7 @@ end
 
 local function dm_callback(username, host, datastore, data)
 	if host == module.host then
-		return false;
+		return true;
 	end
 	return username, host, datastore, data;
 end
