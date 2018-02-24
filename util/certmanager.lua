@@ -9,8 +9,9 @@
 
 local configmanager = require "core.configmanager";
 local log = require "util.logger".init("certmanager");
-local ssl = ssl;
+local ssl = require "ssl";
 local ssl_newcontext = ssl and ssl.newcontext;
+local ssl_context = ssl and require "ssl.context";
 
 local openssl_version = require "util.auxiliary".get_openssl_version();
 local load_file = require "util.auxiliary".load_file;
@@ -92,7 +93,7 @@ function create_context(host, mode, user_ssl_config)
 
 	if ctx then
 		local success;
-		success, err = ssl.context.setcipher(ctx, user_ssl_config.ciphers or default_ciphers);
+		success, err = ssl_context.setcipher(ctx, user_ssl_config.ciphers or default_ciphers);
 		if not success then ctx = nil; end
 	end
 
