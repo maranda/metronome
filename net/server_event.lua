@@ -46,7 +46,7 @@ local setmetatable = use "setmetatable"
 local t_insert = table.insert
 local t_concat = table.concat
 
-local ssl = use "ssl"
+local ssl = use "ssl" or require "ssl"
 local socket = use "socket" or require "socket"
 
 local log = require ("util.logger").init("socket")
