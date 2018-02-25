@@ -95,7 +95,7 @@ if not module:get_option_boolean("allow_anonymous_s2s", false) then
 end
 
 function module.load()
-	datamanager.add_callback(dm_callback);
+	if not test_mode then datamanager.add_callback(dm_callback); end
 	my_host.anonymous_host = not test_mode and true or nil;
 end
 function module.unload()
