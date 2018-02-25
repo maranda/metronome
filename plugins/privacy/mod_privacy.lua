@@ -9,6 +9,7 @@
 
 if hosts[module.host].anonymous_host then
 	module:log("error", "Privacy Lists/Blocking Command won't be available on anonymous hosts as storage is explicitly disabled");
+	modulemanager.unload(module.host, "privacy");
 	return;
 end
 

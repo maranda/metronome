@@ -9,7 +9,8 @@
 
 local modulemanager = modulemanager;
 if not modulemanager.is_loaded(module.host, "muc") then
-	module:log("error", "mod_muc_limits can only be loaded on a muc component!")
+	module:log("error", "mod_muc_limits can only be loaded on a muc component!");
+	modulemanager.unload(module.host, "muc_limits");
 	return;
 end
 

@@ -6,6 +6,7 @@
 
 if hosts[module.host].anonymous_host then
 	module:log("error", "Personal Eventing Protocol won't be available on anonymous hosts as storage is explicitly disabled");
+	modulemanager.unload(module.host, "pep");
 	return;
 end
 

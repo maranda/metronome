@@ -28,6 +28,7 @@ local host_session = hosts[module.host];
 
 if ssl_compression then
 	module:log("error", "TLS compression is enabled, mod_compression won't work with this setting on");
+	module_unload(module.host, "compression");
 	return;
 end
 
@@ -44,6 +45,7 @@ module:hook("config-reloaded", function()
 	if ssl_compression then
 		module:log("error", "mod_compression won't work with TLS compression enabled, unloading module");
 		module_unload(module.host, "compression");
+		return;
 	end
 	if compression_level < 1 or compression_level > 9 then
 		module:log("warn", "mod_compression valid compression value range is 1-9");

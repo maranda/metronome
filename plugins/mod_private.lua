@@ -9,6 +9,7 @@
 
 if hosts[module.host].anonymous_host then
 	module:log("error", "Private Storage won't be available on anonymous hosts as storage is explicitly disabled");
+	modulemanager.unload(module.host, "private");
 	return;
 end
 
