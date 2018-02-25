@@ -8,7 +8,7 @@
 -- ** Copyright (c) 2008-2012, Kim Alvefur, Matthew Wild, Tobias Markmann, Waqas Hussain
 
 if hosts[module.host].anonymous_host then
-	module:log("error", "Rosters won't be available on anonymous hosts as storage is explicitly disabled.");
+	module:log("error", "Rosters won't be available on anonymous hosts as storage is explicitly disabled");
 	return;
 end
 
