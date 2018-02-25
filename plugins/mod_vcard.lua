@@ -7,6 +7,11 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2012, Matthew Wild, Waqas Hussain
 
+if hosts[module.host].anonymous_host then
+	module:log("error", "vCards won't be available on anonymous hosts as storage is explicitly disabled.");
+	return;
+end
+
 local tostring = tostring;
 
 local st = require "util.stanza";

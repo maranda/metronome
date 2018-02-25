@@ -7,6 +7,11 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2011, Florian Zeitz, Matthew Wild, Waqas Hussain
 
+if hosts[module.host].anonymous_host then
+	module:log("error", "Privacy Lists/Blocking Command won't be available on anonymous hosts as storage is explicitly disabled.");
+	return;
+end
+
 local st = require "util.stanza";
 local datamanager = require "util.datamanager";
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
