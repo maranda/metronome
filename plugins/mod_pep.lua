@@ -5,7 +5,7 @@
 -- information about copyright and licensing.
 
 if hosts[module.host].anonymous_host then
-	module:log("error", "Personal Eventing Protocol won't be available on anonymous hosts as storage is explicitly disabled.");
+	module:log("error", "Personal Eventing Protocol won't be available on anonymous hosts as storage is explicitly disabled");
 	return;
 end
 

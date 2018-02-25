@@ -8,7 +8,7 @@
 -- ** Copyright (c) 2008-2010, Matthew Wild, Waqas Hussain
 
 if hosts[module.host].anonymous_host then
-	module:log("error", "Private Storage won't be available on anonymous hosts as storage is explicitly disabled.");
+	module:log("error", "Private Storage won't be available on anonymous hosts as storage is explicitly disabled");
 	return;
 end
 
