@@ -24,9 +24,9 @@ local function callback(check)
 		local type = self.stanza.type
 		if not metronome.stanza_counter then init_counter() end
 		if check then
-			metronome.stanza_counter[type]["outgoing"] = metronome.stanza_counter[type]["outgoing"] + 1
+			metronome.stanza_counter[type].outgoing = metronome.stanza_counter[type].outgoing + 1
 		else
-			metronome.stanza_counter[type]["incoming"] = metronome.stanza_counter[type]["incoming"] + 1
+			metronome.stanza_counter[type].incoming = metronome.stanza_counter[type].incoming + 1
 		end
 	end
 end
