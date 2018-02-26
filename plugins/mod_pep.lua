@@ -428,11 +428,6 @@ function presence_handler(event)
 	local user_bare_session = bare_sessions[user];
 	
 	if not service then return nil; end -- User Service doesn't exist
-	if self and not t and origin.username and origin.host and 
-		service.name == origin.username.."@"..origin.host then
-		service.session = origin; 
-	end -- Update to user session
-	
 	local nodes = service.nodes;
 	local recipients = service.recipients;
 	
@@ -646,6 +641,7 @@ function module.restore(data)
 		services[id] = set_service(pubsub.new(pep_new(username)), id);
 		services[id].nodes = service.nodes or {};
 		services[id].recipients = service.recipients or {};
+		services[id].session = service.session or nil;
 	end
 	pep_lib.set_closures(services, hash_map);
 end
