@@ -33,30 +33,30 @@ end
 
 function module.add_host(module)
 	-- Hook all pre-stanza events.
-	module:hook("pre-iq/bare", callback(true), 140)
-	module:hook("pre-iq/full", callback(true), 140)
-	module:hook("pre-iq/host", callback(true), 140)
+	module:hook("pre-iq/bare", callback(true), 999)
+	module:hook("pre-iq/full", callback(true), 999)
+	module:hook("pre-iq/host", callback(true), 999)
 
-	module:hook("pre-message/bare", callback(true), 140)
-	module:hook("pre-message/full", callback(true), 140)
-	module:hook("pre-message/host", callback(true), 140)
+	module:hook("pre-message/bare", callback(true), 999)
+	module:hook("pre-message/full", callback(true), 999)
+	module:hook("pre-message/host", callback(true), 999)
 
-	module:hook("pre-presence/bare", callback(true), 140)
-	module:hook("pre-presence/full", callback(true), 140)
-	module:hook("pre-presence/host", callback(true), 140)
+	module:hook("pre-presence/bare", callback(true), 999)
+	module:hook("pre-presence/full", callback(true), 999)
+	module:hook("pre-presence/host", callback(true), 999)
 
 	-- Hook all stanza events.
-	module:hook("iq/bare", callback(false), 140)
-	module:hook("iq/full", callback(false), 140)
-	module:hook("iq/host", callback(false), 140)
+	module:hook("iq/bare", callback(false), 999)
+	module:hook("iq/full", callback(false), 999)
+	module:hook("iq/host", callback(false), 999)
 
-	module:hook("message/bare", callback(false), 140)
-	module:hook("message/full", callback(false), 140)
-	module:hook("message/host", callback(false), 140)
+	module:hook("message/bare", callback(false), 999)
+	module:hook("message/full", callback(false), 999)
+	module:hook("message/host", callback(false), 999)
 
-	module:hook("presence/bare", callback(false), 140)
-	module:hook("presence/full", callback(false), 140)
-	module:hook("presence/host", callback(false), 140)
+	module:hook("presence/bare", callback(false), 999)
+	module:hook("presence/full", callback(false), 999)
+	module:hook("presence/host", callback(false), 999)
 end
 
 -- Set up!
