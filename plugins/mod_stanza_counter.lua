@@ -21,12 +21,12 @@ end
 -- Basic Stanzas' Counters
 local function callback(check)
 	return function(self)
-		local type = self.stanza.name
+		local name = self.stanza.name
 		if not metronome.stanza_counter then init_counter() end
 		if check then
-			metronome.stanza_counter[type].outgoing = metronome.stanza_counter[type].outgoing + 1
+			metronome.stanza_counter[name].outgoing = metronome.stanza_counter[name].outgoing + 1
 		else
-			metronome.stanza_counter[type].incoming = metronome.stanza_counter[type].incoming + 1
+			metronome.stanza_counter[name].incoming = metronome.stanza_counter[name].incoming + 1
 		end
 	end
 end
