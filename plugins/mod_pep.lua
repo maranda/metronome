@@ -641,7 +641,7 @@ function module.restore(data)
 		services[id] = set_service(pubsub.new(pep_new(username)), id);
 		services[id].nodes = service.nodes or {};
 		services[id].recipients = service.recipients or {};
-		services[id].session = service.session or nil;
+		services[id].session = service.session;
 	end
 	pep_lib.set_closures(services, hash_map);
 end
