@@ -19,77 +19,44 @@ function init_counter()
 end
 
 -- Basic Stanzas' Counters
-local function iq_callback(check)
+local function callback(check)
 	return function(self)
-		local origin, stanza = self.origin, self.stanza
+		local type = self.stanza.type
 		if not metronome.stanza_counter then init_counter() end
 		if check then
-			if not stanza.attr.to or hosts[jid_bare(stanza.attr.to)] then return nil
-			else
-				metronome.stanza_counter.iq["outgoing"] = metronome.stanza_counter.iq["outgoing"] + 1
-			end
+			metronome.stanza_counter[type]["outgoing"] = metronome.stanza_counter[type]["outgoing"] + 1
 		else
-			metronome.stanza_counter.iq["incoming"] = metronome.stanza_counter.iq["incoming"] + 1
-		end
-	end
-end
-
-local function mes_callback(check)
-	return function(self)
-		local origin, stanza = self.origin, self.stanza
-		if not metronome.stanza_counter then init_counter() end
-		if check then
-			if not stanza.attr.to or hosts[jid_bare(stanza.attr.to)] then return nil
-			else
-				metronome.stanza_counter.message["outgoing"] = metronome.stanza_counter.message["outgoing"] + 1
-			end
-		else
-			metronome.stanza_counter.message["incoming"] = metronome.stanza_counter.message["incoming"] + 1
-		end
-	end
-end
-
-local function pre_callback(check)
-	return function(self)
-		local origin, stanza = self.origin, self.stanza
-		if not metronome.stanza_counter then init_counter() end
-		if check then
-			if not stanza.attr.to or hosts[jid_bare(stanza.attr.to)] then return nil
-			else
-				metronome.stanza_counter.presence["outgoing"] = metronome.stanza_counter.presence["outgoing"] + 1
-			end
-		else
-			metronome.stanza_counter.presence["incoming"] = metronome.stanza_counter.presence["incoming"] + 1
+			metronome.stanza_counter[type]["incoming"] = metronome.stanza_counter[type]["incoming"] + 1
 		end
 	end
 end
 
 function module.add_host(module)
 	-- Hook all pre-stanza events.
-	module:hook("pre-iq/bare", iq_callback(true), 140)
-	module:hook("pre-iq/full", iq_callback(true), 140)
-	module:hook("pre-iq/host", iq_callback(true), 140)
+	module:hook("pre-iq/bare", callback(true), 140)
+	module:hook("pre-iq/full", callback(true), 140)
+	module:hook("pre-iq/host", callback(true), 140)
 
-	module:hook("pre-message/bare", mes_callback(true), 140)
-	module:hook("pre-message/full", mes_callback(true), 140)
-	module:hook("pre-message/host", mes_callback(true), 140)
+	module:hook("pre-message/bare", callback(true), 140)
+	module:hook("pre-message/full", callback(true), 140)
+	module:hook("pre-message/host", callback(true), 140)
 
-	module:hook("pre-presence/bare", pre_callback(true), 140)
-	module:hook("pre-presence/full", pre_callback(true), 140)
-	module:hook("pre-presence/host", pre_callback(true), 140)
+	module:hook("pre-presence/bare", callback(true), 140)
+	module:hook("pre-presence/full", callback(true), 140)
+	module:hook("pre-presence/host", callback(true), 140)
 
 	-- Hook all stanza events.
-	module:hook("iq/bare", iq_callback(false), 140)
-	module:hook("iq/full", iq_callback(false), 140)
-	module:hook("iq/host", iq_callback(false), 140)
+	module:hook("iq/bare", callback(false), 140)
+	module:hook("iq/full", callback(false), 140)
+	module:hook("iq/host", callback(false), 140)
 
-	module:hook("message/bare", mes_callback(false), 140)
-	module:hook("message/full", mes_callback(false), 140)
-	module:hook("message/host", mes_callback(false), 140)
+	module:hook("message/bare", callback(false), 140)
+	module:hook("message/full", callback(false), 140)
+	module:hook("message/host", callback(false), 140)
 
-	module:hook("presence/bare", pre_callback(false), 140)
-	module:hook("presence/full", pre_callback(false), 140)
-	module:hook("presence/host", pre_callback(false), 140)
+	module:hook("presence/bare", callback(false), 140)
+	module:hook("presence/full", callback(false), 140)
+	module:hook("presence/host", callback(false), 140)
 end
 
 -- Set up!
