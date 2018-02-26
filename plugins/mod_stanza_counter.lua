@@ -12,9 +12,9 @@ local jid_bare = require "util.jid".bare
 -- initialize function counter table on the global object on start
 function init_counter()
 	metronome.stanza_counter = { 
-		iq = { incoming=0, outgoing=0 },
-		message = { incoming=0, outgoing=0 },
-		presence = { incoming=0, outgoing=0 }
+		iq = { incoming = 0, outgoing = 0 },
+		message = { incoming = 0, outgoing = 0 },
+		presence = { incoming = 0, outgoing = 0 }
 	}
 end
 
