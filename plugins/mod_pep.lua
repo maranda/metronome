@@ -126,14 +126,14 @@ function handle_pubsub_iq(event)
 	end
 
 	if handler then
+		if is_new and host == module.host and origin.presence then -- a "little" creative.
+			presence_handler({ origin = origin, stanza = origin.presence });
+		end
+
 		if not config then 
 			handler(user_service, origin, stanza, action); 
 		else 
 			handler(user_service, origin, stanza, action, config); 
-		end
-		
-		if is_new and host == module.host and origin.presence then -- a "little" creative.
-			presence_handler({ origin = origin, stanza = origin.presence });
 		end
 		
 		return true;
@@ -182,6 +182,8 @@ function handlers.set_create(service, origin, stanza, create, config)
 
 	if singleton_nodes:contains(node) and not node_config then
 		node_config = { max_items = 1 };
+	elseif node_config and not node_config.max_items and singleton_nodes:contains(node) then
+		node_config.max_items = 1;
 	end
 
 	if node then
