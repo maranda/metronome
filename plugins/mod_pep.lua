@@ -492,8 +492,8 @@ function presence_handler(event)
 end
 
 
-module:hook("presence/bare", presence_handler, 10);
-module:hook("presence/full", presence_handler, 10);
+module:hook("presence/bare", presence_handler, 110);
+module:hook("presence/full", presence_handler, 110);
 
 module:hook("pep-boot-service", function(event)
 	local origin, stanza, service = event.origin, event.stanza, event.service;
