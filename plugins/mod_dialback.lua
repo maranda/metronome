@@ -70,6 +70,18 @@ local function can_do_dialback(origin)
 	if db == xmlns_db then return true; else return false; end
 end
 
+local function exceed_errors(origin)
+	origin.db_errors = (origin.db_errors or 0) + 1;
+
+	if origin.db_errors >= 10 then
+		origin:close(
+			{ condition = "policy-violation", text = "Number of max allowed dialback failures exceeded, good bye" },
+			"stream failure"
+		);
+		return true;
+	end
+end
+
 local errors_map = {
 	["item-not-found"] = "requested host was not found on the remote enitity",
 	["remote-connection-failed"] = "the receiving entity failed to connect back to us",
@@ -88,15 +100,8 @@ local function handle_db_errors(origin, stanza)
 	local format;
 
 	origin.doing_db = nil;
-	origin.db_errors = (origin.db_errors or 0) + 1;
 
-	if origin.db_errors >= 10 then
-		origin:close(
-			{ condition = "policy-violation", text = "Number of max allowed dialback failures exceeded, good bye" },
-			"stream failure"
-		);
-		return true;
-	end
+	if exceed_errors(origin) then return true; end
 	
 	if err then
 		format = ("Dialback non-fatal error: "..err.." (%s)"):format(type:find("s2sin.*") and attr.from or attr.to);
@@ -120,6 +125,8 @@ local function send_db_error(origin, name, condition, from, to, id)
 			:tag(condition, { xmlns = xmlns_stanzas });
 
 	origin.db_errors = (origin.db_errors or 0) + 1;
+
+	if exceed_errors(origin) then return true; end
 	
 	origin.sends2s(db_error);
 	return true;
