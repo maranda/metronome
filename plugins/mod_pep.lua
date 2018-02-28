@@ -21,7 +21,6 @@ local jid_join = require "util.jid".join;
 local jid_split = require "util.jid".split;
 local uuid_generate = require "util.uuid".generate;
 local calculate_hash = require "util.caps".calculate_hash;
-local add_task = require "util.timer".add_task;
 local encode_node = datamanager.path_encode;
 local get_path = datamanager.getpath;
 local um_user_exists = usermanager.user_exists;
