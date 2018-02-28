@@ -22,6 +22,7 @@ if restrict_room_creation then
 		restrict_room_creation = nil;
 	end
 end
+local allow_anonymous_creation = module:get_option_boolean("allow_anonymous_creation", false);
 local muclib = module:require "muc";
 local muc_new_room = muclib.new_room;
 local jid_section = require "util.jid".section;
@@ -197,7 +198,7 @@ function stanza_handler(event)
 			return true;
 		end
 		local from_host = jid_section(stanza.attr.from, "host");
-		if not origin.is_anonymous and
+		if (allow_anonymous_creation or not origin.is_anonymous) and
 		   (not restrict_room_creation or (restrict_room_creation == "admin" and is_admin(stanza.attr.from)) or
 		   (restrict_room_creation == "local" and from_host == module.host:gsub("^[^%.]+%.", ""))) then
 			room = muc_new_room(bare);
