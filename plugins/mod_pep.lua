@@ -81,15 +81,6 @@ local function probe_jid(from, to)
 	module:log("debug", "Sending trigger probe to: %s", to);
 end
 
-local function initial_broadcast(origin, recipients, user, user_bare_session)
-	local our_jid = origin.full_jid;
-	module:log("debug", "%s -- account service sending initial re-broadcast...", user);
-	for jid in pairs(recipients) do
-		if jid ~= our_jid then pep_send(jid, user); end
-	end
-	user_bare_session.initial_pep_broadcast = true;
-end
-
 -- Module Definitions.
 
 function handle_pubsub_iq(event)
@@ -468,7 +459,12 @@ function presence_handler(event)
 				pep_send(recipient, user);
 			end
 			if self and not user_bare_session.initial_pep_broadcast then -- re-broadcast to all interested contacts on connect, shall we?
-				initial_broadcast(origin, recipients, user, user_bare_session);
+				local our_jid = origin.full_jid;
+				module:log("debug", "%s -- account service sending initial re-broadcast...", user);
+				for jid in pairs(recipients) do
+					if jid ~= our_jid then pep_send(jid, user); end
+				end
+				user_bare_session.initial_pep_broadcast = true;
 			end
 		end
 	elseif t == "unavailable" and recipients[stanza.attr.from] then
