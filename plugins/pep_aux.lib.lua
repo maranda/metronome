@@ -16,6 +16,7 @@ local dataforms = require "util.dataforms";
 local encode_node = datamanager.path_encode;
 local um_is_admin = usermanager.is_admin;
 local fire_event = metronome.events.fire_event;
+local bare_sessions = bare_sessions;
 
 local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
 local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
@@ -80,7 +81,7 @@ end
 
 local function subscription_presence(user_bare, recipient)
 	local recipient_bare = jid_bare(recipient);
-	if (recipient_bare == user_bare) then return true end
+	if (recipient_bare == user_bare) then return true; end
 	local username, host = jid_split(user_bare);
 	return is_contact_subscribed(username, host, recipient_bare);
 end
@@ -381,6 +382,8 @@ local function send_event(self, node, message, jid)
 end
 
 local function broadcast(self, node, jids, item)
+	if self.is_new then return; end -- don't broadcast just yet.
+
 	local message;
 	if type(item) == "string" and item == "deleted" then
 		message = st.message({ from = self.name, type = "headline" })
