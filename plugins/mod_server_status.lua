@@ -32,8 +32,8 @@ response_table.memory = {
 }
 response_table.stanzas = {
 		elem_header = '  <stanzas>', elem_closure = '  </stanzas>',
-		incoming = '    <incoming iq="%d" message="%d" presence="%d" />', 
-		outgoing = '    <outgoing iq="%d" message="%d" presence="%d" />'
+		incoming = '    <incoming-routed iq="%d" message="%d" presence="%d" />', 
+		outgoing = '    <outgoing-routed iq="%d" message="%d" presence="%d" />'
 }
 response_table.sessions = {
 		elem_header = '  <sessions>', elem_closure = '  </sessions>',
@@ -175,7 +175,12 @@ local function forge_response_json()
 	local stanza_counter = metronome.stanza_counter
 	local count_c2s, count_bosh, count_bidi, count_ws, count_s2sin, count_s2sout = count_sessions()	
 
-	if stanza_counter then result.stanzas = {} ; result.stanzas = stanza_counter end
+	if stanza_counter then
+		result.stanzas = {}
+		result.stanzas["iq-routed"] = stanza_counter.iq
+		result.stanzas["message-routed"] = stanza_counter.message
+		result.stanzas["presence-routed"] = stanza_counter.presence
+	end
 
 	result.sessions = {} ; local sessions = result.sessions
 	sessions.bosh = count_bosh ; sessions.ws = count_ws ;  sessions.c2s = count_c2s

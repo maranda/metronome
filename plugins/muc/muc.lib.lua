@@ -219,28 +219,31 @@ function room_mt:send_history(to, stanza)
 			self:_route_stanza(msg);
 		end
 	end
-	if self._data["subject"] then
-		self:_route_stanza(st.message({type = "groupchat", from = self._data["subject_from"] or self.jid, to = to}):tag("subject"):text(self._data["subject"]));
-	end
+	self:_route_stanza(st.message({type = "groupchat", from = self._data["subject_from"] or self.jid, to = to}):tag("subject"):text(self._data["subject"] or ""));
 end
 
 function room_mt:get_disco_info(stanza)
 	local count = 0; for _ in pairs(self._occupants) do count = count + 1; end
-	return st.reply(stanza):query("http://jabber.org/protocol/disco#info")
+	local reply = st.reply(stanza);
+	reply:query("http://jabber.org/protocol/disco#info")
 		:tag("identity", {category = "conference", type = "text", name = self:get_name()}):up()
 		:tag("feature", {var = "http://jabber.org/protocol/muc"}):up()
 		:tag("feature", {var = self:get_option("password") and "muc_passwordprotected" or "muc_unsecured"}):up()
 		:tag("feature", {var = self:get_option("moderated") and "muc_moderated" or "muc_unmoderated"}):up()
 		:tag("feature", {var = self:get_option("members_only") and "muc_membersonly" or "muc_open"}):up()
 		:tag("feature", {var = self:get_option("persistent") and "muc_persistent" or "muc_temporary"}):up()
-		:tag("feature", {var = not self:get_option("public") and "muc_hidden" or "muc_public"}):up()
-		:tag("feature", {var = self._data.whois ~= "anyone" and "muc_semianonymous" or "muc_nonanonymous"}):up()
-		:add_child(dataform.new({
-			{ name = "FORM_TYPE", type = "hidden", value = "http://jabber.org/protocol/muc#roominfo" },
-			{ name = "muc#roominfo_description", label = "Description"},
-			{ name = "muc#roominfo_occupants", label = "Number of occupants", value = tostring(count) }
-		}):form({["muc#roominfo_description"] = self:get_option("description")}, "result"))
-	;
+		:tag("feature", {var = self:get_option("hidden") and "muc_hidden" or "muc_public"}):up()
+		:tag("feature", {var = self._data.whois ~= "anyone" and "muc_semianonymous" or "muc_nonanonymous"}):up();
+	
+	-- pass features to module handlers
+	module:fire_event("muc-disco-info-features", self, reply);
+	
+	reply:add_child(dataform.new({
+		{ name = "FORM_TYPE", type = "hidden", value = "http://jabber.org/protocol/muc#roominfo" },
+		{ name = "muc#roominfo_description", label = "Description"},
+		{ name = "muc#roominfo_occupants", label = "Number of occupants", value = tostring(count) }
+	}):form({["muc#roominfo_description"] = self:get_option("description")}, "result"));
+	return reply;
 end
 function room_mt:get_disco_items(stanza)
 	local reply = st.reply(stanza):query("http://jabber.org/protocol/disco#items");
@@ -554,7 +557,7 @@ function room_mt:get_form_layout()
 			name = "muc#roomconfig_publicroom",
 			type = "boolean",
 			label = "Make Room Publicly Searchable?",
-			value = not self:get_option("public")
+			value = not self:get_option("hidden")
 		},
 		{
 			name = "muc#roomconfig_changesubject",
@@ -1088,6 +1091,10 @@ function room_mt:set_role(actor, occupant_jid, role, callback, reason)
 		self:broadcast_except_nick(bp, occupant_jid);
 	end
 	return true;
+end
+
+function room_mt:is_occupant(jid)
+	return self._jid_nick[jid] and true or nil;
 end
 
 function room_mt:_route_stanza(stanza)

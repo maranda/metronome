@@ -35,7 +35,6 @@ function _cbNewS2S(e) {
         if (items[i].getElementsByTagName('sm')[0]) {
             entry.append('<img src="images/sm.png" title="stream management" alt=" (stream management enabled)" />');
         }
-
         if (items[i].getElementsByTagName('out')[0]) {
             entry.appendTo('#s2sout');
         } else {
@@ -65,6 +64,13 @@ function _cbNewC2S(e) {
         }
         if (items[i].getElementsByTagName('sm')[0]) {
             entry.append('<img src="images/sm.png" title="stream management" alt=" (stream management enabled)" />');
+        }
+        if (tmp = items[i].getElementsByTagName('csi')[0]) {
+            if (tmp.getElementsByTagName('active')[0]) {
+                entry.append('<img src="images/csi-active.png" title="client state indication (active)" alt=" (csi active)" />');
+            } else {
+                entry.append('<img src="images/csi-inactive.png" title="client state indication (inactive)" alt=" (csi inactive)" />');
+            }
         }
         entry.appendTo('#c2s');
     }

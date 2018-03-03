@@ -22,6 +22,7 @@ if restrict_room_creation then
 		restrict_room_creation = nil;
 	end
 end
+local allow_anonymous_creation = module:get_option_boolean("allow_anonymous_creation", false);
 local muclib = module:require "muc";
 local muc_new_room = muclib.new_room;
 local jid_section = require "util.jid".section;
@@ -32,7 +33,7 @@ local datamanager = require "util.datamanager";
 local fire_event = metronome.events.fire_event;
 local um_is_admin = require "core.usermanager".is_admin;
 local hosts = hosts;
-local pairs, ipairs = pairs, ipairs;
+local pairs, ipairs, now = pairs, ipairs, os.time;
 
 rooms = {};
 local host_session = hosts[muc_host];
@@ -128,7 +129,8 @@ for jid in pairs(persistent_rooms) do
 		room._affiliations = data._affiliations;
 		if history_length and history_length > max_history_messages then
 			room._data.history_length = 20;
-		end 
+		end
+		room.last_used = now();
 		room.route_stanza = room_route_stanza;
 		room.save = room_save;
 		rooms[jid] = room;
@@ -139,10 +141,6 @@ for jid in pairs(persistent_rooms) do
 	end
 end
 if persistent_errors then datamanager.store(nil, muc_host, "persistent", persistent_rooms); end
-
-local host_room = muc_new_room(muc_host);
-host_room.route_stanza = room_route_stanza;
-host_room.save = room_save;
 
 local function get_disco_info(stanza)
 	local done = {};
@@ -180,13 +178,12 @@ local function handle_to_domain(event)
 		elseif xmlns == "http://jabber.org/protocol/disco#items" then
 			origin.send(get_disco_items(stanza));
 		elseif xmlns == "http://jabber.org/protocol/muc#unique" then
-			origin.send(st.reply(stanza):tag("unique", {xmlns = xmlns}):text(uuid_gen())); -- FIXME Random UUIDs can theoretically have collisions
+			origin.send(st.reply(stanza):tag("unique", {xmlns = xmlns}):text(uuid_gen()));
 		else
-			origin.send(st.error_reply(stanza, "cancel", "service-unavailable")); -- TODO disco/etc
+			origin.send(st.error_reply(stanza, "cancel", "service-unavailable"));
 		end
 	else
-		host_room:handle_stanza(origin, stanza);
-		--origin.send(st.error_reply(stanza, "cancel", "service-unavailable", "The muc server doesn't deal with messages and presence directed at it"));
+		origin.send(st.error_reply(stanza, "cancel", "service-unavailable", "The muc server doesn't deal with messages and presence directed at it"));
 	end
 	return true;
 end
@@ -201,10 +198,11 @@ function stanza_handler(event)
 			return true;
 		end
 		local from_host = jid_section(stanza.attr.from, "host");
-		if not origin.is_anonymous and
+		if (allow_anonymous_creation or not origin.is_anonymous) and
 		   (not restrict_room_creation or (restrict_room_creation == "admin" and is_admin(stanza.attr.from)) or
 		   (restrict_room_creation == "local" and from_host == module.host:gsub("^[^%.]+%.", ""))) then
 			room = muc_new_room(bare);
+			room.last_used = now();
 			room.route_stanza = room_route_stanza;
 			room.save = room_save;
 			rooms[bare] = room;
@@ -212,12 +210,14 @@ function stanza_handler(event)
 	end
 	if room then
 		room:handle_stanza(origin, stanza);
+		room.last_used = now();
 		if not next(room._occupants) and not persistent_rooms[room.jid] then -- empty, non-persistent room
 			rooms[bare] = nil; -- discard room
 		end
 	else
 		origin.send(st.error_reply(stanza, "cancel", "not-allowed"));
 	end
+	module:fire_event("muc-host-used", rooms, now(), bare);
 	return true;
 end
 
@@ -265,6 +265,7 @@ module.restore = function(data)
 		room._occupants = oldroom._occupants;
 		room._data = oldroom._data;
 		room._affiliations = oldroom._affiliations;
+		room.last_used = now();
 		room.route_stanza = room_route_stanza;
 		room.save = room_save;
 		rooms[jid] = room;
@@ -293,7 +294,6 @@ function shutdown_component()
 		for roomjid, room in pairs(rooms) do
 			shutdown_room(room, stanza);
 		end
-		shutdown_room(host_room, stanza);
 	end
 end
 module.unload = shutdown_component;

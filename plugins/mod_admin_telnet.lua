@@ -222,6 +222,7 @@ function commands.help(session, data)
 		print [[c2s:show_insecure() - Show all unencrypted client connections]]
 		print [[c2s:show_secure() - Show all encrypted client connections]]
 		print [[c2s:show_sm() - Show all stream management enabled client connections]]
+		print [[c2s:show_csi() - Show all client state indication enabled client connections]]
 		print [[c2s:close(jid) - Close all sessions for the specified JID]]
 	elseif section == "s2s" then
 		print [[s2s:show(domain) - Show all s2s connections for the given domain (or all if no domain given)]]
@@ -500,6 +501,13 @@ local function session_flags(session, line)
 	if session.sm then
 		line[#line+1] = "(sm)";
 	end
+	if session.csi then
+		if session.csi == "active" then
+			line[#line+1] = "(csi active)";
+		else
+			line[#line+1] = "(csi inactive)";
+		end
+	end
 	if session.bidirectional then
 		line[#line+1] = "(bidi)";
 	end
@@ -587,6 +595,11 @@ end
 function def_env.c2s:show_sm(match_jid)
 	local count = show_type(self, match_jid, "sm");
 	return true, "Total: "..count.." stream management enabled client connections";
+end
+
+function def_env.c2s:show_csi(match_jid)
+	local count = show_type(self, match_jid, "csi");
+	return true, "Total: "..count.." client state indication enabled client connections";
 end
 
 function def_env.c2s:close(match_jid)

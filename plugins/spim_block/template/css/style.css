@@ -1,0 +1,42 @@
+body {
+  margin: 0
+}
+
+a {
+  color: #0000FF
+}
+
+ul {
+  margin: 0
+}
+
+.btn {
+  margin-right: 0.3em
+}
+
+.btn:last {
+  margin-right: 0
+}
+
+#main {
+  padding: 10px
+}
+
+#main div {
+  margin-left: 14px
+}
+
+#main p {
+  margin-left: 14px
+}
+
+#top {
+  clear: both;
+  width: 100%;
+  padding: 0;
+}
+
+#header {
+  height: 172px;
+  background: url(../images/tile.png) repeat-x
+}

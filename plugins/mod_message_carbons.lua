@@ -21,6 +21,16 @@ module:add_feature(xmlns);
 local received = st.stanza("received", { xmlns = xmlns });
 local sent = st.stanza("sent", { xmlns = xmlns });
 
+local function clear_flag(session)
+	local has_carbons;
+	local bare_session = bare_sessions[jid_join(session.username, session.host)];
+	if not bare_session then return; end
+	for _, _session in pairs(bare_session.sessions) do
+		if _session.carbons then has_carbons = true; break; end
+	end
+	if not has_carbons then bare_session.has_carbons = nil; end
+end
+
 local function fwd(bare, session, stanza, s)
 	local to = jid_join(session.username, session.host, session.resource);
 	local f = st.clone(s and sent or received):tag("forwarded", { xmlns = "urn:xmpp:forward:0" }):add_child(stanza);
@@ -37,10 +47,17 @@ local function process_message(origin, stanza, s, t)
 	if bare_session and bare_session.has_carbons and stanza.attr.type == "chat" then
 		local private = s and stanza:get_child("private", xmlns) and true;
 		local r = s and jid_section(origin.full_jid, "resource") or jid_section(stanza.attr.to, "resource");
+		local is_muc_sent, muc_nick = origin.joined_mucs and origin.joined_mucs[to_bare];
+
+		if is_muc_sent then
+			for entry in pairs(origin.directed) do
+				if jid_bare(entry) == to_bare then muc_nick = entry; break; end
+			end
+		end
 			
 		if not private and not stanza:get_child("no-copy", "urn:xmpp:hints") then
 			for resource, session in pairs(bare_session.sessions) do 
-				if session.carbons and resource ~= r then 
+				if session.carbons and resource ~= r and (not is_muc_sent or (is_muc_sent and session.directed[muc_nick])) then
 					fwd(from_bare or to_bare, session, stanza, s);
 				end
 			end
@@ -79,12 +96,7 @@ module:hook("iq-set/self/"..xmlns..":disable", function(event)
 		return origin.send(st.error_reply(stanza, "cancel", "forbidden", "Message Carbons are already disabled"));
 	else
 		origin.carbons = nil;
-		-- has other carbons resources?
-		local has_carbons;
-		for _, session in pairs(bare_sessions[jid_join(origin.username, origin.host)]) do
-			if session.carbons then has_carbons = true; break; end
-		end
-		if not has_carbons then bare_sessions.has_carbons = nil; end
+		clear_flag(origin);
 		
 		return origin.send(st.reply(stanza));
 	end
@@ -119,10 +131,9 @@ module:hook("pre-message/bare", function(event) process_message(event.origin, ev
 module:hook("pre-message/full", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local bare_to = jid_bare(stanza.attr.to);
-	if (not origin.joined_mucs or not origin.joined_mucs[bare_to]) then
-		process_message(origin, stanza, true, bare_to);
-	end
+	process_message(origin, stanza, true, bare_to);
 end, 1);
+module:hook("resource-unbind", function(event) clear_flag(event.session); end);
 
 function module.unload(reload)
 	if not reload then 

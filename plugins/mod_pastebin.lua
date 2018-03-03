@@ -7,12 +7,21 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Florian Zeitz, Marco Cirillo, Matthew Wild, Paul Aurich, Waqas Hussain
 
+local is_component = module:get_host_type() == "component";
+local rooms;
+if is_component and not hosts[module.host].muc then
+	error("mod_pastebin can't be loaded on non muc components", 0);
+elseif is_component then
+	rooms = hosts[module.host].muc.rooms;
+end
+
 local st = require "util.stanza";
 module:depends("http");
 local uuid_new = require "util.uuid".generate;
 local os_time = os.time;
 local t_insert, t_remove = table.insert, table.remove;
 local add_task = require "util.timer".add_task;
+local jid_bare = require "util.jid".bare;
 
 local utf8_pattern = "[\194-\244][\128-\191]*$";
 local function drop_invalid_utf8(seq)
@@ -32,7 +41,7 @@ local function utf8_length(str)
 	return count;
 end
 
-local pastebin_private_messages = module:get_option_boolean("pastebin_private_messages", hosts[module.host].type ~= "component");
+local pastebin_private_messages = module:get_option_boolean("pastebin_private_messages", not is_component);
 local length_threshold = module:get_option_number("pastebin_threshold", 500);
 local line_threshold = module:get_option_number("pastebin_line_threshold", 4);
 local max_summary_length = module:get_option_number("pastebin_summary_length", 150);
@@ -73,8 +82,19 @@ function handle_request(event, pasteid)
 	return pastes[pasteid];
 end
 
+function is_occupant(to, from)
+	room = rooms[jid_bare(to)];
+	return room:is_occupant(from);
+end
+
 function check_message(data)
 	local origin, stanza = data.origin, data.stanza;
+	
+	-- check that user is a room occupant
+	if is_component and
+		not is_occupant(stanza.attr.to, origin.full_jid or stanza.attr.from) then
+			return;
+	end
 	
 	local body, bodyindex, htmlindex;
 	for k,v in ipairs(stanza) do

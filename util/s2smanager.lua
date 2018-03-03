@@ -152,7 +152,7 @@ function destroy_session(session, reason)
 	(session.log or log)("debug", "Destroying "..tostring(session.direction).." session "..tostring(session.from_host).."->"..tostring(session.to_host)..(reason and (": "..reason) or ""));
 	
 	if session.direction == "outgoing" then
-		hosts[session.from_host].s2sout[session.to_host] = nil;
+		if hosts[session.from_host] then hosts[session.from_host].s2sout[session.to_host] = nil; end
 		session:bounce_sendq(reason);
 	elseif session.direction == "incoming" then
 		incoming_s2s[session] = nil;

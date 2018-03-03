@@ -4,8 +4,15 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
+if hosts[module.host].anonymous_host then
+	module:log("error", "Personal Eventing Protocol won't be available on anonymous hosts as storage is explicitly disabled");
+	modulemanager.unload(module.host, "pep");
+	return;
+end
+
 local hosts = hosts;
-local ripairs, tonumber, type, os_remove, os_time, select = ripairs, tonumber, type, os.remove, os.time, select;
+local ripairs, tonumber, type, os_remove, os_time, select, t_insert = 
+	ripairs, tonumber, type, os.remove, os.time, select, table.insert;
 
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
@@ -17,6 +24,7 @@ local calculate_hash = require "util.caps".calculate_hash;
 local encode_node = datamanager.path_encode;
 local get_path = datamanager.getpath;
 local um_user_exists = usermanager.user_exists;
+local bare_sessions = bare_sessions;
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
@@ -39,9 +47,10 @@ local subscription_presence = pep_lib.subscription_presence;
 local get_caps_hash_from_presence = pep_lib.get_caps_hash_from_presence;
 local pep_send = pep_lib.pep_send;
 local pep_autosubscribe_recs = pep_lib.pep_autosubscribe_recs;
-local form_layout = pep_lib.form_layout;
 local send_config_form = pep_lib.send_config_form;
 local process_config_form = pep_lib.process_config_form;
+local send_options_form = pep_lib.send_options_form;
+local process_options_form = pep_lib.process_options_form;
 local pep_new = pep_lib.pep_new;
 
 -- Helpers.
@@ -49,7 +58,6 @@ local pep_new = pep_lib.pep_new;
 singleton_nodes:add_list(module:get_option("pep_custom_singleton_nodes"));
 
 local function idle_service_closer()
-	local bare_sessions = metronome.bare_sessions;
 	for name, service in pairs(services) do
 		if not bare_sessions[name] then
 			module:log("debug", "Deactivated inactive PEP Service -- %s", name);
@@ -58,18 +66,18 @@ local function idle_service_closer()
 	end
 end
 
-local function disco_info_query(user, from)
+local function disco_info_query(from, to)
+	module:log("debug", "Sending disco info query to: %s", to);
 	module:fire_global_event("route/post", hosts[module.host], 
-		st.stanza("iq", { from = user, to = from, id = "disco", type = "get" })
+		st.stanza("iq", { from = from, to = to, id = "disco", type = "get" })
 			:query("http://jabber.org/protocol/disco#info")
 	);
-	module:log("debug", "Sending disco info query to: %s", from);
 end
 
-local function probe_jid(user, from)
+local function probe_jid(from, to)
 	module:fire_global_event("route/post", hosts[module.host], 
-		st.presence({from=user, to=from, id="peptrigger", type="probe"}));
-	module:log("debug", "Sending trigger probe to: %s", from);
+		st.presence({from = from, to = to, id="peptrigger", type="probe"}));
+	module:log("debug", "Sending trigger probe to: %s", to);
 end
 
 -- Module Definitions.
@@ -81,10 +89,9 @@ function handle_pubsub_iq(event)
 	local username, host = jid_split(user);
 	local time_now = os_time();
 	local user_service = services[user];
-	local is_new;
 	if not user_service and um_user_exists(username, host) then -- create service on demand.
 		user_service = set_service(pubsub.new(pep_new(username)), user, true);
-		is_new = true;
+		user_service.is_new = true;
 	end
 
 	if not user_service then return; end
@@ -99,7 +106,12 @@ function handle_pubsub_iq(event)
 	local action = pubsub.tags[1];
 	if not action then return origin.send(pep_error_reply(stanza, "bad-request")); end
 	local handler = handlers[stanza.attr.type.."_"..action.name];
-	local config = (pubsub.tags[2] and pubsub.tags[2].name == "configure") and pubsub.tags[2];
+	local config;
+	if action.name == "create" then
+		config = (pubsub.tags[2] and pubsub.tags[2].name == "configure") and pubsub.tags[2];
+	elseif action.name == "publish" then
+		config = (pubsub.tags[2] and pubsub.tags[2].name == "publish-options") and pubsub.tags[2];
+	end
 	local handler;
 
 	if pubsub.attr.xmlns == xmlns_pubsub_owner then
@@ -119,12 +131,12 @@ function handle_pubsub_iq(event)
 		else 
 			handler(user_service, origin, stanza, action, config); 
 		end
-		
-		if is_new and host == module.host and origin.presence then -- a "little" creative.
-			presence_handler({ origin = origin, stanza = origin.presence });
+
+		if user_service.is_new and not user_service.starting then 
+			return module:fire_event("pep-boot-service", { origin = origin, stanza = stanza, service = user_service });
+		else
+			return true;
 		end
-		
-		return true;
 	else
 		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
 	end
@@ -170,6 +182,8 @@ function handlers.set_create(service, origin, stanza, create, config)
 
 	if singleton_nodes:contains(node) and not node_config then
 		node_config = { max_items = 1 };
+	elseif node_config and not node_config.max_items and singleton_nodes:contains(node) then
+		node_config.max_items = 1;
 	end
 
 	if node then
@@ -199,26 +213,42 @@ function handlers.set_create(service, origin, stanza, create, config)
 	return origin.send(reply);
 end
 
-function handlers.set_publish(service, origin, stanza, publish)
+function handlers.set_publish(service, origin, stanza, publish, config)
 	local node = publish.attr.node;
 	local from = stanza.attr.from or origin.full_jid;
 	local item = publish:get_child("item");
 	local recs = {};
 	local recs_count = 0;
 	local id = (item and item.attr.id) or uuid_generate();
+	local form, ok, ret, reply;
+	
 	if item and not item.attr.id then item.attr.id = id; end
 	if not service.nodes[node] then
 	-- normally this would be handled just by publish() but we have to preceed its broadcast,
 	-- so since autocreate on publish is in place, do create and then resubscribe interested items.
 		local node_config;
-		if singleton_nodes:contains(node) then node_config = { max_items = 1 }; end
+		if config then
+			form = config:get_child("x", "jabber:x:data");
+			ok, node_config = process_options_form(service, node, form);
+			if not ok then return origin.send(pep_error_reply(stanza, node_config)); end
+		end
+		
+		if not node_config and singleton_nodes:contains(node) then 
+			node_config = { max_items = 1 };
+		elseif node_config and not node_config.max_items and singleton_nodes:contains(node) then
+			node_config.max_items = 1;
+		end
 		service:create(node, from, node_config);
 		pep_autosubscribe_recs(service, node);
+	elseif service.nodes[node] and config then
+		-- Test preconditions
+		form = config:get_child("x", "jabber:x:data");
+		ok, ret = process_options_form(service, node, form);
+		if not ok then return origin.send(pep_error_reply(stanza, ret)); end
 	end
 
-	local ok, ret = service:publish(node, from, id, item);
-	local reply;
-	
+	ok, ret = service:publish(node, from, id, item);
+		
 	if ok then
 		reply = st.reply(stanza)
 			:tag("pubsub", { xmlns = xmlns_pubsub })
@@ -229,6 +259,24 @@ function handlers.set_publish(service, origin, stanza, publish)
 	end
 
 	return origin.send(reply);
+end
+
+handlers["get_publish-options"] = function(service, origin, stanza, action)
+	local node = action.attr.node;
+	if not node then
+		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
+	end
+
+	local node_obj = service.nodes[node];
+	if not node_obj then
+		return origin.send(pep_error_reply(stanza, "item-not-found"));
+	end
+
+	if node_obj.config.publish_model == "open" or service:may(node, from, "publish") then
+		return send_options_form(service, node, origin, stanza);
+	else
+		return origin.send(pep_error_reply(stanza, "forbidden"));
+	end
 end
 
 function handlers.set_retract(service, origin, stanza, retract)
@@ -373,9 +421,8 @@ module:hook("account-disco-items", function(event)
 end);
 
 function presence_handler(event)
-	-- inbound presence to bare JID recieved           
 	local origin, stanza = event.origin, event.stanza;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
+	local user = jid_bare(stanza.attr.to) or (origin.username.."@"..origin.host);
 	local t = stanza.attr.type;
 	local self = not stanza.attr.to;
 	local service = services[user];
@@ -403,11 +450,9 @@ function presence_handler(event)
 			else
 				recipients[recipient] = hash;
 			end
-				
+
 			if not hash_map[hash] then
-				if current ~= false then
-					module:fire_event("pep-get-client-filters", { user = user, to = stanza.attr.from or origin.full_jid });
-				end
+				if current ~= false then disco_info_query(user, recipient); end
 			else
 				recipients[recipient] = hash;
 				pep_send(recipient, user);
@@ -421,7 +466,7 @@ function presence_handler(event)
 				user_bare_session.initial_pep_broadcast = true;
 			end
 		end
-	elseif t == "unavailable" then
+	elseif t == "unavailable" and recipients[stanza.attr.from] then
 		local from = stanza.attr.from;
 		local client_map = hash_map[recipients[from]];
 		for name in pairs(client_map or NULL) do
@@ -445,11 +490,18 @@ function presence_handler(event)
 	end
 end
 
-module:hook("presence/bare", presence_handler, 10);
 
-module:hook("pep-get-client-filters", function(event)
-	local user, to = event.user, event.to;
-	disco_info_query(user, to);
+module:hook("presence/bare", presence_handler, 110);
+module:hook("presence/full", presence_handler, 110);
+
+module:hook("pep-boot-service", function(event)
+	local origin, stanza, service = event.origin, event.stanza, event.service;
+	service.starting = true;
+	service.recipients[origin.full_jid] = "";
+	services[service.name] = service;
+	module:log("debug", "Delaying broadcasts as %s service is being booted...", service.name);
+	disco_info_query(service.name, origin.full_jid);
+	return true;
 end, 100);
 
 module:hook("pep-get-service", function(username, spawn)
@@ -467,7 +519,6 @@ module:hook("iq-result/bare/disco", function(event)
 		local disco = stanza.tags[1];
 		if disco and disco.name == "query" and disco.attr.xmlns == "http://jabber.org/protocol/disco#info" then
 			-- Process disco response
-			local self = not stanza.attr.to;
 			local user = stanza.attr.to or (session.username.."@"..session.host);
 			local service = services[user];
 			if not service then return true; end -- User's pep service doesn't exist
@@ -497,22 +548,15 @@ module:hook("iq-result/bare/disco", function(event)
 			end
 			hash_map[ver] = notify; -- update hash map
 			recipients[contact] = ver; -- and contact hash
-			if self then
-				module:log("debug", "Discovering interested roster contacts...");
+			if service.is_new then
+				service.is_new = nil;
+				module:log("debug", "Sending probes to roster contacts to discover interested resources...");
 				for jid, item in pairs(session.roster) do -- for all interested contacts
 					if item.subscription == "both" or item.subscription == "from" then
-						local node, host = jid_split(jid);
-						if hosts[host] and hosts[host].sessions and hosts[host].sessions[node] then
-							-- service discovery local users' av. resources
-							for resource in pairs(hosts[host].sessions[node].sessions) do
-								disco_info_query(user, jid .. "/" .. resource);
-							end
-						else
-							-- send a probe trigger
-							probe_jid(user, jid);
-						end
+						probe_jid(session.full_jid, jid);
 					end
 				end
+				service.starting = nil;
 			end
 			pep_send(contact, user);
 			return true; -- end cb processing.
@@ -595,6 +639,7 @@ function module.restore(data)
 		services[id] = set_service(pubsub.new(pep_new(username)), id);
 		services[id].nodes = service.nodes or {};
 		services[id].recipients = service.recipients or {};
+		services[id].session = service.session;
 	end
 	pep_lib.set_closures(services, hash_map);
 end

@@ -10,7 +10,8 @@
 
 local modulemanager = modulemanager;
 if not modulemanager.is_loaded(module.host, "muc") then
-	module:log("error", "mod_muc_log_http can only be loaded on a muc component!")
+	module:log("error", "mod_muc_log_http can only be loaded on a muc component!");
+	modulemanager.unload(module.host, "muc_log_http");
 	return;
 end
 
@@ -29,7 +30,7 @@ local http_event = require "net.http.server".fire_server_event;
 local data_load, data_getpath, data_stores, data_store_exists = 
 	datamanager.load, datamanager.getpath, datamanager.stores, datamanager.store_exists;
 local datastore = "muc_log";
-local url_base = "muc_log";
+local url_base = "logs";
 local config = nil;
 local tostring, tonumber = tostring, tonumber;
 local t_insert, t_sort = table.insert, table.sort;

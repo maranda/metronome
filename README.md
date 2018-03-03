@@ -1,4 +1,4 @@
-![alt text](http://www.lightwitch.org/varlogos/metronome-banner.png)
+![alt text](https://metronome.im/Media/Metronome/Pictures/metronome-banner.png)
 -
 
 This software codebase initiated as a fork of prosody trunk (to be 0.9) merged with LW.Org's custom, patches initiating from August 7th 2012 (see first commit).
@@ -10,8 +10,12 @@ The main differences from Prosody are:
  * The Pubsub API and wrapped modules, mod_pubsub and mod_pep;
  * The MUC API and wrapper plugins;
  * Pluggable MUC configuration;
+ * Pluggable Routing API;
  * Core stack: Modulemanager, Usermanager, Hostmanager, Module API, etc... ;
- * How s2s streams are treated;
+ * More aggressive memory usage optimisations
+ * Bidirectional S2S Streams
+ * Advanced Dialback errors handling
+ * More tight integration with Stream Management
  * The anonymous auth backend (mod_auth_anonymous & sasl.lua ineherent part);
  * Included plugins, utils;
  * The HTTP API;

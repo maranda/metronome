@@ -7,6 +7,12 @@
 -- Message Archiving Management for Metronome,
 -- This implements XEP-313.
 
+if hosts[module.host].anonymous_host then
+	module:log("error", "Message Archive Management won't be available on anonymous hosts as storage is explicitly disabled");
+	modulemanager.unload(module.host, "mam");
+	return;
+end
+
 local bare_sessions = metronome.bare_sessions;
 local module_host = module.host;
 
@@ -19,13 +25,11 @@ local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
 
-local xmlns = "urn:xmpp:mam:0";
-local legacy_xmlns = "urn:xmpp:mam:tmp";
+local xmlns = "urn:xmpp:mam:2";
 local purge_xmlns = "http://metronome.im/protocol/mam-purge";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
+local sid_xmlns = "urn:xmpp:sid:0";
 
-module:add_feature(xmlns);
-module:add_feature(legacy_xmlns);
 module:add_feature(purge_xmlns);
 
 local forbid_purge = module:get_option_boolean("mam_forbid_purge", false);
@@ -34,8 +38,8 @@ local mamlib = module:require("mam");
 local validate_query = module:require("validate").validate_query;
 local initialize_storage, save_stores =	mamlib.initialize_storage, mamlib.save_stores;
 local get_prefs, set_prefs = mamlib.get_prefs, mamlib.set_prefs;
-local generate_stanzas, process_message, purge_messages =
-	mamlib.generate_stanzas, mamlib.process_message, mamlib.purge_messages;
+local fields_handler, generate_stanzas, process_message, purge_messages =
+	mamlib.fields_handler, mamlib.generate_stanzas, mamlib.process_message, mamlib.purge_messages;
 
 local session_stores = mamlib.session_stores;
 local storage = initialize_storage();
@@ -78,6 +82,12 @@ local function process_outbound_messages(event)
 	process_message(event, true);
 end
 
+local function feature_handler(event)
+	local stanza = event.stanza;
+	stanza:tag("feature", { var = xmlns }):up();
+	stanza:tag("feature", { var = sid_xmlns }):up();
+end
+
 local function prefs_handler(event)
 	local origin, stanza = event.origin, event.stanza;
 	local bare_session = bare_sessions[jid_bare(origin.full_jid)];
@@ -118,26 +128,11 @@ local function purge_handler(event)
 	return origin.send(st.reply(stanza));
 end
 
-local function features_handler(event)
-	local origin, stanza = event.origin, event.stanza;
-	return origin.send(
-		st.reply(stanza)
-			:tag("query", { xmlns = xmlns })
-				:tag("x", { xmlns = "jabber:x:data" })
-					:tag("field", { type = "hidden", var = "FORM_TYPE" })
-						:tag("value"):text(xmlns):up():up()
-					:tag("field", { type = "jid-single", var = "with" }):up()
-					:tag("field", { type = "text", var = "start" }):up()
-					:tag("field", { type = "text", var = "end" }):up()
-	);
-end
-
 local function query_handler(event)
 	local origin, stanza = event.origin, event.stanza;
 	local query = stanza.tags[1];
 	local qid = query.attr.queryid;
-	local legacy = query.attr.xmlns == legacy_xmlns;
-	
+		
 	local bare_session = bare_sessions[jid_bare(origin.full_jid)];
 	local archive = bare_session.archiving;
 
@@ -150,11 +145,8 @@ local function query_handler(event)
 			ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.index, ret.rsm;
 	end
 	
-	local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, rsm, legacy);
-	if messages == false then -- Exceeded limit
-		module:log("debug", "MAM Query yields too many results, aborted");
-		return origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Too many results"));
-	elseif not messages then -- RSM item-not-found
+	local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, rsm);
+	if not messages then -- RSM item-not-found
 		module:log("debug", "MAM Query RSM parameters were out of bounds: After - %s, Before - %s, Max - %s, Index - %s",
 			tostring(after), tostring(before), tostring(max), tostring(index));
 		local rsm_error = st.error_reply(stanza, "cancel", "item-not-found");
@@ -162,21 +154,13 @@ local function query_handler(event)
 		return origin.send(rsm_error);
 	end
 
-	local reply = st.reply(stanza);
+	local reply = st.reply(stanza):add_child(rq);
 
-	if not legacy then origin.send(reply); end
 	for _, message in ipairs(messages) do
 		message.attr.to = origin.full_jid;
 		origin.send(message);
 	end
-	if legacy then
-		if rq then reply:add_child(rq); end
-		origin.send(reply);
-	else
-		origin.send(
-			st.message({ to = origin.full_jid, queryid = qid }):add_child(rq)
-		);
-	end
+	origin.send(reply);
 
 	module:log("debug", "MAM query %s completed", qid and tostring(qid).." " or "");
 	return true;
@@ -217,11 +201,10 @@ module:hook("pre-message/bare", process_outbound_messages, 30);
 module:hook("message/full", process_inbound_messages, 30);
 module:hook("pre-message/full", process_outbound_messages, 30);
 
-module:hook("iq/self/"..legacy_xmlns..":prefs", prefs_handler);
+module:hook("account-disco-info", feature_handler);
 module:hook("iq/self/"..xmlns..":prefs", prefs_handler);
 module:hook("iq-set/self/"..purge_xmlns..":purge", purge_handler);
-module:hook("iq-get/self/"..legacy_xmlns..":query", query_handler);
 module:hook("iq-set/self/"..xmlns..":query", query_handler);
-module:hook("iq-get/self/"..xmlns..":query", features_handler);
+module:hook("iq-get/self/"..xmlns..":query", fields_handler);
 
 module:hook_global("server-stopping", save_stores);

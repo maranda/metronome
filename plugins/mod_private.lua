@@ -7,6 +7,12 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2010, Matthew Wild, Waqas Hussain
 
+if hosts[module.host].anonymous_host then
+	module:log("error", "Private Storage won't be available on anonymous hosts as storage is explicitly disabled");
+	modulemanager.unload(module.host, "private");
+	return;
+end
+
 local st = require "util.stanza"
 
 local datamanager = require "util.datamanager"
@@ -22,7 +28,7 @@ module:hook("iq/self/jabber:iq:private:query", function(event)
 		local key = tag.name..":"..tag.attr.xmlns;
 		local data, err = datamanager.load(origin.username, origin.host, "private");
 		if err then
-			origin.send(st.error_reply(stanza, "wait", "internal-server-error"));
+			origin.send(st.error_reply(stanza, "wait", "internal-server-error", err));
 			return true;
 		end
 		if stanza.attr.type == "get" then
@@ -38,10 +44,11 @@ module:hook("iq/self/jabber:iq:private:query", function(event)
 			else
 				data[key] = st.preserialize(tag);
 			end
-			if datamanager.store(origin.username, origin.host, "private", data) then
+			data, err = datamanager.store(origin.username, origin.host, "private", data);
+			if data then
 				origin.send(st.reply(stanza));
 			else
-				origin.send(st.error_reply(stanza, "wait", "internal-server-error"));
+				origin.send(st.error_reply(stanza, "wait", "internal-server-error", err));
 			end
 		end
 	else

@@ -7,6 +7,12 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2012, Matthew Wild, Waqas Hussain
 
+if hosts[module.host].anonymous_host then
+	module:log("error", "vCards won't be available on anonymous hosts as storage is explicitly disabled");
+	modulemanager.unload(module.host, "vcard");
+	return;
+end
+
 local tostring = tostring;
 
 local st = require "util.stanza";
@@ -55,12 +61,13 @@ local function handle_vcard(event)
 				return session.send(st.error_reply(stanza, "modify", "policy-violation", "The vCard data exceeded the max allowed size!"));
 			end
 			
-			if datamanager.store(session.username, session.host, "vcard", st.preserialize(vCard)) then
+			local ok, err = datamanager.store(session.username, session.host, "vcard", st.preserialize(vCard));
+			if ok then
 				session.send(st.reply(stanza));
 				metronome.events.fire_event("vcard-updated", { node = session.username, host = session.host, vcard = vCard });
 			else
 				-- TODO unable to write file, file may be locked, etc, what's the correct error?
-				session.send(st.error_reply(stanza, "wait", "internal-server-error"));
+				session.send(st.error_reply(stanza, "wait", "internal-server-error", err));
 			end
 		else
 			session.send(st.error_reply(stanza, "auth", "forbidden"));

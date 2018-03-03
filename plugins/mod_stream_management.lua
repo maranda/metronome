@@ -7,8 +7,10 @@
 -- This implements XEP-198: Stream Management,
 -- The code is based on the module available for Prosody.
 
-local ipairs, min, now, t_insert, t_remove, tonumber, tostring =
-	ipairs, math.min, os.time, table.insert, table.remove, tonumber, tostring;
+local bare_sessions = bare_sessions;
+
+local ipairs, min, now, pairs, t_insert, t_remove, tonumber, tostring =
+	ipairs, math.min, os.time, pairs, table.insert, table.remove, tonumber, tostring;
 	
 local st_clone, st_stanza, st_reply = 
 	require "util.stanza".clone, require "util.stanza".stanza, require "util.stanza".reply;
@@ -118,9 +120,16 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 	
 	function session.handle_unacked(session)
 		local attr = { type = "cancel" };
+		local full_jid, bare_jid, resource = session.full_jid, session.username.."@"..session.host, session.resource;
+		local bare_session, has_carbons = bare_sessions[bare_jid];
+		if bare_session.has_carbons then
+			for _resource, _session in pairs(bare_session.sessions) do
+				if _resource ~= resource and _session.carbons then has_carbons = true; break; end
+			end
+		end
 		for _, queued in ipairs(_q) do
 			local reply = st_reply(queued);
-			if reply.attr.to ~= session.full_jid then
+			if reply.attr.to ~= full_jid and (has_carbons and reply.name ~= "message" or not has_carbons) then
 				reply.attr.type = "error";
 				reply:tag("error", attr):tag("recipient-unavailable", { xmlns = xmlns_e });
 				fire_event("route/process", session, reply);
@@ -138,18 +147,18 @@ end
 module:hook("stream-features", function(event)
 	local session = event.origin;
 	if session.type == "c2s" and not session.sm then
-		event.features:tag("sm", { xmlns = xmlns_sm2 }):tag("optional"):up():up();
-		event.features:tag("sm", { xmlns = xmlns_sm3 }):tag("optional"):up():up();
+		event.features:tag("sm", { xmlns = xmlns_sm2 }):up();
+		event.features:tag("sm", { xmlns = xmlns_sm3 }):up();
 	end
-end);
+end, 98);
 
 module:hook("s2s-stream-features", function(event)
 	local session = event.origin;
 	if not session.sm then
-		event.features:tag("sm", { xmlns = xmlns_sm2 }):tag("optional"):up():up();
-		event.features:tag("sm", { xmlns = xmlns_sm3 }):tag("optional"):up():up();
+		event.features:tag("sm", { xmlns = xmlns_sm2 }):up();
+		event.features:tag("sm", { xmlns = xmlns_sm3 }):up();
 	end
-end, 97);
+end, 98);
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function(session, stanza)
 	local session_type = session.type;

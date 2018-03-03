@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Metronome SPIM Block</title>
+<link rel="stylesheet" type="text/css" href="css/style.css" />
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" />
+</head>
+
+<body>
+<div id='top'>
+  <div id='header'>
+    <img src="images/header.png" />
+  </div>
+</div>
+
+<div id='main'>
+  <p>Please insert the provided token to unlock communication with an user on this server.</p>
+  <form action='%REG-URL' method='post' accept-charset='UTF-8' id='spim'>
+    <div><label for='set-token'>Anti-SPIM Token:</label></div>
+    <div><input type='text' name='spim_token' id='set-token' value="" /></div>
+    <div><br /><input type='submit' id='connect' value='Unlock' class='btn' /></div>
+  </form>
+</div>
+
+</body>
+</html>

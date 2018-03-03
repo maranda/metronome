@@ -15,16 +15,17 @@ local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
 local load_roster = require "util.rostermanager".load_roster;
-local ipairs, next, now, pairs, ripairs, select, t_remove, tostring = ipairs, next, os.time, pairs, ripairs, select, table.remove, tostring;
+local ipairs, next, now, pairs, ripairs, select, t_remove, tostring, type = 
+	ipairs, next, os.time, pairs, ripairs, select, table.remove, tostring, type;
       
-local xmlns = "urn:xmpp:mam:0";
-local legacy_xmlns = "urn:xmpp:mam:tmp";
+local xmlns = "urn:xmpp:mam:2";
 local delay_xmlns = "urn:xmpp:delay";
 local e2e_xmlns = "http://www.xmpp.org/extensions/xep-0200.html#ns";
 local forward_xmlns = "urn:xmpp:forward:0";
 local hints_xmlns = "urn:xmpp:hints";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 local markers_xmlns = "urn:xmpp:chat-markers:0";
+local sid_xmlns = "urn:xmpp:sid:0";
 
 local store_time = module:get_option_number("mam_save_time", 300);
 local stores_cap = module:get_option_number("mam_stores_cap", 5000);
@@ -66,7 +67,7 @@ local function save_stores()
 	end	
 end
 
-local function log_entry(session_archive, to, bare_to, from, bare_from, id, body, marker, marker_id, tags)
+local function log_entry(session_archive, to, bare_to, from, bare_from, id, type, body, marker, marker_id, tags)
 	local uid = uuid();
 	local entry = {
 		from = from,
@@ -74,6 +75,7 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, body
 		to = to,
 		bare_to = bare_to,
 		id = id,
+		type = type,
 		body = body,
 		marker = marker,
 		marker_id = marker_id,
@@ -95,7 +97,7 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, body
 	return uid;
 end
 
-local function log_entry_with_replace(session_archive, to, bare_to, from, bare_from, id, rid, body)
+local function log_entry_with_replace(session_archive, to, bare_to, from, bare_from, id, rid, type, body)
 	-- handle XEP-308 or try to...
 	local count = 0;
 	local logs = session_archive.logs;
@@ -109,10 +111,10 @@ local function log_entry_with_replace(session_archive, to, bare_to, from, bare_f
 		end
 	end
 	
-	return log_entry(session_archive, to, bare_to, from, bare_from, id, body);
+	return log_entry(session_archive, to, bare_to, from, bare_from, id, type, body);
 end
 
-local function log_marker(session_archive, to, bare_to, from, bare_from, id, marker, marker_id)
+local function log_marker(session_archive, to, bare_to, from, bare_from, id, type, marker, marker_id)
 	local count = 0;
 
 	for i, entry in ripairs(session_archive.logs) do
@@ -124,17 +126,17 @@ local function log_marker(session_archive, to, bare_to, from, bare_from, id, mar
 		   (entry_to == bare_to or entry_to == bare_from) and
 		   (entry_marker == "markable" or entry_marker == "received") and
 		   entry_marker ~= marker then
-			return log_entry(session_archive, to, bare_to, from, bare_from, id, nil, marker, marker_id);
+			return log_entry(session_archive, to, bare_to, from, bare_from, id, type, nil, marker, marker_id);
 		end
 	end
 end
 
-local function append_stanzas(stanzas, entry, qid, legacy)
+local function append_stanzas(stanzas, entry, qid)
 	local to_forward = st.message()
-		:tag("result", { xmlns = legacy and legacy_xmlns or xmlns, queryid = qid, id = entry.id })
+		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.uid })
 			:tag("forwarded", { xmlns = forward_xmlns })
 				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
-				:tag("message", { to = entry.to, from = entry.from, id = entry.id });
+				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
 
 	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
 	if entry.tags then
@@ -148,17 +150,8 @@ end
 local function generate_set(stanza, first, last, count, index)
 	stanza:tag("set", { xmlns = rsm_xmlns })
 		:tag("first", { index = index or 0 }):text(first):up()
-		:tag("last"):text(last or first):up()
+		:tag("last"):text(last):up()
 		:tag("count"):text(tostring(count)):up();
-end
-
-local function generate_query(stanzas, start, fin, set, first, last, count, index)
-	local query = st.stanza("query", { xmlns = legacy_xmlns });
-	if start then query:tag("start"):text(dt(start)):up(); end
-	if fin then query:tag("end"):text(dt(fin)):up(); end
-	if set and #stanzas ~= 0 then generate_set(query, first, last, count); end
-	
-	return (((start or fin) or (set and #stanzas ~= 0)) and query) or nil;
 end
 
 local function generate_fin(stanzas, first, last, count, index, complete)
@@ -229,13 +222,13 @@ local function count_relevant_entries(logs, with, start, fin)
 	return count;
 end
 
-local function generate_stanzas(store, start, fin, with, max, after, before, index, qid, rsm, legacy)
+local function generate_stanzas(store, start, fin, with, max, after, before, index, qid, rsm)
 	local logs = store.logs;
 	local stanzas = {};
 	local query;
 	
 	local _at = 1;
-	local first, last, _after, _start, _end, _entries_count, _count;
+	local first, last, _after, _entries_count, _count, _last_uid;
 	local entry_index, to_process;
 	
 	-- handle paging
@@ -263,7 +256,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			to_process = {};
 			local sub = (max and entry_index - max) or 1;
 			-- we clone the table upto index
-			for i = (sub < 0 and 1) or sub, entry_index do to_process[#to_process + 1] = logs[i]; end
+			for i = (sub < 0 and 1) or sub, entry_index - 1 do to_process[#to_process + 1] = logs[i]; end
 			_entries_count = count_relevant_entries(to_process, with, start, fin);
 		end
 
@@ -271,7 +264,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			local timestamp = entry.timestamp;
 			local uid = entry.uid
 			if not dont_add(entry, with, start, fin, timestamp) then
-				append_stanzas(stanzas, entry, qid, legacy);
+				append_stanzas(stanzas, entry, qid);
 			end
 		end
 		if index then
@@ -281,13 +274,10 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		if #stanzas ~= 0 then
 			local first_e, last_e = to_process[1], to_process[#to_process];
 			first, last = first_e.uid, last_e.uid;
-			_start, _end = first_e.timestamp, last_e.timestamp;
 		end
 
-		_count = max and _entries_count - max or 0;
-		query = legacy and
-			generate_query(stanzas, (start or _start), (fin or _end), rsm, first, last, (_count < 0 and 0) or _count, index) or
-			generate_fin(stanzas, first, last, (_count < 0 and 0) or _count, index, before == true);
+		_count = max and (type(before) == "string" and entry_index - _entries_count) or _entries_count - max;
+		query = generate_fin(stanzas, first, last, (_count < 0 and 0) or _count, index, before == true);
 		return stanzas, query;
 	elseif after then
 		entry_index = get_index(logs, after);
@@ -303,30 +293,21 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		local timestamp = entry.timestamp;
 		local uid = entry.uid;
 		if not dont_add(entry, with, start, fin, timestamp) then
-			append_stanzas(stanzas, entry, qid, legacy);
-			if max then
-				if _at == 1 then 
-					first = uid;
-					_start = timestamp;
-				elseif _at == max then
-					last = uid;
-					_end = timestamp;
-				end
-				_at = _at + 1;
-			end
+			append_stanzas(stanzas, entry, qid);
+			if _at == 1 then first = uid; end
+			_at = _at + 1;
+			_last_uid = uid;
 		end
-		if max and _at ~= 1 and _at > max then break; end
+		if _at ~= 1 and _at > max then break; end
 	end
+	last = _last_uid;
 	if index then
 		stanzas = remove_upto_index(stanzas, index);
 		if #stanzas == 0 then return nil; end
 	end
-	if not max and #stanzas > 30 then return false; end
 	
-	_count = max and _entries_count - max or 0;
-	query = legacy and
-		generate_query(stanzas, (start or _start), (fin or _end), rsm, first, last, (_count < 0 and 0) or _count, index) or
-		generate_fin(stanzas, first, last, (_count < 0 and 0) or _count, index);
+	_count = _entries_count - max;
+	query = generate_fin(stanzas, first, last, (_count < 0 and 0) or _count, index);
 	return stanzas, query;
 end
 
@@ -390,6 +371,20 @@ local function set_prefs(stanza, store)
 	return reply;
 end
 
+local function fields_handler(event)
+	local origin, stanza = event.origin, event.stanza;
+	return origin.send(
+		st.reply(stanza)
+			:tag("query", { xmlns = xmlns })
+				:tag("x", { xmlns = "jabber:x:data" })
+					:tag("field", { type = "hidden", var = "FORM_TYPE" })
+						:tag("value"):text(xmlns):up():up()
+					:tag("field", { type = "jid-single", var = "with" }):up()
+					:tag("field", { type = "text", var = "start" }):up()
+					:tag("field", { type = "text", var = "end" }):up()
+	);
+end
+
 local function process_message(event, outbound)
 	local message, origin = event.stanza, event.origin;
 	if message.attr.type ~= "chat" and message.attr.type ~= "normal" then return; end
@@ -444,20 +439,20 @@ local function process_message(event, outbound)
 		end
 
 		if replace then
-			id = log_entry_with_replace(archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, body);
+			id = log_entry_with_replace(archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, message.attr.type, body);
 		else
 			if body then
 				id = marker == "markable" and log_entry(
-					archive, to, bare_to, from, bare_from, message.attr.id, body,
+					archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, body,
 					marker, marker_id, tags
-				) or log_entry(archive, to, bare_to, from, bare_from, message.attr.id, body, nil, nil, tags);
+				) or log_entry(archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, body, nil, nil, tags);
 			elseif marker and marker ~= "markable" then
-				id = log_marker(archive, to, bare_to, from, bare_from, message.attr.id, marker, marker_id);
+				id = log_marker(archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, marker, marker_id);
 			end
 		end
 
 		if not bare_session then storage:set(user, archive); end
-		if not outbound and id then message:tag("archived", { jid = bare_to, id = id }):up(); end
+		if not outbound and id then message:tag("stanza-id", { xmlns = sid_xmlns, by = bare_to, id = id }):up(); end
 	else
 		return;
 	end	
@@ -501,6 +496,7 @@ _M.initialize_storage = initialize_storage;
 _M.save_stores = save_stores;
 _M.get_prefs = get_prefs;
 _M.set_prefs = set_prefs;
+_M.fields_handler = fields_handler;
 _M.generate_stanzas = generate_stanzas;
 _M.process_message = process_message;
 _M.purge_messages = purge_messages;

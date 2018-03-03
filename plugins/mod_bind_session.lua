@@ -38,9 +38,9 @@ module:hook("stream-features", function(event)
 	local origin, features = event.origin, event.features;
 	if origin.username then
 		features:tag("bind", bind_attr):tag("required"):up():up();
-		if legacy then features:tag("session", legacy_attr):tag("optional"):up():up(); end
+		if legacy then features:tag("session", legacy_attr):up(); end
 	end
-end, 96);
+end, 99);
 
 module:hook("iq-set/self/"..xmlns_bind..":bind", function(event)
 	local origin, stanza = event.origin, event.stanza;

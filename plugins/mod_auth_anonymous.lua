@@ -17,6 +17,7 @@ local os_time = os.time;
 local multi_resourcing = module:get_option_boolean("allow_anonymous_multiresourcing", false);
 local sha1_gentoken = module:get_option_string("anonymous_jid_gentoken", b64_encode(os_time()));
 local randomize_for_trusted = module:get_option_set("anonymous_randomize_for_trusted_addresses", nil);
+local test_mode = module:get_option_boolean("anonymous_test_mode", false);
 local my_host = hosts[module.host];
 
 function new_default_provider(host)
@@ -52,14 +53,14 @@ function new_default_provider(host)
 			order = { "anonymous" },
 			anonymous = function(sasl, session, realm)
 				local username;
-				if randomize_for_trusted and randomize_for_trusted:contains(session.ip) then
+				if test_mode or (randomize_for_trusted and randomize_for_trusted:contains(session.ip)) then
 					username = gen_uuid();
 				else
 					username = hmac_sha1(session.ip, sha1_gentoken, true);
 				end
 
-				if not multi_resourcing and my_host.sessions[username] then
-					return nil, "You're allowed to have only one anonymous session at any given time, good bye.";
+				if not test_mode and not multi_resourcing and my_host.sessions[username] then
+					return nil, "not-authorized", "You're allowed to have only one anonymous session at any given time, good bye.";
 				end
 
 				session.is_anonymous = true;
@@ -76,7 +77,7 @@ end
 
 local function dm_callback(username, host, datastore, data)
 	if host == module.host then
-		return false;
+		return true;
 	end
 	return username, host, datastore, data;
 end
@@ -94,8 +95,8 @@ if not module:get_option_boolean("allow_anonymous_s2s", false) then
 end
 
 function module.load()
-	datamanager.add_callback(dm_callback);
-	my_host.anonymous_host = true;
+	if not test_mode then datamanager.add_callback(dm_callback); end
+	my_host.anonymous_host = not test_mode and true or nil;
 end
 function module.unload()
 	datamanager.remove_callback(dm_callback);
