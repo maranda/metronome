@@ -236,8 +236,8 @@ end
 
 --- Public API ---
 
-function load(host, name)
-	local mod, err = do_load_module(host, name);
+function load(host, name, component_load)
+	local mod, err = do_load_module(host, name, component_load);
 	if mod then
 		(hosts[mod.module.host] or metronome).events.fire_event("module-loaded",
 			{ module = name, host = mod.module.host, storage = mod.module.storage }
