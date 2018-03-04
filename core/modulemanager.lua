@@ -58,7 +58,7 @@ function load_modules_for_host(host)
 		load(host, component);
 	end
 	for module in modules do
-		if not is_loaded(host, module) then load(host, module, component and true); end
+		if not is_loaded(host, module) then load(host, module, component and set.new(host_modules_enabled or {})); end
 	end
 end
 metronome.events.add_handler("host-activated", load_modules_for_host);
@@ -134,7 +134,7 @@ local function do_load_module(host, module_name, component_load)
 				do_unload_module(host, module_name);
 				return nil, ok and module_err or result;
 			end
-			if component_load and not host_module_api.component_inheritable then
+			if component_load and not host_module_api.component_inheritable and not component_load:contains(module_name) then
 				do_unload_module(host, module_name);
 				return nil, "module-not-component-inheritable";
 			end
@@ -187,7 +187,7 @@ local function do_load_module(host, module_name, component_load)
 		modulemap[api_instance.host][module_name] = nil;
 		log("error", "Error initializing module '%s' on '%s': %s", module_name, host, err or "nil");
 	end
-	if component_load and not api_instance.component_inheritable then
+	if component_load and not api_instance.component_inheritable and not component_load:contains(module_name) then
 		do_unload_module(host, module_name);
 		return nil, "module-not-component-inheritable";
 	end
