@@ -337,7 +337,7 @@ function def_env.module:load(name, hosts)
 	local ok, err, count, mod = true, nil, 0, nil;
 	for host in _hosts do
 		if (not mm.is_loaded(host, name)) then
-			mod, err = type(hosts) == nil and mm.load(host, name, true) or mm.load(host, name);
+			mod, err = type(hosts) == nil and mm.load(host, name, set.new {}) or mm.load(host, name);
 			if not mod and err ~= "module-not-component-inheritable" then
 				ok = false;
 				if err == "global-module-already-loaded" then
