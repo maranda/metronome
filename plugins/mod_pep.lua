@@ -133,7 +133,10 @@ function handle_pubsub_iq(event)
 		end
 
 		if user_service.is_new and not user_service.starting then 
-			return module:fire_event("pep-boot-service", { origin = origin, stanza = stanza, service = user_service });
+			return module:fire_event(
+				"pep-boot-service",
+				{ origin = origin, stanza = stanza, service = user_service, from = stanza.attr.from or origin.full_jid }
+			);
 		else
 			return true;
 		end
@@ -497,10 +500,10 @@ module:hook("presence/full", presence_handler, 110);
 module:hook("pep-boot-service", function(event)
 	local origin, stanza, service = event.origin, event.stanza, event.service;
 	service.starting = true;
-	service.recipients[origin.full_jid] = "";
+	service.recipients[event.from] = "";
 	services[service.name] = service;
 	module:log("debug", "Delaying broadcasts as %s service is being booted...", service.name);
-	disco_info_query(service.name, origin.full_jid);
+	disco_info_query(service.name, event.from);
 	return true;
 end, 100);
 
