@@ -31,7 +31,6 @@ pcall = function(f, ...)
 end
 
 local autoload_modules = { "router", "bind_session", "presence", "message", "iq", "offline", "c2s", "s2s" };
-local component_inheritable_modules = { "tls", "iq", "bidi", "compression", "host_guard", "s2s", "stream_management" };
 
 local _G = _G;
 
@@ -53,16 +52,13 @@ function load_modules_for_host(host)
 	if host_modules_disabled == global_modules_disabled then host_modules_disabled = nil; end
 	
 	local global_modules = set.new(autoload_modules) + set.new(global_modules_enabled) - set.new(global_modules_disabled);
-	if component then
-		global_modules = set.intersection(set.new(component_inheritable_modules), global_modules);
-	end
 	local modules = (global_modules + set.new(host_modules_enabled)) - set.new(host_modules_disabled);
 	
 	if component then
 		load(host, component);
 	end
 	for module in modules do
-		if not is_loaded(host, module) then load(host, module); end
+		if not is_loaded(host, module) then load(host, module, component and true); end
 	end
 end
 metronome.events.add_handler("host-activated", load_modules_for_host);
@@ -108,13 +104,13 @@ local function do_unload_module(host, name, reload)
 	return true;
 end
 
-local function do_load_module(host, module_name)
+local function do_load_module(host, module_name, component_load)
 	if not (host and module_name) then
 		return nil, "insufficient-parameters";
 	elseif not hosts[host] and host ~= "*"then
 		return nil, "unknown-host";
 	end
-	
+
 	if not modulemap[host] then modulemap[host] = hosts[host].modules; end
 	
 	if modulemap[host][module_name] then
@@ -135,15 +131,17 @@ local function do_load_module(host, module_name)
 			modulemap[host][module_name] = host_module;
 			local ok, result, module_err = call_module_method(mod, "add_host", host_module_api);
 			if not ok or result == false then
-				modulemap[host][module_name] = nil;
+				do_unload_module(host, module_name);
 				return nil, ok and module_err or result;
+			end
+			if component_load and not host_module_api.component_inheritable then
+				do_unload_module(host, module_name);
+				return nil, "module-not-component-inheritable";
 			end
 			return host_module;
 		end
 		return nil, "global-module-already-loaded";
 	end
-	
-
 
 	local _log = logger.init(host..":"..module_name);
 	local api_instance = setmetatable({ name = module_name, host = host,
@@ -188,6 +186,10 @@ local function do_load_module(host, module_name)
 	if not ok then
 		modulemap[api_instance.host][module_name] = nil;
 		log("error", "Error initializing module '%s' on '%s': %s", module_name, host, err or "nil");
+	end
+	if component_load and not api_instance.component_inheritable then
+		do_unload_module(host, module_name);
+		return nil, "module-not-component-inheritable";
 	end
 	return ok and pluginenv, err;
 end
