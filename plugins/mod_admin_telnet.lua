@@ -323,8 +323,7 @@ local function get_hosts_set(hosts, module)
 	elseif type(hosts) == "string" then
 		return set.new { hosts };
 	elseif hosts == nil then
-		local hosts_set = set.new(array.collect(keys(metronome.hosts)))
-			/ function (host) return (metronome.hosts[host].type == "local" or module and mm.is_loaded(host, module)) and host or nil; end;
+		local hosts_set = set.new(array.collect(keys(metronome.hosts)));
 		if module and mm.get_module("*", module) then
 			hosts_set:add("*");
 		end
@@ -332,14 +331,14 @@ local function get_hosts_set(hosts, module)
 	end
 end
 
-function def_env.module:load(name, hosts, config)
-	hosts = get_hosts_set(hosts);
+function def_env.module:load(name, hosts)
+	local _hosts = get_hosts_set(hosts);
 	
 	local ok, err, count, mod = true, nil, 0, nil;
-	for host in hosts do
+	for host in _hosts do
 		if (not mm.is_loaded(host, name)) then
-			mod, err = mm.load(host, name, config);
-			if not mod then
+			mod, err = type(hosts) == nil and mm.load(host, name, true) or mm.load(host, name);
+			if not mod and err ~= "module-not-component-inheritable" then
 				ok = false;
 				if err == "global-module-already-loaded" then
 					if count > 0 then
@@ -348,7 +347,7 @@ function def_env.module:load(name, hosts, config)
 					break;
 				end
 				self.session.print(err or "Unknown error loading module");
-			else
+			elseif not err then
 				count = count + 1;
 				self.session.print("Loaded for "..mod.module.host);
 			end

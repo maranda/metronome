@@ -4,6 +4,7 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
+module:set_component_inheritable();
 module:depends("s2s");
 
 local st = require "util.stanza";

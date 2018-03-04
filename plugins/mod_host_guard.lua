@@ -52,6 +52,8 @@ local function rr_hook (event)
 end
 
 function module.add_host(module)
+	module:set_component_inheritable()
+
 	local host = module.host
 	if not host.anonymous then
 		module:hook("route/remote", rr_hook, 500)

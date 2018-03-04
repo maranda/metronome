@@ -7,6 +7,8 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2011, Matthew Wild, Paul Aurich, Tobias Markmann, Waqas Hussain
 
+module:set_component_inheritable();
+
 if metronome.no_encryption then
 	module:log("error", "mod_tls requires encryption support to be available,");
 	module:log("error", "please check that LuaSec is installed.");

@@ -7,6 +7,8 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2010-2012, Matthew Wild, Waqas Hussain
 
+module:set_component_inheritable();
+
 local st = require "util.stanza";
 
 local full_sessions = full_sessions;

@@ -173,6 +173,8 @@ function serve_file(event, path)
 end
 
 function module.add_host(module)
+	module:set_component_inheritable();
+
 	-- Setup HTTP server
 	module:depends("http");
 	module:provides("http", {

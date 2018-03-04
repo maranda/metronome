@@ -183,6 +183,8 @@ function route_to_new_session(event)
 end
 
 function module.add_host(module)
+	module:set_component_inheritable();
+
 	local modules_disabled = module:get_option_set("modules_disabled", {});
 	if not s2s_strict_mode then
 		module:depends("dialback");
