@@ -15,7 +15,7 @@ local legacy_attr = { xmlns = xmlns_legacy };
 
 local bare_sessions, next = bare_sessions, next;
 
-local legacy = module:get_option_boolean("legacy_session_support", "false");
+local legacy = module:get_option_boolean("legacy_session_support", true);
 local resources_limit = module:get_option_number("max_client_resources", 9);
 
 local function limit_binds(session)
