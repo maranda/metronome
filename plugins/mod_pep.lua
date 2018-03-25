@@ -553,7 +553,7 @@ module:hook("iq-result/bare/disco", function(event)
 			if service.is_new then
 				service.is_new = nil;
 				module:log("debug", "Sending probes to roster contacts to discover interested resources...");
-				for jid, item in pairs(session.roster) do -- for all interested contacts
+				for jid, item in pairs(session.roster or NULL) do -- for all interested contacts
 					if item.subscription == "both" or item.subscription == "from" then
 						probe_jid(session.full_jid, jid);
 					end
