@@ -22,7 +22,7 @@ if max_results >= 100 then max_results = 100; end
 
 local function rsm_parse(stanza, query)
 	local rsm = query:get_child("set", rsm_xmlns);
-	if not rsm then return nil, nil, nil, false; end
+	if not rsm then return; end
 	local max = rsm and rsm:get_child_text("max");
 	local after = rsm and rsm:get_child_text("after");
 	local before = rsm and rsm:get_child_text("before");
@@ -31,7 +31,7 @@ local function rsm_parse(stanza, query)
 	max = max and tonumber(max);
 	index = index and tonumber(index);
 	
-	return after, before, max, index, true;
+	return after, before, max, index;
 end
 
 local function df_parse(query)
