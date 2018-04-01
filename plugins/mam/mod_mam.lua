@@ -136,16 +136,16 @@ local function query_handler(event)
 	local bare_session = bare_sessions[jid_bare(origin.full_jid)];
 	local archive = bare_session.archiving;
 
-	local start, fin, with, after, before, max, index, rsm;
+	local start, fin, with, after, before, max, index;
 	local ok, ret = validate_query(stanza, archive, query, qid);
 	if not ok then
 		return origin.send(ret);
 	else
-		start, fin, with, after, before, max, index, rsm =
-			ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.index, ret.rsm;
+		start, fin, with, after, before, max, index =
+			ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.index;
 	end
 	
-	local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, rsm);
+	local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, index, qid);
 	if not messages then -- RSM item-not-found
 		module:log("debug", "MAM Query RSM parameters were out of bounds: After - %s, Before - %s, Max - %s, Index - %s",
 			tostring(after), tostring(before), tostring(max), tostring(index));
