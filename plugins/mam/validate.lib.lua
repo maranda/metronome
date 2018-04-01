@@ -47,7 +47,7 @@ local function df_parse(query)
 	return start, fin, with;
 end
 
-local function validate_query(stanza, archive, query, qid)
+local function validate_query(stanza, query, qid)
 	local start, fin, with = df_parse(query);
 
 	module:log("debug", "MAM query received, %s with %s from %s until %s",
