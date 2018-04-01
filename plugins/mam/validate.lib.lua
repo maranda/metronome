@@ -67,7 +67,7 @@ local function validate_query(stanza, archive, query, qid)
 	with = jid_bare(vwith);
 	
 	-- Get RSM set
-	local after, before, max, index, rsm = rsm_parse(stanza, query);
+	local after, before, max, index = rsm_parse(stanza, query);
 	if (before and after) or max == "" or after == "" then
 		module:log("debug", "MAM Query RSM parameters were invalid: After - %s, Before - %s, Max - %s, Index - %s",
 			tostring(after), tostring(before), tostring(max), tostring(index));
@@ -84,7 +84,7 @@ local function validate_query(stanza, archive, query, qid)
 		max = 30;
 	end
 
-	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before, index = index, rsm = rsm };
+	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before, index = index };
 end
 
 return { validate_query = validate_query };
