@@ -8,12 +8,14 @@
 -- presences particularly useful for Mobile Clients.
 
 local NULL = {};
-local pairs, t_insert = pairs, table.insert;
+local pairs, t_insert, t_remove = pairs, table.insert, table.remove;
 local jid_join = require "util.jid".join;
 local st = require "util.stanza";
 	
 module:add_feature("urn:xmpp:csi:0");
 module:add_feature("urn:xmpp:sift:2");
+module:add_feature("urn:xmpp:sift:senders:remote");
+module:add_feature("urn:xmpp:sift:stanzas:message");
 module:add_feature("urn:xmpp:sift:stanzas:presence");
 
 module:hook("stream-features", function(event)
@@ -23,35 +25,70 @@ end, 97);
 module:hook("iq-set/self/urn:xmpp:sift:2:sift", function(event)
 	local stanza, session = event.stanza, event.origin;
 
-	if session.csi then
-		session.send(st.error_reply(stanza, "cancel", "forbidden", "Can't handle filtering via SIFT when Client State Indication is used"));
-		return true;
-	end
-
 	local sift = stanza.tags[1];
 	local message = sift:child_with_name("message");
 	local presence = sift:child_with_name("presence");
 	local iq = sift:child_with_name("iq");
+	local message_sender = message.attr.sender;
+	local presence_sender = presence.attr.sender;
 
-	if message or iq then
-		session.send(st.error_reply(stanza, "cancel", "feature-not-implemented", "Only sifting presences is currently supported"));
+	if session.csi and presence then
+		session.send(st.error_reply(stanza, "cancel", "forbidden", "Can't handle presence filtering via SIFT when Client State Indication is used"));
 		return true;
+	end
+
+	if (message_sender and message_sender ~= "remote") or (presence_sender and presence_sender ~= "remote") then
+		session.send(st.error_reply(stanza, "cancel", "feature-not-implemented", "Only sifting of remote entities is currently supported"));
+		return true;
+	end
+
+	if iq or #message.tags ~= 0 or #presence.tags ~= 0 then
+		session.send(st.error_reply(stanza, "cancel", "feature-not-implemented",
+			iq and "Sifting of IQ stanza is not supported" or "Element and Namespace filtering is not supported"
+		));
+		return true;
+	end
+	
+	if message and not presence then
+		module:log("info", "%s removing presence SIFT filters", session.full_jid);
+		session.presence_block = nil;
+		for st in pairs(session.to_block) do
+			if st.name == "presence" then t_remove(session.to_block, st); end
+		end
+	elseif presence and not message then
+		module:log("info", "%s removing message SIFT filters", session.full_jid);
+		session.message_block = nil;
+		for st in pairs(session.to_block) do
+			if st.name == "message" then t_remove(session.to_block, st); end
+		end
 	elseif #sift.tags == 0 then
-		module:log("info", "%s removing all SIFT filters", session.full_jid or jid_join(session.username, session.host));
-		session.presence_block, session.to_block = nil, nil;
+		module:log("info", "%s removing all SIFT filters", session.full_jid);
+		session.presence_block, session.message_block, session.to_block = nil, nil;
 		session.send(st.reply(stanza));
 		return true;
 	end
 	
-	if #presence.tags ~= 0 then
-		session.send(st.error_reply(stanza, "cancel", "feature-not-implemented", "Only blocking all presences is supported not granular filtering"));
-		return true;
-	else
-		module:log("info", "%s enabling SIFT filtering of all incoming presences", session.full_jid or jid_join(session.username, session.host));
-		session.presence_block, session.to_block = true, {};
-		session.send(st.reply(stanza));
-		return true;
-	end
+	module:log("info", "%s enabling SIFT filtering of %s", session.full_jid,
+		(
+			(presence and messages) and (
+				(message_sender and presence_sender and "remote messages and remote presences") or 
+				(message_sender and "remote messages and all presences") or
+				(presence_sender and "all messages and remote presences") or
+				"all messages and presences"
+			) or
+			presence and (
+				presence_sender and "remote presences" or "all presences"
+			) or
+			messages and (
+				message_sender and "remote messages" or "all messages"
+			)
+		)
+	);
+	if message then session.message_block = message_sender or true; end
+	if presence then session.presence_block = presence_sender or true; end
+	session.to_block = {};
+	session.send(st.reply(stanza));
+	return true;
 end);
 
 module:hook("stanza/urn:xmpp:csi:0:active", function(event)
@@ -86,8 +123,24 @@ module:hook("stanza/urn:xmpp:csi:0:inactive", function(event)
 	return true;
 end);
 
+module:hook("message/bare", function(event)
+	local stanza, origin = event.stanza, event.origin;
+
+	local to_bare = bare_sessions[stanza.attr.to];
+	if not to_bare then
+		return;
+	else
+		for _, resource in pairs(to_bare.sessions or NULL) do
+			if resource.message_block == true or resource.message_block == "remote" and
+				(origin.type == "s2sin" or origin.type == "bidirectional") then
+				resource.to_block[stanza] = true;
+			end
+		end
+	end
+end, 100);
+
 module:hook("presence/bare", function(event)
-	local stanza = event.stanza;
+	local stanza, origin = event.stanza, event.origin;
 	local t = stanza.attr.type;
 	if not (t == nil or t == "unavailable") then return; end
 
@@ -96,28 +149,37 @@ module:hook("presence/bare", function(event)
 		return;
 	else
 		for _, resource in pairs(to_bare.sessions or NULL) do
-			if resource.presence_block then
+			if resource.presence_block == true then
 				if resource.csi == "inactive" then
 					module:log("debug", "queuing presence for %s: %s", resource.full_jid, stanza:top_tag());
 					t_insert(resource.csi_queue, st.clone(stanza)); 
 				end
-				resource.to_block[stanza] = true; 
+				resource.to_block[stanza] = true;
+			elseif resource.presence_block == "remote" and (origin.type == "s2sin" or origin.type == "bidirectional") then
+				resource.to_block[stanza] = true;
 			end
 		end
 	end
 end, 100);
 
-module:hook("presence/full", function(event)
-	local stanza = event.stanza;
+local function full_handler(event)
+	local stanza, origin = event.stanza, event.origin;
 	local t = stanza.attr.type;
-	if not (t == nil or t == "unavailable") then return; end
+	local st_name = stanza.name;
+	if st_name == "presence" and not (t == nil or t == "unavailable") then return; end
 	
 	local to_full = full_sessions[stanza.attr.to];
 	if to_full then
-		if to_full.csi == "inactive" then
+		if to_full.csi == "inactive" and st_name == "presence" then
 			module:log("debug", "queuing presence for %s: %s", to_full.full_jid, stanza:top_tag());
 			t_insert(to_full.csi_queue, st.clone(stanza));
 		end
-		if to_full.presence_block then return true; end
+		if to_full[st_name.."_block"] == true or to_full[st_name.."_block"] == "remote" and 
+			(origin.type == "s2sin" or origin.type == "bidirectional") then
+			return true;
+		end
 	end
-end, 100);
+end
+
+module:hook("message/full", full_handler, 100);
+module:hook("presence/full", full_handler, 100);
