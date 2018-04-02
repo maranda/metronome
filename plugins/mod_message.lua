@@ -26,7 +26,9 @@ local function process_to_bare(bare, origin, stanza)
 	elseif t == "headline" then
 		if user and stanza.attr.to == bare then
 			for _, session in pairs(user.sessions) do
-				if session.presence and session.priority >= 0 then
+				if session.to_block and session.to_block[stanza] then
+					session.to_block[stanza] = nil;
+				elseif session.presence and session.priority >= 0 then
 					session.send(stanza);
 				end
 			end
@@ -36,7 +38,12 @@ local function process_to_bare(bare, origin, stanza)
 			local recipients = user.top_resources;
 			if recipients then
 				for i=1,#recipients do
-					if recipients[i].send(stanza) then return true; end
+					local recipient = recipients[i];
+					if recipient.to_block and recipient.to_block[stanza] then
+						recipient.to_block[stanza] = nil;
+					elseif recipient.send(stanza) then 
+						return true; 
+					end
 				end
 			end
 		end
@@ -44,8 +51,6 @@ local function process_to_bare(bare, origin, stanza)
 		local node, host = jid_split(bare);
 		local ok
 		if user_exists(node, host) then
-			-- TODO apply the default privacy list
-
 			ok = module:fire_event("message/offline/handle", {
 			    origin = origin,
 			    stanza = stanza,
@@ -75,5 +80,3 @@ module:hook("message/bare", function(data)
 
 	return process_to_bare(stanza.attr.to or (origin.username.."@"..origin.host), origin, stanza);
 end);
-
-module:add_feature("msgoffline");
