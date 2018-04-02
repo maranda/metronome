@@ -183,3 +183,22 @@ end
 
 module:hook("message/full", full_handler, 100);
 module:hook("presence/full", full_handler, 100);
+
+function module.unload(reload)
+	if not reload then 
+		for _, full_session in pairs(full_sessions) do 
+			full_session.csi = nil;
+			if full_session.csi_queue and #full_session.csi_queue > 0 then -- flush queue before unload
+				module:log("debug", "module is being unloaded, flushing queued stanzas to %s", full_session.full_jid);
+				for i = 1, #full_session.csi_queue do
+					module:log("debug", "sending presence: %s", full_session.csi_queue[i]:top_tag());
+					full_session.send(full_session.csi_queue[i]);
+				end
+			end
+			full_session.csi_queue = nil;
+			full_session.presence_block = nil;
+			full_session.message_block = nil;
+			full_session.to_block = nil;
+		end
+	end
+end
