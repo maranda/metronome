@@ -30,8 +30,6 @@ local purge_xmlns = "http://metronome.im/protocol/mam-purge";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 local sid_xmlns = "urn:xmpp:sid:0";
 
-module:add_feature(purge_xmlns);
-
 local forbid_purge = module:get_option_boolean("mam_forbid_purge", false);
 
 local mamlib = module:require("mam");
@@ -86,6 +84,7 @@ local function feature_handler(event)
 	local stanza = event.stanza;
 	stanza:tag("feature", { var = xmlns }):up();
 	stanza:tag("feature", { var = sid_xmlns }):up();
+	stanza:tag("feature", { var = purge_xmlns }):up();
 end
 
 local function prefs_handler(event)
