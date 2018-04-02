@@ -136,7 +136,7 @@ local function query_handler(event)
 	local archive = bare_session.archiving;
 
 	local start, fin, with, after, before, max, index;
-	local ok, ret = validate_query(stanza, archive, query, qid);
+	local ok, ret = validate_query(stanza, query, qid);
 	if not ok then
 		return origin.send(ret);
 	else
