@@ -88,7 +88,7 @@ function module.add_host(module)
 					guard_banned[host] = { expire = now() + guard_expire, reason = reason };
 					for i, _host in pairs(hosts) do
 						for name, session in pairs(_host.s2sout) do
-							if name == host do session:close(); end
+							if name == host then session:close(); end
 						end
 					end
 					for session in pairs(incoming_s2s) do
