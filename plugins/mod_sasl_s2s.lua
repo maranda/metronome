@@ -30,7 +30,7 @@ local function s2s_auth(session, stanza)
 		return true;
 	end
 
-	if mechanism ~= "EXTERNAL" or session.cert_chain_status ~= "valid" then
+	if mechanism ~= "EXTERNAL" or session.cert_chain_status ~= "valid" or session.blocked then
 		session.sends2s(build_error("invalid-mechanism"));
 		return true;
 	end
@@ -134,7 +134,7 @@ end, 10);
 
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;
-	if origin.secure and origin.type == "s2sin_unauthed" then
+	if origin.secure and origin.type == "s2sin_unauthed" and not origin.blocked then
 		-- Offer EXTERNAL if chain is valid and either we didn't validate
 		-- the identity or it passed.
 		if origin.cert_chain_status == "valid" and origin.cert_identity_status ~= "invalid" then

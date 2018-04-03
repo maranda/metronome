@@ -156,6 +156,7 @@ local function handle_incoming(event)
 		
 		if block_list[to_bare] and block_list[to_bare][from_bare] then
 			module:log("info", "blocking unsolicited message to %s from %s", to_bare, from_bare);
+			module:fire_event("call-gate-guard", { origin = origin, from = from, reason = "SPIM" });
 			return true; 
 		end
 
