@@ -85,10 +85,10 @@ end
 local errors_map = {
 	["item-not-found"] = "requested host was not found on the remote enitity",
 	["remote-connection-failed"] = "the receiving entity failed to connect back to us",
-	["remote-server-not-found"] = "encountered an error while attempting to verify dialback, like the server unexpectedly closing the connection",
+	["remote-server-not-found"] = "encountered an error while attempting to verify dialback",
 	["remote-server-timeout"] = "time exceeded while attempting to contact the authoritative server",
-	["policy-violation"] = "the receiving entity requires to enable TLS before executing dialback",
-	["not-authorized"] = "the receiving entity denied dialback, probably because it requires a valid certificate",
+	["policy-violation"] = "the receiving entity refused dialback due to a local policy",
+	["not-authorized"] = "the receiving entity denied dialback",
 	["forbidden"] = "received a response of type invalid while authenticating with the authoritative server",
 	["not-acceptable"] = "the receiving entity was unable to assert our identity"
 };
@@ -185,6 +185,8 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		elseif not from then
 			origin:close("improper-addressing");
 			return true;
+		elseif origin.blocked then
+			return send_db_error(origin, "db:result", "not-authorized", to, from, attr.id);
 		end
 		
 		origin.hosts[from] = { dialback_key = stanza[1] };
@@ -224,7 +226,7 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 						:text(dialback_verifying.hosts[attr.from].dialback_key));
 			end
 			if not destroyed and not authed then
-				send_db_error(origin, "db:verify", "not-authorized", attr.to, attr.from, attr.id);
+				send_db_error(dialback_verifying, "db:result", "forbidden", attr.to, attr.from, attr.id);
 			end
 		else
 			send_db_error(origin, "db:verify", "remote-server-not-found", attr.to, attr.from, attr.id);
@@ -252,7 +254,11 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		elseif attr.type == "error" then
 			return handle_db_errors(origin, stanza);
 		else
-			send_db_error(origin, "db:result", "not-authorized", attr.to, attr.from, attr.id);
+			local dialback_verifying = dialback_requests[attr.from.."/"..(attr.id or "")];
+			if dialback_verifying and not dialback_verifying.destroyed then
+				send_db_error(dialback_verifying, "db:result", "forbidden", attr.to, attr.from, attr.id);
+			end
+			dialback_requests[attr.from.."/"..(attr.id or "")] = nil;
 		end
 		origin.doing_db = nil;
 		return true;
