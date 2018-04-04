@@ -298,13 +298,13 @@ end
 local function handle_password_reset(data, event)
 	local mail, ip = data.reset, data.ip
 
-	if throttle_time and to_throttle(ip) then
-		module:log("warn", "JSON Password Reset request from %s has been throttled", ip)
-		return http_error_reply(event, 503, "Request throttled, wait a bit and try again.")
-	end
-	
 	local node = hashes[b64_encode(sha1(mail))]
 	if node and usermanager.user_exists(node, module.host) then
+		if throttle_time and to_throttle(ip) then
+			module:log("warn", "JSON Password Reset request from %s has been throttled", ip)
+			return http_error_reply(event, 503, "Request throttled, wait a bit and try again.")
+		end
+
 		local id_token = generate_secret(20)
 		if not id_token then
 			module:log("error", "Failed to pipe from /dev/urandom to generate the password reset token")
