@@ -82,14 +82,18 @@ local function exceed_errors(origin)
 end
 
 local errors_map = {
+	["bad-request"] = "the receiving entity was unable to process the dialback request",
+	["forbidden"] = "received a response of type invalid while authenticating with the authoritative server",
+	["internal-server-error"] = "the remote server encountered an error while authenticating",
 	["item-not-found"] = "requested host was not found on the remote enitity",
+	["policy-violation"] = "the receiving entity refused dialback due to a local policy",
+	["not-acceptable"] = "the receiving entity was unable to assert our identity",
+	["not-authorized"] = "the receiving entity denied dialback",
+	["not-allowed"] = "the receiving entity refused dialback because we are into a blacklist",
 	["remote-connection-failed"] = "the receiving entity failed to connect back to us",
 	["remote-server-not-found"] = "encountered an error while attempting to verify dialback",
 	["remote-server-timeout"] = "time exceeded while attempting to contact the authoritative server",
-	["policy-violation"] = "the receiving entity refused dialback due to a local policy",
-	["not-authorized"] = "the receiving entity denied dialback",
-	["forbidden"] = "received a response of type invalid while authenticating with the authoritative server",
-	["not-acceptable"] = "the receiving entity was unable to assert our identity"
+	["resource-constraint"] = "the remote server is currently too busy, try again laters"
 };
 local function handle_db_errors(origin, stanza)
 	local attr = stanza.attr;
@@ -104,11 +108,8 @@ local function handle_db_errors(origin, stanza)
 	
 	if err then
 		format = ("Dialback non-fatal error: "..err.." (%s)"):format(type:find("s2sin.*") and attr.from or attr.to);
-	else -- invalid error condition
-		origin:close(
-			{ condition = "not-acceptable", text = "Supplied error dialback condition is a non graceful one, good bye" },
-			"stream failure"
-		);
+	else -- non graceful error condition
+		origin:close({ condition = "undefined-condition", text = "Condition is non graceful, good bye" }, "dialback failure");
 	end
 	
 	if format then 
@@ -185,7 +186,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 			origin:close("improper-addressing");
 			return true;
 		elseif origin.blocked then
-			return send_db_error(origin, "db:result", "not-authorized", to, from, attr.id);
+			return send_db_error(origin, "db:result", "not-allowed", to, from, attr.id);
 		elseif require_encryption and not origin.secure and not encryption_exceptions:contains(from) then
 			return send_db_error(origin, "db:result", "policy-violation", to, from, attr.id);
 		end
