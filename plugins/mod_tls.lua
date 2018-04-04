@@ -91,7 +91,7 @@ module:hook_stanza("http://etherx.jabber.org/streams", "features", function (ses
 		module:log("debug", "%s is offering TLS, taking up the offer...", session.to_host);
 		session.sends2s("<starttls xmlns='"..xmlns_starttls.."'/>");
 		return true;
-	elseif secure_s2s_only and (not can_do_tls(session) or not stanza:child_with_ns(xmlns_starttls)) then
+	elseif not session.secure and secure_s2s_only and (not can_do_tls(session) or not stanza:child_with_ns(xmlns_starttls)) then
 		return module:fire_event("s2s-no-encryption", session);
 	end
 end, 500);
