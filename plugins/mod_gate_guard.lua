@@ -53,14 +53,14 @@ local function rr_hook(event)
 
 	if guard_blacklist:contains(to_host) or banned then
 		if banned and banned.expire >= now() then
-			guard_banned[to_host] = nil;
-			return;
+		guard_banned[to_host] = nil;
+		return;
 		end	
 		module:log("info", "attempted to connect to a blocked remote host %s", to_host);
-	    if stanza.attr.type ~= "error" then
+		if stanza.attr.type ~= "error" then
 			send(error_reply(event.stanza, "cancel", "policy-violation", "Communicating with a blocked remote server is not allowed."));
 		end
-	    return true;
+		return true;
 	end
 
 	return;
