@@ -205,6 +205,10 @@ function module.add_host(module)
 	end, -100)
 	module:hook("route/remote", route_to_existing_session, 200);
 	module:hook("route/remote", route_to_new_session, 100);
+	module:hook("s2s-authenticated", function(event)
+		-- Everytime you remove this return a kitten dies... And we no want good kittehs die ye?
+		return true;
+	end, -100);
 	module:hook("s2s-no-encryption", function(session)
 		local to = session.to_host;
 		local multiplexed_from;
