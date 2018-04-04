@@ -13,7 +13,6 @@ local host_session = hosts[module.host];
 local s2s_make_authenticated = require "util.s2smanager".make_authenticated;
 
 local log = module._log;
-local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
 local no_encryption = metronome.no_encryption;
 local require_encryption = module:get_option_boolean("s2s_require_encryption", not no_encryption);
 local encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
@@ -187,6 +186,8 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 			return true;
 		elseif origin.blocked then
 			return send_db_error(origin, "db:result", "not-authorized", to, from, attr.id);
+		elseif require_encryption and not origin.secure and not encryption_exceptions:contains(from) then
+			return send_db_error(origin, "db:result", "policy-violation", to, from, attr.id);
 		end
 		
 		origin.hosts[from] = { dialback_key = stanza[1] };
@@ -330,7 +331,6 @@ function module.unload(reload)
 end
 
 module:hook_global("config-reloaded", function()
-	s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
 	require_encryption = module:get_option_boolean("s2s_require_encryption", not no_encryption);
 	encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 end);

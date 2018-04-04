@@ -205,26 +205,23 @@ function module.add_host(module)
 	end, -100)
 	module:hook("route/remote", route_to_existing_session, 200);
 	module:hook("route/remote", route_to_new_session, 100);
-	module:hook("s2s-authenticated", function(event)
-		local ctx, direction, session, from, to = event.ctx, event.direction, event.session, event.from, event.to;
-		if require_encryption and ctx and not session.secure then
-			local multiplexed_from;
-			if multiplexed_sessions[to] then
-				multiplexed_from =
-					multiplexed_sessions[to].multiplexed_from and
-					multiplexed_sessions[to].multiplexed_from.from_host;
-			end
-			if direction == "outgoing" and encryption_exceptions:contains(multiplexed_from) then
-				return true;
-			elseif not encryption_exceptions:contains(direction == "outgoing" and to or from) then
-				local text = direction == "outgoing" and "offered" or "used";
-				session:close({
-					condition = "policy-violation",
-					text = "TLS encryption is mandatory but wasn't "..text }, "authentication failure");
-				return false;
-			end
+	module:hook("s2s-no-encryption", function(session)
+		local to = session.to_host;
+		local multiplexed_from;
+		if multiplexed_sessions[to] then
+			multiplexed_from =
+				multiplexed_sessions[to].multiplexed_from and
+				multiplexed_sessions[to].multiplexed_from.from_host;
 		end
-		return true;
+		if encryption_exceptions:contains(multiplexed_from) then
+			return;
+		elseif not encryption_exceptions:contains(to) then
+			session:close({
+				condition = "policy-violation",
+				text = "TLS encryption is mandatory but was not offered" }, "authentication failure");
+			return true;
+		end
+		return;
 	end)
 	module:hook("s2sout-destroyed", function(event)
 		local session = event.session;
