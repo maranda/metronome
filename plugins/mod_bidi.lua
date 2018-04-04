@@ -86,15 +86,15 @@ module:hook("s2s-stream-features", function(event)
 	local session, features = event.origin, event.features;
 	local from = session.from_host;
 	if from and not exclude:contains(from) and not session.bidirectional and
-	   verifying[from] ~= "outgoing" and not outgoing[from] then
+		verifying[from] ~= "outgoing" and not outgoing[from] then
 		features:tag("bidi", { xmlns = xmlns_features }):up();
 	end
 end, 100);
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function(session, stanza) -- outgoing
 	local to = session.to_host;
-        if session.type == "s2sout_unauthed" and stanza:get_child("bidi", xmlns_features) and
-	   not exclude:contains(to) and not incoming[to] and verifying[to] ~= "incoming" then
+	if session.type == "s2sout_unauthed" and stanza:get_child("bidi", xmlns_features) and
+		not exclude:contains(to) and not incoming[to] and verifying[to] ~= "incoming" then
 		module:log("debug", "Attempting to enable bidirectional s2s stream on %s...", to);
 		session.sends2s(st.stanza("bidi", { xmlns = xmlns }));
 		session.can_do_bidi = true;
