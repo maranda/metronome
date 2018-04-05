@@ -82,7 +82,7 @@ function handle_request(event, pasteid)
 	return pastes[pasteid];
 end
 
-function is_occupant(to, from)
+local function is_occupant(to, from)
 	local room = rooms[jid_bare(to)];
 	if not room then return; end
 	return room:is_occupant(from);
