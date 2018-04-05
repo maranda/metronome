@@ -92,7 +92,7 @@ function check_message(data)
 	local origin, stanza = data.origin, data.stanza;
 	
 	-- check that user is a room occupant
-	if is_component and	not is_occupant(stanza.attr.to, origin.full_jid or stanza.attr.from) then
+	if is_component and not is_occupant(stanza.attr.to, origin.full_jid or stanza.attr.from) then
 		return;
 	end
 	
