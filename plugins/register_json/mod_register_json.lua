@@ -246,7 +246,10 @@ local function handle_register(data, event)
 			return http_error_reply(event, 401, "Another user registration by that username is pending.")
 		end
 
-		if password:len() < min_pass_len then
+		if not ((password:find("%d+") or password:find("%p+")) and password:find("%u+")) then
+			module:log("debug", "%s submitted password doesn't contain at least one uppercase letter, one number or symbol characters", ip)
+			return http_error_reply(event, 406, "Supplied password needs to contain at least one uppercase letter and one symbol or digit.")			
+		elseif password:len() < min_pass_len then
 			module:log("debug", "%s submitted password is not long enough minimun is %d characters", ip, min_pass_len)
 			return http_error_reply(event, 406, "Supplied password is not long enough minimum is " .. tostring(min_pass_len) .. " characters.")
 		elseif password:len() > max_pass_len then
@@ -377,7 +380,7 @@ local function handle_reset(event, path)
 				else
 					local node = reset_tokens[id_token] and reset_tokens[id_token].node
 					if node then
-						if not (password:find("%d+") and password:find("%u+")) or 
+						if not ((password:find("%d+") or password:find("%p+")) and password:find("%u+")) or 
 							password:len() < min_pass_len or password:len() > max_pass_len then
 							return r_template(event, "reset_password_check")
 						end
