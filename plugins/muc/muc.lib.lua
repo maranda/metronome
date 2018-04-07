@@ -366,7 +366,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 					self:broadcast_presence(pr, from);
 					self._occupants[current_nick] = nil;
 				end
-				module:fire_event("muc-occupant-part", self.jid, from, current_nick, next(sessions, next(sessions)) and true);
+				module:fire_event("muc-occupant-part", self, from, current_nick, origin, next(sessions, next(sessions)) and true);
 			end
 		elseif not type then -- available
 			if current_nick then
@@ -396,7 +396,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 								pr.attr.from = to;
 								self._occupants[to].sessions[from] = pr;
 								self:broadcast_presence(pr, from);
-								module:fire_event("muc-occupant-nick-change", self.jid, from, current_nick, to);
+								module:fire_event("muc-occupant-nick-change", self, from, current_nick, to);
 							else
 								log("debug", "%s sent a malformed nick change request!", current_nick);
 								origin.send(st.error_reply(stanza, "cancel", "jid-malformed"));
@@ -446,6 +446,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						end
 						self._jid_nick[from] = to;
 						self:send_occupant_list(from);
+						module:fire_event("muc-occupant-list-sent", self, from, to, origin);
 						pr.attr.from = to;
 						pr:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
 							:tag("item", {affiliation = affiliation or "none", role = role or "none"}):up();
@@ -458,7 +459,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						pr.attr.to = from;
 						self:_route_stanza(pr);
 						self:send_history(from, stanza);
-						module:fire_event("muc-occupant-join", self.jid, from, to);
+						module:fire_event("muc-occupant-join", self, from, to, origin);
 					elseif not affiliation then -- registration required for entering members-only room
 						local reply = st.error_reply(stanza, "auth", "registration-required"):up();
 						reply.tags[1].attr.code = "407";
