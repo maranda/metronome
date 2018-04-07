@@ -42,7 +42,9 @@ modules_enabled = {
 		  	"ping"; -- Replies to XMPP pings with pongs
 			"register"; -- Allow users to register on this server using a client and change passwords
 			"stream_management"; -- Allows clients and servers to use Stream Management
+			"stanza_optimizations"; -- Allows clients to use Client State Indication and SIFT
 			"message_carbons"; -- Allows clients to enable carbon copies of messages
+			"mam"; -- Enable server-side message archives using Message Archive Management
 			"lastactivity"; -- Enables clients to know the last presence status of an user
 			"adhoc_cm"; -- Allow to set client certificates to login through SASL External via adhoc
 			"admin_adhoc"; -- administration adhoc commands
@@ -52,9 +54,12 @@ modules_enabled = {
 			--"admin_web"; -- administration web interface
 			--"bosh"; -- Enable support for BOSH clients, aka "XMPP over Bidirectional Streams over Synchronous HTTP"
 			--"compression"; -- Allow clients to enable Stream Compression
+			--"spim_block"; -- Require authorization via OOB form for messages from non-contacts and block unsollicited messages
+			--"gate_guard"; -- Enable config-based blacklisting and hit-based auto-banning features
 			--"incidents_handling"; -- Enable Incidents Handling support (can be administered via adhoc commands)
-			--"mam"; -- Enable server-side message archives using Message Archive Management
 			--"server_presence"; -- Enables Server Buddies extension support
+			--"service_directory"; -- Enables Service Directories extension support
+			--"public_service"; -- Enables Server vCard support for public services in directories and advertises in features
 			--"websocket"; -- Enable support for WebSocket clients, aka "XMPP over WebSockets"
 			
 };
