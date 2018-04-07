@@ -32,6 +32,7 @@ end);
 
 module:hook("muc-occupant-list-sent", function(room, from, nick, origin)
 	if room.vcard_hash == nil then -- load and cache
+		local node, host = jid_split(room.jid);
 		local stored_vcard = load(node, host, "room_icons");
 		if stored_vcard and stored_vcard.hash then
 			room.vcard_hash = stored_vcard.hash or false;
