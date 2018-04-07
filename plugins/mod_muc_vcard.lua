@@ -60,9 +60,9 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 	end
 
 	if stanza.attr.type == "get" then
-		local vCard = st.deserialize(load(node, host, "room_icons"));
-		if vCard then
-			session.send(st.reply(stanza):add_child(vCard.photo));
+		local stored_vcard = load(node, host, "room_icons");
+		if stored_vcard then
+			session.send(st.reply(stanza):add_child(st.deserialize(stored_vcard.photo)));
 		else
 			session.send(st.error_reply(stanza, "cancel", "item-not-found", "Room icon not found"));
 		end
