@@ -78,6 +78,9 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 			if #vCard.tags == 0 then
 				session.send(st.error_reply(stanza, "modify", "policy-violation", "The vCard needs to contain the PHOTO element"));
 				return true;
+			elseif not vCard.tags[1]:child_with_name("TYPE") or not vCard.tags[1]:child_with_name("BINVAL") then
+				session.send(st.error_reply(stanza, "modify", "bad-request", "The PHOTO element is invalid"));
+				return true;
 			end
 			
 			if vcard_max and tostring(vCard):len() > vcard_max then
@@ -85,7 +88,7 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 				return true;
 			end
 
-			local hash = sha1(vCard.tags[1]:get_text(), true);
+			local hash = sha1(vCard.tags[1]:child_with_name("BINVAL"):get_text(), true);
 			
 			if store(node, host, "room_icons", { photo = st.preserialize(vCard), hash = hash }) then
 				session.send(st.reply(stanza));
