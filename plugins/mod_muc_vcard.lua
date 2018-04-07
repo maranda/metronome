@@ -17,6 +17,7 @@ local ipairs, tostring, t_remove = ipairs, tostring, table.remove;
 local st = require "util.stanza";
 local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
 local load, store = require "util.datamanager".load, require "util.datamanager".store;
+local sha1 = require "util.hashes".sha1;
 
 local vcard_max = module:get_option_number("vcard_max_size");
 
@@ -27,6 +28,24 @@ end, -101);
 module:hook("muc-room-destroyed", function(event)
 	local node, host = jid_split(event.room.jid);
 	store(node, host, "room_icons", nil);
+end);
+
+module:hook("muc-occupant-list-sent", function(room, from, nick, origin)
+	if room.vcard_hash == nil then -- load and cache
+		local stored_vcard = load(node, host, "room_icons");
+		if stored_vcard and stored_vcard.hash then
+			room.vcard_hash = stored_vcard.hash or false;
+		else
+			room.vcard_hash = false;
+		end
+	end
+
+	if room.vcard_hash then
+		local pr = st.presence({ id = "room-avatar", from = room.jid, to = from })
+			:tag("x", { xmlns = "vcard-temp:x:update" }):tag("photo"):text(room.vcard_hash):up():up();
+		
+		origin.send(pr);
+	end
 end);
 
 module:hook("iq/bare/vcard-temp:vCard", function(event)
@@ -43,7 +62,7 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 	if stanza.attr.type == "get" then
 		local vCard = st.deserialize(load(node, host, "room_icons"));
 		if vCard then
-			session.send(st.reply(stanza):add_child(vCard));
+			session.send(st.reply(stanza):add_child(vCard.photo));
 		else
 			session.send(st.error_reply(stanza, "cancel", "item-not-found", "Room icon not found"));
 		end
@@ -55,14 +74,20 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 				-- strip everything else
 				if tag.name ~= "PHOTO" then t_remove(vCard.tags, n); end
 			end
+
+			local hash = sha1(vCard.tags[1], true);
 			
 			if vcard_max and tostring(vCard):len() > vcard_max then
 				session.send(st.error_reply(stanza, "modify", "policy-violation", "The vCard data exceeded the max allowed size!"));
 				return true;
 			end
 			
-			if store(node, host, "room_icons", st.preserialize(vCard)) then
+			if store(node, host, "room_icons", { photo = st.preserialize(vCard), hash = hash }) then
 				session.send(st.reply(stanza));
+				room.vcard_hash = hash;
+				local pr = st.presence({ id = "room-avatar", from = room.jid })
+					:tag("x", { xmlns = "vcard-temp:x:update" }):tag("photo"):text(hash):up():up();
+				room:broadcast_except_nick(pr);
 			else
 				session.send(st.error_reply(stanza, "wait", "internal-server-error", "Failed to store room icon"));
 			end
