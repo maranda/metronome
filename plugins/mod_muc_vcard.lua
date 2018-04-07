@@ -74,13 +74,18 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 				-- strip everything else
 				if tag.name ~= "PHOTO" then t_remove(vCard.tags, n); end
 			end
+
+			if #vCard.tags == 0 then
+				session.send(st.error_reply(stanza, "modify", "policy-violation", "The vCard needs to contain the PHOTO element"));
+				return true;
+			end
 			
 			if vcard_max and tostring(vCard):len() > vcard_max then
 				session.send(st.error_reply(stanza, "modify", "policy-violation", "The vCard data exceeded the max allowed size!"));
 				return true;
 			end
 
-			local hash = sha1(vCard.tags[1], true);
+			local hash = sha1(vCard.tags[1]:get_text(), true);
 			
 			if store(node, host, "room_icons", { photo = st.preserialize(vCard), hash = hash }) then
 				session.send(st.reply(stanza));
