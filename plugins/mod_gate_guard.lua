@@ -42,8 +42,6 @@ local function filter(origin, from_host, to_host)
 			return;
 		end
 	end
-
-	return
 end
 
 local function rr_hook(event)
