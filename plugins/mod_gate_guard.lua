@@ -34,7 +34,7 @@ local function filter(origin, from_host, to_host)
 
 	if guard_banned[from_host] then
 		local banned = guard_banned[from_host];
-		if banned.expire >= now() then
+		if now() >= banned.expire then
 			guard_banned[from_host] = nil;
 		else
 			module:log("error", "remote banned service %s (%s) is blocked from accessing host %s", from_host, banned.reason, to_host);
@@ -52,7 +52,7 @@ local function rr_hook(event)
 	local banned = guard_banned[to_host];
 
 	if guard_blacklist:contains(to_host) or banned then
-		if banned and banned.expire >= now() then
+		if banned and now() >= banned.expire then
 			guard_banned[to_host] = nil;
 			return;
 		end	
@@ -88,6 +88,7 @@ function module.add_host(module)
 			if guard_hits[host] then
 				guard_hits[host] = guard_hits[host] + 1;
 				if guard_hits[host] >= guard_max_hits then
+					guard_hits[host] = nil;
 					guard_banned[host] = { expire = now() + guard_expire, reason = reason };
 					for i, _host in pairs(hosts) do
 						for name, session in pairs(_host.s2sout) do
