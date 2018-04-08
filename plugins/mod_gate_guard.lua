@@ -81,7 +81,7 @@ function module.add_host(module)
 	end
 
 	module:hook("call-gate-guard", function(event)
-		local origin, from, reason = event.origin, event.from, event.reason;
+		local from, reason = event.from, event.reason;
 		local host = section(from, "host");
 
 		if not guard_banned[host] then
