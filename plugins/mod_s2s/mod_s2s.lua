@@ -345,7 +345,6 @@ function stream_callbacks.streamopened(session, attr)
 			end
 		end
 
-		if module:fire_event("s2s-filter", session, from, to) then return; end
 		if session.secure and not session.cert_chain_status then check_cert_status(session); end
 
 		if (not to or not from) and s2s_strict_mode then
