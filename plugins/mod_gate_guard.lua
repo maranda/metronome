@@ -16,7 +16,7 @@ local guard_blacklist = module:get_option_set("gate_blacklist", {});
 local guard_protect = module:get_option_set("gate_protect", {});
 local guard_whitelist = module:get_option_set("gate_whitelist", {});
 local guard_expire = module:get_option_number("gate_expiretime", 172800);
-local guard_max_hits = module:get_option_number("gate_max_hits", 85);
+local guard_max_hits = module:get_option_number("gate_max_hits", 50);
 local guard_banned = {};
 local guard_hits = {};
 
