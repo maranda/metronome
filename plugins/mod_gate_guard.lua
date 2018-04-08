@@ -66,6 +66,9 @@ local function rr_hook(event)
 	return;
 end
 
+module:hook("gate-guard-banned", function() return guard_banned; end);
+module:hook("gate-guard-hits", function() return guard_hits; end);
+
 function module.add_host(module)
 	module:set_component_inheritable();
 
