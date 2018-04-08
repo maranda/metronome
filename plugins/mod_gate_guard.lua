@@ -27,7 +27,7 @@ local function filter(origin, from_host, to_host)
 	if not from_host or not to_host then return; end
 
 	if guard_blacklist:contains(from_host) or guard_protect:contains(to_host) and not guard_whitelist:contains(from_host) then
-		module:log("error", "remote service %s is by configuration blocked from accessing host %s", from_host, to_host);
+		module:log("info", "remote service %s is by configuration blocked from accessing host %s", from_host, to_host);
 		origin.blocked = true;
 		return;
 	end
@@ -37,7 +37,7 @@ local function filter(origin, from_host, to_host)
 		if now() >= banned.expire then
 			guard_banned[from_host] = nil;
 		else
-			module:log("error", "remote banned service %s (%s) is blocked from accessing host %s", from_host, banned.reason, to_host);
+			module:log("info", "remote banned service %s (%s) is blocked from accessing host %s", from_host, banned.reason, to_host);
 			origin.blocked = true;
 			return;
 		end
@@ -88,6 +88,8 @@ function module.add_host(module)
 			if guard_hits[host] then
 				guard_hits[host] = guard_hits[host] + 1;
 				if guard_hits[host] >= guard_max_hits then
+					module:log("info", "%s exceeded number of offenses, closing streams and banning for %d seconds (%s)", 
+						host, guard_expire, reason);
 					guard_hits[host] = nil;
 					guard_banned[host] = { expire = now() + guard_expire, reason = reason };
 					for i, _host in pairs(hosts) do
