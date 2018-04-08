@@ -78,6 +78,9 @@ function module.add_host(module)
 		module:hook("stanza/jabber:server:dialback:result", function(event)
 			return filter(event.origin, event.stanza.attr.from, event.stanza.attr.to);
 		end, 500);
+		module:hook("stanza/urn:ietf:params:xml:ns:xmpp-sasl:auth", function(event)
+			return filter(event.origin, event.origin.from_host, event.origin.to_host);
+		end, 500);
 	end
 
 	module:hook("call-gate-guard", function(event)
@@ -141,7 +144,6 @@ end
 local function setup()
 	module:log("debug", "initializing Metronome's gate guard...");
 	module:hook("config-reloaded", reload);
-	module:hook("s2s-filter", filter);
 end
 
 module.save = function() return { guard_banned = guard_banned, guard_hits = guard_hits }; end
