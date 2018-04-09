@@ -29,7 +29,7 @@ local b = st.message({ from = module.host, type = "chat" },
 		"responsibility_, and not this service operator, to assert _its usage_ and perhaps deal with _any possible consequences_ deriving from the data you share."
 );
 local c = st.message({ from = module.host, type = "chat" },
-		"C) Should you accept this agreement, you fully legally diclaim this service operator for what is mentioned above. Just reply these messages with: I consent"
+		"C) Should you accept this agreement, you fully legally disclaim this service operator for what is mentioned above. Just reply these messages with: I consent"
 );
 local d = st.message({ from = module.host, type = "chat" },
 		"D) Should you not accept this agreement, server-to-server communication will be disabled and any current remote contact you have in your roster removed and unsubscribed. " ..
