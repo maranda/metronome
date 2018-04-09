@@ -91,7 +91,7 @@ local function gdpr_handle_consent(event)
 				"Acknowledged, disabling s2s and removing remote contact entries, " ..
 				"remember you can consent by sending \"I consent\" to the service host anytime."));
 			local roster = origin.roster;
-			if origin.roster then
+			if roster then
 				for jid, item in pairs(roster) do
 					if jid ~= false or jid ~= "pending" and hosts[jid_section(jid, "host")] then
 						if item.subscription == "both" or item.subscription == "from" or (roster.pending and roster.pending[jid]) then
