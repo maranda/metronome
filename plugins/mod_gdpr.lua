@@ -72,8 +72,6 @@ end
 local function gdpr_handle_consent(event)
 	local origin, stanza = event.origin, event.stanza;
 
-	if stanza.attr.to ~= module.host then return; end
-
 	local from = jid_bare(stanza.attr.from) or jid_join(origin.username, origin.host);
 	local body = stanza:child_with_name("body");
 
