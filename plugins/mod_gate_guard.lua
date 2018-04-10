@@ -88,6 +88,7 @@ function module.add_host(module)
 		if not guard_banned[host] then
 			if guard_hits[host] then
 				guard_hits[host] = guard_hits[host] + 1;
+				module:log("debug", "%s triggered gate guard, reason: %s - hits: %d", from, reason, guard_hits[host]);
 				if guard_hits[host] >= guard_max_hits then
 					module:log("info", "%s exceeded number of offenses, closing streams and banning for %d seconds (%s)", 
 						host, guard_expire, reason);
@@ -103,6 +104,7 @@ function module.add_host(module)
 					end
 				end
 			else
+				module:log("debug", "%s triggered gate guard, reason: %s - creating record for %s", from, reason, host);
 				guard_hits[host] = 1;
 			end
 		end
