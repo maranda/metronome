@@ -466,7 +466,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						module:fire_event("muc-occupant-join-presence", self, pr, origin);
 						pr.attr.to = from;
 						self:_route_stanza(pr);
-						self:send_history(from, stanza);
+						if not self.locked self:send_history(from, stanza); end
 						module:fire_event("muc-occupant-join", self, from, to, origin);
 					elseif not affiliation then -- registration required for entering members-only room
 						local reply = st.error_reply(stanza, "auth", "registration-required"):up();
@@ -629,7 +629,7 @@ function room_mt:process_form(origin, stanza)
 	if form.attr.type ~= "submit" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "Not a submitted form")); return; end
 
 	local fields = self:get_form_layout():data(form);
-	if fields.FORM_TYPE ~= "http://jabber.org/protocol/muc#roomconfig" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "Form is not of type room configuration")); return; end
+	if #form.tags ~= 0 and fields.FORM_TYPE ~= "http://jabber.org/protocol/muc#roomconfig" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "Form is not of type room configuration")); return; end
 
 	fields.FORM_TYPE = nil;
 	local changed = {};
@@ -644,7 +644,7 @@ function room_mt:process_form(origin, stanza)
 	end
 
 	local whois = fields["muc#roomconfig_whois"];
-	if not valid_whois[whois] then
+	if whois and not valid_whois[whois] then
 		return origin.send(st.error_reply(stanza, "cancel", "bad-request", "Invalid value for 'whois'"));
 	end
 	
@@ -663,9 +663,12 @@ function room_mt:process_form(origin, stanza)
 	local invalid = module:fire_event("muc-fields-process", self, fields, stanza, changed);
 	if invalid then return origin.send(invalid); end
 	
-	if self.locked then self.locked = nil; end
 	if self.save then self:save(true); end
 	origin.send(st.reply(stanza));
+	if self.locked then 
+		self.locked = nil;
+		self:send_history(stanza.attr.from);
+	end
 
 	if next(changed) then
 		local msg = st.message({type = "groupchat", from = self.jid})
