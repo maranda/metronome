@@ -466,7 +466,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						module:fire_event("muc-occupant-join-presence", self, pr, origin);
 						pr.attr.to = from;
 						self:_route_stanza(pr);
-						if not self.locked self:send_history(from, stanza); end
+						if not self.locked then self:send_history(from, stanza); end
 						module:fire_event("muc-occupant-join", self, from, to, origin);
 					elseif not affiliation then -- registration required for entering members-only room
 						local reply = st.error_reply(stanza, "auth", "registration-required"):up();
