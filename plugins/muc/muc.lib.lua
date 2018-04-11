@@ -647,13 +647,16 @@ function room_mt:process_form(origin, stanza)
 	if not valid_whois[whois] then
 		return origin.send(st.error_reply(stanza, "cancel", "bad-request", "Invalid value for 'whois'"));
 	end
-	
+
+	local hidden;
+	if #form.tags ~= 0 then hidden = not fields["muc#roomconfig_publicroom"]; end
+
 	self:set_option("name", name, changed);
 	self:set_option("description", fields["muc#roomconfig_roomdesc"], changed);
 	self:set_option("persistent", fields["muc#roomconfig_persistentroom"], changed);
 	self:set_option("moderated", fields["muc#roomconfig_moderatedroom"], changed);
 	self:set_option("members_only", fields["muc#roomconfig_membersonly"], changed);
-	self:set_option("hidden", not fields["muc#roomconfig_publicroom"], changed);
+	self:set_option("hidden", hidden, changed);
 	self:set_option("changesubject", fields["muc#roomconfig_changesubject"], changed);
 	self:set_option("history_length", history_length or default_history_length, changed);
 	local whois_changed = self:set_option("whois", fields["muc#roomconfig_whois"], changed);
