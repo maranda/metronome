@@ -202,7 +202,7 @@ function stanza_handler(event)
 		   (not restrict_room_creation or (restrict_room_creation == "admin" and is_admin(stanza.attr.from)) or
 		   (restrict_room_creation == "local" and from_host == module.host:gsub("^[^%.]+%.", ""))) then
 			room = muc_new_room(bare);
-			room.just_created = true;
+			room.just_created = stanza:get_child("x", "http://jabber.org/protocol/muc") and true or nil;
 			room.last_used = now();
 			room.route_stanza = room_route_stanza;
 			room.save = room_save;

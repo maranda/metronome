@@ -323,7 +323,7 @@ end
 
 function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 	local from, to = stanza.attr.from, stanza.attr.to;
-	local room = jid_bare(to);
+	local room = self.jid;
 	local current_nick = self._jid_nick[from];
 	local type = stanza.attr.type;
 	if (jid_section(from, "host") == muc_domain) then error("Presence from the MUC itself!!!"); end
@@ -381,7 +381,6 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						if self._occupants[to] or is_multisession then
 							log("debug", "%s couldn't change nick", current_nick);
 							local reply = st.error_reply(stanza, "cancel", "conflict"):up();
-							reply.tags[1].attr.code = "409";
 							origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 						else
 							local data = self._occupants[current_nick];
@@ -410,6 +409,12 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 				--	self:handle_to_occupant(origin, stanza); -- resend available
 				--end
 			else -- enter room
+				if self.locked then
+					log("debug", "%s was forbidden joining %s, the room needs to be configured first", from, room);
+					local reply = st.error_reply(stanza, "auth", "forbidden"):up();
+					origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
+					return;
+				end
 				local new_nick = to;
 				local is_merge;
 				if self._occupants[to] then
@@ -422,14 +427,12 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 				password = password and password:get_child("password", "http://jabber.org/protocol/muc");
 				password = password and password[1] ~= "" and password[1];
 				if self:get_option("password") and self:get_option("password") ~= password and not admin_toggles[jid_bare(from)] then
-					log("debug", "%s couldn't join due to invalid password: %s", from, to);
+					log("debug", "%s couldn't join %s due to invalid password", from, room);
 					local reply = st.error_reply(stanza, "auth", "not-authorized"):up();
-					reply.tags[1].attr.code = "401";
 					origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 				elseif not new_nick then
 					log("debug", "%s couldn't join due to nick conflict: %s", from, to);
 					local reply = st.error_reply(stanza, "cancel", "conflict"):up();
-					reply.tags[1].attr.code = "409";
 					origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 				else
 					log("debug", "%s joining as %s", from, to);
@@ -457,6 +460,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						pr:tag("status", {code = "110"}):up();
 						if self.just_created then
 							self.just_created = nil;
+							self.locked = true;
 							pr:tag("status", {code = "201"}):up();
 						end
 						module:fire_event("muc-occupant-join-presence", self, pr, origin);
@@ -466,11 +470,9 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						module:fire_event("muc-occupant-join", self, from, to, origin);
 					elseif not affiliation then -- registration required for entering members-only room
 						local reply = st.error_reply(stanza, "auth", "registration-required"):up();
-						reply.tags[1].attr.code = "407";
 						origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 					else -- banned
 						local reply = st.error_reply(stanza, "auth", "forbidden"):up();
-						reply.tags[1].attr.code = "403";
 						origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 					end
 				end
@@ -619,7 +621,11 @@ function room_mt:process_form(origin, stanza)
 	local form;
 	for _, tag in ipairs(query.tags) do if tag.name == "x" and tag.attr.xmlns == "jabber:x:data" then form = tag; break; end end
 	if not form then origin.send(st.error_reply(stanza, "cancel", "service-unavailable")); return; end
-	if form.attr.type == "cancel" then origin.send(st.reply(stanza)); return; end
+	if form.attr.type == "cancel" then
+		origin.send(st.reply(stanza));
+		if self.locked then self:destroy(nil, "Owner cancelled initial configuration"); end
+		return; 
+	end
 	if form.attr.type ~= "submit" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "Not a submitted form")); return; end
 
 	local fields = self:get_form_layout():data(form);
@@ -657,6 +663,7 @@ function room_mt:process_form(origin, stanza)
 	local invalid = module:fire_event("muc-fields-process", self, fields, stanza, changed);
 	if invalid then return origin.send(invalid); end
 	
+	if self.locked then self.locked = nil; end
 	if self.save then self:save(true); end
 	origin.send(st.reply(stanza));
 
