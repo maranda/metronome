@@ -410,8 +410,8 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 				--end
 			else -- enter room
 				if self.locked then
-					log("debug", "%s was forbidden joining %s, the room needs to be configured first", from, room);
-					local reply = st.error_reply(stanza, "auth", "forbidden"):up();
+					log("debug", "%s was prevented from joining %s, the room needs to be configured first", from, room);
+					local reply = st.error_reply(stanza, "cancel", "item-not-found"):up();
 					origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 					return;
 				end
