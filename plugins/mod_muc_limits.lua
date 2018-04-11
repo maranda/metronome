@@ -129,14 +129,19 @@ end, -101);
 
 module:hook("muc-fields-process", function(room, fields, stanza, changed)
 	room.throttle = nil;
-	local stanzas, seconds = fields[field_stanzas], fields[field_seconds];
-	if not tonumber(stanzas) or not tonumber(seconds) then
-		return st.error_reply(stanza, "cancel", "forbidden", "You need to submit valid number values for muc_limits fields.");
+	local enabled, stanzas, seconds = fields[field_enabled], fields[field_stanzas], fields[field_seconds];
+	room:set_option("limits_enabled", enabled, changed);
+	if enabled then
+		if not tonumber(stanzas) or not tonumber(seconds) then
+			return st.error_reply(stanza, "cancel", "forbidden", "You need to submit valid number values for muc_limits fields.");
+		end
+		stanzas, seconds = math.max(tonumber(stanzas), 1), math.max(tonumber(seconds), 0);
+		room:set_option("limits_stanzas", stanzas, changed);
+		room:set_option("limits_seconds", seconds, changed);
+	else
+		room:set_option("limits_stanzas", nil, changed);
+		room:set_option("limits_seconds", nil, changed);
 	end
-	stanzas, seconds = math.max(tonumber(stanzas), 1), math.max(tonumber(seconds), 0);
-	room:set_option("limits_enabled", fields[field_enabled], changed);
-	room:set_option("limits_stanzas", stanzas, changed);
-	room:set_option("limits_seconds", seconds, changed);
 end, -101);
 
 function module.unload()
