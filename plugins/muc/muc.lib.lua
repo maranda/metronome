@@ -643,8 +643,8 @@ function room_mt:process_form(origin, stanza)
 		return origin.send(st.error_reply(stanza, "cancel", "bad-request", "History length value cannot exceed "..tostring(max_history_length)));
 	end
 
-	local whois = fields["muc#roomconfig_whois"];
-	if whois and not valid_whois[whois] then
+	local whois = fields["muc#roomconfig_whois"] or "moderators";
+	if not valid_whois[whois] then
 		return origin.send(st.error_reply(stanza, "cancel", "bad-request", "Invalid value for 'whois'"));
 	end
 	
