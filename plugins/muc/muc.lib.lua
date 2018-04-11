@@ -455,6 +455,10 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						end
 						if self._data.whois == "anyone" then pr:tag("status", {code = "100"}):up(); end
 						pr:tag("status", {code = "110"}):up();
+						if self.just_created then
+							self.just_created = nil;
+							pr:tag("status", {code = "201"}):up();
+						end
 						module:fire_event("muc-occupant-join-presence", self, pr, origin);
 						pr.attr.to = from;
 						self:_route_stanza(pr);
