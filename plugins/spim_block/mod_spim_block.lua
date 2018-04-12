@@ -170,7 +170,7 @@ local function handle_incoming(event)
 		else
 			local full_session = full_sessions[to];
 			if full_session then
-				if full_session.joined_mucs and full_session.joined_mucs[from_bare] then return; end
+				if full_session.directed_bare[from_bare] then return; end
 				local token = generate_secret(20);
 				if not token then return; end
 				set_block(token, to_bare, from_bare);
@@ -187,8 +187,7 @@ local function handle_outgoing(event)
 	
 	if origin.type == "c2s" and stanza.attr.type == "chat" then
 		local to_bare = jid_bare(stanza.attr.to);
-		if not to_bare or (origin.joined_mucs and origin.joined_mucs[to_bare]) or
-			hosts[jid_section(to_bare, "host")] then
+		if not to_bare or origin.directed_bare[to_bare] or hosts[jid_section(to_bare, "host")] then
 			return;
 		end
 		

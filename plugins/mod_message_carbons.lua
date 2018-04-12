@@ -47,13 +47,9 @@ local function process_message(origin, stanza, s, t)
 	if bare_session and bare_session.has_carbons and stanza.attr.type == "chat" then
 		local private = s and stanza:get_child("private", xmlns) and true;
 		local r = s and jid_section(origin.full_jid, "resource") or jid_section(stanza.attr.to, "resource");
-		local is_muc_sent, muc_nick = origin.joined_mucs and origin.joined_mucs[to_bare];
+		local is_muc_sent, muc_nick = origin.joined_mucs[to_bare] or origin.directed_bare[to_bare];
 
-		if is_muc_sent then
-			for entry in pairs(origin.directed) do
-				if jid_bare(entry) == to_bare then muc_nick = entry; break; end
-			end
-		end
+		if is_muc_sent then muc_nick = origin.directed_bare[to_bare]; end
 			
 		if not private and not stanza:get_child("no-copy", "urn:xmpp:hints") then
 			for resource, session in pairs(bare_session.sessions) do 
