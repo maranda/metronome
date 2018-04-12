@@ -618,9 +618,10 @@ local valid_whois = {
 
 function room_mt:process_form(origin, stanza)
 	local query = stanza.tags[1];
-	local form;
+	local form, instant;
 	for _, tag in ipairs(query.tags) do if tag.name == "x" and tag.attr.xmlns == "jabber:x:data" then form = tag; break; end end
 	if not form then origin.send(st.error_reply(stanza, "cancel", "service-unavailable")); return; end
+	instant = self.locked and #form.tags == 0;
 	if form.attr.type == "cancel" then
 		origin.send(st.reply(stanza));
 		if self.locked then self:destroy(nil, "Owner cancelled initial configuration"); end
@@ -629,7 +630,7 @@ function room_mt:process_form(origin, stanza)
 	if form.attr.type ~= "submit" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "Not a submitted form")); return; end
 
 	local fields = self:get_form_layout():data(form);
-	if #form.tags ~= 0 and fields.FORM_TYPE ~= "http://jabber.org/protocol/muc#roomconfig" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "Form is not of type room configuration")); return; end
+	if not instant and fields.FORM_TYPE ~= "http://jabber.org/protocol/muc#roomconfig" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "Form is not of type room configuration")); return; end
 
 	fields.FORM_TYPE = nil;
 	local changed = {};
@@ -649,7 +650,7 @@ function room_mt:process_form(origin, stanza)
 	end
 
 	local hidden;
-	if #form.tags ~= 0 then hidden = not fields["muc#roomconfig_publicroom"]; end
+	if not instant then hidden = not fields["muc#roomconfig_publicroom"]; end
 
 	self:set_option("name", name, changed);
 	self:set_option("description", fields["muc#roomconfig_roomdesc"], changed);
@@ -673,7 +674,7 @@ function room_mt:process_form(origin, stanza)
 		self:send_history(stanza.attr.from);
 	end
 
-	if next(changed) then
+	if not instant and next(changed) then
 		local msg = st.message({type = "groupchat", from = self.jid})
 			:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"}):up()
 
