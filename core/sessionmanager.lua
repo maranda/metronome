@@ -158,6 +158,9 @@ function bind_resource(session, resource)
 	
 	session.resource = resource;
 	session.full_jid = session.username .. '@' .. session.host .. '/' .. resource;
+	session.directed = {};
+	session.directed_bare = {};
+	session.joined_mucs = {};
 	hosts[session.host].sessions[session.username].sessions[resource] = session;
 	full_sessions[session.full_jid] = session;
 	
