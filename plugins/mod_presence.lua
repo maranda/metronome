@@ -455,7 +455,6 @@ module:hook("resource-unbind", function(event)
 			pres.attr.to = jid;
 			fire_event("route/post", session, pres, true);
 		end
-		session.directed = nil;
 	end
 end);
 
