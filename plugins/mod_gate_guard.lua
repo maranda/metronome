@@ -136,7 +136,7 @@ local function reload()
 	guard_protect = module:get_option_set("gate_protect", {});
 	guard_whitelist = module:get_option_set("gate_whitelist", {});
 	guard_expire = module:get_option_number("gate_expiretime", 172800);
-	guard_max_hits = module:get_option_number("gate_max_hits", 85);
+	guard_max_hits = module:get_option_number("gate_max_hits", 50);
 
 	close_filtered();
 end
