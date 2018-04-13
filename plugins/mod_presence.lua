@@ -348,12 +348,12 @@ local function outbound_presence_handler(data)
 
 		local to_bare = jid_bare(to);
 		local roster = origin.roster;
-		if (roster and check_directed_presence(roster, to_bare)) or not roster then -- directed presence
-			if t and origin.type == "c2s" then -- removing from directed presence list on sending an error or unavailable
+		if origin.type == "c2s" and ((roster and check_directed_presence(roster, to_bare)) or not roster) then -- directed presence
+			if t then -- removing from directed presence list on sending an error or unavailable
 				origin.directed[to] = nil;
 				origin.directed_bare[to_bare] = nil;
 				if origin.joined_mucs[to_bare] then origin.joined_mucs[to_bare] = nil; end
-			elseif origin.type == "c2s" then
+			else
 				origin.directed[to] = to_bare;
 				origin.directed_bare[to_bare] = to;
 				if stanza:get_child("x", "http://jabber.org/protocol/muc") then	origin.joined_mucs[to_bare] = true; end
