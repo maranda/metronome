@@ -47,13 +47,16 @@ local function process_message(origin, stanza, s, t)
 	if bare_session and bare_session.has_carbons and stanza.attr.type == "chat" then
 		local private = s and stanza:get_child("private", xmlns) and true;
 		local r = s and jid_section(origin.full_jid, "resource") or jid_section(stanza.attr.to, "resource");
-		local is_muc_sent, muc_nick = origin.joined_mucs[to_bare] or origin.directed_bare[to_bare];
+		local to_muc, nick;
 
-		if is_muc_sent then muc_nick = origin.directed_bare[to_bare]; end
+		if s and t then -- outbound to full jid
+			to_muc = origin.joined_mucs[to_bare] or origin.directed_bare[to_bare];
+			if to_muc then nick = origin.directed_bare[to_bare]; end
+		end
 			
 		if not private and not stanza:get_child("no-copy", "urn:xmpp:hints") then
-			for resource, session in pairs(bare_session.sessions) do 
-				if session.carbons and resource ~= r and (not is_muc_sent or (is_muc_sent and session.directed[muc_nick])) then
+			for resource, session in pairs(bare_session.sessions) do
+				if session.carbons and resource ~= r and (not to_muc or (to_muc and session.directed[nick])) then
 					fwd(from_bare or to_bare, session, stanza, s);
 				end
 			end
@@ -119,7 +122,7 @@ module:hook("message/full", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local bare_from = jid_bare(stanza.attr.from);
 	local full_session = full_sessions[stanza.attr.to];
-	if full_session and (not full_session.joined_mucs or not full_session.joined_mucs[bare_from]) then
+	if full_session and not (full_session.joined_mucs[bare_from] or full_session.directed_bare[bare_from]) then
 		process_message(origin, stanza);
 	end
 end, 1);
