@@ -834,6 +834,9 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 			origin.send(st.error_reply(stanza, "cancel", "not-acceptable"));
 		elseif occupant.role == "visitor" then
 			origin.send(st.error_reply(stanza, "auth", "forbidden"));
+		elseif self.locked then
+			origin.send(st.error_reply(stanza, "cancel", "service-unavailable", 
+				"Please either configure the room or do request an instant room, the room is still locked"));
 		else
 			local from = stanza.attr.from;
 			stanza.attr.from = current_nick;
@@ -871,7 +874,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 	       stanza.tags[1].name == "x" and stanza.tags[1].attr.xmlns == "http://jabber.org/protocol/muc#user" then
 		local x = stanza.tags[1];
 		local payload = (#x.tags == 1 and x.tags[1]);
-		if payload and (payload.name == "invite" or payload.name == "decline") and payload.attr.to then
+		if not self.locked and payload and (payload.name == "invite" or payload.name == "decline") and payload.attr.to then
 			local _from, _to = stanza.attr.from, stanza.attr.to;
 			local _recipient = jid_prep(payload.attr.to);
 			if _recipient then
