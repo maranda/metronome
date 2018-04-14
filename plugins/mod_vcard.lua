@@ -150,7 +150,7 @@ local function handle_user_avatar(event)
 			end
 
 			module:log("debug", "Converting User Avatar to vCard-based Avatar...");
-			datamanager.store(session.username, session.host, "vcard", st.preserialize(vCard));
+			datamanager.store(user, host, "vcard", st.preserialize(vCard));
 		end
 	elseif node == data_xmlns then
 		local data = item:get_child_text("data", node);
