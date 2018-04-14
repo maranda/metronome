@@ -530,6 +530,11 @@ module:hook("pep-get-service", function(username, spawn, from)
 	return service;
 end);
 
+module:hook("pep-autosubscribe-recipients", function(service, node)
+	pep_autosubscribe_recs(service, node);
+	return true;
+end);
+
 module:hook("iq-result/bare/disco", function(event)
 	local session, stanza = event.origin, event.stanza;
 	if stanza.attr.type == "result" then
