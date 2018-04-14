@@ -19,6 +19,7 @@ local st = require "util.stanza";
 local jid_split = require "util.jid".split;
 local datamanager = require "util.datamanager";
 local sha1 = require "util.hashes".sha1;
+local b64_decode = require "util.encodings".base64.decode;
 local t_remove = table.remove;
 local metronome = metronome;
 
@@ -80,7 +81,7 @@ local function handle_vcard(event)
 						if data and type then
 							module:log("debug", "Converting vCard-based Avatar to User Avatar...");
 							data, type = data:get_text(), type:get_text();
-							local bytes, id = data:len(), sha1(data, true);
+							local bytes, id = data:len(), sha1(b64_decode(data), true);
 
 							local data_item = st.stanza("item", { id = id })
 								:tag("data", { xmlns = data_xmlns }):text(data):up():up();
@@ -128,6 +129,7 @@ local function handle_user_avatar(event)
 		if info then
 			local data = waiting_metadata[info.attr.id];
 			if not data then return; end
+			waiting_metadata[info.attr.id] = nil;
 
 			local type = info.attr.type;
 			local user, host = jid_split(from);
@@ -152,7 +154,7 @@ local function handle_user_avatar(event)
 		end
 	elseif node == data_xmlns then
 		local data = item:get_child_text("data", node);
-		if data then waiting_metadata[sha1(data, true)] = data; end
+		if data then waiting_metadata[sha1(b64_decode(data), true)] = data;	end
 	end
 end
 
