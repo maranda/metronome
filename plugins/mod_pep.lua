@@ -210,6 +210,7 @@ function handlers.set_create(service, origin, stanza, create, config)
 	end
 
 	if ok then -- auto-resubscribe interested recipients
+		module:fire_event("pep-node-created", { node = node, origin = origin, service = service });
 		pep_autosubscribe_recs(service, node);
 	end
 	return origin.send(reply);
@@ -252,6 +253,7 @@ function handlers.set_publish(service, origin, stanza, publish, config)
 	ok, ret = service:publish(node, from, id, item);
 		
 	if ok then
+		module:fire_event("pep-node-publish", { from = from, id = id, item = item, node = node, origin = origin, service = service });
 		reply = st.reply(stanza)
 			:tag("pubsub", { xmlns = xmlns_pubsub })
 				:tag("publish", { node = node })
@@ -292,6 +294,7 @@ function handlers.set_retract(service, origin, stanza, retract)
 	end
 	local ok, ret = service:retract(node, stanza.attr.from, id, notifier);
 	if ok then
+		module:fire_event("pep-node-retract", { from = stanza.attr.from, id = id, node = node, origin = origin, service = service });
 		reply = st.reply(stanza);
 	else
 		reply = pep_error_reply(stanza, ret);
@@ -352,7 +355,12 @@ function handlers_owner.set_delete(service, origin, stanza, delete)
 	local ok, ret, reply;
 	if node then
 		ok, ret = service:delete(node, stanza.attr.from);
-		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
+		if ok then
+			module:fire_event("pep-node-deleted", { node = node, origin = origin, service = service });
+			reply = st.reply(stanza);
+		else
+			reply = pep_error_reply(stanza, ret);
+		end
 	else
 		reply = pep_error_reply(stanza, "bad-request");
 	end
@@ -364,7 +372,12 @@ function handlers_owner.set_purge(service, origin, stanza, purge)
 	local ok, ret, reply;
 	if node then
 		ok, ret = service:purge(node, stanza.attr.from);
-		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
+		if ok then
+			module:fire_event("pep-node-purged", { node = node, origin = origin, service = service });
+			reply = st.reply(stanza);
+		else
+			reply = pep_error_reply(stanza, ret);
+		end
 	else
 		reply = pep_error_reply(stanza, "bad-request");
 	end
@@ -506,11 +519,13 @@ module:hook("pep-boot-service", function(event)
 	return true;
 end, 100);
 
-module:hook("pep-get-service", function(username, spawn)
+module:hook("pep-get-service", function(username, spawn, from)
 	local user = jid_join(username, module.host);
 	local service = services[user];
-	if spawn and not service and um_user_exists(username, module.host) then
+	if spawn and from and not service and um_user_exists(username, module.host) then
 		service = set_service(pubsub.new(pep_new(username)), user, true);
+		service.is_new = true;
+		module:fire_event("pep-boot-service", { service = service, from = from });
 	end
 	return service;
 end);
