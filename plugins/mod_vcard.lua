@@ -26,8 +26,6 @@ local data_xmlns, metadata_xmlns = "urn:xmpp:avatar:data", "urn:xmpp:avatar:meta
 
 local vcard_max = module:get_option_number("vcard_max_size");
 
-local pep_autosubscribe_recs = module:require("pep_aux").pep_autosubscribe_recs;
-
 module:add_feature("vcard-temp");
 module:add_feature("urn:xmpp:pep-vcard-conversion:0");
 
@@ -93,11 +91,11 @@ local function handle_vcard(event)
 
 							if not pep_service.nodes[data_xmlns] then
 								pep_service:create(data_xmlns, from, { max_items = 1 });
-								pep_autosubscribe_recs(pep_service, data_xmlns);
+								module:fire_event("pep-autosubscribe-recipients", pep_service, data_xmlns);
 							end
 							if not pep_service.nodes[metadata_xmlns] then
 								pep_service:create(metadata_xmlns, from, { max_items = 1 });
-								pep_autosubscribe_recs(pep_service, metadata_xmlns);
+								module:fire_event("pep-autosubscribe-recipients", pep_service, data_xmlns);
 							end
 
 							pep_service:publish(data_xmlns, from, id, data_item);
