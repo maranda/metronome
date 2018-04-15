@@ -138,7 +138,7 @@ local function handle_user_avatar(event)
 			local vCard = st.deserialize(datamanager.load(user, host, "vcard"));
 			if vCard then
 				for n, tag in ipairs(vCard.tags) do	
-					if tag.name == "PHOTO" then t_remove(tag, n); end
+					if tag.name == "PHOTO" then t_remove(vCard.tags, n); t_remove(vCard, n); end
 				end
 
 				vCard:tag("PHOTO")
