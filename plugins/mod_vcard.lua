@@ -111,7 +111,6 @@ local function handle_vcard(event)
 					end
 				end
 			else
-				-- TODO unable to write file, file may be locked, etc, what's the correct error?
 				session.send(st.error_reply(stanza, "wait", "internal-server-error", err));
 			end
 		else
