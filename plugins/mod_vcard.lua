@@ -162,7 +162,7 @@ local function handle_user_avatar(event)
 		end
 	elseif node == data_xmlns then
 		local data = item:get_child_text("data", node);
-		if data then waiting_metadata[sha1(b64_decode(data), true)] = data;	end
+		if data then waiting_metadata[sha1(b64_decode(data), true)] = data; end
 	end
 end
 
