@@ -10,7 +10,7 @@ if hosts[module.host].anonymous_host then
 	return;
 end
 
-local tostring = tostring;
+local ipairs, tostring = ipairs, tostring;
 
 local st = require "util.stanza";
 local jid_split = require "util.jid".split;
