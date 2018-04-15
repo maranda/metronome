@@ -11,6 +11,7 @@ if hosts[module.host].anonymous_host then
 end
 
 local ipairs, tostring = ipairs, tostring;
+local bare_sessions = bare_sessions;
 
 local st = require "util.stanza";
 local jid_split = require "util.jid".split;
@@ -69,43 +70,44 @@ local function handle_vcard(event)
 				session.send(st.reply(stanza));
 				metronome.events.fire_event("vcard-updated", { node = session.username, host = session.host, vcard = vCard });
 
+				local photo = vCard:child_with_name("PHOTO");
+				if not photo then return true; end
+
 				local from = stanza.attr.from or origin.full_jid;
 				local pep_service = module:fire_event("pep-get-service", session.username, true, from);
 				if pep_service then -- sync avatar
-					local photo = vCard:child_with_name("PHOTO");
-					if photo then
-						local data, type = photo:child_with_name("BINVAL"), photo:child_with_name("TYPE");
-						if data and type then
-							module:log("debug", "Converting vCard-based Avatar to User Avatar...");
-							data, type = data:get_text(), type:get_text();
-							local bytes, id = data:len(), sha1(b64_decode(data), true);
+					local data, type = photo:child_with_name("BINVAL"), photo:child_with_name("TYPE");
+					if data and type then
+						module:log("debug", "Converting vCard-based Avatar to User Avatar...");
+						data, type = data:get_text(), type:get_text();
+						local bytes, id = data:len(), sha1(b64_decode(data), true);
 
-							ok, err = datamanager.store(session.username, session.host, "vcard_hash", { hash = id });
-							if not ok then
-								module:log("warn", "Failed to save %s's avatar hash: %s", session.username.."@"..session.host, err);
-							end
-
-							local data_item = st.stanza("item", { id = id })
-								:tag("data", { xmlns = data_xmlns }):text(data):up():up();
-							
-							local metadata_item = st.stanza("item", { id = id })
-								:tag("metadata", { xmlns = metadata_xmlns })
-									:tag("info", { bytes = bytes, id = id, type = type }):up():up():up();
-
-							if not pep_service.nodes[data_xmlns] then
-								pep_service:create(data_xmlns, from, { max_items = 1 });
-								module:fire_event("pep-autosubscribe-recipients", pep_service, data_xmlns);
-							end
-							if not pep_service.nodes[metadata_xmlns] then
-								pep_service:create(metadata_xmlns, from, { max_items = 1 });
-								module:fire_event("pep-autosubscribe-recipients", pep_service, data_xmlns);
-							end
-
-							pep_service:publish(data_xmlns, from, id, data_item);
-							pep_service:publish(metadata_xmlns, from, id, metadata_item);
-						else
-							module:log("warn", "Failed to perform avatar conversion, PHOTO element is not valid");
+						bare_sessions[session.username.."@"..session.host].avatar_hash = id;
+						ok, err = datamanager.store(session.username, session.host, "vcard_hash", { hash = id });
+						if not ok then
+							module:log("warn", "Failed to save %s's avatar hash: %s", session.username.."@"..session.host, err);
 						end
+
+						local data_item = st.stanza("item", { id = id })
+							:tag("data", { xmlns = data_xmlns }):text(data):up():up();
+
+						local metadata_item = st.stanza("item", { id = id })
+							:tag("metadata", { xmlns = metadata_xmlns })
+								:tag("info", { bytes = bytes, id = id, type = type }):up():up():up();
+
+						if not pep_service.nodes[data_xmlns] then
+							pep_service:create(data_xmlns, from, { max_items = 1 });
+							module:fire_event("pep-autosubscribe-recipients", pep_service, data_xmlns);
+						end
+						if not pep_service.nodes[metadata_xmlns] then
+							pep_service:create(metadata_xmlns, from, { max_items = 1 });
+							module:fire_event("pep-autosubscribe-recipients", pep_service, data_xmlns);
+						end
+
+						pep_service:publish(data_xmlns, from, id, data_item);
+						pep_service:publish(metadata_xmlns, from, id, metadata_item);
+					else
+						module:log("warn", "Failed to perform avatar conversion, PHOTO element is not valid");
 					end
 				end
 			else
@@ -154,6 +156,7 @@ local function handle_user_avatar(event)
 			module:log("debug", "Converting User Avatar to vCard-based Avatar...");
 			local ok, err = datamanager.store(user, host, "vcard", st.preserialize(vCard));
 			if not ok then module:log("warn", "Failed to save %s's vCard: %s", user.."@"..host, err); end
+			bare_sessions[event.origin.username.."@"..event.origin.host].avatar_hash = info.attr.id;
 			ok, err = datamanager.store(user, host, "vcard_hash", { hash = info.attr.id });
 			if not ok then module:log("warn", "Failed to save %s's avatar hash: %s", user.."@"..host, err); end
 		end
@@ -166,23 +169,33 @@ end
 local function handle_presence_inject(event)
 	local session, stanza = event.origin, event.stanza;
 	if session.type == "c2s" then
+		local bare_from = session.username.."@"..session.host;
+		local has_avatar = bare_sessions[bare_from].avatar_hash;
+		if has_avatar == nil then
+			module:log("debug", "Caching Avatar hash of %s...", bare_from);
+			local vc = datamanager.load(session.username, session.host, "vcard_hash");
+			if vc then
+				bare_sessions[bare_from].avatar_hash = vc.hash;
+				has_avatar = vc.hash;
+			else
+				bare_sessions[bare_from].avatar_hash = false;
+				return;
+			end
+		elseif has_avatar == false then
+			return;
+		end
+
 		local vcard_update = stanza:get_child("x", "vcard-temp:x:update");
 		local photo = vcard_update and vcard_update:child_with_name("photo");
 		if photo and photo:get_text() ~= "" then
-			local has_vcard = datamanager.load(session.username, session.host, "vcard_hash");
-			if has_vcard then
-				photo[1] = nil;
-				photo:text(has_vcard.hash);
-			end
+			photo[1] = nil;
+			photo:text(has_avatar);
 		elseif not photo or not vcard_update then
-			local has_vcard = datamanager.load(session.username, session.host, "vcard_hash");
-			if has_vcard then
-				if not vcard_update then
-					stanza:tag("x", { xmlns = "vcard-temp:x:update" })
-						:tag("photo"):text(has_vcard.hash):up():up();
-				elseif not photo then
-					vcard_update:tag("photo"):text(has_vcard.hash):up();
-				end
+			if not vcard_update then
+				stanza:tag("x", { xmlns = "vcard-temp:x:update" })
+					:tag("photo"):text(has_avatar):up():up();
+			elseif not photo then
+				vcard_update:tag("photo"):text(has_avatar):up();
 			end
 		end
 	end
