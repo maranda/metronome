@@ -39,7 +39,9 @@ do -- validate disco_items
 	end
 end
 
-module:add_identity("server", "im", module:get_option_string("name", "Metronome"));
+if hosts[my_host].type ~= "component" then
+	module:add_identity("server", "im", module:get_option_string("name", "Metronome"));
+end
 module:add_feature("http://jabber.org/protocol/disco#info");
 module:add_feature("http://jabber.org/protocol/disco#items");
 
