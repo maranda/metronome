@@ -3,9 +3,6 @@
 -- This file is part of the Metronome XMPP server and is released under the
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
---
--- As per the sublicensing clause, this file is also MIT/X11 Licensed.
--- ** Copyright (c) 2008-2012, Matthew Wild, Waqas Hussain
 
 if hosts[module.host].anonymous_host then
 	module:log("error", "vCards won't be available on anonymous hosts as storage is explicitly disabled");
@@ -52,10 +49,10 @@ local function handle_vcard(event)
 			local node, host = jid_split(to);
 			vCard = st.deserialize(datamanager.load(node, host, "vcard")); -- load vCard for user or server
 		else
-			vCard = st.deserialize(datamanager.load(session.username, session.host, "vcard"));-- load user's own vCard
+			vCard = st.deserialize(datamanager.load(session.username, session.host, "vcard")); -- load user's own vCard
 		end
 		if vCard then
-			session.send(st.reply(stanza):add_child(vCard)); -- send vCard!
+			session.send(st.reply(stanza):add_child(vCard));
 		else
 			session.send(st.error_reply(stanza, "cancel", "item-not-found"));
 		end
@@ -82,6 +79,11 @@ local function handle_vcard(event)
 							module:log("debug", "Converting vCard-based Avatar to User Avatar...");
 							data, type = data:get_text(), type:get_text();
 							local bytes, id = data:len(), sha1(b64_decode(data), true);
+
+							ok, err = datamanager.store(session.username, session.host, "vcard_hash", { hash = id });
+							if not ok then
+								module:log("warn", "Failed to save %s's avatar hash: %s", session.username.."@"..session.host, err);
+							end
 
 							local data_item = st.stanza("item", { id = id })
 								:tag("data", { xmlns = data_xmlns }):text(data):up():up();
@@ -150,7 +152,10 @@ local function handle_user_avatar(event)
 			end
 
 			module:log("debug", "Converting User Avatar to vCard-based Avatar...");
-			datamanager.store(user, host, "vcard", st.preserialize(vCard));
+			locak ok, err = datamanager.store(user, host, "vcard", st.preserialize(vCard));
+			if not ok then module:log("warn", "Failed to save %s's vCard: %s", user.."@"..host, err); end
+			ok, err = datamanager.store(user, host, "vcard_hash", { hash = info.attr.id });
+			if not ok then module:log("warn", "Failed to save %s's avatar hash: %s", user.."@"..host, err); end
 		end
 	elseif node == data_xmlns then
 		local data = item:get_child_text("data", node);
@@ -158,7 +163,32 @@ local function handle_user_avatar(event)
 	end
 end
 
+local function handle_presence_inject(event)
+	local session, stanza = event.origin, event.stanza;
+	if session.type == "c2s" then
+		local vcard_update = stanza:get_child("x", "vcard-temp:x:update");
+		local photo = vcard_update and vcard_update:child_with_name("photo");
+		if photo and photo:get_text() ~= "" then
+			local has_vcard = datamanager.load(session.username, session.host, "vcard_hash");
+			if has_vcard then photo:text(has_vcard.hash); end
+		elseif not photo or not vcard_update then
+			local has_vcard = datamanager.load(session.username, session.host, "vcard_hash");
+			if has_vcard then
+				if not vcard_update then
+					stanza:tag("x", { xmlns = "vcard-temp:x:update" })
+						:tag("photo"):text(has_vcard.hash):up():up();
+				elseif not photo then
+					vcard_update:tag("photo"):text(has_vcard.hash):up();
+				end
+			end
+		end
+	end
+end
+
 module:hook_global("vcard-synchronize", handle_synchronize);
 module:hook("iq/bare/vcard-temp:vCard", handle_vcard);
 module:hook("iq/host/vcard-temp:vCard", handle_vcard);
+module:hook("pre-presence/bare", handle_presence_inject, 50);
+module:hook("pre-presence/full", handle_presence_inject, 50);
+module:hook("pre-presence/host", handle_presence_inject, 50);
 module:hook("pep-node-publish", handle_user_avatar);
