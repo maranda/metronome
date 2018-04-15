@@ -172,7 +172,7 @@ local function handle_presence_inject(event)
 			local has_vcard = datamanager.load(session.username, session.host, "vcard_hash");
 			if has_vcard then
 				photo[1] = nil;
-				photo:text(has_vcard.hash):up();
+				photo:text(has_vcard.hash);
 			end
 		elseif not photo or not vcard_update then
 			local has_vcard = datamanager.load(session.username, session.host, "vcard_hash");
