@@ -325,6 +325,8 @@ local function serve_uploaded_files(event, path, head)
 		headers["Content-Length"] = attrs.size;
 		headers["Last-Modified"] = os.date("!%a, %d %b %Y %X GMT", attrs.modification);
 		cached.headers = headers;
+	else
+		response.headers = headers;
 	end
 
 	if attrs.size <= cacheable_size then
