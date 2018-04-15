@@ -73,7 +73,7 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 
 			for n, tag in ipairs(vCard.tags) do
 				-- strip everything else
-				if tag.name ~= "PHOTO" then t_remove(vCard.tags, n); end
+				if tag.name ~= "PHOTO" then t_remove(vCard.tags, n); t_remove(vCard, n); end
 			end
 
 			if #vCard.tags == 0 then
