@@ -10,7 +10,7 @@ if hosts[module.host].anonymous_host then
 	return;
 end
 
-local ipairs, tostring = ipairs, tostring;
+local ipairs, pairs, tostring = ipairs, pairs, tostring;
 local bare_sessions = bare_sessions;
 
 local st = require "util.stanza";
@@ -207,3 +207,9 @@ module:hook("pre-presence/bare", handle_presence_inject, 50);
 module:hook("pre-presence/full", handle_presence_inject, 50);
 module:hook("pre-presence/host", handle_presence_inject, 50);
 module:hook("pep-node-publish", handle_user_avatar);
+
+module.unload = function(reload)
+	if not reload then
+		for jid, session in pairs(bare_sessions) do	session.avatar_hash = nil; end
+	end
+end
