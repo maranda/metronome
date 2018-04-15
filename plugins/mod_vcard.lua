@@ -152,7 +152,7 @@ local function handle_user_avatar(event)
 			end
 
 			module:log("debug", "Converting User Avatar to vCard-based Avatar...");
-			locak ok, err = datamanager.store(user, host, "vcard", st.preserialize(vCard));
+			local ok, err = datamanager.store(user, host, "vcard", st.preserialize(vCard));
 			if not ok then module:log("warn", "Failed to save %s's vCard: %s", user.."@"..host, err); end
 			ok, err = datamanager.store(user, host, "vcard_hash", { hash = info.attr.id });
 			if not ok then module:log("warn", "Failed to save %s's avatar hash: %s", user.."@"..host, err); end
