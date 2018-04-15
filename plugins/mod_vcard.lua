@@ -210,6 +210,6 @@ module:hook("pep-node-publish", handle_user_avatar);
 
 module.unload = function(reload)
 	if not reload then
-		for jid, session in pairs(bare_sessions) do	session.avatar_hash = nil; end
+		for jid, session in pairs(bare_sessions) do session.avatar_hash = nil; end
 	end
 end
