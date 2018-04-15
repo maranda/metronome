@@ -168,7 +168,7 @@ end
 
 local function handle_presence_inject(event)
 	local session, stanza = event.origin, event.stanza;
-	if session.type == "c2s" then
+	if session.type == "c2s" and not stanza.attr.type then
 		local bare_from = session.username.."@"..session.host;
 		local has_avatar = bare_sessions[bare_from].avatar_hash;
 		if has_avatar == nil then
