@@ -372,4 +372,17 @@ module:provides("http", {
 	};
 });
 
+module:hook_global("user-deleted", function(event)
+	local user, host = event.username, event.host;
+	local uploads = datamanager.list_load(user, host, module.name);
+	if not uploads then return; end
+	module:log("info", "Removing uploaded files as %s@%s account is being deleted", user, host);
+	for _, item in ipairs(uploads) do
+		local filename = join_path(storage_path, item.dir, item.filename);
+		local ok, err = os.remove(filename);
+		if not ok then module:log("debug", "Failed to remove %s@%s %s file: %s", user, host, filename, err); end
+	end
+	datamanager.list_store(user, host, module.name, nil);
+end, 20);
+
 module:log("info", "URL: <%s>; Storage path: %s", module:http_url(nil, default_base_path), storage_path);
