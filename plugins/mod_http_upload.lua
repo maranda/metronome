@@ -31,9 +31,8 @@ local default_mime_types = {
 	jpeg = "image/jpeg",
 	jpg = "image/jpeg",
 	png = "image/png",
-	svg = "image/svg+xml",
-	txt = "text/plain",
 	tiff = "image/tiff",
+	txt = "text/plain",
 	xml = "application/xml"
 };
 
