@@ -9,6 +9,10 @@
 
 -- This module has been back ported from Prosody Modules
 
+if module:get_host_type() ~= "component" then
+	error("HTTP Upload should be loaded as a component", 0);
+end
+
 -- imports
 local st = require "util.stanza";
 local lfs = require "lfs";
@@ -54,26 +58,33 @@ end
 
 -- depends
 module:depends("http");
-module:depends("disco");
 
 -- namespaces
 local namespace = "urn:xmpp:http:upload:0";
 local legacy_namespace = "urn:xmpp:http:upload";
 
 -- identity and feature advertising
-module:add_identity("store", "file", module:get_option_string("name", "HTTP File Upload"));
-module:add_feature(namespace);
-module:add_feature(legacy_namespace);
+local disco_name = module:get_option_string("name", "HTTP File Upload");
+module:hook("iq/host/http://jabber.org/protocol/disco#info:query", function(event)
+	local origin, stanza = event.origin, event.stanza;
+	local reply = st.iq({ type = "result", id = stanza.attr.id, from = module.host, to = stanza.attr.from })
+		:query("http://jabber.org/protocol/disco#info")
+			:tag("identity", { category = "store", type = "file", name = disco_name }):up()
+			:tag("feature", { var = namespace }):up()
+			:tag("feature", { var = legacy_namespace }):up();
 
-module:add_extension(dataform {
-	{ name = "FORM_TYPE", type = "hidden", value = namespace },
-	{ name = "max-file-size", type = "text-single" },
-}:form({ ["max-file-size"] = tostring(file_size_limit) }, "result"));
-
-module:add_extension(dataform {
-	{ name = "FORM_TYPE", type = "hidden", value = legacy_namespace },
-	{ name = "max-file-size", type = "text-single" },
-}:form({ ["max-file-size"] = tostring(file_size_limit) }, "result"));
+	reply.tags[1]:add_child(dataform {
+		{ name = "FORM_TYPE", type = "hidden", value = namespace },
+		{ name = "max-file-size", type = "text-single" }
+	}:form({ ["max-file-size"] = tostring(file_size_limit) })):up();
+	reply.tags[1]:add_child(dataform {
+		{ name = "FORM_TYPE", type = "hidden", value = legacy_namespace },
+		{ name = "max-file-size", type = "text-single" }
+	}:form({ ["max-file-size"] = tostring(file_size_limit) })):up();
+			
+	origin.send(reply);
+	return true;
+end);
 
 -- state
 local pending_slots = module:shared("upload_slots");
