@@ -8,7 +8,7 @@
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Markus Kutter, Matthew Wild, Waqas Hussain
 
 if module:get_host_type() ~= "component" then
-	error("MUC should be loaded as a component.", 0);
+	error("MUC should be loaded as a component", 0);
 end
 
 local muc_host = module:get_host();
