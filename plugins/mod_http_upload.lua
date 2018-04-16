@@ -34,10 +34,14 @@ local default_mime_types = {
 	gif = "image/gif",
 	jpeg = "image/jpeg",
 	jpg = "image/jpeg",
+	mp3 = "audio/mpeg",
+	ogg = "application/ogg",
 	png = "image/png",
 	tiff = "image/tiff",
 	txt = "text/plain",
-	xml = "application/xml"
+	xml = "text/xml",
+	wav = "audio/wav",
+	webm = "video/webm"
 };
 
 local cache = setmetatable({}, { __mode = "v" });
