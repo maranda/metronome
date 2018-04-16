@@ -192,47 +192,37 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 end
 
 -- hooks
-module:hook("iq/host/"..namespace..":request", function (event)
+local function iq_handler(event)
 	local stanza, origin = event.stanza, event.origin;
 	local request = stanza.tags[1];
-	local filename = request.attr.filename;
-	local filesize = tonumber(request.attr.size);
+	local legacy = request.attr.xmlns == legacy_namespace;
+	local filename = legacy and request:get_child_text("filename") or request.attr.filename;
+	local filesize = legacy and tonumber(request:get_child_text("size")) or tonumber(request.attr.size);
 
-	local slot_url, err = handle_request(origin, stanza, namespace, filename, filesize);
+	local slot_url, err = handle_request(origin, stanza, legacy and legacy_namespace or namespace, filename, filesize);
 	if not slot_url then
 		origin.send(err);
 		return true;
 	end
 
-	local reply = st.reply(stanza)
-		:tag("slot", { xmlns = namespace })
-			:tag("get", { url = slot_url }):up()
-			:tag("put", { url = slot_url }):up()
-		:up();
-	origin.send(reply);
-	return true;
-end);
-
-module:hook("iq/host/"..legacy_namespace..":request", function (event)
-	local stanza, origin = event.stanza, event.origin;
-	local request = stanza.tags[1];
-	local filename = request:get_child_text("filename");
-	local filesize = tonumber(request:get_child_text("size"));
-
-	local slot_url, err = handle_request(origin, stanza, legacy_namespace, filename, filesize);
-	if not slot_url then
-		origin.send(err);
-		return true;
+	local reply;
+	if legacy then
+		reply = st.reply(stanza)
+			:tag("slot", { xmlns = namespace })
+				:tag("get", { url = slot_url }):up()
+				:tag("put", { url = slot_url }):up():up();
+	else
+		reply = st.reply(stanza)
+			:tag("slot", { xmlns = legacy_namespace })
+				:tag("get"):text(slot_url):up()
+				:tag("put"):text(slot_url):up():up();
 	end
-
-	local reply = st.reply(stanza)
-		:tag("slot", { xmlns = legacy_namespace })
-			:tag("get"):text(slot_url):up()
-			:tag("put"):text(slot_url):up()
-		:up();
 	origin.send(reply);
 	return true;
-end);
+end
+
+module:hook("iq/host/"..namespace..":request", iq_handler);
+module:hook("iq/host/"..legacy_namespace..":request", iq_handler);
 
 -- http service
 local function upload_data(event, path)
@@ -368,7 +358,7 @@ end
 
 local function serve_hello(event)
 	event.response.headers.content_type = "text/html;charset=utf-8"
-	return "<!DOCTYPE html>\n<h1>Hello from mod_"..module.name.." on "..module.host.."!</h1>\n";
+	return "<!DOCTYPE html>\n<p>Hello from mod_"..module.name.." on "..module.host.."!</p>\n";
 end
 
 module:provides("http", {
