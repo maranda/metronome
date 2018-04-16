@@ -208,14 +208,14 @@ local function iq_handler(event)
 	local reply;
 	if legacy then
 		reply = st.reply(stanza)
-			:tag("slot", { xmlns = namespace })
-				:tag("get", { url = slot_url }):up()
-				:tag("put", { url = slot_url }):up():up();
-	else
-		reply = st.reply(stanza)
 			:tag("slot", { xmlns = legacy_namespace })
 				:tag("get"):text(slot_url):up()
 				:tag("put"):text(slot_url):up():up();
+	else
+		reply = st.reply(stanza)
+			:tag("slot", { xmlns = namespace })
+				:tag("get", { url = slot_url }):up()
+				:tag("put", { url = slot_url }):up():up();
 	end
 	origin.send(reply);
 	return true;
