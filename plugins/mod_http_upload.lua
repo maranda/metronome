@@ -20,10 +20,10 @@ local url = require "socket.url";
 local dataform = require "util.dataforms".new;
 local datamanager = require "util.datamanager";
 local array = require "util.array";
-local t_concat = table.concat;
-local t_insert = table.insert;
-local s_upper = string.upper;
 local uuid = require "util.uuid".generate;
+local split = require "util.jid".split;
+local ipairs, pairs, t_concat, t_insert, s_upper =
+	ipairs, pairs, table.concat, table.insert, string.upper;
 
 local function join_path(...)
 	return table.concat({ ... }, package.config:sub(1,1));
@@ -98,10 +98,26 @@ local pending_slots = module:shared("upload_slots");
 local storage_path = module:get_option_string("http_file_path", join_path(metronome.paths.data, "http_file_upload"));
 lfs.mkdir(storage_path);
 
+local function expire_host(host)
+	local has_downloads = datamanager.load(nil, host, module.name);
+	if has_downloads then
+		for user in pairs(has_downloads) do
+			if expire(user, host) == nil then has_downloads[user] = nil; end
+		end
+
+		if not next(has_downloads) then has_downloads = nil; end
+
+		local ok, err = datamanager.store(nil, host, module.name, has_downloads);
+		if err then module:log("warn", "Couldn't save %s's list of users using HTTP Uploads: %s", host, err); end
+		return true;
+	end
+	return false;
+end
+
 local function expire(username, host)
 	if not max_age then return true; end
 	local uploads, err = datamanager.list_load(username, host, module.name);
-	if not uploads then return true; end
+	if not uploads then return; end
 	uploads = array(uploads);
 	local expiry = os.time() - max_age;
 	local upload_window = os.time() - 900;
@@ -148,7 +164,7 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 		module:log("debug", "Filename %q not allowed", filename or "");
 		return nil, st.error_reply(stanza, "modify", "bad-request", "Invalid filename or unallowed type");
 	end
-	expire(username, host);
+	if not expire_host(host) then expire(username, host); end
 	if not filesize then
 		module:log("debug", "Missing file size");
 		return nil, st.error_reply(stanza, "modify", "bad-request", "Missing or invalid file size");
@@ -237,6 +253,7 @@ local function upload_data(event, path)
 		module:log("warn", "Attempt to upload to unknown slot %q", path);
 		return; -- 404
 	end
+	local user, host = split(uploader);
 	local random_dir, filename = path:match("^([^/]+)/([^/]+)$");
 	if not random_dir then
 		module:log("warn", "Invalid file path %q", path);
@@ -269,6 +286,11 @@ local function upload_data(event, path)
 		os.remove(full_filename);
 		return 500;
 	end
+
+	local has_downloads = datamanager.load(nil, host, module.name) or {};
+	has_downloads[user] = true;
+	local ok, err = datamanager.store(nil, host, module.name, has_downloads);
+	if err then module:log("warn", "Couldn't save %s's list of users using HTTP Uploads: %s", host, err); end
 	module:log("info", "File uploaded by %s to slot %s", uploader, random_dir);
 	return 201;
 end
@@ -381,6 +403,12 @@ module:hook_global("user-deleted", function(event)
 		if not ok then module:log("debug", "Failed to remove %s@%s %s file: %s", user, host, filename, err); end
 	end
 	datamanager.list_store(user, host, module.name, nil);
+	local has_downloads = datamanager.load(nil, host, module.name);
+	if has_downloads then
+		has_downloads[user] = nil;
+		if not next(has_downloads) then has_downloads = nil; end
+		datamanager.store(nil, host, module.name, has_downloads);
+	end
 end, 20);
 
 module:log("info", "URL: <%s>; Storage path: %s", module:http_url(nil, default_base_path), storage_path);
