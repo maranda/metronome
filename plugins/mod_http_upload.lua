@@ -53,6 +53,7 @@ local mime_types = module:get_option_table("http_file_allowed_mime_types", defau
 local file_size_limit = module:get_option_number("http_file_size_limit", 3*1024*1024); -- 3 MiB
 local quota = module:get_option_number("http_file_quota", 40*1024*1024);
 local max_age = module:get_option_number("http_file_expire_after", 172800);
+local expire_any = module:get_option_number("http_file_perfom_expire_any", 1800);
 local cacheable_size = module:get_option_number("http_file_cacheable_size", 100*1024);
 local default_base_path = module:get_option_string("http_file_base_path", "share");
 
@@ -101,8 +102,10 @@ lfs.mkdir(storage_path);
 local function expire_host(host)
 	local has_downloads = datamanager.load(nil, host, module.name);
 	if has_downloads then
-		for user in pairs(has_downloads) do
-			if expire(user, host) == nil then has_downloads[user] = nil; end
+		for user, last_download in pairs(has_downloads) do
+			if os.time() - last_download >= expire_any and expire(user, host) == nil then
+				has_downloads[user] = nil;
+			end
 		end
 
 		if not next(has_downloads) then has_downloads = nil; end
@@ -288,7 +291,7 @@ local function upload_data(event, path)
 	end
 
 	local has_downloads = datamanager.load(nil, host, module.name) or {};
-	has_downloads[user] = true;
+	has_downloads[user] = os.time();
 	local ok, err = datamanager.store(nil, host, module.name, has_downloads);
 	if err then module:log("warn", "Couldn't save %s's list of users using HTTP Uploads: %s", host, err); end
 	module:log("info", "File uploaded by %s to slot %s", uploader, random_dir);
