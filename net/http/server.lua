@@ -150,13 +150,17 @@ function listener.onincoming(conn, data)
 	sessions[conn]:feed(data);
 end
 
-local headerfix = setmetatable({}, {
-	__index = function(t, k)
-		local v = "\r\n"..k:gsub("_", "-"):gsub("%f[%w].", s_upper)..": ";
-		t[k] = v;
-		return v;
-	end
-});
+local function generate_header_fix()
+	return setmetatable({}, {
+		__index = function(t, k)
+			local v = "\r\n"..k:gsub("_", "-"):gsub("%f[%w].", s_upper)..": ";
+			t[k] = v;
+			return v;
+		end
+	});
+end
+
+local headerfix = generate_header_fix();
 
 function handle_request(conn, request, finish_cb)
 	local headers = {};
@@ -298,4 +302,5 @@ end
 _M.listener = listener;
 _M.codes = codes;
 _M._events = events;
+_M.generate_header_fix = generate_header_fix;
 return _M;
