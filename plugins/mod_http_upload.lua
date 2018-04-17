@@ -30,10 +30,12 @@ local function join_path(...)
 end
 
 local default_mime_types = {
+	aac = "audio/aac",
 	bmp = "image/bmp",
 	gif = "image/gif",
 	jpeg = "image/jpeg",
 	jpg = "image/jpeg",
+	m4a = "audio/mp4",
 	mp3 = "audio/mpeg",
 	ogg = "application/ogg",
 	png = "image/png",
@@ -48,16 +50,16 @@ local cache = setmetatable({}, { __mode = "v" });
 
 -- config
 local mime_types = module:get_option_table("http_file_allowed_mime_types", default_mime_types);
-local file_size_limit = module:get_option_number("http_file_size_limit", 2*1024*1024); -- 2 MB
-local quota = module:get_option_number("http_file_quota", 20*1024*1024);
+local file_size_limit = module:get_option_number("http_file_size_limit", 3*1024*1024); -- 3 MiB
+local quota = module:get_option_number("http_file_quota", 40*1024*1024);
 local max_age = module:get_option_number("http_file_expire_after", 172800);
 local cacheable_size = module:get_option_number("http_file_cacheable_size", 100*1024);
 local default_base_path = module:get_option_string("http_file_base_path", "share");
 
 --- sanity
-if file_size_limit > 5*1024*1024 then
+if file_size_limit > 10*1024*1024 then
 	module:log("warn", "http_file_size_limit exceeds HTTP parser limit on body size, capping file size to %d B", parser_body_limit);
-	file_size_limit = 5*1024*1024;
+	file_size_limit = 10*1024*1024;
 end
 
 -- depends
@@ -271,16 +273,8 @@ local function upload_data(event, path)
 	return 201;
 end
 
--- FIXME Duplicated from net.http.server
-
 local codes = require "net.http.codes";
-local headerfix = setmetatable({}, {
-	__index = function(t, k)
-		local v = "\r\n"..k:gsub("_", "-"):gsub("%f[%w].", s_upper)..": ";
-		t[k] = v;
-		return v;
-	end
-});
+local headerfix = require "net.http.server".generate_header_fix();
 
 local function send_response_sans_body(response, body)
 	if response.finished then return; end
