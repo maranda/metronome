@@ -35,7 +35,7 @@ local http_host = module:get_option_string("spim_http_host");
 local reset_count = module:get_option_number("spim_reset_count", 10000);
 base_url = module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/"), http_host);
 
-local files_base = module.path:gsub("[^%w][/\\]+[^/\\]*$","") .. "/template/";
+local files_base = module.path:gsub("[/\\][^/\\]*$","") .. "/template/";
 
 local valid_files = {
 	["css/style.css"] = files_base.."css/style.css",

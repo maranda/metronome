@@ -40,7 +40,7 @@ service = {};
 
 local require_secure = module:get_option_boolean("admin_web_require_secure", false);
 
-local http_base = module.path:gsub("[^%w][/\\]+[^/\\]*$","") .. "/www_files/";
+local http_base = module.path:gsub("[/\\][^/\\]*$","") .. "/www_files/";
 
 local xmlns_adminsub = "http://metronome.im/protocol/adminsub";
 local xmlns_c2s_session = "http://metronome.im/streams/c2s";
