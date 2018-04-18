@@ -22,8 +22,8 @@ local datamanager = require "util.datamanager";
 local array = require "util.array";
 local uuid = require "util.uuid".generate;
 local split = require "util.jid".split;
-local ipairs, pairs, t_concat, t_insert, s_upper =
-	ipairs, pairs, table.concat, table.insert, string.upper;
+local ipairs, pairs, os_remove, os_time, t_concat, t_insert, s_upper =
+	ipairs, pairs, os.remove, os.time, table.concat, table.insert, string.upper;
 
 local function join_path(...)
 	return table.concat({ ... }, package.config:sub(1,1));
@@ -99,24 +99,26 @@ local pending_slots = module:shared("upload_slots");
 local storage_path = module:get_option_string("http_file_path", join_path(metronome.paths.data, "http_file_upload"));
 lfs.mkdir(storage_path);
 
-local function expire(username, host)
+local function expire(username, host, has_downloads)
 	if not max_age then return true; end
 	local uploads, err = datamanager.list_load(username, host, module.name);
 	if not uploads then return; end
+	local now = os_time();
+	if has_downloads then has_downloads[username] = now; end
 	uploads = array(uploads);
-	local expiry = os.time() - max_age;
-	local upload_window = os.time() - 900;
+	local expiry = now - max_age;
+	local upload_window = now - 900;
 	uploads:filter(function (item)
 		local filename = item.filename;
 		if item.dir then
 			filename = join_path(storage_path, item.dir, item.filename);
 		end
 		if item.time < expiry then
-			local deleted, whynot = os.remove(filename);
+			local deleted, whynot = os_remove(filename);
 			if not deleted then
 				module:log("warn", "Could not delete expired upload %s: %s", filename, whynot or "delete failed");
 			end
-			os.remove(filename:match("^(.*)[/\\]"));
+			os_remove(filename:match("^(.*)[/\\]"));
 			return false;
 		elseif item.time < upload_window and not lfs.attributes(filename) then
 			return false; -- File was not uploaded or has been deleted since
@@ -129,8 +131,8 @@ end
 local function expire_host(host)
 	local has_downloads = datamanager.load(nil, host, module.name);
 	if has_downloads then
-		for user, last_download in pairs(has_downloads) do
-			if os.time() - last_download >= expire_any and expire(user, host) == nil then
+		for user, last_use in pairs(has_downloads) do
+			if os_time() - last_use >= expire_any and expire(user, host, has_downloads) == nil then
 				has_downloads[user] = nil;
 			end
 		end
@@ -190,7 +192,7 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 	end
 
 	local ok = datamanager.list_append(username, host, module.name, {
-		filename = filename, dir = random_dir, size = filesize, time = os.time() });
+		filename = filename, dir = random_dir, size = filesize, time = os_time() });
 
 	if not ok then
 		return nil, st.error_reply(stanza, "wait", "internal-server-failure");
@@ -280,18 +282,18 @@ local function upload_data(event, path)
 	local ok, err = fh:write(event.request.body);
 	if not ok then
 		module:log("error", "Could not write to file %s for upload: %s", full_filename, err);
-		os.remove(full_filename);
+		os_remove(full_filename);
 		return 500;
 	end
 	ok, err = fh:close();
 	if not ok then
 		module:log("error", "Could not write to file %s for upload: %s", full_filename, err);
-		os.remove(full_filename);
+		os_remove(full_filename);
 		return 500;
 	end
 
 	local has_downloads = datamanager.load(nil, host, module.name) or {};
-	has_downloads[user] = os.time();
+	has_downloads[user] = os_time();
 	local ok, err = datamanager.store(nil, host, module.name, has_downloads);
 	if err then module:log("warn", "Couldn't save %s's list of users using HTTP Uploads: %s", host, err); end
 	module:log("info", "File uploaded by %s to slot %s", uploader, random_dir);
@@ -402,7 +404,7 @@ module:hook_global("user-deleted", function(event)
 	module:log("info", "Removing uploaded files as %s@%s account is being deleted", user, host);
 	for _, item in ipairs(uploads) do
 		local filename = join_path(storage_path, item.dir, item.filename);
-		local ok, err = os.remove(filename);
+		local ok, err = os_remove(filename);
 		if not ok then module:log("debug", "Failed to remove %s@%s %s file: %s", user, host, filename, err); end
 	end
 	datamanager.list_store(user, host, module.name, nil);
