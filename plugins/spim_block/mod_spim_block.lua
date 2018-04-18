@@ -4,12 +4,6 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-local base_url = module:get_option_string("spim_url");
-if not base_url then
-	module:log("error", "Please specify the SPIM Base URL into the configuration, before loading this module.");
-	return;
-end
-
 local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
 local pairs, next, open, os_time = pairs, next, io.open, os.time;
@@ -36,9 +30,9 @@ local full_sessions = full_sessions;
 local hosts = metronome.hosts;
 
 local secure = module:get_option_boolean("spim_secure", true);
-local base_path = module:get_option_string("spim_base", "/spim/");
+local base_path = module:get_option_string("spim_base", "spim");
 local reset_count = module:get_option_number("spim_reset_count", 10000);
-base_url = base_url..base_path;
+base_url = module:http_url(nil, base_path);
 
 local files_base = module.path:gsub("/[^/]+$","").."/template/";
 
