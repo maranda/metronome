@@ -31,8 +31,9 @@ local hosts = metronome.hosts;
 
 local secure = module:get_option_boolean("spim_secure", true);
 local base_path = module:get_option_string("spim_base", "spim");
+local http_host = module:get_option_string("spim_http_host");
 local reset_count = module:get_option_number("spim_reset_count", 10000);
-base_url = module:http_url(nil, base_path);
+base_url = module:http_url(nil, base_path, http_host);
 
 local files_base = module.path:gsub("/[^/]+$","").."/template/";
 
@@ -267,6 +268,8 @@ module:provides("http", {
 		["POST /*"] = handle_spim
 	}
 });
+
+module:log("info", "SPIM blocking module accepting challenges at: <%s>", base_url);
 
 -- Reloadability
 
