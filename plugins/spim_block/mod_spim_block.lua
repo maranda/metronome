@@ -67,6 +67,18 @@ local function open_file(file)
 	return data;
 end
 
+local function http_error_reply(event, code, message, headers)
+	local response = event.response;
+
+	if headers then
+		for header, data in pairs(headers) do response.headers[header] = data; end
+	end
+
+	response.status_code = code
+	response.headers["Content-Type"] = "text/html";
+	response:send(http_event("http-error", { code = code, message = message }));
+end
+
 local function r_template(event, type, jid)
 	local data = open_file(files_base..type..".html");
 	if data then
@@ -91,18 +103,6 @@ local function http_file_get(event, type, path)
 			return http_error_reply(event, 404, "Not found.");
 		end
 	end
-end
-
-local function http_error_reply(event, code, message, headers)
-	local response = event.response;
-
-	if headers then
-		for header, data in pairs(headers) do response.headers[header] = data; end
-	end
-
-	response.status_code = code
-	response.headers["Content-Type"] = "text/html";
-	response:send(http_event("http-error", { code = code, message = message }));
 end
 
 local function send_message(origin, to, from, token)

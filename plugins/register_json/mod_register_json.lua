@@ -178,6 +178,23 @@ local function open_file(file)
 	return data
 end
 
+local function http_error_reply(event, code, message, headers)
+	local response = event.response
+
+	if headers then
+		for header, data in pairs(headers) do response.headers[header] = data end
+	end
+
+	response.status_code = code
+	if plain_errors then
+		response.headers["Content-Type"] = nil
+		response:send(message)
+	else
+		response.headers["Content-Type"] = "text/html"
+		response:send(http_event("http-error", { code = code, message = message }))
+	end
+end
+
 local function r_template(event, type)
 	local data = open_file(files_base..type.."_t.html")
 	if data then
@@ -198,23 +215,6 @@ local function http_file_get(event, type, path)
 			event.response.headers["Content-Type"] = mime_types[path:match("%.([^%.]*)$")]
 			return data
 		else return http_error_reply(event, 404, "Not found.") end
-	end
-end
-
-local function http_error_reply(event, code, message, headers)
-	local response = event.response
-
-	if headers then
-		for header, data in pairs(headers) do response.headers[header] = data end
-	end
-
-	response.status_code = code
-	if plain_errors then
-		response.headers["Content-Type"] = nil
-		response:send(message)
-	else
-		response.headers["Content-Type"] = "text/html"
-		response:send(http_event("http-error", { code = code, message = message }))
 	end
 end
 
