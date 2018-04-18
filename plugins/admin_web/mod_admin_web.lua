@@ -51,6 +51,7 @@ local mime_map = {
 	xml = "text/xml; charset=utf-8";
 	js = "text/javascript";
 	css = "text/css";
+	png = "image/png";
 };
 
 local idmap = {};

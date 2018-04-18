@@ -42,6 +42,10 @@ local valid_files = {
 	["images/tile.png"] = files_base.."images/tile.png",
 	["images/header.png"] = files_base.."images/header.png"
 };
+local mime_types = {
+	css = "text/css",
+	png = "image/png"
+};
 
 -- Utility functions
 
@@ -80,8 +84,12 @@ local function http_file_get(event, type, path)
 
 	if valid_files[path] then
 		local data = open_file(valid_files[path]);
-		if data then return data;
-		else return http_error_reply(event, 404, "Not found."); end
+		if data then
+			event.response.headers["Content-Type"] = mime_types[path:match("%.([^%.]*)$")];
+			return data;
+		else
+			return http_error_reply(event, 404, "Not found.");
+		end
 	end
 end
 
