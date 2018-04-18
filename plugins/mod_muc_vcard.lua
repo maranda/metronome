@@ -18,6 +18,7 @@ local st = require "util.stanza";
 local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
 local load, store = require "util.datamanager".load, require "util.datamanager".store;
 local sha1 = require "util.hashes".sha1;
+local debase64 = require "util.encodings".base64.decode;
 
 local vcard_max = module:get_option_number("vcard_max_size");
 
@@ -89,7 +90,7 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 				return true;
 			end
 
-			local hash = sha1(vCard.tags[1]:child_with_name("BINVAL"):get_text(), true);
+			local hash = sha1(debase64(vCard.tags[1]:child_with_name("BINVAL"):get_text()), true);
 			
 			if store(node, host, "room_icons", { photo = st.preserialize(vCard), hash = hash }) then
 				session.send(st.reply(stanza));
