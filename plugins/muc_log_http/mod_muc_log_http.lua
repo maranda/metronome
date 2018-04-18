@@ -444,6 +444,7 @@ function handle_request(event)
 		return response:send();
 	end
 	
+	response.headers["Content-Type"] = "text/html";
 	local node, day, more = request_path:match("^/"..url_base.."/+([^/]*)/*([^/]*)/*(.*)$");
 	if more ~= "" then
 		response.status_code = 404;
