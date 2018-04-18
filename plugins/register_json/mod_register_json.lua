@@ -38,7 +38,7 @@ local nameapi_ak = module:get_option_string("reg_servlet_nameapi_apikey")
 local plain_errors = module:get_option_boolean("reg_servlet_plain_http_errors", false)
 if use_nameapi and not nameapi_ak then use_nameapi = false end
 
-local files_base = module.path:gsub("/[^/]+$","") .. "/template/"
+local files_base = module.path:gsub("[^%w][/\\]+[^/\\]*$","") .. "/template/"
 
 local valid_files = {
 	["css/style.css"] = files_base.."css/style.css",

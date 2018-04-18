@@ -39,7 +39,7 @@ local str_format = string.format;
 local io_open = io.open;
 local open_pipe = io.popen;
 
-local module_path = (module.path and module.path:gsub("[/\\][^/\\]*$", "") or (metronome.paths.plugins or "./plugins") .. "/muc_log_http");
+local module_path = (module.path and module.path:gsub("[^%w][/\\]+[^/\\]*$", "") or (metronome.paths.plugins or "./plugins") .. "/muc_log_http");
 local themes_parent = module_path .. "/themes";
 local metronome_paths = metronome.paths;
 
