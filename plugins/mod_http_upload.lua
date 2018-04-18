@@ -99,24 +99,6 @@ local pending_slots = module:shared("upload_slots");
 local storage_path = module:get_option_string("http_file_path", join_path(metronome.paths.data, "http_file_upload"));
 lfs.mkdir(storage_path);
 
-local function expire_host(host)
-	local has_downloads = datamanager.load(nil, host, module.name);
-	if has_downloads then
-		for user, last_download in pairs(has_downloads) do
-			if os.time() - last_download >= expire_any and expire(user, host) == nil then
-				has_downloads[user] = nil;
-			end
-		end
-
-		if not next(has_downloads) then has_downloads = nil; end
-
-		local ok, err = datamanager.store(nil, host, module.name, has_downloads);
-		if err then module:log("warn", "Couldn't save %s's list of users using HTTP Uploads: %s", host, err); end
-		return true;
-	end
-	return false;
-end
-
 local function expire(username, host)
 	if not max_age then return true; end
 	local uploads, err = datamanager.list_load(username, host, module.name);
@@ -142,6 +124,24 @@ local function expire(username, host)
 		return true;
 	end);
 	return datamanager.list_store(username, host, module.name, uploads);
+end
+
+local function expire_host(host)
+	local has_downloads = datamanager.load(nil, host, module.name);
+	if has_downloads then
+		for user, last_download in pairs(has_downloads) do
+			if os.time() - last_download >= expire_any and expire(user, host) == nil then
+				has_downloads[user] = nil;
+			end
+		end
+
+		if not next(has_downloads) then has_downloads = nil; end
+
+		local ok, err = datamanager.store(nil, host, module.name, has_downloads);
+		if err then module:log("warn", "Couldn't save %s's list of users using HTTP Uploads: %s", host, err); end
+		return true;
+	end
+	return false;
 end
 
 local function check_quota(username, host, does_it_fit)
