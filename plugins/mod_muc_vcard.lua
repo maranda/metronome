@@ -44,8 +44,7 @@ module:hook("muc-occupant-list-sent", function(room, from, nick, origin)
 
 	if room.vcard_hash then
 		local pr = st.presence({ id = "room-avatar", from = room.jid, to = from })
-			:tag("x", { xmlns = "vcard-temp:x:update" }):tag("photo"):text(room.vcard_hash):up():up()
-			:tag("x", { xmlns = "http://jabber.org/protocol/muc#room-avatar" }):up();
+			:tag("x", { xmlns = "vcard-temp:x:update" }):tag("photo"):text(room.vcard_hash):up():up();
 		
 		origin.send(pr);
 	end
@@ -97,8 +96,7 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 				session.send(st.reply(stanza));
 				room.vcard_hash = hash;
 				local pr = st.presence({ id = "room-avatar", from = room.jid })
-					:tag("x", { xmlns = "vcard-temp:x:update" }):tag("photo"):text(hash):up():up()
-					:tag("x", { xmlns = "http://jabber.org/protocol/muc#room-avatar" }):up();
+					:tag("x", { xmlns = "vcard-temp:x:update" }):tag("photo"):text(hash):up():up();
 				room:broadcast_except_nick(pr);
 			else
 				session.send(st.error_reply(stanza, "wait", "internal-server-error", "Failed to store room icon"));
