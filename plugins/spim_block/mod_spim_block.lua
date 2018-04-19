@@ -74,8 +74,7 @@ local function http_error_reply(event, code, message, headers)
 		for header, data in pairs(headers) do response.headers[header] = data; end
 	end
 
-	response.status_code = code
-	response.headers["Content-Type"] = "text/html";
+	response.status_code = code;
 	response:send(http_event("http-error", { code = code, message = message }));
 end
 

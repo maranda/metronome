@@ -190,7 +190,6 @@ local function http_error_reply(event, code, message, headers)
 		response.headers["Content-Type"] = nil
 		response:send(message)
 	else
-		response.headers["Content-Type"] = "text/html"
 		response:send(http_event("http-error", { code = code, message = message }))
 	end
 end
