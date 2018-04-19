@@ -382,8 +382,11 @@ local function serve_head(event, path)
 end
 
 local function serve_hello(event)
-	event.response.headers.content_type = "text/html;charset=utf-8"
-	return "<!DOCTYPE html>\n<p>Hello from mod_"..module.name.." on "..module.host.."!</p>\n";
+	event.response.headers.["Content-Type"] = "text/html"
+	return [[<!DOCTYPE html><html><head><title>Metronome's HTTP Upload</title></head><body>
+		<p>Welcome! This components implements <a href="https://xmpp.org/extensions/xep-0363.html">XEP-0363</a> and 
+		allows you to upload files out-of-band using the HTTP Protocol</p>
+		</body></html>]];
 end
 
 module:provides("http", {
