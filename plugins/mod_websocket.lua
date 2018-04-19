@@ -57,6 +57,7 @@ end
 local function close(session, reason) -- Basically duplicated from mod_c2s, should be fixed.
 	local log = session.log or log;
 	if session.conn then
+		local ws = session.ws;
 		if session.notopen then session:open_stream(); end
 		if reason then
 			local stanza = st.stanza("stream:error");
@@ -125,6 +126,7 @@ function handle_request(event, path)
 	local ws = websocket.new(conn, raw_log);
 
 	session.secure = consider_secure or session.secure;
+	session.ws = ws;
 	session.ws_session = true;
 	
 	session.open_stream = open;
