@@ -338,7 +338,7 @@ function def_env.module:load(name, hosts)
 	for host in _hosts do
 		if (not mm.is_loaded(host, name)) then
 			if metronome.hosts[host].type == "component" then
-				mod, err = mm.load(host, name, set.new {});
+				mod, err = not hosts and mm.load(host, name, set.new {}) or mm.load(host, name, set.new { name });
 			else
 				mod, err = mm.load(host, name);
 			end
