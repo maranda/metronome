@@ -31,8 +31,7 @@ local html = [[
 <!DOCTYPE html>
 <html>
 <head>
-	<link rel="icon" type="image/png" href="/favicon.png" />
-	<link rel="shortcut icon" type="image/png" href="/favicon.png" />
+	<link rel="icon" type="image/png" href="/assets/favicon.png" />
 	<meta charset="utf-8">
 	<style>
 		body{
