@@ -463,7 +463,7 @@ local function session_close(session, reason, remote_reason)
 			local stanza = st.stanza("stream:error");
 			if type(reason) == "string" then -- assume stream error
 				log("debug", "Disconnecting %s[%s], <stream:error> is: %s", session.host or "(unknown host)", session.type, reason);
-				session.send(stanza:tag(reason, {xmlns = "urn:ietf:params:xml:ns:xmpp-streams" }));
+				session.sends2s(stanza:tag(reason, {xmlns = "urn:ietf:params:xml:ns:xmpp-streams" }));
 			elseif type(reason) == "table" then
 				if reason.condition then
 					stanza:tag(reason.condition, stream_xmlns_attr):up();
