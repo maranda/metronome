@@ -187,10 +187,10 @@ local function http_error_reply(event, code, message, headers)
 
 	response.status_code = code
 	if plain_errors then
-		response.headers["Content-Type"] = nil
+		response.headers["Content-Type"] = "text/plain";
 		response:send(message)
 	else
-		response:send(http_event("http-error", { code = code, message = message }))
+		response:send(http_event("http-error", { code = code, message = message, response = response }))
 	end
 end
 

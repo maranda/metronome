@@ -82,6 +82,7 @@ local function get_page(code, extra)
 end
 
 module:hook_object_event(server, "http-error", function (event)
-	event.response.headers["Content-Type"] = "text/html";
+	local response = event.response;
+	response.headers["Content-Type"] = "text/html";
 	return get_page(event.code, (show_private and event.private_message) or event.message);
 end);
