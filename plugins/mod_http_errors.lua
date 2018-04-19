@@ -51,9 +51,9 @@ local html = [[
         </style>
 </head>
 <body>
-        <h1>$title</h1>
-        <p>$message</p>
-        <p>$extra</p>
+	<h1>$title</h1>
+	<p>$message</p>
+	<p>$extra</p>
 </body>
 </html>]];
 html = html:gsub("%s%s+", "");
