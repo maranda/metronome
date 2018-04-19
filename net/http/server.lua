@@ -203,7 +203,7 @@ function handle_request(conn, request, finish_cb)
 	
 	if err then
 		response.status_code = err_code;
-		response:send(events.fire_event("http-error", { code = err_code, message = err, reponse = event.response; }));
+		response:send(events.fire_event("http-error", { code = err_code, message = err, reponse = response }));
 		return;
 	end
 
@@ -217,7 +217,7 @@ function handle_request(conn, request, finish_cb)
 			if result_type == "number" then
 				response.status_code = result;
 				if result >= 400 then
-					body = events.fire_event("http-error", { code = result });
+					body = events.fire_event("http-error", { code = result, response = response });
 				end
 			elseif result_type == "string" then
 				body = result;
@@ -233,7 +233,7 @@ function handle_request(conn, request, finish_cb)
 
 	-- if handler not called, return 404
 	response.status_code = 404;
-	response:send(events.fire_event("http-error", { code = 404 }));
+	response:send(events.fire_event("http-error", { code = 404, response = response }));
 end
 function _M.send_response(response, body)
 	if response.finished then return; end
