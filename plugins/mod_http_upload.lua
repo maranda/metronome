@@ -385,7 +385,7 @@ local function serve_hello(event)
 	event.response.headers["Content-Type"] = "text/html";
 	return [[<!DOCTYPE html><html><head><title>Metronome's HTTP Upload</title></head><body>
 		<p>Welcome! This components implements <a href="https://xmpp.org/extensions/xep-0363.html">XEP-0363</a> and 
-		allows you to upload files out-of-band using the HTTP Protocol</p>
+		allows you to upload files out-of-band using the HTTP Protocol.</p>
 		</body></html>]];
 end
 
