@@ -8,7 +8,7 @@ module:set_global()
 
 local server = require "net.http.server"
 
-local favicon_file_path = metronome.paths.plugins or "./").."favicon/favicon.png"
+local favicon_file_path = (metronome.paths.plugins or "./").."favicon/favicon.png"
 local favicon_url = "/favicon.png"
 local favicon_mime = "image/png"
 local load = require "util.auxiliary".load_file
