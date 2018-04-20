@@ -487,6 +487,7 @@ function handle_request(event)
 			if not y then
 				response.status_code = 404;
 				response:send(handle_error(response.status_code, "No entries, or invalid year"));
+				return true;
 			end
 			response.status_code = 301;
 			response.headers = { ["Location"] = request_path:match("^/"..url_base.."/+[^/]*").."/"..y.."-"..m.."-"..d.."/" };
