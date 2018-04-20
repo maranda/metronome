@@ -472,7 +472,7 @@ local function handle_GET(event)
 		return handle_POST(event);
 	end	
 
-	response.headers = { ["Content-Type"] = "text/html" };
+	response.headers = { ["Content-Type"] = "text/html; charset=utf-8" };
 	response.body =
 		[[<!DOCTYPE html><html><head><title>Metronome's BOSH Interface</title></head><body>
 		<p>It works! Now point your BOSH client to this URL to connect to the XMPP Server.</p>

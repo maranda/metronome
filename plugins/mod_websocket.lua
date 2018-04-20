@@ -106,7 +106,7 @@ function handle_request(event, path)
 	local conn = response.conn;
 
 	if not request.headers.sec_websocket_key then
-		response.headers["Content-Type"] = "text/html";
+		response.headers["Content-Type"] = "text/html; charset=utf-8";
 		return [[<!DOCTYPE html><html><head><title>Metronome's WebSocket Interface</title></head><body>
 			<p>It works! Now point your WebSocket client to this URL to connect to the XMPP server.</p>
 			</body></html>]];
