@@ -347,7 +347,6 @@ local function serve_uploaded_files(event, path, head)
 	if not headers then
 		headers = response.headers;
 		headers["Content-Type"] = mime_types[full_path:match("%.([^%.]*)$")];
-		headers["Content-Length"] = attrs.size;
 		headers["Last-Modified"] = os.date("!%a, %d %b %Y %X GMT", attrs.modification);
 		cached.headers = headers;
 	else
@@ -355,7 +354,7 @@ local function serve_uploaded_files(event, path, head)
 		response.headers = headers;
 	end
 
-	if attrs.size <= cacheable_size then
+	if not cached.data and attrs.size <= cacheable_size then
 		local f = io.open(full_path, "rb");
 		if f then data = f:read("*a"); f:close(); end
 
@@ -374,6 +373,7 @@ local function serve_uploaded_files(event, path, head)
 
 		response:send(data);
 	end
+	return true;
 end
 
 local function serve_head(event, path)

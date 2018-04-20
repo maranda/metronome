@@ -76,6 +76,8 @@ local function http_error_reply(event, code, message, headers)
 
 	response.status_code = code;
 	response:send(http_event("http-error", { code = code, message = message, response = response }));
+
+	return true;
 end
 
 local function r_template(event, type, jid)

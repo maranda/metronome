@@ -20,8 +20,10 @@ local function get_icon(event, type)
 	else
 		if type == "ico" then type = "x-icon" end
 		response.headers["Content-Type"] = "image/" .. type
-		return response:send(icon)
+		response:send(icon)
 	end
+
+	return true
 end
 
 local function serve(event)
