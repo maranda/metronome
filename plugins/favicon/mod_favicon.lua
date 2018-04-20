@@ -19,6 +19,7 @@ local function get_icon(event, type)
 		return 404
 	else
 		if type == "ico" then type = "x-icon" end
+		response.headers["Cache-Control"] = "public, max-age=86400"
 		response.headers["Content-Type"] = "image/" .. type
 		response:send(icon)
 	end
