@@ -177,6 +177,9 @@ end
 
 --- Port listener
 function listener.onconnect(conn)
+	local filtered = module:fire_event("c2s-new-incoming-connection", { ip = conn:ip(), conn = conn });
+	if filtered then return; end
+
 	local session = sm_new_session(conn);
 	sessions[conn] = session;
 	

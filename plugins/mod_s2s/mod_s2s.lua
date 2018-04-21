@@ -558,6 +558,9 @@ end
 function listener.onconnect(conn)
 	local session = sessions[conn];
 	if not session then -- New incoming connection
+		local filtered = module:fire_event("s2s-new-incoming-connection", { ip = conn:ip(), conn = conn });
+		if filtered then return; end
+
 		session = s2s_new_incoming(conn);
 		sessions[conn] = session;
 		session.log("debug", "Incoming s2s connection");

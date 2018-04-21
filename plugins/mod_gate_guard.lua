@@ -10,7 +10,7 @@ module:set_global();
 local hosts = hosts;
 local incoming_s2s = metronome.incoming_s2s;
 local set_new = require "util.set".new;
-local now, section = os.time, require "util.jid".section;
+local now, pairs, section = os.time, pairs, require "util.jid".section;
 
 local guard_blacklist = module:get_option_set("gate_blacklist", {});
 local guard_protect = module:get_option_set("gate_protect", {});
@@ -18,10 +18,17 @@ local guard_whitelist = module:get_option_set("gate_whitelist", {});
 local guard_expire = module:get_option_number("gate_expiretime", 172800);
 local guard_max_hits = module:get_option_number("gate_max_hits", 50);
 local guard_banned = {};
+local guard_banned_filtered = {};
 local guard_hits = {};
 
 local error_reply = require "util.stanza".error_reply;
 local tostring = tostring;
+
+local function clean_filtered(from)
+	for ip, host in pairs(guard_banned_filtered) do
+		if host == from then guard_banned_filtered[ip] = nil; end
+	end
+end
 
 local function filter(origin, from_host, to_host)
 	if not from_host or not to_host then return; end
@@ -36,8 +43,10 @@ local function filter(origin, from_host, to_host)
 		local banned = guard_banned[from_host];
 		if now() >= banned.expire then
 			guard_banned[from_host] = nil;
+			clean_filtered(from_host);
 		else
 			module:log("info", "remote banned service %s (%s) is blocked from accessing host %s", from_host, banned.reason, to_host);
+			guard_banned_filtered[origin.conn:ip()] = from_host;
 			origin.blocked = true;
 			return;
 		end
@@ -52,6 +61,7 @@ local function rr_hook(event)
 	if guard_blacklist:contains(to_host) or banned then
 		if banned and now() >= banned.expire then
 			guard_banned[to_host] = nil;
+			clean_filtered(to_host);
 			return;
 		end
 		module:log("info", "%s attempted to connect to a blocked remote host %s", stanza.attr.from or event.origin.full_jid, to_host);
@@ -64,6 +74,24 @@ local function rr_hook(event)
 	return;
 end
 
+local function filtered_handler(event)
+	local ip, conn = event.ip, event.conn;
+
+	if guard_banned_filtered[ip] then
+		local host = guard_banned_filtered[ip];
+		local banned = guard_banned[host];
+		if now() >= banned.expire then
+			guard_banned[host] = nil;
+			clean_filtered(host);
+			return;
+		end
+		module:log("info", "%s (%s) attempted connecting... blocking", host, ip);
+		conn:close();
+		return true;
+	end
+end
+
+module:hook("s2s-new-incoming-connection", filtered_handler);
 module:hook("gate-guard-banned", function() return guard_banned; end);
 module:hook("gate-guard-hits", function() return guard_hits; end);
 
