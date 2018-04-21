@@ -16,6 +16,7 @@ local log = module._log;
 local no_encryption = metronome.no_encryption;
 local require_encryption = module:get_option_boolean("s2s_require_encryption", not no_encryption);
 local encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
+local cert_verify_identity = require "util.x509".verify_identity;
 
 local st = require "util.stanza";
 local sha256_hash = require "util.hashes".sha256;
@@ -64,6 +65,13 @@ function make_authenticated(session, host)
 	return s2s_make_authenticated(session, host);
 end
 
+local function verify_identity(origin, from)
+	local conn = origin.conn:socket();
+	local cert;
+	if conn.getpeercertificate then cert = conn:getpeercertificate(); end
+	if cert then return cert_verify_identity(from, "xmpp-server", cert); end
+end
+
 local function can_do_dialback(origin)
 	local db = origin.stream_declared_ns and origin.stream_declared_ns["db"];
 	if db == xmlns_db then return true; else return false; end
@@ -84,6 +92,7 @@ end
 local errors_map = {
 	["bad-request"] = "the receiving entity was unable to process the dialback request",
 	["forbidden"] = "received a response of type invalid while authenticating with the authoritative server",
+	["improper-addressing"] = "dialback request lacks to or from attribute",
 	["internal-server-error"] = "the remote server encountered an error while authenticating",
 	["item-not-found"] = "requested host was not found on the remote enitity",
 	["policy-violation"] = "the receiving entity refused dialback due to a local policy",
@@ -183,12 +192,28 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 			origin.log("info", "%s tried to connect to %s, which we don't serve", from, to);
 			return send_db_error(origin, "db:result", "item-not-found", to, from, attr.id);
 		elseif not from then
-			origin:close("improper-addressing");
-			return true;
+			return send_db_error(origin, "db:result", "improper-addressing", to, from, attr.id);
 		elseif origin.blocked then
 			return send_db_error(origin, "db:result", "not-allowed", to, from, attr.id);
 		elseif require_encryption and not origin.secure and not encryption_exceptions:contains(from) then
 			return send_db_error(origin, "db:result", "policy-violation", to, from, attr.id);
+		end
+
+		-- Implement Dialback without Dialback (See XEP-0344) shortcircuiting
+		local shortcircuit;
+		if origin.cert_identity_status == "valid" and from == origin.from_host then
+			shortcircuit = true;
+		elseif from ~= origin.from_host and verify_identity(origin, from) then
+			shortcircuit = true;
+		end
+
+		if shortcircuit then
+			origin.log("debug", "shortcircuiting %s dialback request, as it presented a valid certificate", from);
+			origin.sends2s(
+				st.stanza("db:result", { from = to, to = from, id = attr.id, type = "valid" }):text(stanza[1])
+			);
+			make_authenticated(origin, from);
+			return true;
 		end
 		
 		origin.hosts[from] = { dialback_key = stanza[1] };
