@@ -303,13 +303,16 @@ end
 local codes = require "net.http.codes";
 local headerfix = require "net.http.server".generate_header_fix();
 
-local function send_response_sans_body(response, body)
+local function send_response_sans_body(response)
 	if response.finished then return; end
 	response.finished = true;
 	response.conn._http_open_response = nil;
 
 	local status_line = "HTTP/"..response.request.httpversion.." "..(response.status or codes[response.status_code]);
 	local headers = response.headers;
+	if not headers.connection then
+		headers.connection = response.keep_alive and "Keep-Alive" or "close";
+	end
 
 	local output = { status_line };
 	for k,v in pairs(headers) do
@@ -363,6 +366,7 @@ local function serve_uploaded_files(event, path, head)
 	cache[full_path] = cached;
 
 	if head then
+		if not headers["Content-Length"] then headers["Content-Length"] = attrs.size; end
 		response:send();		
 	else
 		data = cached.data;
