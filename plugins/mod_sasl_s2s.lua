@@ -66,15 +66,9 @@ local function s2s_auth(session, stanza)
 			session.sends2s(build_error("invalid-authzid"));
 			return true;
 		end
-
-		local cert = session.conn:socket():getpeercertificate();
-		if (cert_verify_identity(text, "xmpp-server", cert)) then
-			session.cert_identity_status = "valid";
-		else
-			session.cert_identity_status = "invalid";
-			session.sends2s(build_error("invalid-authzid"));
-			return true;
-		end
+			
+		session.sends2s(build_error("not-authorized"));
+		return true;
 	end
 
 	session.external_auth = "succeeded";
