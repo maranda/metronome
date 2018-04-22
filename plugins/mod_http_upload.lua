@@ -30,6 +30,7 @@ local function join_path(...)
 end
 
 local default_mime_types = {
+	3gp = "video/3gpp",
 	aac = "audio/aac",
 	bmp = "image/bmp",
 	gif = "image/gif",
@@ -37,6 +38,7 @@ local default_mime_types = {
 	jpg = "image/jpeg",
 	m4a = "audio/mp4",
 	mp3 = "audio/mpeg",
+	mp4 = "video/mp4",
 	ogg = "application/ogg",
 	png = "image/png",
 	tiff = "image/tiff",
