@@ -41,7 +41,6 @@ local check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
 local encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 
 local sessions = module:shared("sessions");
-local multiplexed_sessions = setmetatable({}, { __mode = "v" });
 
 local log = module._log;
 local last_inactive_clean = now();
@@ -99,14 +98,13 @@ end
 
 -- Handles stanzas to existing s2s sessions
 function route_to_existing_session(event)
-	local from_host, to_host, multiplexed_from, stanza = event.from_host, event.to_host, event.multiplexed_from, event.stanza;
+	local from_host, to_host, stanza = event.from_host, event.to_host, event.stanza;
 	if not hosts[from_host] then
 		log("warn", "Attempt to send stanza from %s - a host we don't serve", from_host);
 		return false;
 	end
 	local host = hosts[from_host].s2sout[to_host];
 	if host then
-		if multiplexed_from then host.multiplexed_from = multiplexed_from; end
 		time_and_clean(host, now());
 		-- We have a connection to this host already
 		if host.type == "s2sout_unauthed" and (stanza.name ~= "db:verify" or not host.dialback_key) then
@@ -159,17 +157,14 @@ end
 
 -- Create a new outgoing session for a stanza
 function route_to_new_session(event)
-	local from_host, to_host, multiplexed_from, stanza = event.from_host, event.to_host, event.multiplexed_from, event.stanza;
+	local from_host, to_host, from_multiplexed, stanza = event.from_host, event.to_host, event.from_multiplexed, event.stanza;
 	log("debug", "opening a new outgoing connection for this stanza");
 	local host_session = s2s_new_outgoing(from_host, to_host);
 
 	-- Store in buffer
 	host_session.bounce_sendq = bounce_sendq;
 	host_session.open_stream = session_open_stream;
-	if multiplexed_from then
-		host_session.multiplexed_from = multiplexed_from;
-		multiplexed_sessions[to_host] = host_session;
-	end
+	if from_multiplexed then host_session.from_multiplexed = from_multiplexed; end
 
 	host_session.sendq = { {tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza)} };
 	log("debug", "stanza [%s] queued until connection complete", tostring(stanza.name));
@@ -211,13 +206,7 @@ function module.add_host(module)
 	end, -100);
 	module:hook("s2s-no-encryption", function(session)
 		local to = session.to_host;
-		local multiplexed_from;
-		if multiplexed_sessions[to] then
-			multiplexed_from =
-				multiplexed_sessions[to].multiplexed_from and
-				multiplexed_sessions[to].multiplexed_from.from_host;
-		end
-		if encryption_exceptions:contains(multiplexed_from) then
+		if encryption_exceptions:contains(session.from_multiplexed) then
 			return;
 		elseif not encryption_exceptions:contains(to) then
 			session:close({
@@ -227,11 +216,6 @@ function module.add_host(module)
 		end
 		return;
 	end)
-	module:hook("s2sout-destroyed", function(event)
-		local session = event.session;
-		local multiplexed_from = session.multiplexed_from;
-		if multiplexed_from and not multiplexed_from.destroyed then multiplexed_from.hosts[session.to_host] = nil; end
-	end, 100);
 end
 
 --- Helper to check that a session peer's certificate is valid
@@ -388,7 +372,7 @@ function stream_callbacks.streamopened(session, attr)
 		if session.version < 1.0 then
 			local from, to = session.from_host, session.to_host;
 			if require_encryption and hosts[from].ssl_ctx and
-			   not encryption_exceptions:contains(to) and not multiplexed_sessions[to] then
+			   not encryption_exceptions:contains(to) and not encryption_exceptions:contains(session.from_multiplexed) then
 				-- pre-1.0 servers won't support tls perhaps they should be excluded
 				session:close("unsupported-version", "error communicating with the remote server");
 				return;
@@ -666,8 +650,3 @@ module:add_item("net-provider", {
 		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:server%1.*>";
 	};
 });
-
-function module.save() return { multiplexed_sessions = multiplexed_sessions }; end
-function module.restore(data)
-	multiplexed_sessions = data.multiplexed_sessions or setmetatable({}, { __mode = "v" });
-end

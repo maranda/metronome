@@ -49,19 +49,6 @@ function verify_dialback(id, to, from, key)
 end
 
 function make_authenticated(session, host)
-	if session.type == "s2sout_unauthed" then
-		local multiplexed_from = session.multiplexed_from;
-		if multiplexed_from and not multiplexed_from.destroyed then
-			local hosts = multiplexed_from.hosts;
-			if not hosts[session.to_host] then
-				hosts[session.to_host] = { authed = true };
-			else
-				hosts[session.to_host].authed = true;
-			end
-		else
-			session.multiplexed_from = nil; -- don't hold destroyed sessions.
-		end
-	end
 	return s2s_make_authenticated(session, host);
 end
 
@@ -156,10 +143,6 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 		local type;
 		if verify_dialback(attr.id, attr.from, attr.to, stanza[1]) then
 			type = "valid";
-			if origin.type == "s2sin" then
-				local s2sout = hosts[attr.to].s2sout[attr.from];
-				if s2sout and origin.from_host ~= attr.from then s2sout.multiplexed_from = origin; end
-			end
 		else
 			type = "invalid";
 			origin.log("warn", "Asked to verify a dialback key that was incorrect. An imposter is claiming to be %s?", attr.to);
@@ -176,7 +159,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 	if origin.type == "s2sin_unauthed" or origin.type == "s2sin" then
 		local attr = stanza.attr;
 		local to, from = nameprep(attr.to), nameprep(attr.from);
-		local is_multiplexed_from;
+		local from_multiplexed;
 
 		if not origin.from_host then
 			origin.from_host = from;
@@ -185,7 +168,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 			origin.to_host = to;
 		end
 		if origin.from_host ~= from then -- multiplexed stream
-			is_multiplexed_from = origin;
+			from_multiplexed = origin.from_host;
 		end
 		
 		if not hosts[to] then
@@ -221,7 +204,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		
 		origin.log("debug", "asking %s if key %s belongs to them", from, stanza[1]);
 		module:fire_event("route/remote", {
-			from_host = to, to_host = from, multiplexed_from = is_multiplexed_from,
+			from_host = to, to_host = from, from_multiplexed = from_multiplexed,
 			stanza = st.stanza("db:verify", { from = to, to = from, id = origin.streamid }):text(stanza[1])
 		});
 		return true;

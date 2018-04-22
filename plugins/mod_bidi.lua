@@ -71,12 +71,11 @@ local function make_bidirectional(session)
 end
 
 module:hook("route/remote", function(event)
-	local from, to, stanza, multiplexed_from = event.from_host, event.to_host, event.stanza, event.multiplexed_from;
+	local from, to, stanza = event.from_host, event.to_host, event.stanza;
 	if from == myself then
 		local session = incoming[to];
 		if session then
 			session.last_receive = time();
-			if multiplexed_from then session.multiplexed_from = multiplexed_from; end
 			if session.sends2s(stanza) then return true; end
 		end
 	end
