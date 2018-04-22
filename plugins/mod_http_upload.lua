@@ -31,21 +31,21 @@ end
 
 local default_mime_types = {
 	["3gp"] = "video/3gpp",
-	aac = "audio/aac",
-	bmp = "image/bmp",
-	gif = "image/gif",
-	jpeg = "image/jpeg",
-	jpg = "image/jpeg",
-	m4a = "audio/mp4",
-	mp3 = "audio/mpeg",
-	mp4 = "video/mp4",
-	ogg = "application/ogg",
-	png = "image/png",
-	tiff = "image/tiff",
-	txt = "text/plain",
-	xml = "text/xml",
-	wav = "audio/wav",
-	webm = "video/webm"
+	["aac"] = "audio/aac",
+	["bmp"] = "image/bmp",
+	["gif"] = "image/gif",
+	["jpeg"] = "image/jpeg",
+	["jpg"] = "image/jpeg",
+	["m4a"] = "audio/mp4",
+	["mp3"] = "audio/mpeg",
+	["mp4"] = "video/mp4",
+	["ogg"] = "application/ogg",
+	["png"] = "image/png",
+	["tiff"] = "image/tiff",
+	["txt"] = "text/plain",
+	["xml"] = "text/xml",
+	["wav"] = "audio/wav",
+	["webm"] = "video/webm"
 };
 
 local cache = setmetatable({}, { __mode = "v" });
