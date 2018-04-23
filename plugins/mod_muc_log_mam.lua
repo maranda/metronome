@@ -13,7 +13,8 @@ if not modulemanager.is_loaded(module.host, "muc") then
 	return;
 end
 
-local ipairs, tonumber, tostring, os_date, os_time = ipairs, tonumber, tostring, os.date, os.time;
+local ipairs, ripairs, tonumber, t_remove, tostring, os_date, os_time = 
+	ipairs, ripairs, tonumber, table.remove, tostring, os.date, os.time;
 local jid_bare = require "util.jid".bare;
 local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
@@ -92,6 +93,19 @@ module:hook("muc-host-used", clean_inactive_room_caches, -100);
 module:hook("muc-log-add-to-mamcache", function(room, entry)
 	local cache = room.mam_cache;
 	if cache then cache[#cache + 1] = entry; end
+end, -100);
+
+module:hook("muc-log-remove-from-mamcache", function(room, from, rid)
+	local cache = room.mam_cache;
+	if cache then
+		local count = 0;
+		for i, entry in ripairs(cache) do
+			count = count + 1;
+			if count < 100 and entry.resource == from and entry.id == rid then
+				t_remove(cache, i); break;
+			end
+		end
+	end
 end, -100);
 
 module:hook("iq/bare/"..xmlns..":prefs", function(event)

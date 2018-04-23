@@ -79,6 +79,7 @@ function log_if_needed(e)
 								t_remove(data, i); break; 
 							end
 						end
+						module:fire_event("muc-log-remove-from-mamcache", room, from_room, rid);
 					end
 				end
 				
