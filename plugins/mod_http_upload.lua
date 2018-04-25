@@ -56,13 +56,13 @@ local file_size_limit = module:get_option_number("http_file_size_limit", 3*1024*
 local quota = module:get_option_number("http_file_quota", 40*1024*1024);
 local max_age = module:get_option_number("http_file_expire_after", 172800);
 local expire_any = module:get_option_number("http_file_perfom_expire_any", 1800);
-local cacheable_size = module:get_option_number("http_file_cacheable_size", 100*1024);
+local cacheable_size = module:get_option_number("http_file_cacheable_size", file_size_limit);
 local default_base_path = module:get_option_string("http_file_base_path", "share");
 
 --- sanity
-if file_size_limit > 10*1024*1024 then
-	module:log("warn", "http_file_size_limit exceeds HTTP parser limit on body size, capping file size to %d B", parser_body_limit);
-	file_size_limit = 10*1024*1024;
+if file_size_limit > 15*1024*1024 then
+	module:log("warn", "http_file_size_limit exceeds HTTP parser limit on body size, capping file size to 15 MiB");
+	file_size_limit = 15*1024*1024;
 end
 
 -- depends
