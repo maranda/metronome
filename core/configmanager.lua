@@ -185,7 +185,6 @@ do
 					name, name, name), 0);
 			end
 			set(config, name, "component_module", "component");
-			set(config, name, "load_global_modules", false);
 			rawset(env, "__currenthost", name);
 			local function handle_config_options(config_options)
 				rawset(env, "__currenthost", "*");

@@ -22,7 +22,7 @@ if max_results >= 100 then max_results = 100; end
 
 local function rsm_parse(stanza, query)
 	local rsm = query:get_child("set", rsm_xmlns);
-	if not rsm then return nil, nil, nil, false; end
+	if not rsm then return; end
 	local max = rsm and rsm:get_child_text("max");
 	local after = rsm and rsm:get_child_text("after");
 	local before = rsm and rsm:get_child_text("before");
@@ -31,7 +31,7 @@ local function rsm_parse(stanza, query)
 	max = max and tonumber(max);
 	index = index and tonumber(index);
 	
-	return after, before, max, index, true;
+	return after, before, max, index;
 end
 
 local function df_parse(query)
@@ -47,7 +47,7 @@ local function df_parse(query)
 	return start, fin, with;
 end
 
-local function validate_query(stanza, archive, query, qid)
+local function validate_query(stanza, query, qid)
 	local start, fin, with = df_parse(query);
 
 	module:log("debug", "MAM query received, %s with %s from %s until %s",
@@ -67,7 +67,7 @@ local function validate_query(stanza, archive, query, qid)
 	with = jid_bare(vwith);
 	
 	-- Get RSM set
-	local after, before, max, index, rsm = rsm_parse(stanza, query);
+	local after, before, max, index = rsm_parse(stanza, query);
 	if (before and after) or max == "" or after == "" then
 		module:log("debug", "MAM Query RSM parameters were invalid: After - %s, Before - %s, Max - %s, Index - %s",
 			tostring(after), tostring(before), tostring(max), tostring(index));
@@ -84,7 +84,7 @@ local function validate_query(stanza, archive, query, qid)
 		max = 30;
 	end
 
-	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before, index = index, rsm = rsm };
+	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before, index = index };
 end
 
 return { validate_query = validate_query };

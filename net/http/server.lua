@@ -150,13 +150,17 @@ function listener.onincoming(conn, data)
 	sessions[conn]:feed(data);
 end
 
-local headerfix = setmetatable({}, {
-	__index = function(t, k)
-		local v = "\r\n"..k:gsub("_", "-"):gsub("%f[%w].", s_upper)..": ";
-		t[k] = v;
-		return v;
-	end
-});
+local function generate_header_fix()
+	return setmetatable({}, {
+		__index = function(t, k)
+			local v = "\r\n"..k:gsub("_", "-"):gsub("%f[%w].", s_upper)..": ";
+			t[k] = v;
+			return v;
+		end
+	});
+end
+
+local headerfix = generate_header_fix();
 
 function handle_request(conn, request, finish_cb)
 	local headers = {};
@@ -199,7 +203,7 @@ function handle_request(conn, request, finish_cb)
 	
 	if err then
 		response.status_code = err_code;
-		response:send(events.fire_event("http-error", { code = err_code, message = err }));
+		response:send(events.fire_event("http-error", { code = err_code, message = err, reponse = response }));
 		return;
 	end
 
@@ -213,7 +217,7 @@ function handle_request(conn, request, finish_cb)
 			if result_type == "number" then
 				response.status_code = result;
 				if result >= 400 then
-					body = events.fire_event("http-error", { code = result });
+					body = events.fire_event("http-error", { code = result, response = response });
 				end
 			elseif result_type == "string" then
 				body = result;
@@ -229,7 +233,7 @@ function handle_request(conn, request, finish_cb)
 
 	-- if handler not called, return 404
 	response.status_code = 404;
-	response:send(events.fire_event("http-error", { code = 404 }));
+	response:send(events.fire_event("http-error", { code = 404, response = response }));
 end
 function _M.send_response(response, body)
 	if response.finished then return; end
@@ -298,4 +302,5 @@ end
 _M.listener = listener;
 _M.codes = codes;
 _M._events = events;
+_M.generate_header_fix = generate_header_fix;
 return _M;

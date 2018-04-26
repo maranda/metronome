@@ -133,7 +133,9 @@ function handle_pubsub_iq(event)
 		end
 
 		if user_service.is_new and not user_service.starting then 
-			return module:fire_event("pep-boot-service", { origin = origin, stanza = stanza, service = user_service });
+			return module:fire_event(
+				"pep-boot-service", { service = user_service, from = stanza.attr.from or origin.full_jid }
+			);
 		else
 			return true;
 		end
@@ -208,6 +210,7 @@ function handlers.set_create(service, origin, stanza, create, config)
 	end
 
 	if ok then -- auto-resubscribe interested recipients
+		module:fire_event("pep-node-created", { node = node, origin = origin, service = service });
 		pep_autosubscribe_recs(service, node);
 	end
 	return origin.send(reply);
@@ -250,6 +253,7 @@ function handlers.set_publish(service, origin, stanza, publish, config)
 	ok, ret = service:publish(node, from, id, item);
 		
 	if ok then
+		module:fire_event("pep-node-publish", { from = from, id = id, item = item, node = node, origin = origin, service = service });
 		reply = st.reply(stanza)
 			:tag("pubsub", { xmlns = xmlns_pubsub })
 				:tag("publish", { node = node })
@@ -290,6 +294,7 @@ function handlers.set_retract(service, origin, stanza, retract)
 	end
 	local ok, ret = service:retract(node, stanza.attr.from, id, notifier);
 	if ok then
+		module:fire_event("pep-node-retract", { from = stanza.attr.from, id = id, node = node, origin = origin, service = service });
 		reply = st.reply(stanza);
 	else
 		reply = pep_error_reply(stanza, ret);
@@ -350,7 +355,12 @@ function handlers_owner.set_delete(service, origin, stanza, delete)
 	local ok, ret, reply;
 	if node then
 		ok, ret = service:delete(node, stanza.attr.from);
-		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
+		if ok then
+			module:fire_event("pep-node-deleted", { node = node, origin = origin, service = service });
+			reply = st.reply(stanza);
+		else
+			reply = pep_error_reply(stanza, ret);
+		end
 	else
 		reply = pep_error_reply(stanza, "bad-request");
 	end
@@ -362,7 +372,12 @@ function handlers_owner.set_purge(service, origin, stanza, purge)
 	local ok, ret, reply;
 	if node then
 		ok, ret = service:purge(node, stanza.attr.from);
-		if ok then reply = st.reply(stanza); else reply = pep_error_reply(stanza, ret); end
+		if ok then
+			module:fire_event("pep-node-purged", { node = node, origin = origin, service = service });
+			reply = st.reply(stanza);
+		else
+			reply = pep_error_reply(stanza, ret);
+		end
 	else
 		reply = pep_error_reply(stanza, "bad-request");
 	end
@@ -495,22 +510,29 @@ module:hook("presence/bare", presence_handler, 110);
 module:hook("presence/full", presence_handler, 110);
 
 module:hook("pep-boot-service", function(event)
-	local origin, stanza, service = event.origin, event.stanza, event.service;
+	local service, from = event.service, event.from;
 	service.starting = true;
-	service.recipients[origin.full_jid] = "";
+	service.recipients[from] = "";
 	services[service.name] = service;
 	module:log("debug", "Delaying broadcasts as %s service is being booted...", service.name);
-	disco_info_query(service.name, origin.full_jid);
+	disco_info_query(service.name, from);
 	return true;
 end, 100);
 
-module:hook("pep-get-service", function(username, spawn)
+module:hook("pep-get-service", function(username, spawn, from)
 	local user = jid_join(username, module.host);
 	local service = services[user];
-	if spawn and not service and um_user_exists(username, module.host) then
+	if spawn and from and not service and um_user_exists(username, module.host) then
 		service = set_service(pubsub.new(pep_new(username)), user, true);
+		service.is_new = true;
+		module:fire_event("pep-boot-service", { service = service, from = from });
 	end
 	return service;
+end);
+
+module:hook("pep-autosubscribe-recipients", function(service, node)
+	pep_autosubscribe_recs(service, node);
+	return true;
 end);
 
 module:hook("iq-result/bare/disco", function(event)
@@ -551,7 +573,7 @@ module:hook("iq-result/bare/disco", function(event)
 			if service.is_new then
 				service.is_new = nil;
 				module:log("debug", "Sending probes to roster contacts to discover interested resources...");
-				for jid, item in pairs(session.roster) do -- for all interested contacts
+				for jid, item in pairs(session.roster or NULL) do -- for all interested contacts
 					if item.subscription == "both" or item.subscription == "from" then
 						probe_jid(session.full_jid, jid);
 					end

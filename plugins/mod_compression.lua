@@ -7,6 +7,8 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Matthew Wild, Tobias Markmann, Waqas Hussain
 
+module:set_component_inheritable();
+
 local st = require "util.stanza";
 local zlib = require "zlib";
 local add_task = require "util.timer".add_task;

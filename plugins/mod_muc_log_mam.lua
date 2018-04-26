@@ -13,7 +13,8 @@ if not modulemanager.is_loaded(module.host, "muc") then
 	return;
 end
 
-local ipairs, tonumber, tostring, os_date, os_time = ipairs, tonumber, tostring, os.date, os.time;
+local ipairs, ripairs, tonumber, t_remove, tostring, os_date, os_time = 
+	ipairs, ripairs, tonumber, table.remove, tostring, os.date, os.time;
 local jid_bare = require "util.jid".bare;
 local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
@@ -94,6 +95,19 @@ module:hook("muc-log-add-to-mamcache", function(room, entry)
 	if cache then cache[#cache + 1] = entry; end
 end, -100);
 
+module:hook("muc-log-remove-from-mamcache", function(room, from, rid)
+	local cache = room.mam_cache;
+	if cache then
+		local count = 0;
+		for i, entry in ripairs(cache) do
+			count = count + 1;
+			if count < 100 and entry.resource == from and entry.id == rid then
+				t_remove(cache, i); break;
+			end
+		end
+	end
+end, -100);
+
 module:hook("iq/bare/"..xmlns..":prefs", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	origin.send(st.error_reply(stanza, "cancel", "feature-not-implemented"));
@@ -121,16 +135,16 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 		initialize_mam_cache(to);
 		local archive = { logs = room.mam_cache };
 	
-		local start, fin, with, after, before, max, index, rsm;
-		local ok, ret = validate_query(stanza, archive, query, qid);
+		local start, fin, with, after, before, max, index;
+		local ok, ret = validate_query(stanza, query, qid);
 		if not ok then
 			return origin.send(ret);
 		else
-			start, fin, with, after, before, max, index, rsm =
-				ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.index, ret.rsm;
+			start, fin, with, after, before, max, index =
+				ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.index;
 		end
 		
-		local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, rsm);
+		local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, index, qid);
 		if not messages then
 			module:log("debug", "%s MAM query RSM parameters were out of bounds: After - %s, Before - %s, Max - %s, Index - %s",
 				to, tostring(after), tostring(before), tostring(max), tostring(index));

@@ -38,12 +38,16 @@ local nameapi_ak = module:get_option_string("reg_servlet_nameapi_apikey")
 local plain_errors = module:get_option_boolean("reg_servlet_plain_http_errors", false)
 if use_nameapi and not nameapi_ak then use_nameapi = false end
 
-local files_base = module.path:gsub("/[^/]+$","") .. "/template/"
+local files_base = module.path:gsub("[/\\][^/\\]*$","") .. "/template/"
 
 local valid_files = {
 	["css/style.css"] = files_base.."css/style.css",
 	["images/tile.png"] = files_base.."images/tile.png",
 	["images/header.png"] = files_base.."images/header.png"
+}
+local mime_types = {
+	css = "text/css",
+	png = "image/png"
 }
 local recent_ips = {}
 local pending = {}
@@ -174,6 +178,24 @@ local function open_file(file)
 	return data
 end
 
+local function http_error_reply(event, code, message, headers)
+	local response = event.response
+
+	if headers then
+		for header, data in pairs(headers) do response.headers[header] = data end
+	end
+
+	response.status_code = code
+	if plain_errors then
+		response.headers["Content-Type"] = "text/plain";
+		response:send(message)
+	else
+		response:send(http_event("http-error", { code = code, message = message, response = response }))
+	end
+
+	return true
+end
+
 local function r_template(event, type)
 	local data = open_file(files_base..type.."_t.html")
 	if data then
@@ -190,25 +212,10 @@ local function http_file_get(event, type, path)
 
 	if valid_files[path] then
 		local data = open_file(valid_files[path])
-		if data then return data
+		if data then
+			event.response.headers["Content-Type"] = mime_types[path:match("%.([^%.]*)$")]
+			return data
 		else return http_error_reply(event, 404, "Not found.") end
-	end
-end
-
-local function http_error_reply(event, code, message, headers)
-	local response = event.response
-
-	if headers then
-		for header, data in pairs(headers) do response.headers[header] = data end
-	end
-
-	response.status_code = code
-	if plain_errors then
-		response.headers["Content-Type"] = nil
-		response:send(message)
-	else
-		response.headers["Content-Type"] = "text/html"
-		response:send(http_event("http-error", { code = code, message = message }))
 	end
 end
 
@@ -246,7 +253,10 @@ local function handle_register(data, event)
 			return http_error_reply(event, 401, "Another user registration by that username is pending.")
 		end
 
-		if password:len() < min_pass_len then
+		if not ((password:find("%d+") or password:find("%p+")) and password:find("%u+")) then
+			module:log("debug", "%s submitted password doesn't contain at least one uppercase letter, one number or symbol characters", ip)
+			return http_error_reply(event, 406, "Supplied password needs to contain at least one uppercase letter and one symbol or digit.")			
+		elseif password:len() < min_pass_len then
 			module:log("debug", "%s submitted password is not long enough minimun is %d characters", ip, min_pass_len)
 			return http_error_reply(event, 406, "Supplied password is not long enough minimum is " .. tostring(min_pass_len) .. " characters.")
 		elseif password:len() > max_pass_len then
@@ -298,13 +308,13 @@ end
 local function handle_password_reset(data, event)
 	local mail, ip = data.reset, data.ip
 
-	if throttle_time and to_throttle(ip) then
-		module:log("warn", "JSON Password Reset request from %s has been throttled", ip)
-		return http_error_reply(event, 503, "Request throttled, wait a bit and try again.")
-	end
-	
 	local node = hashes[b64_encode(sha1(mail))]
 	if node and usermanager.user_exists(node, module.host) then
+		if throttle_time and to_throttle(ip) then
+			module:log("warn", "JSON Password Reset request from %s has been throttled", ip)
+			return http_error_reply(event, 503, "Request throttled, wait a bit and try again.")
+		end
+
 		local id_token = generate_secret(20)
 		if not id_token then
 			module:log("error", "Failed to pipe from /dev/urandom to generate the password reset token")
@@ -377,7 +387,7 @@ local function handle_reset(event, path)
 				else
 					local node = reset_tokens[id_token] and reset_tokens[id_token].node
 					if node then
-						if not (password:find("%d+") and password:find("%u+")) or 
+						if not ((password:find("%d+") or password:find("%p+")) and password:find("%u+")) or 
 							password:len() < min_pass_len or password:len() > max_pass_len then
 							return r_template(event, "reset_password_check")
 						end

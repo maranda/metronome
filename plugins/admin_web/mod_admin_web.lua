@@ -40,7 +40,7 @@ service = {};
 
 local require_secure = module:get_option_boolean("admin_web_require_secure", false);
 
-local http_base = module.path:gsub("/[^/]+$","") .. "/www_files/";
+local http_base = module.path:gsub("[/\\][^/\\]*$","") .. "/www_files/";
 
 local xmlns_adminsub = "http://metronome.im/protocol/adminsub";
 local xmlns_c2s_session = "http://metronome.im/streams/c2s";
@@ -51,6 +51,7 @@ local mime_map = {
 	xml = "text/xml; charset=utf-8";
 	js = "text/javascript";
 	css = "text/css";
+	png = "image/png";
 };
 
 local idmap = {};
@@ -173,6 +174,8 @@ function serve_file(event, path)
 end
 
 function module.add_host(module)
+	module:set_component_inheritable();
+
 	-- Setup HTTP server
 	module:depends("http");
 	module:provides("http", {

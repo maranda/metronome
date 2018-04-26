@@ -8,7 +8,7 @@
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Markus Kutter, Matthew Wild, Waqas Hussain
 
 if module:get_host_type() ~= "component" then
-	error("MUC should be loaded as a component.", 0);
+	error("MUC should be loaded as a component", 0);
 end
 
 local muc_host = module:get_host();
@@ -202,6 +202,7 @@ function stanza_handler(event)
 		   (not restrict_room_creation or (restrict_room_creation == "admin" and is_admin(stanza.attr.from)) or
 		   (restrict_room_creation == "local" and from_host == module.host:gsub("^[^%.]+%.", ""))) then
 			room = muc_new_room(bare);
+			room.just_created = stanza:get_child("x", "http://jabber.org/protocol/muc") and true or nil;
 			room.last_used = now();
 			room.route_stanza = room_route_stanza;
 			room.save = room_save;

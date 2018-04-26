@@ -110,7 +110,7 @@ end
 
 local function handle_OPTIONS(event)
 	local request = event.request;
-	if force_secure and not request.secure then return nil; end
+	if force_secure and not request.secure then return; end
 
 	local headers = clone_table(default_headers);
 	headers["Content-Type"] = nil;
@@ -121,7 +121,7 @@ local function handle_POST(event)
 	local request, response, custom_headers = event.request, event.response, event.custom_headers;
 	if force_secure and not request.secure then
 		log("debug", "Discarding unsecure request %s: %s\n----------", tostring(request), tostring(no_raw_req_logging and "<filtered>" or request.body));
-		return nil;
+		return;
 	end
 
 	log("debug", "Handling new request %s: %s\n----------", tostring(request), tostring(no_raw_req_logging and "<filtered>" or request.body));
@@ -174,7 +174,7 @@ local function handle_POST(event)
 			session.log("debug", "Closing session with %d requests open", #session.requests);
 			session.dead = true;
 			session:close();
-			return nil;
+			return false;
 		else
 			return true; -- Inform http server we shall reply later
 		end
@@ -237,7 +237,7 @@ function stream_callbacks.streamopened(context, attr)
 			log("debug", "BOSH client tried to connect to unknown host: %s", tostring(attr.to));
 			response:send(tostring(st.stanza("body", { xmlns = xmlns_bosh, type = "terminate",
 				["xmlns:stream"] = xmlns_streams, condition = "host-unknown" })));
-			return;
+			return false;
 		elseif hosts[attr.to].type == "component" then
 			log("debug", "BOSH client tried to connect to a component host: %s", tostring(attr.to));
 			local reply = st.stanza("body", { xmlns = xmlns_bosh, type = "terminate",
@@ -246,7 +246,7 @@ function stream_callbacks.streamopened(context, attr)
 						:tag("not-allowed", stream_xmlns_attr):up()
 						:tag("text", stream_xmlns_attr):text("This entity doesn't offer BOSH client streams"):up():up();
 			response:send(tostring(reply));
-			return;
+			return false;
 		end
 		
 		sid = new_uuid();
@@ -321,7 +321,7 @@ function stream_callbacks.streamopened(context, attr)
 		response.headers = custom_headers or default_headers;
 		response:send(tostring(st.stanza("body", { xmlns = xmlns_bosh, type = "terminate", condition = "item-not-found" })));
 		context.notopen = nil;
-		return;
+		return false;
 	end
 	
 	if session.rid then
@@ -335,7 +335,7 @@ function stream_callbacks.streamopened(context, attr)
 			context.ignore = true;
 			context.sid = sid;
 			t_insert(session.requests, response);
-			return;
+			return false;
 		end
 		session.rid = rid;
 	end
@@ -392,7 +392,7 @@ function stream_callbacks.error(context, error)
 		response.headers = context.custom_headers or default_headers;
 		response.status_code = 400;
 		response:send();
-		return;
+		return false;
 	end
 	
 	local session = sessions[context.sid];
@@ -439,7 +439,7 @@ module:add_timer(1, on_timer);
 
 local function handle_GET(event)
 	local request, response = event.request, event.response;
-	if force_secure and not request.secure then return nil; end
+	if force_secure and not request.secure then return; end
 
 	local query = request.url.query;
 	local callback, data;
@@ -472,12 +472,13 @@ local function handle_GET(event)
 		return handle_POST(event);
 	end	
 
-	response.headers = { ["Content-Type"] = "text/html; charset=utf-8" };
+	response.headers["Content-Type"] = "text/html; charset=utf-8";
 	response.body =
 		[[<!DOCTYPE html><html><head><title>Metronome's BOSH Interface</title></head><body>
 		<p>It works! Now point your BOSH client to this URL to connect to the XMPP Server.</p>
 		</body></html>]];
-	return response:send();
+	response:send();
+	return true;
 end
 
 function module.add_host(module)

@@ -28,6 +28,7 @@ local burst = math.max(module:get_option_number("muc_burst_factor", 6), 1);
 local exclusion_list = module:get_option_set("muc_throttle_host_exclusion");
 local parent_host = module:get_option_boolean("muc_whitelist_parent_peers") == true and module.host:match("%.(.*)");
 local disconnect_after = module:get_option_number("muc_disconnect_after_throttles", 20);
+local use_gate_guard = module:get_option_boolean("muc_use_gate_guard", true);
 
 local rooms = metronome.hosts[module.host].modules.muc.rooms;
 local hosts = metronome.hosts;
@@ -84,6 +85,7 @@ local function handle_stanza(event)
 		end
 
 		origin.muc_limits_trigger = (not trigger and 1) or trigger + 1;
+		if use_gate_guard then module:fire_event("call-gate-guard", { origin = origin, from = from_jid, reason = "MUC Flooding/DoS" }); end
 		local reply = st.error_reply(stanza, "wait", "policy-violation", "The room is currently overactive, please try again later");
 		local body = stanza:get_child_text("body");
 		if body then
@@ -127,14 +129,19 @@ end, -101);
 
 module:hook("muc-fields-process", function(room, fields, stanza, changed)
 	room.throttle = nil;
-	local stanzas, seconds = fields[field_stanzas], fields[field_seconds];
-	if not tonumber(stanzas) or not tonumber(seconds) then
-		return st.error_reply(stanza, "cancel", "forbidden", "You need to submit valid number values for muc_limits fields.");
+	local enabled, stanzas, seconds = fields[field_enabled], fields[field_stanzas], fields[field_seconds];
+	room:set_option("limits_enabled", enabled, changed);
+	if enabled then
+		if not tonumber(stanzas) or not tonumber(seconds) then
+			return st.error_reply(stanza, "cancel", "forbidden", "You need to submit valid number values for muc_limits fields.");
+		end
+		stanzas, seconds = math.max(tonumber(stanzas), 1), math.max(tonumber(seconds), 0);
+		room:set_option("limits_stanzas", stanzas, changed);
+		room:set_option("limits_seconds", seconds, changed);
+	else
+		room:set_option("limits_stanzas", nil, changed);
+		room:set_option("limits_seconds", nil, changed);
 	end
-	stanzas, seconds = math.max(tonumber(stanzas), 1), math.max(tonumber(seconds), 0);
-	room:set_option("limits_enabled", fields[field_enabled], changed);
-	room:set_option("limits_stanzas", stanzas, changed);
-	room:set_option("limits_seconds", seconds, changed);
 end, -101);
 
 function module.unload()

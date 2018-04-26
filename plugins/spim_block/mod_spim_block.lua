@@ -4,12 +4,6 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-local base_url = module:get_option_string("spim_url");
-if not base_url then
-	module:log("error", "Please specify the SPIM Base URL into the configuration, before loading this module.");
-	return;
-end
-
 local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
 local pairs, next, open, os_time = pairs, next, io.open, os.time;
@@ -36,16 +30,21 @@ local full_sessions = full_sessions;
 local hosts = metronome.hosts;
 
 local secure = module:get_option_boolean("spim_secure", true);
-local base_path = module:get_option_string("spim_base", "/spim/");
+local base_path = module:get_option_string("spim_base", "spim");
+local http_host = module:get_option_string("spim_http_host");
 local reset_count = module:get_option_number("spim_reset_count", 10000);
-base_url = base_url..base_path;
+base_url = module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/"), http_host);
 
-local files_base = module.path:gsub("/[^/]+$","").."/template/";
+local files_base = module.path:gsub("[/\\][^/\\]*$","") .. "/template/";
 
 local valid_files = {
 	["css/style.css"] = files_base.."css/style.css",
 	["images/tile.png"] = files_base.."images/tile.png",
 	["images/header.png"] = files_base.."images/header.png"
+};
+local mime_types = {
+	css = "text/css",
+	png = "image/png"
 };
 
 -- Utility functions
@@ -68,6 +67,19 @@ local function open_file(file)
 	return data;
 end
 
+local function http_error_reply(event, code, message, headers)
+	local response = event.response;
+
+	if headers then
+		for header, data in pairs(headers) do response.headers[header] = data; end
+	end
+
+	response.status_code = code;
+	response:send(http_event("http-error", { code = code, message = message, response = response }));
+
+	return true;
+end
+
 local function r_template(event, type, jid)
 	local data = open_file(files_base..type..".html");
 	if data then
@@ -85,21 +97,13 @@ local function http_file_get(event, type, path)
 
 	if valid_files[path] then
 		local data = open_file(valid_files[path]);
-		if data then return data;
-		else return http_error_reply(event, 404, "Not found."); end
+		if data then
+			event.response.headers["Content-Type"] = mime_types[path:match("%.([^%.]*)$")];
+			return data;
+		else
+			return http_error_reply(event, 404, "Not found.");
+		end
 	end
-end
-
-local function http_error_reply(event, code, message, headers)
-	local response = event.response;
-
-	if headers then
-		for header, data in pairs(headers) do response.headers[header] = data; end
-	end
-
-	response.status_code = code
-	response.headers["Content-Type"] = "text/html";
-	response:send(http_event("http-error", { code = code, message = message }));
 end
 
 local function send_message(origin, to, from, token)
@@ -156,6 +160,7 @@ local function handle_incoming(event)
 		
 		if block_list[to_bare] and block_list[to_bare][from_bare] then
 			module:log("info", "blocking unsolicited message to %s from %s", to_bare, from_bare);
+			module:fire_event("call-gate-guard", { origin = origin, from = from, reason = "SPIM" });
 			return true; 
 		end
 
@@ -169,7 +174,7 @@ local function handle_incoming(event)
 		else
 			local full_session = full_sessions[to];
 			if full_session then
-				if full_session.joined_mucs and full_session.joined_mucs[from_bare] then return; end
+				if full_session.directed_bare[from_bare] then return; end
 				local token = generate_secret(20);
 				if not token then return; end
 				set_block(token, to_bare, from_bare);
@@ -186,8 +191,7 @@ local function handle_outgoing(event)
 	
 	if origin.type == "c2s" and stanza.attr.type == "chat" then
 		local to_bare = jid_bare(stanza.attr.to);
-		if not to_bare or (origin.joined_mucs and origin.joined_mucs[to_bare]) or
-			hosts[jid_section(to_bare, "host")] then
+		if not to_bare or origin.directed_bare[to_bare] or hosts[jid_section(to_bare, "host")] then
 			return;
 		end
 		
@@ -273,6 +277,8 @@ module:provides("http", {
 		["POST /*"] = handle_spim
 	}
 });
+
+module:log("info", "SPIM blocking module accepting challenges at: <%s>", base_url);
 
 -- Reloadability
 

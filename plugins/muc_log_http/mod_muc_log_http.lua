@@ -441,13 +441,16 @@ function handle_request(event)
 	if not request_path:match(".*/$") then
 		response.status_code = 301;
 		response.headers = { ["Location"] = request_path .. "/" };
-		return response:send();
+		response:send();
+		return true;
 	end
 	
+	response.headers["Content-Type"] = "text/html";
 	local node, day, more = request_path:match("^/"..url_base.."/+([^/]*)/*([^/]*)/*(.*)$");
 	if more ~= "" then
 		response.status_code = 404;
-		return response:send(handle_error(response.status_code, "Unknown URL."));
+		response:send(handle_error(response.status_code, "Unknown URL."));
+		return true;
 	end
 	if node == "" then node = nil; end
 	if day  == "" then day  = nil; end
@@ -456,41 +459,50 @@ function handle_request(event)
 
 	if not html.doc then 
 		response.status_code = 500;
-		return response:send(handle_error(response.status_code, "Muc Theme is not loaded."));
+		response:send(handle_error(response.status_code, "Muc Theme is not loaded."));
+		return true;
 	end
 	
 	if node then room = muc_rooms[node.."@"..my_host]; end
 	if node and not room then
 		response.status_code = 404;
-		return response:send(handle_error(response.status_code, "Room doesn't exist."));
+		response:send(handle_error(response.status_code, "Room doesn't exist."));
+		return true;
 	end
 	if room and (room._data.hidden or not room._data.logging) then
 		response.status_code = 404;
-		return response:send(handle_error(response.status_code, "There're no logs for this room."));
+		response:send(handle_error(response.status_code, "There're no logs for this room."));
+		return true;
 	end
 
 	if not node then -- room list for component
-		return response:send(create_doc(generate_room_list())); 
+		response:send(create_doc(generate_room_list())); 
+		return true;
 	elseif not day then -- room's listing
-		return response:send(create_doc(generate_day_room_content(node.."@"..my_host)));
+		response:send(create_doc(generate_day_room_content(node.."@"..my_host)));
+		return true;
 	else
 		if not day:match("^(%d%d%d%d)-(%d%d)-(%d%d)$") then
 			local y,m,d = day:match("^(%d%d%d%d)(%d%d)(%d%d)$");
 			if not y then
 				response.status_code = 404;
-				return response:send(handle_error(response.status_code, "No entries, or invalid year"));
+				response:send(handle_error(response.status_code, "No entries, or invalid year"));
+				return true;
 			end
 			response.status_code = 301;
 			response.headers = { ["Location"] = request_path:match("^/"..url_base.."/+[^/]*").."/"..y.."-"..m.."-"..d.."/" };
-			return response:send();
+			response:send();
+			return true;
 		end
 
 		local body = create_doc(parse_day(node.."@"..my_host, room._data.subject or "", day));
 		if body == "" then
 			response.status_code = 404;
-			return response:send(handle_error(response.status_code, "Specified entry doesn't exist."));
+			response:send(handle_error(response.status_code, "Specified entry doesn't exist."));
+			return true;
 		end
-		return response:send(body);
+		response:send(body);
+		return true;
 	end
 end
 

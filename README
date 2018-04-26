@@ -26,7 +26,7 @@ The main differences from Prosody are:
  * The anonymous auth backend (mod_auth_anonymous & sasl.lua ineherent part);
  * Included plugins, utils;
  * The HTTP API;
- * BOSH's JSON Padding and XEP-252 support.
+ * BOSH's JSON Padding and XEP-0252 support.
  * Extensive Microblogging over XMPP support.
  * Daemon Control Utility;
  * It does have _only_ one server backend being libevent and has a hard dep. on lua-event.

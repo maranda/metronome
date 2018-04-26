@@ -17,6 +17,7 @@ local sha1 = require "util.hashes".sha1;
 local base64 = require "util.encodings".base64.encode;
 local portmanager = require "core.portmanager";
 local websocket = require "util.websocket";
+local st = require "util.stanza";
 
 local t_concat = table.concat;
 
@@ -38,12 +39,74 @@ module:depends("c2s")
 local sessions = module:shared("c2s/sessions");
 local c2s_listener = portmanager.get_service("c2s")[1].listener;
 
+local xmlns_framing = "urn:ietf:params:xml:ns:xmpp-framing";
+local xmlns_streams = "http://etherx.jabber.org/streams";
+local xmlns_client = "jabber:client";
+local stream_xmlns_attr = {xmlns='urn:ietf:params:xml:ns:xmpp-streams'};
+
+local function open(session, from, to)
+	local attr = {
+		xmlns = xmlns_framing, ["xml:lang"] = "en",
+		version = "1.0", id = session.streamid or "",
+		from = from or session.host, to = to
+	};
+
+	session.send(st.stanza("open", attr));
+end
+
+local function close(session, reason) -- Basically duplicated from mod_c2s, should be fixed.
+	local log = session.log or log;
+	if session.conn then
+		local ws = session.ws;
+		if session.notopen then session:open_stream(); end
+		if reason then
+			local stanza = st.stanza("stream:error");
+			if type(reason) == "string" then
+				stanza:tag(reason, {xmlns = "urn:ietf:params:xml:ns:xmpp-streams" });
+			elseif type(reason) == "table" then
+				if reason.condition then
+					stanza:tag(reason.condition, stream_xmlns_attr):up();
+					if reason.text then
+						stanza:tag("text", stream_xmlns_attr):text(reason.text):up();
+					end
+					if reason.extra then
+						stanza:add_child(reason.extra);
+					end
+				elseif reason.name then
+					stanza = reason;
+				end
+			end
+			log("debug", "Disconnecting client, <stream:error> is: %s", tostring(stanza));
+			session.send(stanza);
+		end
+
+		session.send(st.stanza("close", { xmlns = xmlns_framing }));
+		function session.send() return false; end
+
+		local reason = (reason and (reason.text or reason.condition)) or reason;
+		session.log("info", "c2s stream for %s closed: %s", session.full_jid or "<"..tostring(session.ip)..">", reason or "session closed");
+
+		if reason == nil and not session.notopen and session.type == "c2s" then
+			add_task(stream_close_timeout, function ()
+				if not session.destroyed then
+					session.log("warn", "Failed to receive a stream close response, closing connection anyway...");
+					sm_destroy_session(session, reason);
+					ws:close(1000, "Stream closed");
+				end
+			end);
+		else
+			sm_destroy_session(session, reason);
+			ws:close(1000, "Stream closed");
+		end
+	end
+end
+
 function handle_request(event, path)
 	local request, response = event.request, event.response;
 	local conn = response.conn;
 
 	if not request.headers.sec_websocket_key then
-		response.headers.content_type = "text/html";
+		response.headers["Content-Type"] = "text/html; charset=utf-8";
 		return [[<!DOCTYPE html><html><head><title>Metronome's WebSocket Interface</title></head><body>
 			<p>It works! Now point your WebSocket client to this URL to connect to the XMPP server.</p>
 			</body></html>]];
@@ -63,7 +126,11 @@ function handle_request(event, path)
 	local ws = websocket.new(conn, raw_log);
 
 	session.secure = consider_secure or session.secure;
+	session.ws = ws;
 	session.ws_session = true;
+	
+	session.open_stream = open;
+	session.close = close;
 
 	local buffer = "";
 	add_filter(session, "bytes/in", function(data)
@@ -80,6 +147,13 @@ function handle_request(event, path)
 		end
 		return t_concat(cache, "");
 	end);
+
+	add_filter(session, "stanzas/out", function(stanza)
+		local attr = stanza.attr;
+		attr.xmlns = attr.xmlns or xmlns_client;
+		if stanza.name:find("^stream:") then attr["xmlns:stream"] = attr["xmlns:stream"] or xmlns_streams; end
+		return stanza;
+	end, -100);
 
 	add_filter(session, "bytes/out", function(data)
 		return ws:build({ FIN = true, opcode = 0x01, data = tostring(data)});

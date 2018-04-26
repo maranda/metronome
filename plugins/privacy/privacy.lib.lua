@@ -8,6 +8,7 @@
 -- ** Copyright (c) 2009-2011, Florian Zeitz, Matthew Wild, Waqas Hussain
 
 local st = require "util.stanza";
+local rostermanager = require "util.rostermanager";
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local ipairs, pairs, tonumber, tostring, t_insert, t_remove, t_sort = 
 	ipairs, pairs, tonumber, tostring, table.insert, table.remove, table.sort;

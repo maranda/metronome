@@ -133,25 +133,24 @@ local function session_close(session, reason)
 			session.send(st.stanza("stream:stream", default_stream_attr):top_tag());
 		end
 		if reason then -- nil == no err, initiated by us, false == initiated by client
+			local stanza = st.stanza("stream:error");
 			if type(reason) == "string" then -- assume stream error
-				log("debug", "Disconnecting client, <stream:error> is: %s", reason);
-				session.send(st.stanza("stream:error"):tag(reason, {xmlns = "urn:ietf:params:xml:ns:xmpp-streams" }));
+				stanza:tag(reason, {xmlns = "urn:ietf:params:xml:ns:xmpp-streams" });
 			elseif type(reason) == "table" then
 				if reason.condition then
-					local stanza = st.stanza("stream:error"):tag(reason.condition, stream_xmlns_attr):up();
+					stanza:tag(reason.condition, stream_xmlns_attr):up();
 					if reason.text then
 						stanza:tag("text", stream_xmlns_attr):text(reason.text):up();
 					end
 					if reason.extra then
 						stanza:add_child(reason.extra);
 					end
-					log("debug", "Disconnecting client, <stream:error> is: %s", tostring(stanza));
-					session.send(stanza);
 				elseif reason.name then -- a stanza
-					log("debug", "Disconnecting client, <stream:error> is: %s", tostring(reason));
-					session.send(reason);
+					stanza = reason;
 				end
 			end
+			log("debug", "Disconnecting client, <stream:error> is: %s", tostring(stanza));
+			session.send(stanza);
 		end
 		
 		session.send("</stream:stream>");
@@ -178,6 +177,9 @@ end
 
 --- Port listener
 function listener.onconnect(conn)
+	local filtered = module:fire_event("c2s-new-incoming-connection", { ip = conn:ip(), conn = conn });
+	if filtered then return; end
+
 	local session = sm_new_session(conn);
 	sessions[conn] = session;
 	

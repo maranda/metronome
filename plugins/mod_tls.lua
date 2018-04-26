@@ -7,6 +7,8 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2011, Matthew Wild, Paul Aurich, Tobias Markmann, Waqas Hussain
 
+module:set_component_inheritable();
+
 if metronome.no_encryption then
 	module:log("error", "mod_tls requires encryption support to be available,");
 	module:log("error", "please check that LuaSec is installed.");
@@ -89,6 +91,8 @@ module:hook_stanza("http://etherx.jabber.org/streams", "features", function (ses
 		module:log("debug", "%s is offering TLS, taking up the offer...", session.to_host);
 		session.sends2s("<starttls xmlns='"..xmlns_starttls.."'/>");
 		return true;
+	elseif not session.secure and secure_s2s_only and (not can_do_tls(session) or not stanza:child_with_ns(xmlns_starttls)) then
+		return module:fire_event("s2s-no-encryption", session);
 	end
 end, 500);
 

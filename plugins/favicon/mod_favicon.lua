@@ -8,22 +8,31 @@ module:set_global()
 
 local server = require "net.http.server"
 
-local favicon = module:get_option_string("favicon_path", (metronome.paths.plugins or "./").."favicon/favicon.ico")
+local favicon_file_path = (metronome.paths.plugins or "./").."favicon/favicon."
 local load = require "util.auxiliary".load_file
 
-local function serve_icon(event)
+local function get_icon(event, type)
 	local response = event.response
-    	local icon = load(favicon, "rb")
+    local icon = load(favicon_file_path .. type, "rb")
 
 	if not icon then
-		module:log("error","Couldn't find favicon in %s", favicon)
 		return 404
 	else
-		response.headers.content_type = "image/x-icon"
-		return response:send(icon)
+		if type == "ico" then type = "x-icon" end
+		response.headers["Cache-Control"] = "public, max-age=86400"
+		response.headers["Content-Type"] = "image/" .. type
+		response:send(icon)
 	end
+
+	return true
+end
+
+local function serve(event)
+	local type = event.request.path:match("%.([^%.]*)$")
+	return get_icon(event, type)
 end
 
 function module.add_host(module)
-	module:hook_object_event(server, "GET "..module.host.."/favicon.ico", serve_icon, -1)
+	module:hook_object_event(server, "GET "..module.host.."/favicon.ico", serve, -1)
+	module:hook_object_event(server, "GET "..module.host.."/assets/favicon.png", serve, -1)
 end

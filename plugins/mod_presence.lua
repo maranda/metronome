@@ -161,8 +161,8 @@ function handle_normal_presence(origin, stanza)
 			end
 		end
 		if priority >= 0 then
-                        local event = { origin = origin }
-                        module:fire_event("message/offline/broadcast", event);
+			local event = { origin = origin };
+			module:fire_event("message/offline/broadcast", event);
 		end
 	end
 	if stanza.attr.type == "unavailable" then
@@ -176,7 +176,6 @@ function handle_normal_presence(origin, stanza)
 				stanza.attr.to = jid;
 				fire_event("route/post", origin, stanza, true);
 			end
-			origin.directed = nil;
 		end
 	else
 		origin.presence = stanza;
@@ -348,19 +347,16 @@ local function outbound_presence_handler(data)
 		end
 
 		local to_bare = jid_bare(to);
-		local to_resource = jid_section(to, "resource");
 		local roster = origin.roster;
-		if (roster and check_directed_presence(roster, to_bare)) or not roster then -- directed presence
-			origin.directed = origin.directed or {};
-			origin.joined_mucs = origin.joined_mucs or {};
+		if origin.type == "c2s" and ((roster and check_directed_presence(roster, to_bare)) or not roster) then -- directed presence
 			if t then -- removing from directed presence list on sending an error or unavailable
 				origin.directed[to] = nil;
-				if origin.joined_mucs[to_bare] and to_resource then origin.joined_mucs[to_bare] = nil; end
+				origin.directed_bare[to_bare] = nil;
+				if origin.joined_mucs[to_bare] then origin.joined_mucs[to_bare] = nil; end
 			else
-				origin.directed[to] = true;
-				if stanza:get_child("x", "http://jabber.org/protocol/muc") and to_resource then
-					origin.joined_mucs[to_bare] = true;
-				end
+				origin.directed[to] = to_bare;
+				origin.directed_bare[to_bare] = to;
+				if stanza:get_child("x", "http://jabber.org/protocol/muc") then	origin.joined_mucs[to_bare] = true; end
 			end
 		end
 	end -- TODO maybe handle normal presence here, instead of letting it pass to incoming handlers?
@@ -459,7 +455,6 @@ module:hook("resource-unbind", function(event)
 			pres.attr.to = jid;
 			fire_event("route/post", session, pres, true);
 		end
-		session.directed = nil;
 	end
 end);
 

@@ -31,23 +31,26 @@ end);
 
 module:hook("message/offline/handle", function(event)
 	local origin, stanza = event.origin, event.stanza;
-	local to = stanza.attr.to;
-	local node, host;
-	if to then
-		node, host = jid_split(to);
-	else
-		node, host = origin.username, origin.host;
-	end
+
+	if not stanza:get_child("no-store", "urn:xmpp:hints") then
+		local to = stanza.attr.to;
+		local node, host;
+		if to then
+			node, host = jid_split(to);
+		else
+			node, host = origin.username, origin.host;
+		end
 	
-	local archive = datamanager.list_load(node, host, "offline");
-	if archive and #archive >= limit then
-		origin.send(st.error_reply(stanza, "cancel", "service-unavailable", "User's offline message queue is full!"));
-		return true;
-	else
-		stanza.attr.stamp, stanza.attr.stamp_legacy = datetime.datetime(), datetime.legacy();
-		local result = datamanager.list_append(node, host, "offline", st.preserialize(stanza));
-		stanza.attr.stamp, stanza.attr.stamp_legacy = nil, nil;
-		return result;
+		local archive = datamanager.list_load(node, host, "offline");
+		if archive and #archive >= limit then
+			origin.send(st.error_reply(stanza, "cancel", "service-unavailable", "User's offline message queue is full!"));
+			return true;
+		else
+			stanza.attr.stamp = datetime.datetime();
+			local result = datamanager.list_append(node, host, "offline", st.preserialize(stanza));
+			stanza.attr.stamp = nil;
+			return result;
+		end
 	end
 end);
 
@@ -61,8 +64,7 @@ module:hook("message/offline/broadcast", function(event)
 	for _, stanza in ipairs(data) do
 		stanza = st.deserialize(stanza);
 		stanza:tag("delay", {xmlns = "urn:xmpp:delay", from = host, stamp = stanza.attr.stamp}):up(); -- XEP-0203
-		stanza:tag("x", {xmlns = "jabber:x:delay", from = host, stamp = stanza.attr.stamp_legacy}):up(); -- XEP-0091 (deprecated)
-		stanza.attr.stamp, stanza.attr.stamp_legacy = nil, nil;
+		stanza.attr.stamp = nil;
 		origin.send(stanza);
 	end
 	datamanager.list_store(node, host, "offline", nil);

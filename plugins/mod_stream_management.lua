@@ -7,6 +7,8 @@
 -- This implements XEP-198: Stream Management,
 -- The code is based on the module available for Prosody.
 
+module:set_component_inheritable();
+
 local bare_sessions = bare_sessions;
 
 local ipairs, min, now, pairs, t_insert, t_remove, tonumber, tostring =

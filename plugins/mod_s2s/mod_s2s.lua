@@ -41,7 +41,6 @@ local check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
 local encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 
 local sessions = module:shared("sessions");
-local multiplexed_sessions = setmetatable({}, { __mode = "v" });
 
 local log = module._log;
 local last_inactive_clean = now();
@@ -99,14 +98,13 @@ end
 
 -- Handles stanzas to existing s2s sessions
 function route_to_existing_session(event)
-	local from_host, to_host, multiplexed_from, stanza = event.from_host, event.to_host, event.multiplexed_from, event.stanza;
+	local from_host, to_host, stanza = event.from_host, event.to_host, event.stanza;
 	if not hosts[from_host] then
 		log("warn", "Attempt to send stanza from %s - a host we don't serve", from_host);
 		return false;
 	end
 	local host = hosts[from_host].s2sout[to_host];
 	if host then
-		if multiplexed_from then host.multiplexed_from = multiplexed_from; end
 		time_and_clean(host, now());
 		-- We have a connection to this host already
 		if host.type == "s2sout_unauthed" and (stanza.name ~= "db:verify" or not host.dialback_key) then
@@ -159,17 +157,14 @@ end
 
 -- Create a new outgoing session for a stanza
 function route_to_new_session(event)
-	local from_host, to_host, multiplexed_from, stanza = event.from_host, event.to_host, event.multiplexed_from, event.stanza;
+	local from_host, to_host, from_multiplexed, stanza = event.from_host, event.to_host, event.from_multiplexed, event.stanza;
 	log("debug", "opening a new outgoing connection for this stanza");
 	local host_session = s2s_new_outgoing(from_host, to_host);
 
 	-- Store in buffer
 	host_session.bounce_sendq = bounce_sendq;
 	host_session.open_stream = session_open_stream;
-	if multiplexed_from then
-		host_session.multiplexed_from = multiplexed_from;
-		multiplexed_sessions[to_host] = host_session;
-	end
+	if from_multiplexed then host_session.from_multiplexed = from_multiplexed; end
 
 	host_session.sendq = { {tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza)} };
 	log("debug", "stanza [%s] queued until connection complete", tostring(stanza.name));
@@ -183,6 +178,8 @@ function route_to_new_session(event)
 end
 
 function module.add_host(module)
+	module:set_component_inheritable();
+
 	local modules_disabled = module:get_option_set("modules_disabled", {});
 	if not s2s_strict_mode then
 		module:depends("dialback");
@@ -204,31 +201,21 @@ function module.add_host(module)
 	module:hook("route/remote", route_to_existing_session, 200);
 	module:hook("route/remote", route_to_new_session, 100);
 	module:hook("s2s-authenticated", function(event)
-		local ctx, direction, session, from, to = event.ctx, event.direction, event.session, event.from, event.to;
-		if require_encryption and ctx and not session.secure then
-			local multiplexed_from;
-			if multiplexed_sessions[to] then
-				multiplexed_from =
-					multiplexed_sessions[to].multiplexed_from and
-					multiplexed_sessions[to].multiplexed_from.from_host;
-			end
-			if direction == "outgoing" and encryption_exceptions:contains(multiplexed_from) then
-				return true;
-			elseif not encryption_exceptions:contains(direction == "outgoing" and to or from) then
-				local text = direction == "outgoing" and "offered" or "used";
-				session:close({
-					condition = "policy-violation",
-					text = "TLS encryption is mandatory but wasn't "..text }, "authentication failure");
-				return false;
-			end
-		end
+		-- Everytime you remove this return a kitten dies... And we no want good kittehs die ye?
 		return true;
+	end, -100);
+	module:hook("s2s-no-encryption", function(session)
+		local to = session.to_host;
+		if encryption_exceptions:contains(session.from_multiplexed) then
+			return;
+		elseif not encryption_exceptions:contains(to) then
+			session:close({
+				condition = "policy-violation",
+				text = "TLS encryption is mandatory but was not offered" }, "authentication failure");
+			return true;
+		end
+		return;
 	end)
-	module:hook("s2sout-destroyed", function(event)
-		local session = event.session;
-		local multiplexed_from = session.multiplexed_from;
-		if multiplexed_from and not multiplexed_from.destroyed then multiplexed_from.hosts[session.to_host] = nil; end
-	end, 100);
 end
 
 --- Helper to check that a session peer's certificate is valid
@@ -342,7 +329,6 @@ function stream_callbacks.streamopened(session, attr)
 			end
 		end
 
-		if module:fire_event("s2s-filter", session, from, to) then return; end
 		if session.secure and not session.cert_chain_status then check_cert_status(session); end
 
 		if (not to or not from) and s2s_strict_mode then
@@ -386,7 +372,7 @@ function stream_callbacks.streamopened(session, attr)
 		if session.version < 1.0 then
 			local from, to = session.from_host, session.to_host;
 			if require_encryption and hosts[from].ssl_ctx and
-			   not encryption_exceptions:contains(to) and not multiplexed_sessions[to] then
+			   not encryption_exceptions:contains(to) and not encryption_exceptions:contains(session.from_multiplexed) then
 				-- pre-1.0 servers won't support tls perhaps they should be excluded
 				session:close("unsupported-version", "error communicating with the remote server");
 				return;
@@ -458,12 +444,13 @@ local function session_close(session, reason, remote_reason)
 			session.sends2s(st.stanza("stream:stream", default_stream_attr):top_tag());
 		end
 		if reason then -- nil == no err, initiated by us, false == initiated by remote
+			local stanza = st.stanza("stream:error");
 			if type(reason) == "string" then -- assume stream error
 				log("debug", "Disconnecting %s[%s], <stream:error> is: %s", session.host or "(unknown host)", session.type, reason);
-				session.sends2s(st.stanza("stream:error"):tag(reason, {xmlns = "urn:ietf:params:xml:ns:xmpp-streams" }));
+				session.sends2s(stanza:tag(reason, {xmlns = "urn:ietf:params:xml:ns:xmpp-streams" }));
 			elseif type(reason) == "table" then
 				if reason.condition then
-					local stanza = st.stanza("stream:error"):tag(reason.condition, stream_xmlns_attr):up();
+					stanza:tag(reason.condition, stream_xmlns_attr):up();
 					if reason.text then
 						stanza:tag("text", stream_xmlns_attr):text(reason.text):up();
 					end
@@ -555,6 +542,9 @@ end
 function listener.onconnect(conn)
 	local session = sessions[conn];
 	if not session then -- New incoming connection
+		local filtered = module:fire_event("s2s-new-incoming-connection", { ip = conn:ip(), conn = conn });
+		if filtered then return; end
+
 		session = s2s_new_incoming(conn);
 		sessions[conn] = session;
 		session.log("debug", "Incoming s2s connection");
@@ -660,8 +650,3 @@ module:add_item("net-provider", {
 		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:server%1.*>";
 	};
 });
-
-function module.save() return { multiplexed_sessions = multiplexed_sessions }; end
-function module.restore(data)
-	multiplexed_sessions = data.multiplexed_sessions or setmetatable({}, { __mode = "v" });
-end

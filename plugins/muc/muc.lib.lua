@@ -323,7 +323,7 @@ end
 
 function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 	local from, to = stanza.attr.from, stanza.attr.to;
-	local room = jid_bare(to);
+	local room = self.jid;
 	local current_nick = self._jid_nick[from];
 	local type = stanza.attr.type;
 	if (jid_section(from, "host") == muc_domain) then error("Presence from the MUC itself!!!"); end
@@ -366,7 +366,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 					self:broadcast_presence(pr, from);
 					self._occupants[current_nick] = nil;
 				end
-				module:fire_event("muc-occupant-part", self.jid, from, current_nick, next(sessions, next(sessions)) and true);
+				module:fire_event("muc-occupant-part", self, from, current_nick, origin, next(sessions, next(sessions)) and true);
 			end
 		elseif not type then -- available
 			if current_nick then
@@ -381,7 +381,6 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						if self._occupants[to] or is_multisession then
 							log("debug", "%s couldn't change nick", current_nick);
 							local reply = st.error_reply(stanza, "cancel", "conflict"):up();
-							reply.tags[1].attr.code = "409";
 							origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 						else
 							local data = self._occupants[current_nick];
@@ -396,7 +395,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 								pr.attr.from = to;
 								self._occupants[to].sessions[from] = pr;
 								self:broadcast_presence(pr, from);
-								module:fire_event("muc-occupant-nick-change", self.jid, from, current_nick, to);
+								module:fire_event("muc-occupant-nick-change", self, from, current_nick, to);
 							else
 								log("debug", "%s sent a malformed nick change request!", current_nick);
 								origin.send(st.error_reply(stanza, "cancel", "jid-malformed"));
@@ -410,6 +409,12 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 				--	self:handle_to_occupant(origin, stanza); -- resend available
 				--end
 			else -- enter room
+				if self.locked then
+					log("debug", "%s was prevented from joining %s, the room needs to be configured first", from, room);
+					local reply = st.error_reply(stanza, "cancel", "item-not-found"):up();
+					origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
+					return;
+				end
 				local new_nick = to;
 				local is_merge;
 				if self._occupants[to] then
@@ -422,14 +427,12 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 				password = password and password:get_child("password", "http://jabber.org/protocol/muc");
 				password = password and password[1] ~= "" and password[1];
 				if self:get_option("password") and self:get_option("password") ~= password and not admin_toggles[jid_bare(from)] then
-					log("debug", "%s couldn't join due to invalid password: %s", from, to);
+					log("debug", "%s couldn't join %s due to invalid password", from, room);
 					local reply = st.error_reply(stanza, "auth", "not-authorized"):up();
-					reply.tags[1].attr.code = "401";
 					origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 				elseif not new_nick then
 					log("debug", "%s couldn't join due to nick conflict: %s", from, to);
 					local reply = st.error_reply(stanza, "cancel", "conflict"):up();
-					reply.tags[1].attr.code = "409";
 					origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 				else
 					log("debug", "%s joining as %s", from, to);
@@ -446,6 +449,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						end
 						self._jid_nick[from] = to;
 						self:send_occupant_list(from);
+						module:fire_event("muc-occupant-list-sent", self, from, to, origin);
 						pr.attr.from = to;
 						pr:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
 							:tag("item", {affiliation = affiliation or "none", role = role or "none"}):up();
@@ -454,18 +458,21 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 						end
 						if self._data.whois == "anyone" then pr:tag("status", {code = "100"}):up(); end
 						pr:tag("status", {code = "110"}):up();
+						if self.just_created then
+							self.just_created = nil;
+							self.locked = true;
+							pr:tag("status", {code = "201"}):up();
+						end
 						module:fire_event("muc-occupant-join-presence", self, pr, origin);
 						pr.attr.to = from;
 						self:_route_stanza(pr);
-						self:send_history(from, stanza);
-						module:fire_event("muc-occupant-join", self.jid, from, to);
+						if not self.locked then self:send_history(from, stanza); end
+						module:fire_event("muc-occupant-join", self, from, to, origin);
 					elseif not affiliation then -- registration required for entering members-only room
 						local reply = st.error_reply(stanza, "auth", "registration-required"):up();
-						reply.tags[1].attr.code = "407";
 						origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 					else -- banned
 						local reply = st.error_reply(stanza, "auth", "forbidden"):up();
-						reply.tags[1].attr.code = "403";
 						origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 					end
 				end
@@ -611,14 +618,19 @@ local valid_whois = {
 
 function room_mt:process_form(origin, stanza)
 	local query = stanza.tags[1];
-	local form;
+	local form, instant;
 	for _, tag in ipairs(query.tags) do if tag.name == "x" and tag.attr.xmlns == "jabber:x:data" then form = tag; break; end end
 	if not form then origin.send(st.error_reply(stanza, "cancel", "service-unavailable")); return; end
-	if form.attr.type == "cancel" then origin.send(st.reply(stanza)); return; end
+	instant = self.locked and #form.tags == 0;
+	if form.attr.type == "cancel" then
+		origin.send(st.reply(stanza));
+		if self.locked then self:destroy(nil, "Owner cancelled initial configuration"); end
+		return; 
+	end
 	if form.attr.type ~= "submit" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "Not a submitted form")); return; end
 
 	local fields = self:get_form_layout():data(form);
-	if fields.FORM_TYPE ~= "http://jabber.org/protocol/muc#roomconfig" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "Form is not of type room configuration")); return; end
+	if not instant and fields.FORM_TYPE ~= "http://jabber.org/protocol/muc#roomconfig" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "Form is not of type room configuration")); return; end
 
 	fields.FORM_TYPE = nil;
 	local changed = {};
@@ -632,17 +644,20 @@ function room_mt:process_form(origin, stanza)
 		return origin.send(st.error_reply(stanza, "cancel", "bad-request", "History length value cannot exceed "..tostring(max_history_length)));
 	end
 
-	local whois = fields["muc#roomconfig_whois"];
+	local whois = fields["muc#roomconfig_whois"] or "moderators";
 	if not valid_whois[whois] then
 		return origin.send(st.error_reply(stanza, "cancel", "bad-request", "Invalid value for 'whois'"));
 	end
-	
+
+	local hidden;
+	if not instant then hidden = not fields["muc#roomconfig_publicroom"]; end
+
 	self:set_option("name", name, changed);
 	self:set_option("description", fields["muc#roomconfig_roomdesc"], changed);
 	self:set_option("persistent", fields["muc#roomconfig_persistentroom"], changed);
 	self:set_option("moderated", fields["muc#roomconfig_moderatedroom"], changed);
 	self:set_option("members_only", fields["muc#roomconfig_membersonly"], changed);
-	self:set_option("hidden", not fields["muc#roomconfig_publicroom"], changed);
+	self:set_option("hidden", hidden, changed);
 	self:set_option("changesubject", fields["muc#roomconfig_changesubject"], changed);
 	self:set_option("history_length", history_length or default_history_length, changed);
 	local whois_changed = self:set_option("whois", fields["muc#roomconfig_whois"], changed);
@@ -654,8 +669,12 @@ function room_mt:process_form(origin, stanza)
 	
 	if self.save then self:save(true); end
 	origin.send(st.reply(stanza));
+	if self.locked then 
+		self.locked = nil;
+		self:send_history(stanza.attr.from);
+	end
 
-	if next(changed) then
+	if not instant and next(changed) then
 		local msg = st.message({type = "groupchat", from = self.jid})
 			:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"}):up()
 
@@ -815,6 +834,9 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 			origin.send(st.error_reply(stanza, "cancel", "not-acceptable"));
 		elseif occupant.role == "visitor" then
 			origin.send(st.error_reply(stanza, "auth", "forbidden"));
+		elseif self.locked then
+			origin.send(st.error_reply(stanza, "cancel", "service-unavailable", 
+				"Please either configure the room or do request an instant room, the room is still locked"));
 		else
 			local from = stanza.attr.from;
 			stanza.attr.from = current_nick;
@@ -852,7 +874,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 	       stanza.tags[1].name == "x" and stanza.tags[1].attr.xmlns == "http://jabber.org/protocol/muc#user" then
 		local x = stanza.tags[1];
 		local payload = (#x.tags == 1 and x.tags[1]);
-		if payload and (payload.name == "invite" or payload.name == "decline") and payload.attr.to then
+		if not self.locked and payload and (payload.name == "invite" or payload.name == "decline") and payload.attr.to then
 			local _from, _to = stanza.attr.from, stanza.attr.to;
 			local _recipient = jid_prep(payload.attr.to);
 			if _recipient then

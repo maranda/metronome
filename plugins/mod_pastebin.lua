@@ -82,8 +82,9 @@ function handle_request(event, pasteid)
 	return pastes[pasteid];
 end
 
-function is_occupant(to, from)
-	room = rooms[jid_bare(to)];
+local function is_occupant(to, from)
+	local room = rooms[jid_bare(to)];
+	if not room then return; end
 	return room:is_occupant(from);
 end
 
@@ -91,9 +92,8 @@ function check_message(data)
 	local origin, stanza = data.origin, data.stanza;
 	
 	-- check that user is a room occupant
-	if is_component and
-		not is_occupant(stanza.attr.to, origin.full_jid or stanza.attr.from) then
-			return;
+	if is_component and not is_occupant(stanza.attr.to, origin.full_jid or stanza.attr.from) then
+		return;
 	end
 	
 	local body, bodyindex, htmlindex;

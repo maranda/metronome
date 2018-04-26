@@ -50,6 +50,10 @@ function api:set_global()
 	self.global = true;
 end
 
+function api:set_component_inheritable()
+	self.component_inheritable = true;
+end
+
 function api:add_feature(xmlns)
 	self:add_item("feature", xmlns);
 end

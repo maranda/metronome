@@ -48,7 +48,7 @@ end
 local ports_by_scheme = { http = 80, https = 443, };
 
 -- Helper to deduce a module's external URL
-function moduleapi.http_url(module, app_name, default_path)
+function moduleapi.http_url(module, app_name, default_path, default_host)
 	app_name = app_name or (module.name:gsub("^http_", ""));
 	local ext = url_parse(module:get_option_string("http_external_url")) or {};
 	local services = portmanager.get_active_services();
@@ -57,7 +57,7 @@ function moduleapi.http_url(module, app_name, default_path)
 		for port, services in pairs(ports) do
 			local url = {
 				scheme = (ext.scheme or services[1].service.name);
-				host = (ext.host or module.host);
+				host = (ext.host or default_host or module.host);
 				port = tonumber(ext.port) or port or 80;
 				path = normalize_path(ext.path or "/")..
 					((default_path and default_path) or

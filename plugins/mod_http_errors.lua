@@ -31,6 +31,7 @@ local html = [[
 <!DOCTYPE html>
 <html>
 <head>
+	<link rel="icon" type="image/png" href="/assets/favicon.png" />
 	<meta charset="utf-8">
 	<style>
 		body{
@@ -49,9 +50,9 @@ local html = [[
         </style>
 </head>
 <body>
-        <h1>$title</h1>
-        <p>$message</p>
-        <p>$extra</p>
+	<h1>$title</h1>
+	<p>$message</p>
+	<p>$extra</p>
 </body>
 </html>]];
 html = html:gsub("%s%s+", "");
@@ -81,5 +82,7 @@ local function get_page(code, extra)
 end
 
 module:hook_object_event(server, "http-error", function (event)
+	local response = event.response;
+	if response then response.headers["Content-Type"] = "text/html"; end
 	return get_page(event.code, (show_private and event.private_message) or event.message);
 end);

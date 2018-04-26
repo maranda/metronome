@@ -13,10 +13,10 @@ local host_session = hosts[module.host];
 local s2s_make_authenticated = require "util.s2smanager".make_authenticated;
 
 local log = module._log;
-local s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
 local no_encryption = metronome.no_encryption;
 local require_encryption = module:get_option_boolean("s2s_require_encryption", not no_encryption);
 local encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
+local cert_verify_identity = require "util.x509".verify_identity;
 
 local st = require "util.stanza";
 local sha256_hash = require "util.hashes".sha256;
@@ -49,20 +49,14 @@ function verify_dialback(id, to, from, key)
 end
 
 function make_authenticated(session, host)
-	if session.type == "s2sout_unauthed" then
-		local multiplexed_from = session.multiplexed_from;
-		if multiplexed_from and not multiplexed_from.destroyed then
-			local hosts = multiplexed_from.hosts;
-			if not hosts[session.to_host] then
-				hosts[session.to_host] = { authed = true };
-			else
-				hosts[session.to_host].authed = true;
-			end
-		else
-			session.multiplexed_from = nil; -- don't hold destroyed sessions.
-		end
-	end
 	return s2s_make_authenticated(session, host);
+end
+
+local function verify_identity(origin, from)
+	local conn = origin.conn:socket();
+	local cert;
+	if conn.getpeercertificate then cert = conn:getpeercertificate(); end
+	if cert then return cert_verify_identity(from, "xmpp-server", cert); end
 end
 
 local function can_do_dialback(origin)
@@ -83,14 +77,19 @@ local function exceed_errors(origin)
 end
 
 local errors_map = {
-	["item-not-found"] = "requested host was not found on the remote enitity",
-	["remote-connection-failed"] = "the receiving entity failed to connect back to us",
-	["remote-server-not-found"] = "encountered an error while attempting to verify dialback, like the server unexpectedly closing the connection",
-	["remote-server-timeout"] = "time exceeded while attempting to contact the authoritative server",
-	["policy-violation"] = "the receiving entity requires to enable TLS before executing dialback",
-	["not-authorized"] = "the receiving entity denied dialback, probably because it requires a valid certificate",
+	["bad-request"] = "the receiving entity was unable to process the dialback request",
 	["forbidden"] = "received a response of type invalid while authenticating with the authoritative server",
-	["not-acceptable"] = "the receiving entity was unable to assert our identity"
+	["improper-addressing"] = "dialback request lacks to or from attribute",
+	["internal-server-error"] = "the remote server encountered an error while authenticating",
+	["item-not-found"] = "requested host was not found on the remote enitity",
+	["policy-violation"] = "the receiving entity refused dialback due to a local policy",
+	["not-acceptable"] = "the receiving entity was unable to assert our identity",
+	["not-authorized"] = "the receiving entity denied dialback",
+	["not-allowed"] = "the receiving entity refused dialback because we are into a blacklist",
+	["remote-connection-failed"] = "the receiving entity failed to connect back to us",
+	["remote-server-not-found"] = "encountered an error while attempting to verify dialback",
+	["remote-server-timeout"] = "time exceeded while attempting to contact the authoritative server",
+	["resource-constraint"] = "the remote server is currently too busy, try again laters"
 };
 local function handle_db_errors(origin, stanza)
 	local attr = stanza.attr;
@@ -105,11 +104,8 @@ local function handle_db_errors(origin, stanza)
 	
 	if err then
 		format = ("Dialback non-fatal error: "..err.." (%s)"):format(type:find("s2sin.*") and attr.from or attr.to);
-	else -- invalid error condition
-		origin:close(
-			{ condition = "not-acceptable", text = "Supplied error dialback condition is a non graceful one, good bye" },
-			"stream failure"
-		);
+	else -- non graceful error condition
+		origin:close({ condition = "undefined-condition", text = "Condition is non graceful, good bye" }, "dialback failure");
 	end
 	
 	if format then 
@@ -147,10 +143,6 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 		local type;
 		if verify_dialback(attr.id, attr.from, attr.to, stanza[1]) then
 			type = "valid";
-			if origin.type == "s2sin" then
-				local s2sout = hosts[attr.to].s2sout[attr.from];
-				if s2sout and origin.from_host ~= attr.from then s2sout.multiplexed_from = origin; end
-			end
 		else
 			type = "invalid";
 			origin.log("warn", "Asked to verify a dialback key that was incorrect. An imposter is claiming to be %s?", attr.to);
@@ -167,7 +159,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 	if origin.type == "s2sin_unauthed" or origin.type == "s2sin" then
 		local attr = stanza.attr;
 		local to, from = nameprep(attr.to), nameprep(attr.from);
-		local is_multiplexed_from;
+		local from_multiplexed;
 
 		if not origin.from_host then
 			origin.from_host = from;
@@ -176,14 +168,34 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 			origin.to_host = to;
 		end
 		if origin.from_host ~= from then -- multiplexed stream
-			is_multiplexed_from = origin;
+			from_multiplexed = origin.from_host;
 		end
 		
 		if not hosts[to] then
 			origin.log("info", "%s tried to connect to %s, which we don't serve", from, to);
 			return send_db_error(origin, "db:result", "item-not-found", to, from, attr.id);
 		elseif not from then
-			origin:close("improper-addressing");
+			return send_db_error(origin, "db:result", "improper-addressing", to, from, attr.id);
+		elseif origin.blocked then
+			return send_db_error(origin, "db:result", "not-allowed", to, from, attr.id);
+		elseif require_encryption and not origin.secure and not encryption_exceptions:contains(from) then
+			return send_db_error(origin, "db:result", "policy-violation", to, from, attr.id);
+		end
+
+		-- Implement Dialback without Dialback (See XEP-0344) shortcircuiting
+		local shortcircuit;
+		if origin.cert_identity_status == "valid" and from == origin.from_host then
+			shortcircuit = true;
+		elseif from ~= origin.from_host and verify_identity(origin, from) then
+			shortcircuit = true;
+		end
+
+		if shortcircuit then
+			origin.log("debug", "shortcircuiting %s dialback request, as it presented a valid certificate", from);
+			origin.sends2s(
+				st.stanza("db:result", { from = to, to = from, id = attr.id, type = "valid" }):text(stanza[1])
+			);
+			make_authenticated(origin, from);
 			return true;
 		end
 		
@@ -192,7 +204,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		
 		origin.log("debug", "asking %s if key %s belongs to them", from, stanza[1]);
 		module:fire_event("route/remote", {
-			from_host = to, to_host = from, multiplexed_from = is_multiplexed_from,
+			from_host = to, to_host = from, from_multiplexed = from_multiplexed,
 			stanza = st.stanza("db:verify", { from = to, to = from, id = origin.streamid }):text(stanza[1])
 		});
 		return true;
@@ -224,7 +236,7 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 						:text(dialback_verifying.hosts[attr.from].dialback_key));
 			end
 			if not destroyed and not authed then
-				send_db_error(origin, "db:verify", "not-authorized", attr.to, attr.from, attr.id);
+				send_db_error(dialback_verifying, "db:result", "forbidden", attr.to, attr.from, attr.id);
 			end
 		else
 			send_db_error(origin, "db:verify", "remote-server-not-found", attr.to, attr.from, attr.id);
@@ -252,7 +264,11 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		elseif attr.type == "error" then
 			return handle_db_errors(origin, stanza);
 		else
-			send_db_error(origin, "db:result", "not-authorized", attr.to, attr.from, attr.id);
+			local dialback_verifying = dialback_requests[attr.from.."/"..(attr.id or "")];
+			if dialback_verifying and not dialback_verifying.destroyed then
+				send_db_error(dialback_verifying, "db:result", "forbidden", attr.to, attr.from, attr.id);
+			end
+			dialback_requests[attr.from.."/"..(attr.id or "")] = nil;
 		end
 		origin.doing_db = nil;
 		return true;
@@ -324,7 +340,6 @@ function module.unload(reload)
 end
 
 module:hook_global("config-reloaded", function()
-	s2s_strict_mode = module:get_option_boolean("s2s_strict_mode", false);
 	require_encryption = module:get_option_boolean("s2s_require_encryption", not no_encryption);
 	encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
 end);

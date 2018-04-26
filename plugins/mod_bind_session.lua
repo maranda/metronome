@@ -15,7 +15,7 @@ local legacy_attr = { xmlns = xmlns_legacy };
 
 local bare_sessions, next = bare_sessions, next;
 
-local legacy = module:get_option_boolean("legacy_session_support", "true");
+local legacy = module:get_option_boolean("legacy_session_support", true);
 local resources_limit = module:get_option_number("max_client_resources", 9);
 
 local function limit_binds(session)
@@ -38,7 +38,7 @@ module:hook("stream-features", function(event)
 	local origin, features = event.origin, event.features;
 	if origin.username then
 		features:tag("bind", bind_attr):tag("required"):up():up();
-		if legacy then features:tag("session", legacy_attr):up(); end
+		if legacy then features:tag("session", legacy_attr):tag("optional"):up():up(); end
 	end
 end, 99);
 

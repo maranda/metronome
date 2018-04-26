@@ -222,7 +222,7 @@ local function count_relevant_entries(logs, with, start, fin)
 	return count;
 end
 
-local function generate_stanzas(store, start, fin, with, max, after, before, index, qid, rsm)
+local function generate_stanzas(store, start, fin, with, max, after, before, index, qid)
 	local logs = store.logs;
 	local stanzas = {};
 	local query;
