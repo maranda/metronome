@@ -215,6 +215,9 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 
 	module:add_timer(900, function()
 		pending_slots[slot] = nil;
+		if not lfs.attributes(join_path(storage_path, random_dir, filename)) then
+			os_remove(join_path(storage_path, random_dir));
+		end
 	end);
 
 	origin.log("debug", "Given upload slot %q", slot);
@@ -295,12 +298,14 @@ local function upload_data(event, path)
 	if not ok then
 		module:log("error", "Could not write to file %s for upload: %s", full_filename, err);
 		os_remove(full_filename);
+		os_remove(full_filename:match("^(.*)[/\\]"));
 		return 500;
 	end
 	ok, err = fh:close();
 	if not ok then
 		module:log("error", "Could not write to file %s for upload: %s", full_filename, err);
 		os_remove(full_filename);
+		os_remove(full_filename:match("^(.*)[/\\]"));
 		return 500;
 	end
 
@@ -425,6 +430,7 @@ module:hook_global("user-deleted", function(event)
 		local filename = join_path(storage_path, item.dir, item.filename);
 		local ok, err = os_remove(filename);
 		if not ok then module:log("debug", "Failed to remove %s@%s %s file: %s", user, host, filename, err); end
+		os_remove(filename:match("^(.*)[/\\]"));
 	end
 	datamanager.list_store(user, host, module.name, nil);
 	local has_downloads = datamanager.load(nil, host, module.name);
