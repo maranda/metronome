@@ -20,13 +20,18 @@ local url = require "socket.url";
 local dataform = require "util.dataforms".new;
 local datamanager = require "util.datamanager";
 local array = require "util.array";
-local uuid = require "util.uuid".generate;
+local seed = require "util.auxiliary".generate_secret;
 local split = require "util.jid".split;
-local ipairs, pairs, os_remove, os_time, t_concat, t_insert, s_upper =
-	ipairs, pairs, os.remove, os.time, table.concat, table.insert, string.upper;
+local ipairs, pairs, os_remove, os_time, s_upper, t_concat, t_insert, tostring =
+	ipairs, pairs, os.remove, os.time, string.upper, table.concat, table.insert, tostring;
 
 local function join_path(...)
 	return table.concat({ ... }, package.config:sub(1,1));
+end
+
+local function generate_directory()
+	local bits = seed(9);
+	return bits and bits:gsub("/", ""):gsub("%+", "") .. tostring(os_time()):match("%d%d%d%d$");
 end
 
 local default_mime_types = {
@@ -185,7 +190,12 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 		return nil, st.error_reply(stanza, "wait", "resource-constraint", "Quota reached");
 	end
 
-	local random_dir = uuid();
+	local random_dir = generate_directory();
+	if not random_dir then
+		module:log("error", "Failed to generate random directory name for %s upload", origin.full_jid);
+		return nil, st.error_reply(stanza, "wait", "internal-server-failure");
+	end
+		
 	local created, err = lfs.mkdir(join_path(storage_path, random_dir));
 
 	if not created then
