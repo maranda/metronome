@@ -163,8 +163,8 @@ end
 
 local enable_spim_descriptor = adhoc_new("Enable SPIM protection", "enable_spim", enable_spim);
 local disable_spim_descriptor = adhoc_new("Disable SPIM protection", "disable_spim", disable_spim);
-module:provides("adhoc", enable_spim);
-module:provides("adhoc", disable_spim);
+module:provides("adhoc", enable_spim_descriptor);
+module:provides("adhoc", disable_spim_descriptor);
 
 -- XMPP Handlers
 
