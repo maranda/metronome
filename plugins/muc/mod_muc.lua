@@ -67,14 +67,14 @@ local function toggle_muc_su_handler(self, data, state)
 	if not muclib.admin_toggles[jid_bare(data.from)] then
 		muclib.admin_toggles[jid_bare(data.from)] = true;
 		dummy_change(data.from, "owner");
-		return { status = "completed", info = "MUC SU mode activated, you will now be an owner of every room you will join." };
+		return { status = "completed", info = "MUC SU mode activated, you will now be an owner of every room you will join" };
 	else
 		muclib.admin_toggles[jid_bare(data.from)] = nil;
 		dummy_change(data.from);
-		return { status = "completed", info = "MUC SU mode deactivated." };
+		return { status = "completed", info = "MUC SU mode deactivated" };
 	end
 end
-local toggle_muc_su_descriptor = adhoc_new("Toggle Superuser mode for Multi-user chats.", "toggle", toggle_muc_su_handler, "admin");
+local toggle_muc_su_descriptor = adhoc_new("Toggle Superuser mode for Multi-user chats", "toggle", toggle_muc_su_handler, "admin");
 module:provides("adhoc", toggle_muc_su_descriptor);
 
 local function is_admin(jid)
