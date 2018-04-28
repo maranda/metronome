@@ -150,7 +150,7 @@ local function handle_incoming(event)
 		local from_bare, to_bare = jid_bare(from), jid_bare(to);
 		local user, host, resource = jid_split(to);
 
-		if not jid_section(from_bare, "node") or exceptions:contains(host) then return; end -- allow (PubSub) components and exceptions.
+		if not jid_section(from_bare, "node") or exceptions:contains(jid_section(from_bare, "host")) then return; end -- allow (PubSub) components and exceptions.
 		
 		if is_contact_subscribed(user, host, from_bare) then return; end
 		
