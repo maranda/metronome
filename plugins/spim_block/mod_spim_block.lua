@@ -29,6 +29,7 @@ local bare_sessions = bare_sessions;
 local full_sessions = full_sessions;
 local hosts = metronome.hosts;
 
+local exceptions = module:get_option_set("spim_exceptions", {});
 local secure = module:get_option_boolean("spim_secure", true);
 local base_path = module:get_option_string("spim_base", "spim");
 local http_host = module:get_option_string("spim_http_host");
@@ -149,7 +150,7 @@ local function handle_incoming(event)
 		local from_bare, to_bare = jid_bare(from), jid_bare(to);
 		local user, host, resource = jid_split(to);
 
-		if not jid_section(from_bare, "node") then return; end -- allow (PubSub) components.
+		if not jid_section(from_bare, "node") or exceptions:contains(host) then return; end -- allow (PubSub) components and exceptions.
 		
 		if is_contact_subscribed(user, host, from_bare) then return; end
 		
@@ -191,7 +192,8 @@ local function handle_outgoing(event)
 	
 	if origin.type == "c2s" and stanza.attr.type == "chat" then
 		local to_bare = jid_bare(stanza.attr.to);
-		if not to_bare or origin.directed_bare[to_bare] or hosts[jid_section(to_bare, "host")] then
+		local host = to_bare and jid_section(to_bare, "host");
+		if not to_bare or origin.directed_bare[to_bare] or hosts[host] or exceptions:contains(host) then
 			return;
 		end
 		
