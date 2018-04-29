@@ -21,9 +21,9 @@ local metronome = metronome;
 local resolve_path = configmanager.resolve_relative_path;
 local config_path = metronome.paths.config;
 
-local noticket, verifyext, no_compression, disable_sslv3;
+local luasec_major, luasec_minor, noticket, verifyext, no_compression, disable_sslv3;
 if ssl then
-	local luasec_major, luasec_minor = ssl._VERSION:match("^(%d+)%.(%d+)");
+	luasec_major, luasec_minor = ssl._VERSION:match("^(%d+)%.(%d+)");
 	noticket = tonumber(luasec_major)>0 or tonumber(luasec_minor)>=4;
 	verifyext = tonumber(luasec_major)>0 or tonumber(luasec_minor)>=5;
 	no_compression = tonumber(luasec_major)>0 or tonumber(luasec_minor)>=5;
@@ -75,7 +75,7 @@ function create_context(host, mode, user_ssl_config)
 	
 	local ssl_config = {
 		mode = mode;
-		protocol = user_ssl_config.protocol or (luasec_minor > 5 and "any" or "sslv23");
+		protocol = user_ssl_config.protocol or ((tonumber(luasec_minor) or 5) > 5 and "any" or "sslv23");
 		key = resolve_path(config_path, user_ssl_config.key);
 		password = user_ssl_config.password or function() log("error", "Encrypted certificate for %s requires 'ssl' 'password' to be set in config", host); end;
 		certificate = resolve_path(config_path, user_ssl_config.certificate);

@@ -14,6 +14,7 @@ local url = require "socket.url";
 local httpstream_new = require "util.httpstream".new;
 
 local luasec_version = ssl and ssl._VERSION:match("^%d+%.(%d+)") or nil;
+luasec_version = luasec_version and tonumber(luasec_version);
 
 local server = require "net.server";
 
