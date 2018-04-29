@@ -75,7 +75,7 @@ function create_context(host, mode, user_ssl_config)
 	
 	local ssl_config = {
 		mode = mode;
-		protocol = user_ssl_config.protocol or "sslv23";
+		protocol = user_ssl_config.protocol or (luasec_minor > 5 and "any" or "sslv23");
 		key = resolve_path(config_path, user_ssl_config.key);
 		password = user_ssl_config.password or function() log("error", "Encrypted certificate for %s requires 'ssl' 'password' to be set in config", host); end;
 		certificate = resolve_path(config_path, user_ssl_config.certificate);
