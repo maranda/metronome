@@ -31,6 +31,7 @@ install: metronome.install metronomectl.install metronome.cfg.lua.install metron
 	install -d $(BIN) $(CONFIG) $(MODULES) $(SOURCE)
 	install -m750 -d $(DATA)
 	install -d $(CONFIG)/certs
+	install -d $(CONFIG)/templates
 	install -d $(SOURCE)/core $(SOURCE)/net $(SOURCE)/util
 	install -m755 ./metronome.install $(BIN)/metronome
 	install -m755 ./metronomectl.install $(BIN)/metronomectl
@@ -44,8 +45,11 @@ install: metronome.install metronomectl.install metronome.cfg.lua.install metron
 	install -m644 util/sasl/* $(SOURCE)/util/sasl
 	umask 0022 && cp -r plugins/* $(MODULES)
 	install -m755 ./generate_log.install $(MODULES)/muc_log_http/generate_log
+	install -m755 ./send_mail.install $(MODULES)/register_api/send_mail
 	install -m644 certs/* $(CONFIG)/certs
 	test -e $(CONFIG)/metronome.cfg.lua || install -m644 metronome.cfg.lua.install $(CONFIG)/metronome.cfg.lua
+	test -e $(CONFIG)/templates/register.template.txt || install -m644 ./templates/register.template.txt $(CONFIG)/templates/register.template.txt
+	test -e $(CONFIG)/templates/reset.template.txt || install -m644 ./templates/reset.template.txt $(CONFIG)/templates/reset.template.txt
 	test -e metronome.version && install metronome.version $(SOURCE)/metronome.version || true
 	$(MAKE) install -C util-src
 
@@ -89,6 +93,11 @@ util/%.so:
 
 generate_log.install: plugins/muc_log_http/generate_log
 	sed 's|^#!\/usr\/bin\/env lua$$|#!\/usr\/bin\/env lua$(LUA_SUFFIX)|' $^ > $@
+
+send_mail.install: plugins/register_api/send_mail
+	sed "s|^#!\/usr\/bin\/env lua$$|#!\/usr\/bin\/env lua$(LUA_SUFFIX)|; \
+		s|^CFG_SOURCEDIR=.*;$$|CFG_SOURCEDIR='$(INSTALLEDSOURCE)';|; \
+		s|^CFG_CONFIGDIR=.*;$$|CFG_CONFIGDIR='$(INSTALLEDCONFIG)';|;" < $^ > $@
 
 metronome.cfg.lua.install: metronome.cfg.lua.dist
 	sed 's|certs/|$(INSTALLEDCONFIG)/certs/|' $^ > $@
