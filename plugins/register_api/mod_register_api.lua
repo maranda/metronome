@@ -104,7 +104,7 @@ function hashes_mt:remove(node, check)
 	if _hash then
 		self[_hash] = nil; self._index[node] = nil;
 	end
-	if not check then self:save() end
+	if not check then self:save(); end
 end
 
 function hashes_mt:save()
@@ -141,7 +141,7 @@ local function check_dea(address, username)
 	local domain = address:match("@+(.*)$");
 	if whitelisted[domain] then return; end	
 
-	module:log("debug", "Submitting domain to NameAPI for checking...")
+	module:log("debug", "Submitting domain to NameAPI for checking...");
 	http_request(api_url:format(nameapi_ak, address), nil, function(data, code)
 		if code == 200 then
 			local ret = json_decode(data);
@@ -159,7 +159,7 @@ local function check_dea(address, username)
 				datamanager.store("register_json", module.host, "whitelisted_md", whitelisted);
 			end
 		end	
-	end)
+	end);
 end
 
 local function check_node(node)
