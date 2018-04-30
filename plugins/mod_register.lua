@@ -17,7 +17,7 @@ local usermanager_user_exists = require "core.usermanager".user_exists;
 local usermanager_create_user = require "core.usermanager".create_user;
 local usermanager_set_password = require "core.usermanager".set_password;
 local usermanager_delete_user = require "core.usermanager".delete_user;
-local os_time = os.time;
+local os_time, t_insert, t_remove, tostring = os.time, table.insert, table.remove, tostring;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local jid_bare = require "util.jid".bare;
 local new_ip = require "util.ip".new_ip;
@@ -27,6 +27,9 @@ local match_subnet = require "util.ip".match_subnet;
 local compat = module:get_option_boolean("registration_compat", true);
 local allow_registration = module:get_option_boolean("allow_registration", false);
 local additional_fields = module:get_option("additional_registration_fields", {});
+local min_pass_len = module:get_option_number("register_min_pass_length", 8);
+local max_pass_len = module:get_option_number("register_max_pass_length", 30);
+local require_verification = module:get_option_boolean("register_require_verification", false);
 
 local field_map = {
 	username = { name = "username", type = "text-single", label = "Username", required = true };
@@ -47,7 +50,8 @@ local field_map = {
 
 local registration_form = dataform_new{
 	title = "Creating a new account";
-	instructions = "Choose a username and password for use with this service.";
+	instructions = "Choose a username and password for use with this service."
+	..(require_verification and " Also supply your E-Mail address for verification." or "");
 
 	field_map.username;
 	field_map.password;
@@ -57,6 +61,16 @@ local registration_query = st.stanza("query", {xmlns = "jabber:iq:register"})
 	:tag("instructions"):text("Choose a username and password for use with this service."):up()
 	:tag("username"):up()
 	:tag("password"):up();
+
+if require_verification then
+	module:depends("register_api");
+	for index, field in ipairs(additional_fields) do
+		if type(field) == "table" and field.name == "email" or field == "email" then
+			t_remove(additional_fields, index);
+		end
+	end
+	t_insert(additional_fields, "email+");
+end
 
 for _, field in ipairs(additional_fields) do
 	if type(field) == "table" then
@@ -86,6 +100,19 @@ module:hook("stream-features", function(event)
 
 	features:add_child(register_stream_feature);
 end, 100);
+
+local function check_password(session, password)
+	if not ((password:find("%d+") or password:find("%p+")) and password:find("%u+")) or 
+		password:len() < min_pass_len or password:len() > max_pass_len then
+		session.send(st.error_reply(stanza, "modify", "policy-violation",
+			"Passwords must contain at least one digit or one special character, one uppercase letter " ..
+			"and must be at least " .. tostring(min_pass_len) .. " chars in length and not exceed " ..
+			tostring(max_pass_len) .. " chars."
+		));
+		return false;
+	end
+	return true;
+end
 
 local function handle_registration_stanza(event)
 	local session, stanza = event.origin, event.stanza;
@@ -123,10 +150,15 @@ local function handle_registration_stanza(event)
 			local password = query:get_child("password"):get_text();
 			if username and password then
 				if username == session.username then
+					if not check_password(session, password) then return true; end
+
 					if usermanager_set_password(username, password, session.host) then
+						module:fire_event(
+							"user-changed-password", 
+							{ username = node, host = module.host, password = password, source = "mod_register" }
+						);
 						session.send(st.reply(stanza));
 					else
-						-- TODO unable to write file, file may be locked, etc, what's the correct error?
 						session.send(st.error_reply(stanza, "wait", "internal-server-error"));
 					end
 				else
@@ -249,19 +281,21 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 					elseif usermanager_user_exists(username, host) then
 						session.send(st.error_reply(stanza, "cancel", "conflict", "The requested username already exists."));
 					else
-						-- TODO unable to write file, file may be locked, etc, what's the correct error?
+						if not check_password(session, password) then return true; end
+
 						local error_reply = st.error_reply(stanza, "wait", "internal-server-error", "Failed to write data to disk.");
-						if usermanager_create_user(username, password, host) then
+						if usermanager_create_user(username, password, host, verification and true) then
 							if next(data) and not datamanager.store(username, host, "account_details", data) then
-								usermanager_delete_user(username, host);
+								usermanager_delete_user(username, host, "mod_register");
 								session.send(error_reply);
 								return true;
 							end
+
 							session.send(st.reply(stanza));
 							module:log("info", "User account created: %s@%s", username, host);
 							module:fire_event("user-registered", {
-								username = username, host = host, source = "mod_register",
-								session = session });
+								username = username, host = host, password = password, data = data, 
+								source = "mod_register", session = session });
 						else
 							session.send(error_reply);
 						end
