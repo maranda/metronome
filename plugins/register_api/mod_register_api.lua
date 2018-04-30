@@ -500,7 +500,7 @@ local function handle_user_deletion(event)
 end
 
 local function handle_user_registration(event)
-	local user, hostname, password, data = event.username, event.host, event.password, event.data;
+	local user, hostname, password, data, session = event.username, event.host, event.password, event.data, event.session;
 	local mail = event.source == "mod_register" and data.email;
 	if do_mail_verification and mail and hashes:add(user, mail) then
 		local id_token = generate_secret(20)
