@@ -156,6 +156,10 @@ function bind_resource(session, resource)
 		end
 	end
 	
+	if hosts[session.host].users.is_locked(session.username, session.host) then
+		session.locked = true;
+	end
+
 	session.resource = resource;
 	session.full_jid = session.username .. '@' .. session.host .. '/' .. resource;
 	session.directed = {};
