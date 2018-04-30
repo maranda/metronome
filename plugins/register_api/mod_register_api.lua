@@ -49,8 +49,8 @@ end
 
 if use_nameapi and not nameapi_ak then use_nameapi = false; end
 
-local module_path = module.path:gsub("[/\\][^/\\]*$", "") or (metronome.paths.plugins or "./plugins") .. "/register_api");
-local files_base = module_path .. "/template/";
+local module_path = module.path:gsub("[/\\][^/\\]*$", "") or (metronome.paths.plugins or "./plugins").."/register_api";
+local files_base = module_path.."/template/";
 
 local valid_files = {
 	["css/style.css"] = files_base.."css/style.css",
