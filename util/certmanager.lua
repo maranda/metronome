@@ -15,7 +15,7 @@ local ssl_context = ssl and require "ssl.context";
 
 local openssl_version = require "util.auxiliary".get_openssl_version();
 local load_file = require "util.auxiliary".load_file;
-local tostring, type = tostring, type;
+local tonumber, tostring, type = tonumber, tostring, type;
 
 local metronome = metronome;
 local resolve_path = configmanager.resolve_relative_path;
