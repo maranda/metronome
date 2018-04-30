@@ -14,6 +14,7 @@ local nodeprep = require "util.encodings".stringprep.nodeprep;
 local plain_backend = module:require "sasl_aux".plain_backend;
 local external_backend = module:require "sasl_aux".external_backend;
 local my_host = module.host;
+local bare_sessions = bare_sessions;
 
 local log = module._log;
 
@@ -55,8 +56,35 @@ function new_default_provider(host)
 		return true;
 	end
 
-	function provider.create_user(username, password)
-		return datamanager.store(username, host, "accounts", {password = password});
+	function provider.is_locked(username)
+		local account = datamanager.load(username, host, "accounts");
+		if not account then
+			return nil, "Auth failed. Invalid username";
+		elseif account and account.locked then
+			return true;
+		end
+		return false;
+	end
+
+	function provider.unlock_user(username)
+		local account = datamanager.load(username, host, "accounts");
+		if not account then
+			return nil, "Auth failed. Invalid username";
+		elseif account and account.locked then
+			account.locked = nil;
+			local bare_session = bare_sessions[username.."@"..host];
+			if bare_session then
+				for _, session in pairs(bare_session.sessions) do
+					session.locked = nil;
+				end
+			end
+			return datamanager.store(username, host, "accounts", account);
+		end
+		return nil, "User isn't locked"
+	end
+
+	function provider.create_user(username, password, locked)
+		return datamanager.store(username, host, "accounts", { password = password, locked = locked });
 	end
 	
 	function provider.delete_user(username)
