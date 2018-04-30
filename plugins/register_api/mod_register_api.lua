@@ -314,7 +314,7 @@ local function handle_register(data, event)
 				os_execute(
 					module_path.."/send_mail ".."register "..mail_from.." "..mail.." "..mail_reto.." "..username.."@"..module.host.." "
 					..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."verify/", base_host).." "..id_token.." "
-					..secure and "secure" or "" .." &"
+					..(secure and "secure" or "").." &"
 				);
 			end
 
@@ -353,7 +353,7 @@ local function handle_password_reset(data, event)
 			os_execute(
 				module_path.."/send_mail ".."reset "..mail_from.." "..mail.." "..mail_reto.." "..user.."@"..host.." "
 				..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."reset/", base_host).." "..id_token.." "
-				..secure and "secure" or "".." &"
+				..(secure and "secure" or "").." &"
 			);
 		end
 		
@@ -515,7 +515,7 @@ local function handle_user_registration(event)
 			os_execute(
 				module_path.."/send_mail ".."register "..mail_from.." "..mail.." "..mail_reto.." "..user.."@"..host.." "
 				..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."verify/", base_host).." "..id_token.." "
-				..secure and "secure" or "".." &"
+				..(secure and "secure" or "").." &"
 			);
 		end
 
