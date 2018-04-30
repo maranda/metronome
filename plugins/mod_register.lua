@@ -30,6 +30,7 @@ local additional_fields = module:get_option("additional_registration_fields", {}
 local min_pass_len = module:get_option_number("register_min_pass_length", 8);
 local max_pass_len = module:get_option_number("register_max_pass_length", 30);
 local require_verification = module:get_option_boolean("register_require_verification", false);
+local register_tos = module:get_option_string("register_tos", "By registering you implicitly accept our terms of service");
 
 local field_map = {
 	username = { name = "username", type = "text-single", label = "Username", required = true };
@@ -71,6 +72,8 @@ if require_verification then
 	end
 	t_insert(additional_fields, "email+");
 end
+
+t_insert(additional_fields, { type = "fixed", value = register_tos });
 
 for _, field in ipairs(additional_fields) do
 	if type(field) == "table" then
