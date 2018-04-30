@@ -60,7 +60,7 @@ modules_enabled = {
 			--"server_presence"; -- Enables Server Buddies extension support
 			--"service_directory"; -- Enables Service Directories extension support
 			--"public_service"; -- Enables Server vCard support for public services in directories and advertises in features
-			--"register_api"; -- Provides secure API for both Out-Of-Band and In-Band registration
+			--"register_api"; -- Provides secure API for both Out-Of-Band and In-Band registration for E-Mail verification
 			--"websocket"; -- Enable support for WebSocket clients, aka "XMPP over WebSockets"
 };
 
