@@ -284,7 +284,7 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 						if not check_password(session, password) then return true; end
 
 						local error_reply = st.error_reply(stanza, "wait", "internal-server-error", "Failed to write data to disk.");
-						if usermanager_create_user(username, password, host, verification and true) then
+						if usermanager_create_user(username, password, host, require_verification and true) then
 							if next(data) and not datamanager.store(username, host, "account_details", data) then
 								usermanager_delete_user(username, host, "mod_register");
 								session.send(error_reply);
