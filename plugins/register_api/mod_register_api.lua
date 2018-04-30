@@ -508,22 +508,21 @@ local function handle_user_registration(event)
 		if not id_token then
 			hashes:remove(user); return;
 		end
-		if use_nameapi then check_dea(mail, user) end
-		if dea_checks[user] then
-			dea_checks[user] = nil;	return;
-		else
-			module:log("info", "%s just registered on %s, sending verification mail to %s", user, hostname, mail);
-			os_execute(
-				module_path.."/send_mail ".."register '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..user.."@"..hostname.."' '"
-				..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."verify/", base_host).."' '"..id_token.."' '"
-				..(secure and "secure" or "").."' &"
-			);
-		end
+		
+		if use_nameapi then check_dea(mail, user); end
+
+		module:log("info", "%s just registered on %s, sending verification mail to %s", user, hostname, mail);
+		os_execute(
+			module_path.."/send_mail ".."register '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..user.."@"..hostname.."' '"
+			..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."verify/", base_host).."' '"..id_token.."' '"
+			..(secure and "secure" or "").."' &"
+		);
 
 		pending[id_token] = { node = user, password = password, ip = session.conn:ip() };
 		pending_node[user] = id_token;
 			
 		timer.add_task(300, function()
+			if use_nameapi then dea_checks[username] = nil; end
 			if pending[id_token] then
 				pending[id_token] = nil;
 				pending_node[user] = nil;
