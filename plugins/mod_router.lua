@@ -173,6 +173,10 @@ local function post_stanza(origin, stanza, preevents)
 
 	local event_data = {origin=origin, stanza=stanza};
 	if preevents then
+		if origin.locked and (to_type ~= "/host" or not to_self) then
+			origin.send(st.error_reply(stanza, "cancel", "forbidden", "Account is still locked"));
+			return;
+		end
 		if hosts[origin.host].events.fire_event('pre-'..stanza.name..to_type, event_data) then return; end
 	end
 	local h = hosts[to_bare] or hosts[host or origin.host];
@@ -195,6 +199,10 @@ local function route_stanza(origin, stanza)
 	if hosts[host] then
 		fire_event("route/post", origin, stanza);
 	else
+		if origin.locked then
+			fire_event("route/local", host_session, st.error_reply(stanza, "cancel", "forbidden", "Account is still locked"));
+			return;
+		end
 		log("debug", "Routing to remote...");
 		local host_session = hosts[from_host];
 		if not host_session then
