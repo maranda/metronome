@@ -519,13 +519,13 @@ local function handle_user_registration(event)
 			);
 		end
 
-		pending[id_token] = { node = user, password = password, ip = ip };
-		pending_node[username] = id_token;
+		pending[id_token] = { node = user, password = password, ip = session.conn:ip() };
+		pending_node[user] = id_token;
 			
 		timer.add_task(300, function()
 			if pending[id_token] then
 				pending[id_token] = nil;
-				pending_node[username] = nil;
+				pending_node[user] = nil;
 				usermanager.delete_user(user, hostname, "mod_register_api");
 			end
 		end);
