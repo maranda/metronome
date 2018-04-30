@@ -1,5 +1,5 @@
-This is an automated message from the account system, to reset your account password please visit %URL% within 5 minutes.
-And fill the with the following token: %TOKEN%
+This is an automated message from the account system, to reset your account password please visit <a href="%URL%">this page</a> within 5 minutes.
+And fill in the form with the following token: %TOKEN%
 
 Regards.
 

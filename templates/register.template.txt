@@ -1,4 +1,4 @@
-This is an automated message from the registration system, to activate your account please visit %URL% within 5 minutes.
+This is an automated message from the registration system, to activate your account please visit <a href="%URL%">this page</a> within 5 minutes.
 And input the following token in the presented web form: %TOKEN%
 
 Regards.

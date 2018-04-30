@@ -531,11 +531,13 @@ local function handle_user_registration(event)
 			end
 		end);
 
-		session.send(st.message({ from = hostname, to = user.."@"..hostname },
-			"Welcome to "..hostname.." in order to use this service you will need to verify your registration, "
-			.."please follow the instruction sent to you at "..mail..". You will need to verify within 5 minutes "
-			.."or the account will be deleted."
-		));
+		timer.add_task(10, function()
+			module:send(st.message({ from = hostname, to = user.."@"..hostname, type = "chat" },
+				"Welcome to "..hostname.." in order to use this service you will need to verify your registration, "
+				.."please follow the instruction sent to you at "..mail..". You will need to verify within 5 minutes "
+				.."or the account will be deleted."
+			));
+		end);
 	end
 end
 
