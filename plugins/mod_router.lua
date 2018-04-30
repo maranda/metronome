@@ -173,7 +173,7 @@ local function post_stanza(origin, stanza, preevents)
 
 	local event_data = {origin=origin, stanza=stanza};
 	if preevents then
-		if origin.locked and (to_type ~= "/host" or not to_self) then
+		if origin.locked and (to_type ~= "/host" and not to_self) then
 			origin.send(st.error_reply(stanza, "cancel", "forbidden", "Account is still locked"));
 			return;
 		end
