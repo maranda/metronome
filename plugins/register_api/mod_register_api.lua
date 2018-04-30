@@ -18,6 +18,7 @@ local urldecode = http.urldecode;
 local usermanager = usermanager;
 local generate = require "util.auxiliary".generate_secret;
 local timer = require "util.timer";
+local st = require "util.stanza";
 
 module:depends("http");
 
@@ -529,6 +530,12 @@ local function handle_user_registration(event)
 				usermanager.delete_user(user, hostname, "mod_register_api");
 			end
 		end);
+
+		session.send(st.message({ from = hostname, to = user.."@"..hostname },
+			"Welcome to "..hostname.." in order to use this service you will need to verify your registration, "
+			.."please follow the instruction sent to you at "..mail..". You will need to verify within 5 minutes "
+			.."or the account will be deleted."
+		));
 	end
 end
 
