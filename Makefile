@@ -13,7 +13,7 @@ INSTALLEDDATA = $(DATADIR)
 
 .PHONY: all clean install upgrade uninstall
 
-all: generate_log.install metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
+all: generate_log.install send_mail.install metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
 	$(MAKE) -C util-src install
 	$(MAKE) -C certs localhost.cnf
 	$(MAKE) -C certs localhost.key
@@ -21,6 +21,7 @@ all: generate_log.install metronome.install metronomectl.install metronome.cfg.l
 
 clean:
 	rm -f generate_log.install
+	rm -f send_mail.install
 	rm -f metronome.install
 	rm -f metronomectl.install
 	rm -f metronome.cfg.lua.install
