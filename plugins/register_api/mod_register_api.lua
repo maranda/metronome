@@ -351,7 +351,7 @@ local function handle_password_reset(data, event)
 		if do_mail_verification then
 			module:log("info", "%s requested password reset, sending mail to %s", user, mail);
 			os_execute(
-				module_path.."/send_mail ".."reset "..mail_from.." "..mail.." "..mail_reto.." "..user.."@"..host.." "
+				module_path.."/send_mail ".."reset "..mail_from.." "..mail.." "..mail_reto.." "..node.."@"..module.host.." "
 				..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."reset/", base_host).." "..id_token.." "
 				..(secure and "secure" or "").." &"
 			);
@@ -513,7 +513,7 @@ local function handle_user_registration(event)
 		else
 			module:log("info", "%s just registered on %s, sending verification mail to %s", user, hostname, mail);
 			os_execute(
-				module_path.."/send_mail ".."register "..mail_from.." "..mail.." "..mail_reto.." "..user.."@"..host.." "
+				module_path.."/send_mail ".."register "..mail_from.." "..mail.." "..mail_reto.." "..user.."@"..hostname.." "
 				..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."verify/", base_host).." "..id_token.." "
 				..(secure and "secure" or "").." &"
 			);
