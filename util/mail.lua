@@ -36,10 +36,11 @@ end
 local function send(from, to, reply_to, subject, body, server, secure)
 	local msg = {
 		headers = {
+			["Content-Type"] = "text/html; charset=UTF-8",
 			["from"] = from,
-            ["to"] = to,
+			["to"] = to,
 			["reply-to"] = reply_to,
-            ["subject"] = subject
+			["subject"] = subject
 		},
 		body = body
 	};
