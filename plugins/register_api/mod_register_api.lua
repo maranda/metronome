@@ -528,7 +528,7 @@ local function handle_user_registration(event)
 		pending_node[user] = id_token;
 			
 		timer.add_task(300, function()
-			if use_nameapi then dea_checks[username] = nil; end
+			if use_nameapi then dea_checks[user] = nil; end
 			if pending[id_token] then
 				pending[id_token] = nil;
 				pending_node[user] = nil;
