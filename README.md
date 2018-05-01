@@ -19,8 +19,9 @@ Differences from Prosody are, but not limited to:
  * Included plugins, utils
  * SPIM prevention system
  * Hits/blacklist/whitelist based host filtering (mod_gate_guard)
+ * In-Band Registration verification and account locking mechanism
  * The HTTP API
- * BOSH's JSON Padding and XEP-0252 support
+ * XEP-0252 support for BOSH's JSON Padding
  * Extensive Microblogging over XMPP support
  * Daemon Control Utility
  * It does have only one server backend being libevent and has a hard dep. on lua-event
