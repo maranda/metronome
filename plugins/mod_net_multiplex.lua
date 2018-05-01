@@ -16,6 +16,8 @@ local portmanager = require "core.portmanager";
 local available_services = {};
 
 local function add_service(service)
+	if service.name == "multiplex" or service.name == "multiplex_secure" then return; end
+
 	local multiplex_pattern = service.multiplex and service.multiplex.pattern;
 	if multiplex_pattern then
 		module:log("debug", "Adding multiplex service %q with pattern %q", service.name, multiplex_pattern);
@@ -68,12 +70,12 @@ end
 
 module:add_item("net-provider", {
 	name = "multiplex";
-	config_prefix = "";
 	listener = listener;
 });
 
-module:provides("net", {
-	name = "multiplex_ssl";
-	config_prefix = "ssl";
+module:add_item("net-provider", {
+	name = "multiplex_secure";
 	listener = listener;
+	encryption = "ssl";
+	ssl_config = { verify = "none" };
 });
