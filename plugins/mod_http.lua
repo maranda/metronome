@@ -55,7 +55,7 @@ function moduleapi.http_url(module, app_name, default_path, default_host)
 	local http_services = services:get("https") or services:get("http") or {};
 	local url = {
 		host = (ext.host or default_host or module.host);
-		path = normalize_path(ext.path or "/")..((default_path and default_path) or	(get_base_path(module, app_name, "/"..app_name)):sub(2));
+		path = normalize_path(ext.path or "/")..((default_path and default_path) or (get_base_path(module, app_name, "/"..app_name)):sub(2));
 	};
 	if not next(http_services) then
 		url.scheme = (ext.scheme or "http");
