@@ -50,23 +50,28 @@ local ports_by_scheme = { http = 80, https = 443, };
 -- Helper to deduce a module's external URL
 function moduleapi.http_url(module, app_name, default_path, default_host)
 	app_name = app_name or (module.name:gsub("^http_", ""));
-	local ext = url_parse(module:get_option_string("http_external_url")) or {};
+	local ext = url_parse(module:get_option_string("http_external_url")) or module:get_option_table("http_external_url") or {};
 	local services = portmanager.get_active_services();
 	local http_services = services:get("https") or services:get("http") or {};
-	for interface, ports in pairs(http_services) do
-		for port, services in pairs(ports) do
-			local url = {
-				scheme = (ext.scheme or services[1].service.name);
-				host = (ext.host or default_host or module.host);
-				port = tonumber(ext.port) or port or 80;
-				path = normalize_path(ext.path or "/")..
-					((default_path and default_path) or
-					(get_base_path(module, app_name, "/"..app_name)):sub(2));
-			}
-			if ports_by_scheme[url.scheme] == url.port then url.port = nil end
-			return url_build(url);
+	local url = {
+		host = (ext.host or default_host or module.host);
+		path = normalize_path(ext.path or "/")..((default_path and default_path) or	(get_base_path(module, app_name, "/"..app_name)):sub(2));
+	};
+	if not next(http_services) then
+		url.scheme = (ext.scheme or "http");
+		url.port = tonumber(ext.port) or 80;
+	else
+		for interface, ports in pairs(http_services) do
+			for port, services in pairs(ports) do
+				url.scheme = (ext.scheme or services[1].service.name);
+				url.port = tonumber(ext.port) or port or 80;
+				break;
+			end
 		end
 	end
+
+	if ports_by_scheme[url.scheme] == url.port then url.port = nil; end
+	return url_build(url);
 end
 
 function module.add_host(module)
