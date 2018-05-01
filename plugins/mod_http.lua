@@ -134,20 +134,20 @@ function module.add_host(module)
 end
 
 module:add_item("net-provider", {
-	name = "http";
-	listener = server.listener;
-	default_port = 5280;
+	name = "http",
+	listener = server.listener,
+	default_port = 5280,
 	multiplex = {
-		pattern = "^[A-Z]";
-	};
+		pattern = "^[A-Z]"
+	}
 });
 
 module:add_item("net-provider", {
-	name = "https";
-	listener = server.listener;
-	encryption = "ssl";
-	ssl_config = { verify = "none" };
+	name = "https",
+	listener = server.listener,
+	encryption = "ssl",
+	ssl_config = { verify = "none" },
 	multiplex = {
-		pattern = "^[A-Z]";
-	};
+		pattern = "^[A-Z]"
+	}
 });
