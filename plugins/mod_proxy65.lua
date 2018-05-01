@@ -175,7 +175,7 @@ function module.add_host(module)
 	end);
 end
 
-module:provides("net", {
+module:add_item("net-provider", {
 	default_port = 5000;
 	listener = listener;
 	multiplex = {
