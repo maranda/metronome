@@ -179,13 +179,13 @@ function module.add_host(module)
 	-- Setup HTTP server
 	module:depends("http");
 	module:provides("http", {
-		name = "admin";
+		name = "admin",
 		route = {
 			["GET"] = function(event)
 				event.response.headers.location = event.request.path .. "/";
 				return 301;
-			end;
-			["GET /*"] = serve_file;
+			end,
+			["GET /*"] = serve_file
 		}
 	});
 

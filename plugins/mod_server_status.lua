@@ -226,8 +226,8 @@ end
 
 module:provides("http", {
 	default_path = base_path,
-        route = {
-                ["GET /"] = request
-        }
+	route = {
+		["GET /"] = request
+	}
 })
 

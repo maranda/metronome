@@ -1064,8 +1064,8 @@ function printbanner(session)
 end
 
 module:add_item("net-provider", {
-	name = "console";
-	listener = console_listener;
-	default_port = 5582;
-	private = true;
+	name = "console",
+	listener = console_listener,
+	default_port = 5582,
+	private = true
 });

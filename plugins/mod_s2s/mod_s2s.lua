@@ -642,11 +642,11 @@ module:hook("host-deactivating", function(event)
 end, -2);
 
 module:add_item("net-provider", {
-	name = "s2s";
-	listener = listener;
-	default_port = 5269;
-	encryption = "starttls";
+	name = "s2s",
+	listener = listener,
+	default_port = 5269,
+	encryption = "starttls",
 	multiplex = {
-		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:server%1.*>";
-	};
+		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:server%1.*>"
+	}
 });

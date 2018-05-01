@@ -306,10 +306,10 @@ function listener.ondisconnect(conn, err)
 end
 
 module:add_item("net-provider", {
-	name = "component";
-	listener = listener;
-	default_port = 5347;
+	name = "component",
+	listener = listener,
+	default_port = 5347,
 	multiplex = {
-		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:component%1.*>";
-	};
+		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:component%1.*>"
+	}
 });

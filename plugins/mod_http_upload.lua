@@ -413,12 +413,12 @@ end
 module:provides("http", {
 	default_path = default_base_path,
 	route = {
-		["GET"] = serve_hello;
-		["GET /"] = serve_hello;
-		["GET /*"] = serve_uploaded_files;
-		["HEAD /*"] = serve_head;
-		["PUT /*"] = upload_data;
-	};
+		["GET"] = serve_hello,
+		["GET /"] = serve_hello,
+		["GET /*"] = serve_uploaded_files,
+		["HEAD /*"] = serve_head,
+		["PUT /*"] = upload_data
+	}
 });
 
 module:hook_global("user-deleted", function(event)
