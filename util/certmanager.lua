@@ -56,8 +56,8 @@ if no_compression and configmanager.get("*", "ssl_compression") ~= true then
 	default_options[#default_options + 1] = "no_compression";
 end
 
-function create_context(host, mode, user_ssl_config)
-	user_ssl_config = user_ssl_config or default_ssl_config;
+function get_ssl_config(host, mode, user_ssl_config)
+	user_ssl_config = user_ssl_config or configmanager.get(host, "ssl") or default_ssl_config;
 
 	if not ssl then return nil, "LuaSec (required for encryption) was not found"; end
 	if not user_ssl_config then return nil, "No SSL/TLS configuration present for "..host; end
@@ -89,7 +89,16 @@ function create_context(host, mode, user_ssl_config)
 		dhparam = dhparam;
 	};
 
-	local ctx, err = ssl_newcontext(ssl_config);
+	return ssl_config;
+end
+
+function create_context(host, mode, user_ssl_config)
+	local ctx, err, ssl_config;
+
+	ssl_config, err = get_ssl_config(host, mode, user_ssl_config);
+	if not ssl_config then return nil, err; end
+
+	ctx, err = ssl_newcontext(ssl_config);
 
 	if ctx then
 		local success;
