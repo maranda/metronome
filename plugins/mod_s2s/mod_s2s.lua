@@ -272,9 +272,15 @@ function stream_callbacks.streamopened(session, attr)
 	
 	session.version = tonumber(attr.version) or 0;
 	
-	-- TODO: Rename session.secure to session.encrypted
-	if session.secure == false or conn:ssl() then
+	if session.secure == false then
 		session.secure = true;
+	end
+
+	if session.conn:ssl() and not session.secure then -- Direct TLS s2s connection
+		session.secure = true;
+		if session.direction == "incoming" then
+			session.direct_tls_s2s = true;
+		end
 	end
 
 	if session.direction == "incoming" then
