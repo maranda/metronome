@@ -82,14 +82,14 @@ function s2sout.attempt_connection(host_session, err)
 		handle = nil;
 		host_session.connecting = nil;
 		if answer then
-			log("debug", "%s has %sSRV records, handling...", srv_direct_tls and "direct TLS " or "", to_host);
+			log("debug", "%s has %sSRV records, handling...", to_host, srv_direct_tls and "direct TLS " or "");
 			local srv_hosts = {};
 			host_session.srv_hosts = srv_hosts;
 			for _, record in ipairs(answer) do
 				t_insert(srv_hosts, record.srv);
 			end
 			if #srv_hosts == 1 and srv_hosts[1].target == "." then
-				log("debug", "%s does not provide a %sXMPP service", srv_direct_tls and "direct TLS " or "", to_host);
+				log("debug", "%s does not provide a %sXMPP service", to_host, srv_direct_tls and "direct TLS " or "");
 				if not srv_direct_tls then
 					s2s_destroy_session(host_session, err); -- Nothing to see here
 				else
@@ -107,8 +107,8 @@ function s2sout.attempt_connection(host_session, err)
 				log("debug", "Best record found, will connect to %s:%d", connect_host, connect_port);
 			end
 		else
-			log("debug", "%s has no %sSRV records, falling back to %s", 
-				srv_direct_tls and "direct TLS " or "", to_host, srv_direct_tls and "Normal SRV" or "A/AAAA");
+			log("debug", "%s has no %sSRV records, falling back to %s", to_host,
+				srv_direct_tls and "direct TLS " or "", srv_direct_tls and "Normal SRV" or "A/AAAA");
 				if srv_direct_tls then srv_direct_tls = nil; return; end
 		end
 		-- Try with SRV, or just the plain hostname if no SRV
@@ -290,6 +290,7 @@ function s2sout.make_connect(host_session, connect_host, connect_port)
 			return false, "Failed to get SSL config for Direct TLS S2S connection: "..err;
 		end
 		ssl_ctx = ctx;
+		host_session.secure = true;
 	end
 	
 	local conn, handler;
