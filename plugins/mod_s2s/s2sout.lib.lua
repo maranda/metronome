@@ -113,7 +113,11 @@ function s2sout.attempt_connection(host_session, err)
 		else
 			log("debug", "%s has no %sSRV records, falling back to %s", to_host,
 				srv_direct_tls and "direct TLS " or "", srv_direct_tls and "Normal SRV" or "A/AAAA");
-			if srv_direct_tls then fallback = true; end
+			if srv_direct_tls then 
+				fallback = true;
+			else
+				host_session.no_srv_records = true;
+			end
 		end
 		local ok, err;
 		if fallback then
@@ -135,7 +139,7 @@ function s2sout.attempt_connection(host_session, err)
 			log("debug", "First attempt to connect to %s, starting with Direct TLS SRV lookup...", to_host);
 			srv_direct_tls = true;
 			handle = adns.lookup(callback, "_xmpps-server._tcp."..connect_host..".", "SRV");
-		else
+		elseif not host_session.no_srv_records then
 			log("debug", "Connect to %s, falling back to normal SRV lookup...", to_host);
 			handle = adns.lookup(callback, "_xmpp-server._tcp."..connect_host..".", "SRV");
 		end
@@ -302,7 +306,6 @@ function s2sout.make_connect(host_session, connect_host, connect_port)
 			return false, "Failed to get SSL config for Direct TLS S2S connection: "..err;
 		end
 		ssl_ctx = ctx;
-		host_session.secure = true;
 	end
 	
 	local conn, handler;
