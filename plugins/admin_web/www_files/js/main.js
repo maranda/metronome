@@ -26,6 +26,9 @@ function _cbNewS2S(e) {
                 entry.append('<img src="images/encrypted.png" title="encrypted (certificate invalid)" alt=" (encrypted)" />');
             }
         }
+        if (items[i].getElementsByTagName('directtls')[0]) {
+            entry.append('<img src="images/direct-tls.png" title="direct tls" alt=" (direct tls s2s stream)" />');
+        }
         if (items[i].getElementsByTagName('bidi')[0]) {
             entry.append('<img src="images/bidi.png" title="bidirectional" alt=" (bidirectional s2s stream)" />');
         }
@@ -58,6 +61,9 @@ function _cbNewC2S(e) {
         entry = $('<li id="' + id + '">' + jid + '</li>');
         if (items[i].getElementsByTagName('encrypted')[0]) {
             entry.append('<img src="images/encrypted.png" title="encrypted" alt=" (encrypted)" />');
+        }
+        if (items[i].getElementsByTagName('directtls')[0]) {
+            entry.append('<img src="images/direct-tls.png" title="direct tls" alt=" (direct tls c2s stream)" />');
         }
         if (items[i].getElementsByTagName('compressed')[0]) {
             entry.append('<img src="images/compressed.png" title="compressed" alt=" (compressed)" />');

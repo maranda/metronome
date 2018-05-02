@@ -499,6 +499,9 @@ local function session_flags(session, line)
 	elseif session.secure then
 		line[#line+1] = "(encrypted)";
 	end
+	if session.direct_tls_c2s or session.direct_tls_s2s then
+		line[#line+1] = "(direct tls)";
+	end
 	if session.compressed then
 		line[#line+1] = "(compressed)";
 	end
