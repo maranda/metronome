@@ -77,6 +77,11 @@ function stream_callbacks.streamopened(session, attr)
 		session.secure = true;
 	end
 
+	if session.conn:ssl() and session.secure == nil then -- Direct TLS c2s connection
+		session.secure = true;
+		session.direct_tls_c2s = true;
+	end
+
 	local features = st.stanza("stream:features");
 	hosts[session.host].events.fire_event("stream-features", { origin = session, features = features });
 	module:fire_event("stream-features", session, features);

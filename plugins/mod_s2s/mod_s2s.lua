@@ -276,7 +276,7 @@ function stream_callbacks.streamopened(session, attr)
 		session.secure = true;
 	end
 
-	if session.conn:ssl() and not session.secure then -- Direct TLS s2s connection
+	if session.conn:ssl() and session.secure == nil then -- Direct TLS s2s connection
 		session.secure = true;
 		if session.direction == "incoming" then
 			session.direct_tls_s2s = true;
