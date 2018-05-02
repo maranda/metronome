@@ -79,6 +79,8 @@ function s2sout.attempt_connection(host_session, err)
 
 	local handle, srv_direct_tls;
 	local function callback(answer)
+		local fallback;
+
 		handle = nil;
 		host_session.connecting = nil;
 		if answer then
@@ -92,27 +94,34 @@ function s2sout.attempt_connection(host_session, err)
 				log("debug", "%s does not provide a %sXMPP service", to_host, srv_direct_tls and "direct TLS " or "");
 				if not srv_direct_tls then
 					s2s_destroy_session(host_session, err); -- Nothing to see here
+					return;
 				else
-					srv_direct_tls = nil;
+					fallback = true;
 				end
-				return;
 			end
-			t_sort(srv_hosts, compare_srv_priorities);
+			if not fallback then
+				t_sort(srv_hosts, compare_srv_priorities);
 			
-			local srv_choice = srv_hosts[1];
-			host_session.srv_choice = 1;
-			host_session.direct_tls_s2s = srv_direct_tls and true or nil;
-			if srv_choice then
-				connect_host, connect_port = srv_choice.target or to_host, srv_choice.port or connect_port;
-				log("debug", "Best record found, will connect to %s:%d", connect_host, connect_port);
+				local srv_choice = srv_hosts[1];
+				host_session.srv_choice = 1;
+				host_session.direct_tls_s2s = srv_direct_tls and true or nil;
+				if srv_choice then
+					connect_host, connect_port = srv_choice.target or to_host, srv_choice.port or connect_port;
+					log("debug", "Best record found, will connect to %s:%d", connect_host, connect_port);
+				end
 			end
 		else
 			log("debug", "%s has no %sSRV records, falling back to %s", to_host,
 				srv_direct_tls and "direct TLS " or "", srv_direct_tls and "Normal SRV" or "A/AAAA");
-				if srv_direct_tls then srv_direct_tls = nil; return; end
+			if srv_direct_tls then fallback = true; end
 		end
-		-- Try with SRV, or just the plain hostname if no SRV
-		local ok, err = s2sout.try_connect(host_session, connect_host, connect_port);
+		local ok, err;
+		if fallback then
+			host_session.no_direct_tls = true;
+		else
+			-- Try with SRV, or just the plain hostname if no SRV
+			ok, err = s2sout.try_connect(host_session, connect_host, connect_port);
+		end
 		if not ok then
 			if not s2sout.attempt_connection(host_session, err) then
 				s2s_destroy_session(host_session, err);
@@ -121,21 +130,24 @@ function s2sout.attempt_connection(host_session, err)
 	end
 	
 	if not err then -- First attempt
-		log("debug", "First attempt to connect to %s, starting with SRV lookup...", to_host);
 		host_session.connecting = true;
-		srv_direct_tls = host_session.tls_capable and true;
-		if srv_direct_tls then handle = adns.lookup(callback, "_xmpps-server._tcp."..connect_host..".", "SRV"); end
-		if not srv_direct_tls then handle = adns.lookup(callback, "_xmpp-server._tcp."..connect_host..".", "SRV"); end
+		if not host_session.no_direct_tls and host_session.tls_capable then
+			log("debug", "First attempt to connect to %s, starting with Direct TLS SRV lookup...", to_host);
+			srv_direct_tls = true;
+			handle = adns.lookup(callback, "_xmpps-server._tcp."..connect_host..".", "SRV");
+		else
+			log("debug", "Connect to %s, falling back to normal SRV lookup...", to_host);
+			handle = adns.lookup(callback, "_xmpp-server._tcp."..connect_host..".", "SRV");
+		end
 		
 		return true; -- Attempt in progress
 	elseif host_session.ip_hosts then
 		return s2sout.try_connect(host_session, connect_host, connect_port, err);
 	elseif host_session.direct_tls_s2s and #host_session.srv_hosts == host_session.srv_choice then -- Exhausted direct tls records
-		log("debug", "Failed to connect to %s using Direct TLS SRV records, attempting with normal ones...", to_host);
 		host_session.direct_tls_s2s = nil;
-		handle = adns.lookup(callback, "_xmpp-server._tcp."..connect_host..".", "SRV");
+		host_session.no_direct_tls = true;
 
-		return true; -- Normal SRV lookup attempt in progress
+		return s2sout.attempt_connection(host_session);
 	elseif host_session.srv_hosts and #host_session.srv_hosts > host_session.srv_choice then -- Not our first attempt, and we also have SRV
 		host_session.srv_choice = host_session.srv_choice + 1;
 		local srv_choice = host_session.srv_hosts[host_session.srv_choice];
