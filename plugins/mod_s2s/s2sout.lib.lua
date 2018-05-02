@@ -9,6 +9,7 @@
 
 local portmanager = require "core.portmanager";
 local wrapclient = require "net.server".wrapclient;
+local get_ssl_config = require "util.certmanager".get_ssl_config;
 local initialize_filters = require "util.filters".initialize;
 local idna_to_ascii = require "util.encodings".idna.to_ascii;
 local new_ip = require "util.ip".new_ip;
@@ -31,9 +32,8 @@ dns.settimeout(dns_timeout);
 local max_dns_depth = module:get_option_number("dns_max_depth", 3);
 
 local s2sout = {};
-
 local s2s_listener;
-
+local hosts = hosts;
 
 function s2sout.set_listener(listener)
 	s2s_listener = listener;
@@ -76,49 +76,66 @@ function s2sout.attempt_connection(host_session, err)
 	if not connect_host then
 		return false;
 	end
+
+	local handle, srv_direct_tls;
+	local function callback(answer)
+		handle = nil;
+		host_session.connecting = nil;
+		if answer then
+			log("debug", "%s has %s SRV records, handling...", srv_direct_tls and "direct TLS" or "", to_host);
+			local srv_hosts = {};
+			host_session.srv_hosts = srv_hosts;
+			for _, record in ipairs(answer) do
+				t_insert(srv_hosts, record.srv);
+			end
+			if #srv_hosts == 1 and srv_hosts[1].target == "." then
+				log("debug", "%s does not provide a %s XMPP service", srv_direct_tls and "direct TLS" or "", to_host);
+				if not srv_direct_tls then
+					s2s_destroy_session(host_session, err); -- Nothing to see here
+				else
+					srv_direct_tls = nil;
+				end
+				return;
+			end
+			t_sort(srv_hosts, compare_srv_priorities);
+			
+			local srv_choice = srv_hosts[1];
+			host_session.srv_choice = 1;
+			host_session.direct_tls_s2s = srv_direct_tls and true or nil;
+			if srv_choice then
+				connect_host, connect_port = srv_choice.target or to_host, srv_choice.port or connect_port;
+				log("debug", "Best record found, will connect to %s:%d", connect_host, connect_port);
+			end
+		else
+			log("debug", "%s has no %s SRV records, falling back to %s", 
+				srv_direct_tls and "direct TLS" or "", to_host, srv_direct_tls and "Normal SRV" or "A/AAAA");
+				if srv_direct_tls then srv_direct_tls = nil; return; end
+		end
+		-- Try with SRV, or just the plain hostname if no SRV
+		local ok, err = s2sout.try_connect(host_session, connect_host, connect_port);
+		if not ok then
+			if not s2sout.attempt_connection(host_session, err) then
+				s2s_destroy_session(host_session, err);
+			end
+		end
+	end
 	
 	if not err then -- First attempt
 		log("debug", "First attempt to connect to %s, starting with SRV lookup...", to_host);
 		host_session.connecting = true;
-		local handle;
-		handle = adns.lookup(function (answer)
-			handle = nil;
-			host_session.connecting = nil;
-			if answer then
-				log("debug", "%s has SRV records, handling...", to_host);
-				local srv_hosts = {};
-				host_session.srv_hosts = srv_hosts;
-				for _, record in ipairs(answer) do
-					t_insert(srv_hosts, record.srv);
-				end
-				if #srv_hosts == 1 and srv_hosts[1].target == "." then
-					log("debug", "%s does not provide a XMPP service", to_host);
-					s2s_destroy_session(host_session, err); -- Nothing to see here
-					return;
-				end
-				t_sort(srv_hosts, compare_srv_priorities);
-				
-				local srv_choice = srv_hosts[1];
-				host_session.srv_choice = 1;
-				if srv_choice then
-					connect_host, connect_port = srv_choice.target or to_host, srv_choice.port or connect_port;
-					log("debug", "Best record found, will connect to %s:%d", connect_host, connect_port);
-				end
-			else
-				log("debug", "%s has no SRV records, falling back to A/AAAA", to_host);
-			end
-			-- Try with SRV, or just the plain hostname if no SRV
-			local ok, err = s2sout.try_connect(host_session, connect_host, connect_port);
-			if not ok then
-				if not s2sout.attempt_connection(host_session, err) then
-					s2s_destroy_session(host_session, err);
-				end
-			end
-		end, "_xmpp-server._tcp."..connect_host..".", "SRV");
+		srv_direct_tls = host_session.tls_capable and true;
+		if srv_direct_tls then handle = adns.lookup(callback, "_xmpps-server._tcp."..connect_host..".", "SRV"); end
+		if not srv_direct_tls then handle = adns.lookup(callback, "_xmpp-server._tcp."..connect_host..".", "SRV"); end
 		
 		return true; -- Attempt in progress
 	elseif host_session.ip_hosts then
 		return s2sout.try_connect(host_session, connect_host, connect_port, err);
+	elseif host_session.direct_tls_s2s and #host_session.srv_hosts == host_session.srv_choice then -- Exhausted direct tls records
+		log("debug", "Failed to connect to %s using Direct TLS SRV records, attempting with normal ones...", to_host);
+		host_session.direct_tls_s2s = nil;
+		handle = adns.lookup(callback, "_xmpp-server._tcp."..connect_host..".", "SRV");
+
+		return true; -- Normal SRV lookup attempt in progress
 	elseif host_session.srv_hosts and #host_session.srv_hosts > host_session.srv_choice then -- Not our first attempt, and we also have SRV
 		host_session.srv_choice = host_session.srv_choice + 1;
 		local srv_choice = host_session.srv_hosts[host_session.srv_choice];
@@ -265,6 +282,15 @@ function s2sout.make_connect(host_session, connect_host, connect_port)
 	-- Ok, we're going to try to connect
 	
 	local from_host, to_host = host_session.from_host, host_session.to_host;
+
+	local ssl_ctx;
+	if host_session.direct_tls_s2s then
+		local ctx, err = get_ssl_config(from_host, "client");
+		if not ctx then
+			return false, "Failed to get SSL config for Direct TLS S2S connection: "..err;
+		end
+		ssl_ctx = ctx;
+	end
 	
 	local conn, handler;
 	if connect_host.proto == "IPv4" then
@@ -285,7 +311,7 @@ function s2sout.make_connect(host_session, connect_host, connect_port)
 		return false, err;
 	end
 	
-	conn = wrapclient(conn, connect_host.addr, connect_port, s2s_listener, "*a");
+	conn = wrapclient(conn, connect_host.addr, connect_port, s2s_listener, "*a", ssl_ctx);
 	host_session.conn = conn;
 	
 	local filter = initialize_filters(host_session);
