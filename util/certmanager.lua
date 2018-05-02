@@ -102,7 +102,7 @@ function create_context(host, mode, user_ssl_config)
 
 	if ctx then
 		local success;
-		success, err = ssl_context.setcipher(ctx, user_ssl_config.ciphers or default_ciphers);
+		success, err = ssl_context.setcipher(ctx, user_ssl_config and user_ssl_config.ciphers or default_ciphers);
 		if not success then ctx = nil; end
 	end
 
