@@ -86,7 +86,7 @@ function s2sout.attempt_connection(host_session, err)
 			if not host_session.srv_hosts then host_session.srv_hosts = {}; end
 			local srv_hosts = host_session.srv_hosts;
 			for _, record in ipairs(answer) do
-				record.srv.direct_tls = first_lookup and true;
+				record.srv.direct_tls = first_lookup and true or nil;
 				t_insert(srv_hosts, record.srv);
 			end
 			if #srv_hosts == 1 and srv_hosts[1].target == "." then
