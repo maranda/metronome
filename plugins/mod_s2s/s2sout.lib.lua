@@ -77,51 +77,45 @@ function s2sout.attempt_connection(host_session, err)
 		return false;
 	end
 
-	local handle, srv_direct_tls;
+	local handle, first_lookup;
 	local function callback(answer)
-		local fallback;
-
 		handle = nil;
 		host_session.connecting = nil;
 		if answer then
-			log("debug", "%s has %sSRV records, handling...", to_host, srv_direct_tls and "direct TLS " or "");
-			local srv_hosts = {};
-			host_session.srv_hosts = srv_hosts;
+			log("debug", "%s has %sSRV records, handling...", to_host, first_lookup and "direct TLS " or "");
+			if not host_session.srv_hosts then host_session.srv_hosts = {}; end
+			local srv_hosts = host_session.srv_hosts;
 			for _, record in ipairs(answer) do
+				record.srv.direct_tls = first_lookup and true;
 				t_insert(srv_hosts, record.srv);
 			end
 			if #srv_hosts == 1 and srv_hosts[1].target == "." then
-				log("debug", "%s does not provide a %sXMPP service", to_host, srv_direct_tls and "direct TLS " or "");
-				if not srv_direct_tls then
+				log("debug", "%s does not provide a %sXMPP service", to_host, first_lookup and "direct TLS " or "");
+				if not first_lookup then
 					s2s_destroy_session(host_session, err); -- Nothing to see here
 					return;
-				else
-					fallback = true;
 				end
 			end
-			if not fallback then
+			if not first_lookup then
 				t_sort(srv_hosts, compare_srv_priorities);
 			
 				local srv_choice = srv_hosts[1];
 				host_session.srv_choice = 1;
-				host_session.direct_tls_s2s = srv_direct_tls and true or nil;
+				host_session.direct_tls_s2s = srv_choice.direct_tls and true or nil;
 				if srv_choice then
 					connect_host, connect_port = srv_choice.target or to_host, srv_choice.port or connect_port;
 					log("debug", "Best record found, will connect to %s:%d", connect_host, connect_port);
 				end
 			end
 		else
-			log("debug", "%s has no %sSRV records, falling back to %s", to_host,
-				srv_direct_tls and "direct TLS " or "", srv_direct_tls and "Normal SRV" or "A/AAAA");
-			if srv_direct_tls then 
-				fallback = true;
-			else
+			if not first_lookup then
+				log("debug", "%s has no SRV records, falling back to A/AAAA", to_host);
 				host_session.no_srv_records = true;
 			end
 		end
 		local ok, err;
-		if fallback then
-			host_session.no_direct_tls = true;
+		if first_lookup then
+			host_session.done_first_lookup = true;
 		else
 			-- Try with SRV, or just the plain hostname if no SRV
 			ok, err = s2sout.try_connect(host_session, connect_host, connect_port);
@@ -135,26 +129,26 @@ function s2sout.attempt_connection(host_session, err)
 	
 	if not err then -- First attempt
 		host_session.connecting = true;
-		if not host_session.no_direct_tls and host_session.tls_capable then
-			log("debug", "First attempt to connect to %s, starting with Direct TLS SRV lookup...", to_host);
-			srv_direct_tls = true;
+		if not host_session.done_first_lookup and host_session.tls_capable then
+			log("debug", "Starting lookup for %s, beginning gathering of Direct TLS SRV records...", to_host);
+			first_lookup = true;
 			handle = adns.lookup(callback, "_xmpps-server._tcp."..connect_host..".", "SRV");
 		elseif not host_session.no_srv_records then
-			log("debug", "Connect to %s, falling back to normal SRV lookup...", to_host);
+			log("debug", "Finalising SRV record lookup for %s...", to_host);
 			handle = adns.lookup(callback, "_xmpp-server._tcp."..connect_host..".", "SRV");
 		end
 		
 		return true; -- Attempt in progress
 	elseif host_session.ip_hosts then
 		return s2sout.try_connect(host_session, connect_host, connect_port, err);
-	elseif host_session.direct_tls_s2s and #host_session.srv_hosts == host_session.srv_choice then -- Exhausted direct tls records
-		host_session.direct_tls_s2s = nil;
-		host_session.no_direct_tls = true;
-
-		return s2sout.attempt_connection(host_session);
 	elseif host_session.srv_hosts and #host_session.srv_hosts > host_session.srv_choice then -- Not our first attempt, and we also have SRV
 		host_session.srv_choice = host_session.srv_choice + 1;
 		local srv_choice = host_session.srv_hosts[host_session.srv_choice];
+		if srv_choice.direct_tls then
+			host_session.direct_tls_s2s = true;
+		else
+			host_session.direct_tls_s2s = nil;
+		end
 		connect_host, connect_port = srv_choice.target or to_host, srv_choice.port or connect_port;
 		host_session.log("info", "Connection failed (%s). Attempt #%d: This time to %s:%d", tostring(err), host_session.srv_choice, connect_host, connect_port);
 	else
