@@ -195,7 +195,7 @@ end);
 function module.load()
 	user_list = dm.load(nil, module.host, "push_account_list") or {};
 	for user in pairs(user_list) do
-		store[user] = dm.load(user, module.host, "push");
+		store_cache[user] = dm.load(user, module.host, "push");
 	end
 end
 
