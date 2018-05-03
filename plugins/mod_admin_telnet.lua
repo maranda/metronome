@@ -221,6 +221,7 @@ function commands.help(session, data)
 		print [[c2s:show_compressed() - Show all compressed client connections]]
 		print [[c2s:show_insecure() - Show all unencrypted client connections]]
 		print [[c2s:show_secure() - Show all encrypted client connections]]
+		print [[c2s:show_direct_tls() - Show all direct tls client connections]]
 		print [[c2s:show_sm() - Show all stream management enabled client connections]]
 		print [[c2s:show_csi() - Show all client state indication enabled client connections]]
 		print [[c2s:close(jid) - Close all sessions for the specified JID]]
@@ -597,6 +598,11 @@ end
 function def_env.c2s:show_secure(match_jid)
 	local count = show_type(self, match_jid, "secure");
 	return true, "Total: "..count.." secure client connections";
+end
+
+function def_env.c2s:show_direct_tls(match_jid)
+	local count = show_type(self, match_jid, "direct_tls_c2s");
+	return true, "Total: "..count.." direct tls client connections";
 end
 
 function def_env.c2s:show_sm(match_jid)
