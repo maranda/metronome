@@ -285,3 +285,9 @@ module:add_item("net-provider", {
 		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:client%1.*>"
 	}
 });
+
+module:add_item("net-provider", {
+	name = "c2s_secure",
+	listener = listener,
+	encryption = "ssl"
+});

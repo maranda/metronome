@@ -146,8 +146,5 @@ module:add_item("net-provider", {
 	name = "https",
 	listener = server.listener,
 	encryption = "ssl",
-	ssl_config = { verify = "none" },
-	multiplex = {
-		pattern = "^[A-Z]"
-	}
+	ssl_config = { verify = "none" }
 });
