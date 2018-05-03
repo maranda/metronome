@@ -30,7 +30,7 @@ local xmlns_sm3 = "urn:xmpp:sm:3";
 local xmlns_e = "urn:ietf:params:xml:ns:xmpp-stanzas";
 local xmlns_d = "urn:xmpp:delay";
 
-local timeout = module:get_option_number("sm_resume_timeout", 180);
+local timeout = module:get_option_number("sm_resume_timeout", 360);
 local max_unacked = module:get_option_number("sm_max_unacked_stanzas", 0);
 
 local handled_sessions = {};
@@ -92,21 +92,26 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 	
 	local send = session.sends2s or session.send;
 	local function new_send(stanza)
-                local attr = stanza.attr;
-                if attr and not attr.xmlns then
-                        local cached = st_clone(stanza);
-                        if not cached:get_child("delay", xmlns_d) then
-                                cached = cached:tag("delay", { xmlns = xmlns_d, from = session.host, stamp = dt() });
-                        end
-                        t_insert(_q, cached);
-                end
-                if session.halted then return true; end
-                local ok, err = send(stanza);
-                if ok and #_q > max_unacked and not session.waiting_ack and attr and not attr.xmlns then
-                        session.waiting_ack = true;
-                        return send(st_stanza("r", { xmlns = xmlns_sm }));
-                end
-                return ok, err;
+		local attr = stanza.attr;
+		if attr and not attr.xmlns then
+			local cached = st_clone(stanza);
+			if not cached:get_child("delay", xmlns_d) then
+				cached = cached:tag("delay", { xmlns = xmlns_d, from = session.host, stamp = dt() });
+			end
+			t_insert(_q, cached);
+		end
+		if session.halted then
+			if stanza.name == "message" then
+				module:fire_event("sm-push-message", { username = session.username, host = session.host, stanza = stanza });
+			end
+			return true;
+		end
+		local ok, err = send(stanza);
+		if ok and #_q > max_unacked and not session.waiting_ack and attr and not attr.xmlns then
+			session.waiting_ack = true;
+			return send(st_stanza("r", { xmlns = xmlns_sm }));
+		end
+		return ok, err;
 	end
 	if session.sends2s then session.sends2s = new_send; else session.send = new_send; end
 	
@@ -309,6 +314,7 @@ module:hook("pre-resource-unbind", function(event)
 			session.log("debug", "Session is being halted for up to %d seconds", timeout);
 			local _now, token = now(), session.token;
 			session.halted, session.detached = _now, true;
+			module:fire_event("sm-process-queue", { username = session.username, host = session.host, queue = session.sm_queue });
 			add_timer(timeout, function()
 				local current = full_sessions[session.full_jid];
 				if not session.destroyed and current and (current.token == token and session.halted == _now) then
