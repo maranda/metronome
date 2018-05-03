@@ -77,5 +77,4 @@ module:add_item("net-provider", {
 	name = "multiplex_secure";
 	listener = listener;
 	encryption = "ssl";
-	ssl_config = { verify = "none" };
 });
