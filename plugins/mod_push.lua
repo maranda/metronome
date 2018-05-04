@@ -169,7 +169,7 @@ end, 1);
 
 module:hook("iq/host", function(event)
 	local stanza = event.stanza;
-	if stanza.attr.type ~= "error" or stanza.attr.type ~= "result" then return; end
+	if stanza.attr.type ~= "error" and stanza.attr.type ~= "result" then return; end
 
 	local id = stanza.attr.id;
 	if sent_ids[id] then
