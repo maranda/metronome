@@ -4,7 +4,7 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-local ipairs, pairs, t_insert, t_remove = ipairs, pairs, table.insert, table.remove;
+local ipairs, pairs = ipairs, pairs;
 
 local st = require "util.stanza";
 local jid_join = require "util.jid".join;
