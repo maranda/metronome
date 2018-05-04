@@ -54,9 +54,7 @@ end
 local function push_notify(user, store, stanza)
 	for app_server, push in pairs(store) do
 		local nodes = push.nodes;
-		for node in pairs(nodes) do
-			ping_app_server(user, app_server, node, stanza, push.secret); end
-		end
+		for node in pairs(nodes) do	ping_app_server(user, app_server, node, stanza, push.secret); end
 	end
 end
 
