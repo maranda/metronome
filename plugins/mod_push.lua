@@ -115,6 +115,8 @@ module:hook_stanza("iq-set/self/"..push_xmlns..":disable", function(event)
 		module:log("debug", "User %s deactivated PUSH application service %s", jid_join(user, host), push.app_server);
 		store[jid] = nil;
 	else
+		module:log("debug", "User %s deactivated PUSH, application service %s, node %s",
+			jid_join(user, host), app_server, node);
 		store[jid].nodes[node] = nil;
 	end
 
