@@ -218,7 +218,7 @@ local function bosh_close_stream(session, reason)
 
 	local response_body = tostring(close_reply);
 	for _, held_request in ipairs(session.requests) do
-		held_request.headers = session.headers or default_headers;
+		held_request.headers = session.headers or clone_table(default_headers);
 		held_request:send(response_body);
 	end
 	sessions[session.sid]  = nil;
@@ -281,7 +281,7 @@ function stream_callbacks.streamopened(context, attr)
 			local oldest_request = r[1];
 			if oldest_request and not session.bosh_processing then
 				log("debug", "We have an open request, so sending on that");
-				oldest_request.headers = session.headers or default_headers;
+				oldest_request.headers = session.headers or clone_table(default_headers);
 				local body_attr = { xmlns = "http://jabber.org/protocol/httpbind",
 					["xmlns:stream"] = "http://etherx.jabber.org/streams";
 					type = session.bosh_terminate and "terminate" or nil;
@@ -318,7 +318,7 @@ function stream_callbacks.streamopened(context, attr)
 	local session = sessions[sid];
 	if not session then
 		log("info", "Client tried to use sid '%s' which we don't know about", sid);
-		response.headers = custom_headers or default_headers;
+		response.headers = custom_headers or clone_table(default_headers);
 		response:send(tostring(st.stanza("body", { xmlns = xmlns_bosh, type = "terminate", condition = "item-not-found" })));
 		context.notopen = nil;
 		return false;
@@ -389,7 +389,7 @@ function stream_callbacks.error(context, error)
 	log("debug", "Error parsing BOSH request payload; %s", error);
 	if not context.sid then
 		local response = context.response;
-		response.headers = context.custom_headers or default_headers;
+		response.headers = context.custom_headers or clone_table(default_headers);
 		response.status_code = 400;
 		response:send();
 		return false;
