@@ -21,9 +21,9 @@ local store_cache = {};
 local sent_ids = setmetatable({}, { __mode = "v" });
 
 local function ping_app_server(user, app_server, node, stanza, secret)
-	module:log("debug", "Sending PUSH notification for %s, from %s, to App Server %s",
-		jid_join(user, module.host), stanza.attr.from, app_server);
 	local id = uuid();
+	module:log("debug", "Sending PUSH notification for %s with id %s, from %s, to App Server %s",
+		jid_join(user, module.host), id, stanza.attr.from, app_server);
 
 	local notification = st.iq({ type = "set", to = app_server, from = module.host, id = id })
 		:tag("pubsub", { xmlns = "http://jabber.org/protocol/pubsub" })
@@ -167,25 +167,29 @@ module:hook("message/offline/handle", function(event)
 	if store and stanza.attr.type == "chat" and stanza:get_child_text("body") then push_notify(user, store, stanza); end
 end, 1);
 
-module:hook("iq-error/host", function(event)
-	if sent_ids[event.stanza.attr.id] then
-		local id = event.stanza.attr.id;
-		local sent_id = sent_ids[id];
-		local err_type, condition = event.stanza:get_error();
-		if err_type ~= "wait" then
-			local user = sent_id.user
-			local store = store_cache[user];
-			module:log("debug", "Received error type %s condition %s while sending %s PUSH notification, disabling related node for %s",
-				err_type, condition, id, user);
-			store[sent_id.app_server].nodes[sent_id.node] = nil;
+module:hook("iq/host", function(event)
+	local stanza = event.stanza;
+	if stanza.attr.type ~= "error" or stanza.attr.type ~= "result" then return; end
+
+	local id = stanza.attr.id;
+	if sent_ids[id] then
+		if stanza.attr.type == "error" then
+			local sent_id = sent_ids[id];
+			local err_type, condition = event.stanza:get_error();
+			if err_type ~= "wait" then
+				local user = sent_id.user
+				local store = store_cache[user];
+				module:log("debug", "Received error type %s condition %s while sending %s PUSH notification, disabling related node for %s",
+					err_type, condition, id, user);
+				store[sent_id.app_server].nodes[sent_id.node] = nil;
+			end
+		else
+			module:log("debug", "PUSH App Server handled %s", id);
 		end
 		sent_ids[id] = nil;
+		return true;
 	end
-end);
-
-module:hook("iq-result/host", function(event)
-	sent_ids[event.stanza.attr.id] = nil;
-end);
+end, 10);
 
 function module.load()
 	user_list = dm.load(nil, module.host, "push_account_list") or {};
