@@ -23,7 +23,7 @@ local sent_ids = setmetatable({}, { __mode = "v" });
 local function ping_app_server(user, app_server, node, last_from, count, secret)
 	local id = uuid();
 	module:log("debug", "Sending PUSH notification for %s with id %s, from %s, to App Server %s",
-		jid_join(user, module.host), id, stanza.attr.from, app_server);
+		jid_join(user, module.host), id, last_from, app_server);
 
 	local notification = st.iq({ type = "set", to = app_server, from = module.host, id = id })
 		:tag("pubsub", { xmlns = "http://jabber.org/protocol/pubsub" })
