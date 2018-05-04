@@ -14,6 +14,7 @@ Differences from Prosody are, but not limited to:
  * Core stack: Modulemanager, Usermanager, Hostmanager, Module API, etc...
  * More aggressive memory usage optimisations
  * Bidirectional S2S Streams
+ * Direct TLS S2S Streams and XEP-0368 resolution
  * Dialback errors handling and "DB without DB" (XEP-344)
  * The anonymous auth backend (mod_auth_anonymous & sasl.lua ineherent part)
  * Included plugins, utils
