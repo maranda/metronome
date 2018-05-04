@@ -100,7 +100,7 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 			end
 			t_insert(_q, cached);
 		end
-		if stanza.name == "message" and #_q > max_unacked and (session.waiting_ack or session.halted) then
+		if stanza.name == "message" and #_q > 0 and (session.waiting_ack or session.halted) then
 			module:fire_event("sm-push-message", { username = session.username, host = session.host, stanza = stanza });
 		end
 		if session.halted then return true; end
