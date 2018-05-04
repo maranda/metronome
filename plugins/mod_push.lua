@@ -142,8 +142,7 @@ module:hook("sm-push-message", function(event)
 	local user, stanza = event.username, event.stanza;
 	local store = store_cache[user];
 
-	if store and stanza.name == "message" and stanza.attr.type == "chat" and stanza:get_child_text("body") and
-		not stanza:child_with_ns("urn:xmpp:carbons:1") then
+	if store and stanza.name == "message" and stanza.attr.type == "chat" and stanza:get_child_text("body") then
 		push_notify(user, store, stanza);
 	end
 end);
@@ -154,8 +153,7 @@ module:hook("sm-process-queue", function(event)
 
 	if store then
 		for i, stanza in ipairs(queue) do
-			if stanza.name == "message" and stanza.attr.type == "chat" and stanza:get_child_text("body") and
-				not stanza:child_with_ns("urn:xmpp:carbons:1") then
+			if stanza.name == "message" and stanza.attr.type == "chat" and stanza:get_child_text("body") then
 				push_notify(user, store, stanza);
 			end
 		end
