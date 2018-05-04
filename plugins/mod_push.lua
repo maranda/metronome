@@ -51,8 +51,13 @@ local function ping_app_server(user, app_server, node, stanza, secret)
 	module:send(notification);
 end
 
-local function push_notify(user, store)
-	for _, push in ipairs(store) do ping_app_server(user, push.app_server, push.node, push.stanza, push.secret); end
+local function push_notify(user, store, stanza)
+	for app_server, push in pairs(store) do
+		local nodes = push.nodes;
+		for node in pairs(nodes) do
+			ping_app_server(user, app_server, node, stanza, push.secret); end
+		end
+	end
 end
 
 module:hook("iq-set/self/"..push_xmlns..":enable", function(event)
@@ -80,7 +85,12 @@ module:hook("iq-set/self/"..push_xmlns..":enable", function(event)
 
 	module:log("debug", "User %s activated PUSH, application service %s, node %s",
 		jid_join(user, host), app_server, node);
-	t_insert(store, { app_server = app_server, node = node, secret = secret });
+	if not store[app_server] then
+		store[app_server] = { nodes = {}, secret = secret };
+		store[app_server].nodes[node] = true;
+	else
+		store[app_server].nodes[node] = true;
+	end
 	store_cache[user] = store;
 	user_list[user] = true;
 	dm.store(nil, host, "push_account_list", user_list);
@@ -97,26 +107,17 @@ module:hook_stanza("iq-set/self/"..push_xmlns..":disable", function(event)
 	local user, host = origin.username, origin.host;
 	local store = store_cache[user] or dm.load(user, host, "push") or {};
 
-	if not node then
-		module:log("debug", "User %s disabled PUSH completely", jid_join(user, host));
-		store_cache[user] = nil;
-		user_list[user] = nil;
-		dm.store(nil, host, "push_account_list", user_list);
-		dm.store(user, host, "push");
-
-		origin.send(st.reply(stanza));
-		return true;
-	end
-
 	local jid, node = disable.attr.jid, disable.attr.node;
-	for i, push in ipairs(store) do
-		if push.app_server == jid then
-			if node and push.node == node or not node then
-				module:log("debug", "User %s deactivated PUSH, application service %s, node %s",
-					jid_join(user, host), push.app_server, push.node);
-				t_remove(store, i);
-			end
-		end
+	if not jid then
+		origin.send(st.error_reply(stanza, "modify", "bad-request"));
+		return true;		
+	end
+	
+	if not node then
+		module:log("debug", "User %s deactivated PUSH application service %s", jid_join(user, host), push.app_server);
+		store[jid] = nil;
+	else
+		store[jid].nodes[node] = nil;
 	end
 
 	if next(store) then
@@ -143,7 +144,7 @@ module:hook("sm-push-message", function(event)
 
 	if store and stanza.name == "message" and stanza.attr.type == "chat" and stanza:get_child_text("body") and
 		not stanza:child_with_ns("urn:xmpp:carbons:1") then
-		push_notify(user, store);
+		push_notify(user, store, stanza);
 	end
 end);
 
@@ -155,7 +156,7 @@ module:hook("sm-process-queue", function(event)
 		for i, stanza in ipairs(queue) do
 			if stanza.name == "message" and stanza.attr.type == "chat" and stanza:get_child_text("body") and
 				not stanza:child_with_ns("urn:xmpp:carbons:1") then
-				push_notify(user, store);
+				push_notify(user, store, stanza);
 			end
 		end
 	end
@@ -165,7 +166,7 @@ module:hook("message/offline/handle", function(event)
 	local stanza = event.stanza;
 	local user = jid_split(stanza.attr.to);
 	local store = store_cache[user];
-	if store and stanza.attr.type == "chat" and stanza:get_child_text("body") then push_notify(user, store); end
+	if store and stanza.attr.type == "chat" and stanza:get_child_text("body") then push_notify(user, store, stanza); end
 end, 1);
 
 module:hook("iq-error/host", function(event)
@@ -176,13 +177,9 @@ module:hook("iq-error/host", function(event)
 		if err_type ~= "wait" then
 			local user = sent_id.user
 			local store = store_cache[user];
-			module:log("debug", "Received error type %s condition %s while sending %s PUSH notification, disabling related App Server for %s",
+			module:log("debug", "Received error type %s condition %s while sending %s PUSH notification, disabling related node for %s",
 				err_type, condition, id, user);
-			for i, push in ipairs(store) do
-				if push.app_server == sent_id.app_server and push.node == sent_id.node then
-					t_remove(store[user], i);
-				end
-			end
+			store[sent_id.app_server].nodes[sent_id.node] = nil;
 		end
 		sent_ids[id] = nil;
 	end
