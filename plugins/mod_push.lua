@@ -4,7 +4,7 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-local ipairs, pairs = ipairs, pairs;
+local ipairs, pairs, tostring = ipairs, pairs, tostring;
 
 local st = require "util.stanza";
 local jid_join = require "util.jid".join;
@@ -20,7 +20,7 @@ local user_list = {};
 local store_cache = {};
 local sent_ids = setmetatable({}, { __mode = "v" });
 
-local function ping_app_server(user, app_server, node, stanza, secret)
+local function ping_app_server(user, app_server, node, last_from, count, secret)
 	local id = uuid();
 	module:log("debug", "Sending PUSH notification for %s with id %s, from %s, to App Server %s",
 		jid_join(user, module.host), id, stanza.attr.from, app_server);
@@ -31,9 +31,8 @@ local function ping_app_server(user, app_server, node, stanza, secret)
 				:tag("item")
 					:tag("notification", { xmlns = push_xmlns })
 						:tag("field", { var = "FORM_TYPE" }):tag("value"):text(summary_xmlns):up():up()
-						:tag("field", { var = "message-count" }):tag("value"):text("1"):up():up()
-						:tag("field", { var = "last-message-sender" }):tag("value"):text(stanza.attr.from):up():up()
-						:tag("field", { var = "last-message-body" }):tag("value"):text(stanza:get_child_text("body")):up():up()
+						:tag("field", { var = "message-count" }):tag("value"):text(tostring(count)):up():up()
+						:tag("field", { var = "last-message-sender" }):tag("value"):text(last_from):up():up()
 					:up()
 				:up()
 			:up();
@@ -51,10 +50,10 @@ local function ping_app_server(user, app_server, node, stanza, secret)
 	module:send(notification);
 end
 
-local function push_notify(user, store, stanza)
+local function push_notify(user, store, last_from, count)
 	for app_server, push in pairs(store) do
 		local nodes = push.nodes;
-		for node in pairs(nodes) do ping_app_server(user, app_server, node, stanza, push.secret); end
+		for node in pairs(nodes) do ping_app_server(user, app_server, node, last_from, count, push.secret); end
 	end
 end
 
@@ -143,7 +142,7 @@ module:hook("sm-push-message", function(event)
 	local store = store_cache[user];
 
 	if store and stanza.name == "message" and stanza.attr.type == "chat" and stanza:get_child_text("body") then
-		push_notify(user, store, stanza);
+		push_notify(user, store, stanza.attr.from, 1);
 	end
 end);
 
@@ -152,10 +151,15 @@ module:hook("sm-process-queue", function(event)
 	local store = store_cache[user];
 
 	if store then
+		local count, last_from = 0;
 		for i, stanza in ipairs(queue) do
 			if stanza.name == "message" and stanza.attr.type == "chat" and stanza:get_child_text("body") then
-				push_notify(user, store, stanza);
+				count = count + 1;
+				last_from = stanza.attr.from;
 			end
+		end
+		if count > 0 then
+			push_notify(user, store, last_from, count);
 		end
 	end
 end);
@@ -164,7 +168,9 @@ module:hook("message/offline/handle", function(event)
 	local stanza = event.stanza;
 	local user = jid_split(stanza.attr.to);
 	local store = store_cache[user];
-	if store and stanza.attr.type == "chat" and stanza:get_child_text("body") then push_notify(user, store, stanza); end
+	if store and stanza.attr.type == "chat" and stanza:get_child_text("body") then
+		push_notify(user, store, stanza.attr.from, 1);
+	end
 end, 1);
 
 module:hook("iq/host", function(event)
