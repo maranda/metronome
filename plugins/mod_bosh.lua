@@ -359,7 +359,7 @@ function stream_callbacks.streamopened(context, attr)
 end
 
 function stream_callbacks.handlestanza(context, stanza)
-	if context.ignore then return; end
+	if context.ignore then return true; end
 	log("debug", "BOSH stanza received: %s\n", stanza:top_tag());
 	local session = sessions[context.sid];
 	if session or context.dead then
