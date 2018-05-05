@@ -22,8 +22,8 @@ local datamanager = require "util.datamanager";
 local array = require "util.array";
 local seed = require "util.auxiliary".generate_secret;
 local split = require "util.jid".split;
-local ipairs, pairs, os_remove, os_time, s_upper, t_concat, t_insert, tostring =
-	ipairs, pairs, os.remove, os.time, string.upper, table.concat, table.insert, tostring;
+local gc, ipairs, pairs, os_remove, os_time, s_upper, t_concat, t_insert, tostring =
+	collectgarbage, ipairs, pairs, os.remove, os.time, string.upper, table.concat, table.insert, tostring;
 
 local function join_path(...)
 	return table.concat({ ... }, package.config:sub(1,1));
@@ -53,7 +53,7 @@ local default_mime_types = {
 	["webm"] = "video/webm"
 };
 
-local cache = setmetatable({}, { __mode = "v" });
+local cache = {};
 
 -- config
 local mime_types = module:get_option_table("http_file_allowed_mime_types", default_mime_types);
@@ -61,6 +61,8 @@ local file_size_limit = module:get_option_number("http_file_size_limit", 3*1024*
 local quota = module:get_option_number("http_file_quota", 40*1024*1024);
 local max_age = module:get_option_number("http_file_expire_after", 172800);
 local expire_any = module:get_option_number("http_file_perfom_expire_any", 1800);
+local expire_slot = module:get_option_number("http_file_expire_upload_slots", 900);
+local expire_cache = module:get_option_number("http_file_expire_file_caches", 450);
 local cacheable_size = module:get_option_number("http_file_cacheable_size", file_size_limit);
 local default_base_path = module:get_option_string("http_file_base_path", "share");
 
@@ -114,7 +116,7 @@ local function expire(username, host, has_downloads)
 	if has_downloads then has_downloads[username] = now; end
 	uploads = array(uploads);
 	local expiry = now - max_age;
-	local upload_window = now - 900;
+	local upload_window = now - expire_slot;
 	uploads:filter(function (item)
 		local filename = item.filename;
 		if item.dir then
@@ -213,7 +215,7 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 	local slot = random_dir.."/"..filename;
 	pending_slots[slot] = origin.full_jid;
 
-	module:add_timer(900, function()
+	module:add_timer(expire_slot, function()
 		pending_slots[slot] = nil;
 		if not lfs.attributes(join_path(storage_path, random_dir, filename)) then
 			os_remove(join_path(storage_path, random_dir));
@@ -361,6 +363,10 @@ local function serve_uploaded_files(event, path, head)
 		cached = {}; 
 		cached.attrs = lfs.attributes(full_path);
 		if not cached.attrs then return 404; end
+		module:add_timer(expire_cache, function()
+			cache[full_path] = nil;
+			gc();
+		end);
 	end
 
 	local headers, attrs, data = cached.headers, cached.attrs;
