@@ -382,6 +382,9 @@ local function serve_uploaded_files(event, path, head)
 	end
 	cache[full_path] = cached;
 
+	module:log("debug", "%s sent %s request for uploaded file at: %s (%d bytes)", 
+		request.conn:ip(), head and "HEAD" or "GET", path, attrs.size);
+
 	if head then
 		if not headers["Content-Length"] then headers["Content-Length"] = attrs.size; end
 		response:send();		
