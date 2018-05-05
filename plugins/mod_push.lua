@@ -4,6 +4,8 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
+module:depends("stream_management");
+
 local ipairs, pairs, tostring = ipairs, pairs, tostring;
 
 local st = require "util.stanza";
