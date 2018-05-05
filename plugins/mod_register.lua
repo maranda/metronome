@@ -104,7 +104,7 @@ module:hook("stream-features", function(event)
 	features:add_child(register_stream_feature);
 end, 100);
 
-local function check_password(session, password)
+local function validate_password(stanza, session, password)
 	if not ((password:find("%d+") or password:find("%p+")) and password:find("%u+")) or 
 		password:len() < min_pass_len or password:len() > max_pass_len then
 		session.send(st.error_reply(stanza, "modify", "policy-violation",
@@ -153,7 +153,7 @@ local function handle_registration_stanza(event)
 			local password = query:get_child("password"):get_text();
 			if username and password then
 				if username == session.username then
-					if not check_password(session, password) then return true; end
+					if not validate_password(stanza, session, password) then return true; end
 
 					if usermanager_set_password(username, password, session.host) then
 						module:fire_event(
@@ -284,7 +284,7 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 					elseif usermanager_user_exists(username, host) then
 						session.send(st.error_reply(stanza, "cancel", "conflict", "The requested username already exists."));
 					else
-						if not check_password(session, password) then return true; end
+						if not validate_password(stanza, session, password) then return true; end
 
 						local error_reply = st.error_reply(stanza, "wait", "internal-server-error", "Failed to write data to disk.");
 						if usermanager_create_user(username, password, host, require_verification and true) then
