@@ -31,7 +31,7 @@ local xmlns_e = "urn:ietf:params:xml:ns:xmpp-stanzas";
 local xmlns_d = "urn:xmpp:delay";
 
 local timeout = module:get_option_number("sm_resume_timeout", 360);
-local max_unacked = module:get_option_number("sm_max_unacked_stanzas", 0);
+local max_unacked = module:get_option_number("sm_max_unacked_stanzas", 10);
 
 local handled_sessions = {};
 
