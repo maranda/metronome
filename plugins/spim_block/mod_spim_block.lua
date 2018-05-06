@@ -37,6 +37,7 @@ local base_path = module:get_option_string("spim_base", "spim");
 local http_host = module:get_option_string("spim_http_host");
 local reset_count = module:get_option_number("spim_reset_count", 2000);
 local ban_time = module:get_option_number("spim_s2s_ban_time", 3600);
+if not base_path:match(".*/$") then base_path = base_path .. "/"; end
 base_url = module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/"), http_host);
 
 local files_base = module.path:gsub("[/\\][^/\\]*$","") .. "/template/";
