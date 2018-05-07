@@ -202,7 +202,8 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 		return nil, st.error_reply(stanza, "cancel", "not-authorized");
 	end
 	-- validate
-	if not filename or filename:find("/") or not mime_types[filename:match("%.([^%.]*)$")] then
+	local ext = filename:match("%.([^%.]*)$");
+	if not filename or filename:find("/") or not mime_types[ext and ext:lower()] then
 		module:log("debug", "Filename %q not allowed", filename or "");
 		return nil, st.error_reply(stanza, "modify", "bad-request", "Invalid filename or unallowed type");
 	end
@@ -429,7 +430,8 @@ local function serve_uploaded_files(event, path, head)
 	local headers, attrs, data = cached.headers, cached.attrs;
 	if not headers then
 		headers = response.headers;
-		headers["Content-Type"] = mime_types[full_path:match("%.([^%.]*)$")];
+		local ext = full_path:match("%.([^%.]*)$");
+		headers["Content-Type"] = mime_types[ext and ext:lower()];
 		headers["Last-Modified"] = os.date("!%a, %d %b %Y %X GMT", attrs.modification);
 		cached.headers = headers;
 	else
