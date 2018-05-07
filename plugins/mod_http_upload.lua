@@ -502,5 +502,3 @@ end
 
 module.load = clean_timers();
 module.unload = clean_timers();
-
-
