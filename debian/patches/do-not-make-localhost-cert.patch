@@ -5,7 +5,7 @@ Author: Jérôme Lebleu <jerome@yunohost.org>
 +++ metronome/Makefile
 @@ -15,9 +15,9 @@
  
- all: generate_log.install metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
+ all: generate_log.install send_mail.install metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
  	$(MAKE) -C util-src install
 -	$(MAKE) -C certs localhost.cnf
 -	$(MAKE) -C certs localhost.key
