@@ -11,6 +11,7 @@ local jid_bare, jid_join, jid_section, jid_split =
 	require "util.jid".bare, require "util.jid".join,
 	require "util.jid".section, require "util.jid".split;
 local urldecode = http.urldecode;
+local is_contact_pending_out = require "util.rostermanager".is_contact_pending_out;
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 local generate = require "util.auxiliary".generate_secret;
 local new_uuid = require "util.uuid".generate;
@@ -34,8 +35,9 @@ local exceptions = module:get_option_set("spim_exceptions", {});
 local secure = module:get_option_boolean("spim_secure", true);
 local base_path = module:get_option_string("spim_base", "spim");
 local http_host = module:get_option_string("spim_http_host");
-local reset_count = module:get_option_number("spim_reset_count", 10000);
+local reset_count = module:get_option_number("spim_reset_count", 2000);
 local ban_time = module:get_option_number("spim_s2s_ban_time", 3600);
+if not base_path:match(".*/$") then base_path = base_path .. "/"; end
 base_url = module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/"), http_host);
 
 local files_base = module.path:gsub("[/\\][^/\\]*$","") .. "/template/";
@@ -186,7 +188,7 @@ local function handle_incoming(event)
 		if not jid_section(from, "node") or exceptions:contains(from_host) or module:fire_event("peer-is-subscribed", from_host) then
 			return;
 		end -- allow hosts, components, peers traffic and exceptions.
-		if is_contact_subscribed(user, host, from_bare) then return; end
+		if is_contact_subscribed(user, host, from_bare) or is_contact_pending_out(user, host, from_bare) then return; end
 		
 		local to_allow_list = allow_list[to_bare];
 		if to_allow_list and to_allow_list[from_bare] then return; end
@@ -235,7 +237,7 @@ local function handle_outgoing(event)
 		
 		if from_allow_list and from_allow_list[to_bare] then return; end
 		
-		if not is_contact_subscribed(user, host, to_bare) then
+		if not is_contact_subscribed(user, host, to_bare) or not is_contact_pending_out(user, host, to_bare) then
 			if not from_allow_list then allow_list[from_bare] = {}; end
 			module:log("debug", "adding exception for %s to message %s, since conversation was started locally",
 				to_bare, from_bare);

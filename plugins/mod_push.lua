@@ -4,6 +4,8 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
+-- Implements Push Notifications XEP-0357
+
 module:depends("stream_management");
 
 local ipairs, pairs, tostring = ipairs, pairs, tostring;
@@ -22,7 +24,39 @@ local user_list = {};
 local store_cache = {};
 local sent_ids = setmetatable({}, { __mode = "v" });
 
-local function ping_app_server(user, app_server, node, last_from, count, secret)
+-- Adhoc Handlers
+
+module:depends("adhoc");
+local adhoc_new = module:require "adhoc".new;
+
+local function change_push_options(self, data, state)
+	local node = jid_split(data.from);
+	local options;
+	if not user_list[node] then 
+		user_list[node] = { last_sender = true }; options = user_list[node]; 
+	else
+		options = user_list[node];
+	end
+		
+	if not options.last_sender then
+		options.last_sender = true;
+		if store_cache[node] then dm.store(nil, host, "push_account_list", user_list); end
+		return { status = "completed", info = "PUSH notifications will now contain the last sender of a message/s" };
+	else
+		options.last_sender = false;
+		dm.store(nil, host, "push_account_list", user_list);
+		return { status = "completed", info = "PUSH notifications will now be stripped of the last sender of a message/s" };
+	end
+end
+
+local change_push_options_descriptor = adhoc_new(
+	"Toggle last-message-sender in Push Notifications", "change_push_last_sender", change_push_options
+);
+module:provides("adhoc", change_push_options_descriptor);
+
+-- Utility Functions
+
+local function ping_app_server(user, app_server, node, last_from, count, send_last, secret)
 	local id = uuid();
 	module:log("debug", "Sending PUSH notification for %s with id %s, from %s with message count %d, to App Server %s",
 		jid_join(user, module.host), id, last_from, count, app_server);
@@ -33,11 +67,13 @@ local function ping_app_server(user, app_server, node, last_from, count, secret)
 				:tag("item")
 					:tag("notification", { xmlns = push_xmlns })
 						:tag("field", { var = "FORM_TYPE" }):tag("value"):text(summary_xmlns):up():up()
-						:tag("field", { var = "message-count" }):tag("value"):text(tostring(count)):up():up()
-						:tag("field", { var = "last-message-sender" }):tag("value"):text(last_from):up():up()
-					:up()
-				:up()
-			:up();
+						:tag("field", { var = "message-count" }):tag("value"):text(tostring(count)):up():up();
+
+	if send_last then
+		notification:tag("field", { var = "last-message-sender" }):tag("value"):text(last_from):up():up();
+	end
+
+	notification:up():up():up(); -- close <publish /> element
 
 	if secret then
 		notification:tag("publish-options")
@@ -53,11 +89,14 @@ local function ping_app_server(user, app_server, node, last_from, count, secret)
 end
 
 local function push_notify(user, store, last_from, count)
+	local options = user_list[user];
 	for app_server, push in pairs(store) do
 		local nodes = push.nodes;
-		for node in pairs(nodes) do ping_app_server(user, app_server, node, last_from, count, push.secret); end
+		for node in pairs(nodes) do ping_app_server(user, app_server, node, last_from, count, options.last_sender, push.secret); end
 	end
 end
+
+-- Stanza Handlers
 
 module:hook("iq-set/self/"..push_xmlns..":enable", function(event)
 	local origin, stanza = event.origin, event.stanza;
@@ -91,7 +130,7 @@ module:hook("iq-set/self/"..push_xmlns..":enable", function(event)
 		store[app_server].nodes[node] = true;
 	end
 	store_cache[user] = store;
-	user_list[user] = true;
+	user_list[user] = { last_sender = true };
 	dm.store(nil, host, "push_account_list", user_list);
 	dm.store(user, host, "push", store);
 
@@ -104,12 +143,15 @@ module:hook_stanza("iq-set/self/"..push_xmlns..":disable", function(event)
 	local disable = stanza.tags[1];
 
 	local user, host = origin.username, origin.host;
-	local store = store_cache[user] or dm.load(user, host, "push") or {};
+	local store = store_cache[user] or dm.load(user, host, "push");
 
 	local jid, node = disable.attr.jid, disable.attr.node;
 	if not jid then
 		origin.send(st.error_reply(stanza, "modify", "bad-request"));
 		return true;		
+	elseif not store then
+		origin.send(st.reply(stanza));
+		return true;
 	end
 	
 	if not node then
@@ -125,7 +167,9 @@ module:hook_stanza("iq-set/self/"..push_xmlns..":disable", function(event)
 		store_cache[user] = store;
 		dm.store(user, host, "push", store);
 	else
-		user_list[user] = nil;
+		if user_list[user].last_sender == true then
+			user_list[user] = nil;
+		end
 		store_cache[user] = nil;
 		dm.store(nil, host, "push_account_list", user_list);
 		dm.store(user, host, "push");
