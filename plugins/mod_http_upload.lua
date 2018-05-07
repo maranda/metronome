@@ -72,9 +72,9 @@ local cacheable_size = module:get_option_number("http_file_cacheable_size", file
 local default_base_path = module:get_option_string("http_file_base_path", "share");
 
 --- sanity
-if file_size_limit > 15*1024*1024 then
-	module:log("warn", "http_file_size_limit exceeds HTTP parser limit on body size, capping file size to 15 MiB");
-	file_size_limit = 15*1024*1024;
+if file_size_limit > 6*1024*1024 then
+	module:log("warn", "http_file_size_limit exceeds HTTP parser limit on body size, capping file size to 6 MiB");
+	file_size_limit = 6*1024*1024;
 end
 
 -- utility
