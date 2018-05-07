@@ -281,7 +281,8 @@ local function upload_data(event, path)
 		module:log("warn", "Invalid file path %q", path);
 		return 400;
 	end
-	if #event.request.body > file_size_limit then
+	local size = #event.request.body;
+	if size > file_size_limit then
 		module:log("warn", "Uploaded file too large %d bytes", #event.request.body);
 		return 400;
 	end
@@ -310,6 +311,7 @@ local function upload_data(event, path)
 		os_remove(full_filename:match("^(.*)[/\\]"));
 		return 500;
 	end
+	if size > 500*1024 then gc(); end
 
 	local has_downloads = datamanager.load(nil, host, module.name) or {};
 	has_downloads[user] = os_time();
