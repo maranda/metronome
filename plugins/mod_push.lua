@@ -127,6 +127,7 @@ module:hook("iq-set/self/"..push_xmlns..":enable", function(event)
 		store[app_server] = { nodes = {}, secret = secret };
 		store[app_server].nodes[node] = true;
 	else
+		store[app_server].secret = secret;
 		store[app_server].nodes[node] = true;
 	end
 	store_cache[user] = store;
