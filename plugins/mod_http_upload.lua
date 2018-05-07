@@ -22,8 +22,8 @@ local datamanager = require "util.datamanager";
 local array = require "util.array";
 local seed = require "util.auxiliary".generate_secret;
 local join, split = require "util.jid".join, require "util.jid".split;
-local gc, ipairs, pairs, os_remove, os_time, s_upper, t_concat, t_insert, tostring =
-	collectgarbage, ipairs, pairs, os.remove, os.time, string.upper, table.concat, table.insert, tostring;
+local gc, ipairs, pairs, open, os_remove, os_time, s_upper, t_concat, t_insert, tostring =
+	collectgarbage, ipairs, pairs, io.open, os.remove, os.time, string.upper, table.concat, table.insert, tostring;
 
 local function join_path(...)
 	return table.concat({ ... }, package.config:sub(1,1));
@@ -202,7 +202,8 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 		return nil, st.error_reply(stanza, "cancel", "not-authorized");
 	end
 	-- validate
-	if not filename or filename:find("/") or not mime_types[filename:match("%.([^%.]*)$")] then
+	local ext = filename:match("%.([^%.]*)$");
+	if not filename or filename:find("/") or not mime_types[ext and ext:lower()] then
 		module:log("debug", "Filename %q not allowed", filename or "");
 		return nil, st.error_reply(stanza, "modify", "bad-request", "Invalid filename or unallowed type");
 	end
@@ -336,7 +337,7 @@ local function upload_data(event, path)
 		module:log("warn", "File %s exists already, not replacing it", full_filename);
 		return 409;
 	end
-	local fh, ferr = io.open(full_filename, "w");
+	local fh, ferr = open(full_filename, "w");
 	if not fh then
 		module:log("error", "Could not open file %s for upload: %s", full_filename, ferr);
 		return 500;
@@ -429,7 +430,8 @@ local function serve_uploaded_files(event, path, head)
 	local headers, attrs, data = cached.headers, cached.attrs;
 	if not headers then
 		headers = response.headers;
-		headers["Content-Type"] = mime_types[full_path:match("%.([^%.]*)$")];
+		local ext = full_path:match("%.([^%.]*)$");
+		headers["Content-Type"] = mime_types[ext and ext:lower()];
 		headers["Last-Modified"] = os.date("!%a, %d %b %Y %X GMT", attrs.modification);
 		cached.headers = headers;
 	else
@@ -438,7 +440,7 @@ local function serve_uploaded_files(event, path, head)
 	end
 
 	if not cached.data and attrs.size <= cacheable_size then
-		local f = io.open(full_path, "rb");
+		local f = open(full_path, "rb");
 		if f then data = f:read("*a"); f:close(); end
 
 		cached.data = data;
@@ -454,7 +456,7 @@ local function serve_uploaded_files(event, path, head)
 	else
 		data = cached.data;
 		if not data then
-			local f = io.open(full_path, "rb");
+			local f = open(full_path, "rb");
 			if f then data = f:read("*a"); f:close(); end
 		end
 
@@ -491,3 +493,12 @@ module:provides("http", {
 module:hook_global("user-deleted", purge_files, 20);
 
 module:log("info", "URL: <%s>; Storage path: %s", module:http_url(nil, default_base_path), storage_path);
+
+local function clean_timers() -- clean timers
+	for jid, bare_session in pairs(bare_sessions) do
+		bare_session.upload_timer = nil;
+	end
+end
+
+module.load = clean_timers();
+module.unload = clean_timers();
