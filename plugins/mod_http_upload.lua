@@ -70,6 +70,8 @@ local expire_cache = module:get_option_number("http_file_expire_file_caches", 45
 local throttle_time = module:get_option_number("http_file_throttle_time", 180);
 local cacheable_size = module:get_option_number("http_file_cacheable_size", file_size_limit);
 local default_base_path = module:get_option_string("http_file_base_path", "share");
+local storage_path = module:get_option_string("http_file_path", join_path(metronome.paths.data, "http_file_upload"));
+lfs.mkdir(storage_path);
 
 --- sanity
 if file_size_limit > 6*1024*1024 then
@@ -132,9 +134,6 @@ end);
 
 -- state
 local pending_slots = module:shared("upload_slots");
-
-local storage_path = module:get_option_string("http_file_path", join_path(metronome.paths.data, "http_file_upload"));
-lfs.mkdir(storage_path);
 
 local function expire(username, host, has_downloads)
 	if not max_age then return true; end
