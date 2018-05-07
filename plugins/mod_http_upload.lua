@@ -403,6 +403,7 @@ local function serve_uploaded_files(event, path, head)
 
 		response:send(data);
 	end
+	if attrs.size > 500*1024 then gc(); end
 	return true;
 end
 
