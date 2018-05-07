@@ -213,7 +213,7 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 	elseif last_uploaded_sum and (last_uploaded_sum + filesize > file_size_limit) then
 		module:log("debug", "%s's upload throttled", username);
 		return nil, st.error_reply(stanza, "wait", "resource-constraint", 
-			"You're allowed to send upto "..tostring(file_size_limit).." bytes any "..tostring(throttle_time).." minutes");
+			"You're allowed to send upto "..tostring(file_size_limit).." bytes any "..tostring(throttle_time).." seconds");
 	elseif filesize > file_size_limit then
 		module:log("debug", "File too large (%d > %d)", filesize, file_size_limit);
 		return nil, st.error_reply(stanza, "modify", "not-acceptable", "File too large")
