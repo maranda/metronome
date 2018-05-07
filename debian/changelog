@@ -1,3 +1,9 @@
+metronome (3.8.25) testing; urgency=medium
+
+  * New upstream release.
+
+ -- Alexandre Aubin <alex.aubin@mailoo.org>  Mon, 07 May 2018 17:20:00 +0100
+
 metronome (3.8.13) testing; urgency=medium
 
   * New upstream release.
