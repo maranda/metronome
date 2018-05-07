@@ -21,7 +21,7 @@ local dataform = require "util.dataforms".new;
 local datamanager = require "util.datamanager";
 local array = require "util.array";
 local seed = require "util.auxiliary".generate_secret;
-local split = require "util.jid".split;
+local join, split = require "util.jid".join, require "util.jid".split;
 local gc, ipairs, pairs, os_remove, os_time, s_upper, t_concat, t_insert, tostring =
 	collectgarbage, ipairs, pairs, os.remove, os.time, string.upper, table.concat, table.insert, tostring;
 
@@ -42,6 +42,7 @@ local default_mime_types = {
 	["jpeg"] = "image/jpeg",
 	["jpg"] = "image/jpeg",
 	["m4a"] = "audio/mp4",
+	["mov"] = "video/quicktime",
 	["mp3"] = "audio/mpeg",
 	["mp4"] = "video/mp4",
 	["ogg"] = "application/ogg",
@@ -54,6 +55,9 @@ local default_mime_types = {
 };
 
 local cache = {};
+local throttle = {};
+
+local bare_sessions = bare_sessions;
 
 -- config
 local mime_types = module:get_option_table("http_file_allowed_mime_types", default_mime_types);
@@ -63,6 +67,7 @@ local max_age = module:get_option_number("http_file_expire_after", 172800);
 local expire_any = module:get_option_number("http_file_perfom_expire_any", 1800);
 local expire_slot = module:get_option_number("http_file_expire_upload_slots", 900);
 local expire_cache = module:get_option_number("http_file_expire_file_caches", 450);
+local throttle_time = module:get_option_number("http_file_throttle_time", 180);
 local cacheable_size = module:get_option_number("http_file_cacheable_size", file_size_limit);
 local default_base_path = module:get_option_string("http_file_base_path", "share");
 
@@ -72,8 +77,30 @@ if file_size_limit > 15*1024*1024 then
 	file_size_limit = 15*1024*1024;
 end
 
+-- utility
+local function purge_files(event)
+	local user, host = event.username, event.host;
+	local uploads = datamanager.list_load(user, host, module.name);
+	if not uploads then return; end
+	module:log("info", "Removing uploaded files for %s@%s account", user, host);
+	for _, item in ipairs(uploads) do
+		local filename = join_path(storage_path, item.dir, item.filename);
+		local ok, err = os_remove(filename);
+		if not ok then module:log("debug", "Failed to remove %s@%s %s file: %s", user, host, filename, err); end
+		os_remove(filename:match("^(.*)[/\\]"));
+	end
+	datamanager.list_store(user, host, module.name, nil);
+	local has_downloads = datamanager.load(nil, host, module.name);
+	if has_downloads then
+		has_downloads[user] = nil;
+		if not next(has_downloads) then has_downloads = nil; end
+		datamanager.store(nil, host, module.name, has_downloads);
+	end
+end
+
 -- depends
 module:depends("http");
+module:depends("adhoc");
 
 -- namespaces
 local namespace = "urn:xmpp:http:upload:0";
@@ -86,6 +113,7 @@ module:hook("iq/host/http://jabber.org/protocol/disco#info:query", function(even
 	local reply = st.iq({ type = "result", id = stanza.attr.id, from = module.host, to = stanza.attr.from })
 		:query("http://jabber.org/protocol/disco#info")
 			:tag("identity", { category = "store", type = "file", name = disco_name }):up()
+			:tag("feature", { var = "http://jabber.org/protocol/commands" }):up()
 			:tag("feature", { var = namespace }):up()
 			:tag("feature", { var = legacy_namespace }):up();
 
@@ -168,6 +196,7 @@ end
 
 local function handle_request(origin, stanza, xmlns, filename, filesize)
 	local username, host = origin.username, origin.host;
+	local last_uploaded_sum = throttle[join(username, host)];
 	-- local clients only
 	if origin.type ~= "c2s" then
 		module:log("debug", "Request for upload slot from a %s", origin.type);
@@ -182,6 +211,10 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 	if not filesize then
 		module:log("debug", "Missing file size");
 		return nil, st.error_reply(stanza, "modify", "bad-request", "Missing or invalid file size");
+	elseif last_uploaded_sum and (last_uploaded_sum + filesize > file_size_limit) then
+		module:log("debug", "%s's upload throttled", username);
+		return nil, st.error_reply(stanza, "wait", "resource-constraint", 
+			"You're allowed to send upto %d bytes any %d minutes", file_size_limit, throttle_time);
 	elseif filesize > file_size_limit then
 		module:log("debug", "File too large (%d > %d)", filesize, file_size_limit);
 		return nil, st.error_reply(stanza, "modify", "not-acceptable", "File too large")
@@ -235,6 +268,18 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 	return slot_url;
 end
 
+-- adhoc handler
+local adhoc_new = module:require "adhoc".new;
+
+local function purge_uploads(self, data, state)
+	local user, host = split(data.from);
+	purge_files({ username = user, host = host });
+	return { status = "completed", info = "All uploaded files have been removed" };
+end
+
+local purge_uploads_descriptor = adhoc_new("Purge HTTP Upload Files", "http_upload_purge", purge_uploads);
+module:provides("adhoc", purge_uploads_descriptor);
+
 -- hooks
 local function iq_handler(event)
 	local stanza, origin = event.stanza, event.origin;
@@ -283,7 +328,7 @@ local function upload_data(event, path)
 	end
 	local size = #event.request.body;
 	if size > file_size_limit then
-		module:log("warn", "Uploaded file too large %d bytes", #event.request.body);
+		module:log("warn", "Uploaded file too large %d bytes", size);
 		return 400;
 	end
 	pending_slots[path] = nil;
@@ -312,6 +357,17 @@ local function upload_data(event, path)
 		return 500;
 	end
 	if size > 500*1024 then gc(); end
+
+	local bare_user = join(user, host);
+	throttle[bare_user] = (throttle[bare_user] and throttle[bare_user] + size) or size;
+	local bare_session = bare_sessions[bare_user];
+	if not bare_session.upload_timer then
+		bare_session.upload_timer = true;
+		module:add_timer(throttle_time, function()
+			throttle[bare_user] = nil;
+			if bare_sessions[bare_user] then bare_sessions[bare_user].upload_timer = nil; end
+		end);
+	end
 
 	local has_downloads = datamanager.load(nil, host, module.name) or {};
 	has_downloads[user] = os_time();
@@ -433,24 +489,6 @@ module:provides("http", {
 	}
 });
 
-module:hook_global("user-deleted", function(event)
-	local user, host = event.username, event.host;
-	local uploads = datamanager.list_load(user, host, module.name);
-	if not uploads then return; end
-	module:log("info", "Removing uploaded files as %s@%s account is being deleted", user, host);
-	for _, item in ipairs(uploads) do
-		local filename = join_path(storage_path, item.dir, item.filename);
-		local ok, err = os_remove(filename);
-		if not ok then module:log("debug", "Failed to remove %s@%s %s file: %s", user, host, filename, err); end
-		os_remove(filename:match("^(.*)[/\\]"));
-	end
-	datamanager.list_store(user, host, module.name, nil);
-	local has_downloads = datamanager.load(nil, host, module.name);
-	if has_downloads then
-		has_downloads[user] = nil;
-		if not next(has_downloads) then has_downloads = nil; end
-		datamanager.store(nil, host, module.name, has_downloads);
-	end
-end, 20);
+module:hook_global("user-deleted", purge_files, 20);
 
 module:log("info", "URL: <%s>; Storage path: %s", module:http_url(nil, default_base_path), storage_path);
