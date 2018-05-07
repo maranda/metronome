@@ -20,6 +20,7 @@ local user_exists = usermanager.user_exists;
 
 module:depends("http");
 
+disabled_list = {};
 auth_list = {};
 block_list = {};
 allow_list = {};
@@ -29,10 +30,12 @@ local bare_sessions = bare_sessions;
 local full_sessions = full_sessions;
 local hosts = metronome.hosts;
 
+local exceptions = module:get_option_set("spim_exceptions", {});
 local secure = module:get_option_boolean("spim_secure", true);
 local base_path = module:get_option_string("spim_base", "spim");
 local http_host = module:get_option_string("spim_http_host");
 local reset_count = module:get_option_number("spim_reset_count", 10000);
+local ban_time = module:get_option_number("spim_s2s_ban_time", 3600);
 base_url = module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/"), http_host);
 
 local files_base = module.path:gsub("[/\\][^/\\]*$","") .. "/template/";
@@ -133,6 +136,36 @@ local function reset_tables()
 	count = 0;
 end
 
+-- Adhoc Handlers
+
+module:depends("adhoc");
+local adhoc_new = module:require "adhoc".new;
+
+local function enable_spim(self, data, state)
+	local bare_from = jid_bare(data.from);
+	if not disabled_list[bare_from] then
+		return { status = "completed", info = "SPIM protection is already enabled" };
+	else
+		disabled_list[bare_from] = nil;
+		return { status = "completed", info = "Enabled SPIM protection for unsollicited messages from people not in your contacts" };
+	end
+end
+
+local function disable_spim(self, data, state)
+	local bare_from = jid_bare(data.from);
+	if disabled_list[bare_from] then
+		return { status = "completed", info = "SPIM protection is already disabled" };
+	else
+		disabled_list[bare_from] = true;
+		return { status = "completed", info = "Disabled SPIM protection, you will now receive all messages from people not in your contacts" };
+	end
+end
+
+local enable_spim_descriptor = adhoc_new("Enable SPIM protection", "enable_spim", enable_spim);
+local disable_spim_descriptor = adhoc_new("Disable SPIM protection", "disable_spim", disable_spim);
+module:provides("adhoc", enable_spim_descriptor);
+module:provides("adhoc", disable_spim_descriptor);
+
 -- XMPP Handlers
 
 local function handle_incoming(event)
@@ -143,24 +176,24 @@ local function handle_incoming(event)
 		
 		if type == "error" or type == "groupchat" then return; end
 		if stanza:child_with_name("result") and	not stanza:child_with_name("body") then
-			return; -- probable MAM archive result, still a hack.
+			return; -- probable MAM archive result
 		end
 
-		local from_bare, to_bare = jid_bare(from), jid_bare(to);
+		local from_bare, from_host, to_bare = jid_bare(from), jid_section(from, "host"), jid_bare(to);
 		local user, host, resource = jid_split(to);
 
-		if not jid_section(from_bare, "node") then return; end -- allow (PubSub) components.
-		
+		if disabled_list[to_bare] then return; end
+		if not jid_section(from, "node") or exceptions:contains(from_host) or module:fire_event("peer-is-subscribed", from_host) then
+			return;
+		end -- allow hosts, components, peers traffic and exceptions.
 		if is_contact_subscribed(user, host, from_bare) then return; end
-		
-		if module:fire_event("peer-is-subscribed", jid_section(from, "host")) then return; end
 		
 		local to_allow_list = allow_list[to_bare];
 		if to_allow_list and to_allow_list[from_bare] then return; end
 		
 		if block_list[to_bare] and block_list[to_bare][from_bare] then
 			module:log("info", "blocking unsolicited message to %s from %s", to_bare, from_bare);
-			module:fire_event("call-gate-guard", { origin = origin, from = from, reason = "SPIM" });
+			module:fire_event("call-gate-guard", { origin = origin, from = from, reason = "SPIM", ban_time = ban_time });
 			return true; 
 		end
 
@@ -191,7 +224,8 @@ local function handle_outgoing(event)
 	
 	if origin.type == "c2s" and stanza.attr.type == "chat" then
 		local to_bare = jid_bare(stanza.attr.to);
-		if not to_bare or origin.directed_bare[to_bare] or hosts[jid_section(to_bare, "host")] then
+		local host = to_bare and jid_section(to_bare, "host");
+		if not to_bare or origin.directed_bare[to_bare] or hosts[host] or exceptions:contains(host) then
 			return;
 		end
 		
@@ -282,7 +316,10 @@ module:log("info", "SPIM blocking module accepting challenges at: <%s>", base_ur
 
 -- Reloadability
 
-module.save = function() return { auth_list = auth_list, block_list = block_list, allow_list = allow_list, count = count }; end
+module.save = function()
+	return { disabled_list = disabled_list, auth_list = auth_list, block_list = block_list, allow_list = allow_list, count = count };
+end
 module.restore = function(data)
-	auth_list, block_list, allow_list, count = data.auth_list, data.block_list, data.allow_list, data.count;
+	disabled_list, auth_list, block_list, allow_list, count = 
+		data.disabled_list or {}, data.auth_list or {}, data.block_list or {}, data.allow_list or {}, data.count or 0;
 end

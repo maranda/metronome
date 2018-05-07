@@ -185,9 +185,9 @@ function listener.onconnect(conn)
 	
 	session.log("info", "Client connected");
 	
-	-- Legacy ssl
-	if conn:ssl() then
+	if session.conn:ssl() then -- Direct TLS c2s connection
 		session.secure = true;
+		session.direct_tls_c2s = true;
 	end
 	
 	if opt_keepalives then
@@ -277,11 +277,17 @@ end, -1);
 module:hook("user-deleted", handle_deletion, -1);
 
 module:add_item("net-provider", {
-	name = "c2s";
-	listener = listener;
-	default_port = 5222;
-	encryption = "starttls";
+	name = "c2s",
+	listener = listener,
+	default_port = 5222,
+	encryption = "starttls",
 	multiplex = {
-		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:client%1.*>";
-	};
+		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:client%1.*>"
+	}
+});
+
+module:add_item("net-provider", {
+	name = "c2s_secure",
+	listener = listener,
+	encryption = "ssl"
 });

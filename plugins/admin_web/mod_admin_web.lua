@@ -69,6 +69,9 @@ function generate_item(name, session, id)
 			item:tag("encrypted"):tag("invalid"):up():up();
 		end
 	end
+	if session.direct_tls_c2s or session.direct_tls_s2s then
+		item:tag("directtls"):up();
+	end
 	if session.bidirectional then
 		item:tag("bidi"):up();
 	end
@@ -179,13 +182,13 @@ function module.add_host(module)
 	-- Setup HTTP server
 	module:depends("http");
 	module:provides("http", {
-		name = "admin";
+		name = "admin",
 		route = {
 			["GET"] = function(event)
 				event.response.headers.location = event.request.path .. "/";
 				return 301;
-			end;
-			["GET /*"] = serve_file;
+			end,
+			["GET /*"] = serve_file
 		}
 	});
 

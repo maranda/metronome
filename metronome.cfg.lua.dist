@@ -45,6 +45,7 @@ modules_enabled = {
 			"stanza_optimizations"; -- Allows clients to use Client State Indication and SIFT
 			"message_carbons"; -- Allows clients to enable carbon copies of messages
 			"mam"; -- Enable server-side message archives using Message Archive Management
+			"push"; -- Enable Push Notifications via PubSub using XEP-0357
 			"lastactivity"; -- Enables clients to know the last presence status of an user
 			"adhoc_cm"; -- Allow to set client certificates to login through SASL External via adhoc
 			"admin_adhoc"; -- administration adhoc commands
@@ -60,8 +61,8 @@ modules_enabled = {
 			--"server_presence"; -- Enables Server Buddies extension support
 			--"service_directory"; -- Enables Service Directories extension support
 			--"public_service"; -- Enables Server vCard support for public services in directories and advertises in features
+			--"register_api"; -- Provides secure API for both Out-Of-Band and In-Band registration for E-Mail verification
 			--"websocket"; -- Enable support for WebSocket clients, aka "XMPP over WebSockets"
-			
 };
 
 -- Default pidfile path

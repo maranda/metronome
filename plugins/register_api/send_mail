@@ -1,0 +1,54 @@
+#!/usr/bin/env lua
+-- * Metronome IM *
+--
+-- This file is part of the Metronome XMPP server and is released under the
+-- ISC License, please see the LICENSE file in this source package for more
+-- information about copyright and licensing.
+
+-- This script sends mail from the Register API
+	
+request_type = arg[1];
+mail_from = arg[2];
+mail_to = arg[3];
+reply_to = arg[4];
+new_jid = arg[5];
+url = arg[6];
+token = arg[7];
+secure = arg[8];
+
+CFG_SOURCEDIR=os.getenv("METRONOME_SRCDIR");
+CFG_CONFIGDIR=os.getenv("METRONOME_CFGDIR");
+
+metronome = { events = {}, platform = "posix", serialization = s or "internal" };
+package.path = CFG_SOURCEDIR.."/?.lua;"..package.path;
+package.cpath = CFG_SOURCEDIR.."/?.so;"..package.cpath;
+config = require "core.configmanager";
+html_escape = require "util.auxiliary".html_escape;
+section = require "util.jid".section;
+send = require "util.mail".send;
+
+function read_file(filepath)
+	local f, err = io.open(filepath, "r");
+	if not f then return f, err; end
+	local t = f:read("*all");
+	f:close()
+	return t;
+end
+
+config.load(CFG_CONFIGDIR .. "/metronome.cfg.lua"); -- FIXME should be format/file agnostical
+
+local template = read_file(CFG_CONFIGDIR .. "/templates/" .. request_type .. ".template.txt");
+if template then
+	template = template:gsub("%%URL%%", url):gsub("%%TOKEN%%", token);
+	template = html_escape(template);
+
+	local subject = request_type == "register" and 
+		"Account registration verification for: " or "Account password reset for: ";
+
+	local user, pass, host = config.get("*", "mail_user"), config.get("*", "mail_pass"), config.get("*", "mail_host");
+
+	send(mail_from, mail_to, reply_to, subject..new_jid, template,
+		{ user = user, password = pass, host = host, helo = section(new_jid, "host") }, secure and true);
+end
+	
+os.exit(1);

@@ -271,8 +271,14 @@ function stream_callbacks.streamopened(session, attr)
 	local send = session.sends2s;
 	
 	session.version = tonumber(attr.version) or 0;
+
+	if session.conn:ssl() and session.secure == nil then -- Direct TLS s2s connection
+		session.secure = true;
+		if session.direction == "incoming" then
+			session.direct_tls_s2s = true;
+		end
+	end
 	
-	-- TODO: Rename session.secure to session.encrypted
 	if session.secure == false then
 		session.secure = true;
 	end
@@ -642,11 +648,18 @@ module:hook("host-deactivating", function(event)
 end, -2);
 
 module:add_item("net-provider", {
-	name = "s2s";
-	listener = listener;
-	default_port = 5269;
-	encryption = "starttls";
+	name = "s2s",
+	listener = listener,
+	default_port = 5269,
+	encryption = "starttls",
 	multiplex = {
-		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:server%1.*>";
-	};
+		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:server%1.*>"
+	}
 });
+
+module:add_item("net-provider", {
+	name = "s2s_secure",
+	listener = listener,
+	encryption = "ssl"
+});
+

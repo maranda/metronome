@@ -221,6 +221,7 @@ function commands.help(session, data)
 		print [[c2s:show_compressed() - Show all compressed client connections]]
 		print [[c2s:show_insecure() - Show all unencrypted client connections]]
 		print [[c2s:show_secure() - Show all encrypted client connections]]
+		print [[c2s:show_direct_tls() - Show all direct tls client connections]]
 		print [[c2s:show_sm() - Show all stream management enabled client connections]]
 		print [[c2s:show_csi() - Show all client state indication enabled client connections]]
 		print [[c2s:close(jid) - Close all sessions for the specified JID]]
@@ -336,9 +337,13 @@ function def_env.module:load(name, hosts)
 	
 	local ok, err, count, mod = true, nil, 0, nil;
 	for host in _hosts do
-		if (not mm.is_loaded(host, name)) then
-			if metronome.hosts[host].type == "component" then
-				mod, err = not hosts and mm.load(host, name, set.new {}) or mm.load(host, name, set.new { name });
+		local _host = metronome.hosts[host];
+		if not _host then
+			ok, err = false, "Host doesn't exists";
+		end
+		if _host and (not mm.is_loaded(host, name)) then
+			if not hosts and _host.type == "component" then
+				mod, err = mm.load(host, name, set.new {})
 			else
 				mod, err = mm.load(host, name);
 			end
@@ -499,6 +504,9 @@ local function session_flags(session, line)
 	elseif session.secure then
 		line[#line+1] = "(encrypted)";
 	end
+	if session.direct_tls_c2s or session.direct_tls_s2s then
+		line[#line+1] = "(direct tls)";
+	end
 	if session.compressed then
 		line[#line+1] = "(compressed)";
 	end
@@ -594,6 +602,11 @@ end
 function def_env.c2s:show_secure(match_jid)
 	local count = show_type(self, match_jid, "secure");
 	return true, "Total: "..count.." secure client connections";
+end
+
+function def_env.c2s:show_direct_tls(match_jid)
+	local count = show_type(self, match_jid, "direct_tls_c2s");
+	return true, "Total: "..count.." direct tls client connections";
 end
 
 function def_env.c2s:show_sm(match_jid)
@@ -1064,8 +1077,8 @@ function printbanner(session)
 end
 
 module:add_item("net-provider", {
-	name = "console";
-	listener = console_listener;
-	default_port = 5582;
-	private = true;
+	name = "console",
+	listener = console_listener,
+	default_port = 5582,
+	private = true
 });

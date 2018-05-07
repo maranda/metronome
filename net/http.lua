@@ -7,12 +7,16 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2013, Matthew Wild, Waqas Hussain
 
-local socket = require "socket"
+local socket = require "socket";
+local ssl = require "ssl";
 local b64 = require "util.encodings".base64.encode;
-local url = require "socket.url"
+local url = require "socket.url";
 local httpstream_new = require "util.httpstream".new;
 
-local server = require "net.server"
+local luasec_version = ssl and ssl._VERSION:match("^%d+%.(%d+)") or nil;
+luasec_version = luasec_version and tonumber(luasec_version);
+
+local server = require "net.server";
 
 local t_insert, t_concat = table.insert, table.concat;
 local pairs, ipairs = pairs, ipairs;
@@ -176,6 +180,16 @@ function request(u, ex, callback)
 	req.method, req.headers, req.body = method, headers, body;
 	
 	local using_https = req.scheme == "https";
+	if using_https and not luasec_version then
+		return nil, "TLS/SSL is not available";
+	elseif using_https and luasec_version < 6 then
+		using_https = { mode = "client", protocol = "sslv23" };
+	elseif using_https and luasec_version >= 6 then
+		using_https = { mode = "client", protocol = "any" };
+	else
+		using_https = nil;
+	end
+
 	local port = tonumber(req.port) or (using_https and 443 or 80);
 	
 	local conn = socket.tcp();
@@ -186,7 +200,7 @@ function request(u, ex, callback)
 		return nil, err;
 	end
 	
-	req.handler, req.conn = server.wrapclient(conn, req.host, port, listener, "*a", using_https and { mode = "client", protocol = "sslv23" });
+	req.handler, req.conn = server.wrapclient(conn, req.host, port, listener, "*a", using_https);
 	req.write = function (...) return req.handler:write(...); end
 	
 	req.callback = function (content, code, request, response) log("debug", "Calling callback, status %s", code or "---"); return select(2, xpcall(function () return callback(content, code, request, response) end, handleerr)); end

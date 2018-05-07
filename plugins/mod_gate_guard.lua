@@ -110,7 +110,7 @@ function module.add_host(module)
 	end
 
 	module:hook("call-gate-guard", function(event)
-		local from, reason = event.from, event.reason;
+		local from, reason, ban_time = event.from, event.reason, event.ban_time;
 		local host = section(from, "host");
 
 		if not guard_banned[host] then
@@ -119,9 +119,9 @@ function module.add_host(module)
 				module:log("debug", "%s triggered gate guard, reason: %s - hits: %d", from, reason, guard_hits[host]);
 				if guard_hits[host] >= guard_max_hits then
 					module:log("info", "%s exceeded number of offenses, closing streams and banning for %d seconds (%s)", 
-						host, guard_expire, reason);
+						host, ban_time or guard_expire, reason);
 					guard_hits[host] = nil;
-					guard_banned[host] = { expire = now() + guard_expire, reason = reason };
+					guard_banned[host] = { expire = now() + ban_time or guard_expire, reason = reason };
 					for i, _host in pairs(hosts) do
 						for name, session in pairs(_host.s2sout) do
 							if name == host then session:close(); end

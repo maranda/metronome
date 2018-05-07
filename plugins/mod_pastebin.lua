@@ -155,8 +155,8 @@ end
 module:provides("http", {
 	default_path = base_path,
 	route = {
-		["GET /*"] = handle_request;
-	};
+		["GET /*"] = handle_request
+	}
 });
 
 local function set_pastes_metatable()

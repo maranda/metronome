@@ -1,0 +1,6 @@
+This is an automated message from the account system, to reset your account password please visit %URL% within 5 minutes.
+And fill in the form with the following token: %TOKEN%
+
+Regards.
+
+If you think you're not the recipient of this message or you received this by mistake please delete the message and possibly report the incident to us (reply to this e-mail).

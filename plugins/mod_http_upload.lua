@@ -20,13 +20,18 @@ local url = require "socket.url";
 local dataform = require "util.dataforms".new;
 local datamanager = require "util.datamanager";
 local array = require "util.array";
-local uuid = require "util.uuid".generate;
+local seed = require "util.auxiliary".generate_secret;
 local split = require "util.jid".split;
-local ipairs, pairs, os_remove, os_time, t_concat, t_insert, s_upper =
-	ipairs, pairs, os.remove, os.time, table.concat, table.insert, string.upper;
+local ipairs, pairs, os_remove, os_time, s_upper, t_concat, t_insert, tostring =
+	ipairs, pairs, os.remove, os.time, string.upper, table.concat, table.insert, tostring;
 
 local function join_path(...)
 	return table.concat({ ... }, package.config:sub(1,1));
+end
+
+local function generate_directory()
+	local bits = seed(9);
+	return bits and bits:gsub("/", ""):gsub("%+", "") .. tostring(os_time()):match("%d%d%d%d$");
 end
 
 local default_mime_types = {
@@ -185,7 +190,12 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 		return nil, st.error_reply(stanza, "wait", "resource-constraint", "Quota reached");
 	end
 
-	local random_dir = uuid();
+	local random_dir = generate_directory();
+	if not random_dir then
+		module:log("error", "Failed to generate random directory name for %s upload", origin.full_jid);
+		return nil, st.error_reply(stanza, "wait", "internal-server-failure");
+	end
+		
 	local created, err = lfs.mkdir(join_path(storage_path, random_dir));
 
 	if not created then
@@ -205,6 +215,9 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 
 	module:add_timer(900, function()
 		pending_slots[slot] = nil;
+		if not lfs.attributes(join_path(storage_path, random_dir, filename)) then
+			os_remove(join_path(storage_path, random_dir));
+		end
 	end);
 
 	origin.log("debug", "Given upload slot %q", slot);
@@ -285,12 +298,14 @@ local function upload_data(event, path)
 	if not ok then
 		module:log("error", "Could not write to file %s for upload: %s", full_filename, err);
 		os_remove(full_filename);
+		os_remove(full_filename:match("^(.*)[/\\]"));
 		return 500;
 	end
 	ok, err = fh:close();
 	if not ok then
 		module:log("error", "Could not write to file %s for upload: %s", full_filename, err);
 		os_remove(full_filename);
+		os_remove(full_filename:match("^(.*)[/\\]"));
 		return 500;
 	end
 
@@ -398,12 +413,12 @@ end
 module:provides("http", {
 	default_path = default_base_path,
 	route = {
-		["GET"] = serve_hello;
-		["GET /"] = serve_hello;
-		["GET /*"] = serve_uploaded_files;
-		["HEAD /*"] = serve_head;
-		["PUT /*"] = upload_data;
-	};
+		["GET"] = serve_hello,
+		["GET /"] = serve_hello,
+		["GET /*"] = serve_uploaded_files,
+		["HEAD /*"] = serve_head,
+		["PUT /*"] = upload_data
+	}
 });
 
 module:hook_global("user-deleted", function(event)
@@ -415,6 +430,7 @@ module:hook_global("user-deleted", function(event)
 		local filename = join_path(storage_path, item.dir, item.filename);
 		local ok, err = os_remove(filename);
 		if not ok then module:log("debug", "Failed to remove %s@%s %s file: %s", user, host, filename, err); end
+		os_remove(filename:match("^(.*)[/\\]"));
 	end
 	datamanager.list_store(user, host, module.name, nil);
 	local has_downloads = datamanager.load(nil, host, module.name);

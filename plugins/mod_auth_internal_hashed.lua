@@ -18,6 +18,7 @@ local external_backend = module:require "sasl_aux".external_backend;
 local from_hex = module:require "sasl_aux".from_hex;
 local to_hex = module:require "sasl_aux".to_hex;
 local my_host = module.host;
+local bare_sessions = bare_sessions;
 
 -- Default; can be set per-user
 local iteration_count = 4096;
@@ -84,7 +85,34 @@ function new_hashpass_provider(host)
 		return true;
 	end
 
-	function provider.create_user(username, password)
+	function provider.is_locked(username)
+		local account = datamanager.load(username, host, "accounts");
+		if not account then
+			return nil, "Auth failed. Invalid username";
+		elseif account and account.locked then
+			return true;
+		end
+		return false;
+	end
+
+	function provider.unlock_user(username)
+		local account = datamanager.load(username, host, "accounts");
+		if not account then
+			return nil, "Auth failed. Invalid username";
+		elseif account and account.locked then
+			account.locked = nil;
+			local bare_session = bare_sessions[username.."@"..host];
+			if bare_session then
+				for _, session in pairs(bare_session.sessions) do
+					session.locked = nil;
+				end
+			end
+			return datamanager.store(username, host, "accounts", account);
+		end
+		return nil, "User isn't locked"
+	end
+
+	function provider.create_user(username, password, locked)
 		if password == nil then
 			return datamanager.store(username, host, "accounts", {});
 		end
@@ -92,7 +120,8 @@ function new_hashpass_provider(host)
 		local valid, stored_key, server_key = getAuthenticationDatabaseSHA1(password, salt, iteration_count);
 		local stored_key_hex = to_hex(stored_key);
 		local server_key_hex = to_hex(server_key);
-		return datamanager.store(username, host, "accounts", {stored_key = stored_key_hex, server_key = server_key_hex, salt = salt, iteration_count = iteration_count});
+		return datamanager.store(username, host, "accounts", 
+			{ stored_key = stored_key_hex, server_key = server_key_hex, salt = salt, iteration_count = iteration_count, locked = locked });
 	end
 
 	function provider.delete_user(username)

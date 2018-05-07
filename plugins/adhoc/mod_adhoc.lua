@@ -12,7 +12,9 @@ local is_admin = require "core.usermanager".is_admin;
 local adhoc_handle_cmd = module:require "adhoc".handle_cmd;
 local xmlns_cmd = "http://jabber.org/protocol/commands";
 local xmlns_disco = "http://jabber.org/protocol/disco";
+local ipairs, t_insert, t_remove = ipairs, table.insert, table.remove;
 local commands = {};
+local commands_order = {};
 
 module:add_feature(xmlns_cmd);
 
@@ -58,7 +60,9 @@ module:hook("iq/host/"..xmlns_disco.."#items:query", function (event)
 		reply = st.reply(stanza);
 		reply:tag("query", { xmlns = xmlns_disco.."#items",
 		    node = xmlns_cmd });
-		for node, command in pairs(commands) do
+		local command;
+		for i, node in ipairs(commands_order) do
+			command = commands[node];
 			if (command.permission == "admin" and admin)
 			    or (command.permission == "global_admin" and global_admin)
 			    or (command.permission == "user") then
@@ -95,10 +99,15 @@ end, 500);
 local function adhoc_added(event)
 	local item = event.item;
 	commands[item.node] = item;
+	t_insert(commands_order, item.node);
 end
 
 local function adhoc_removed(event)
-	commands[event.item.node] = nil;
+	local item = event.item;
+	commands[item.node] = nil;
+	for i, node in ipairs(commands_order) do
+		if node == item.node then t_remove(commands_order, i); end
+	end
 end
 
 module:handle_items("adhoc", adhoc_added, adhoc_removed);

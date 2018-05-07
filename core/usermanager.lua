@@ -87,8 +87,8 @@ function user_exists(username, host)
 	return nil, host_unknown;
 end
 
-function create_user(username, password, host)
-	local ok, err = hosts[host].users.create_user(username, password);
+function create_user(username, password, host, locked)
+	local ok, err = hosts[host].users.create_user(username, password, locked);
 	if not ok then
 		return nil, err;
 	else
@@ -115,6 +115,16 @@ end
 
 function get_provider(host)
 	return hosts[host] and hosts[host].users or nil;
+end
+
+function is_locked(username, host)
+	if hosts[host] then return hosts[host].users.is_locked(username); end
+	return nil, host_unknown;
+end
+
+function unlock_user(username, host)
+	if hosts[host] then return hosts[host].users.unlock_user(username); end
+	return nil, host_unknown;
 end
 
 function is_admin(jid, host)

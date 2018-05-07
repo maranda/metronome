@@ -31,8 +31,8 @@ function new_incoming(conn)
 end
 
 function new_outgoing(from_host, to_host, connect)
-	local host_session = { to_host = to_host, from_host = from_host, host = from_host,
-		               notopen = true, type = "s2sout_unauthed", direction = "outgoing" };
+	local host_session = { to_host = to_host, from_host = from_host, host = from_host, notopen = true, 
+		type = "s2sout_unauthed", direction = "outgoing", tls_capable = hosts[from_host].ssl_ctx and true };
 	hosts[from_host].s2sout[to_host] = host_session;
 	local conn_name = "s2sout"..tostring(host_session):match("[a-f0-9]*$");
 	host_session.log = logger_init(conn_name);

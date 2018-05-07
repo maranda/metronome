@@ -175,10 +175,11 @@ function module.add_host(module)
 	end);
 end
 
-module:provides("net", {
-	default_port = 5000;
-	listener = listener;
+module:add_item("net-provider", {
+	name = "proxy65",
+	default_port = 5000,
+	listener = listener,
 	multiplex = {
-		pattern = "^\5";
-	};
+		pattern = "^\5"
+	}
 });

@@ -15,15 +15,15 @@ local ssl_context = ssl and require "ssl.context";
 
 local openssl_version = require "util.auxiliary".get_openssl_version();
 local load_file = require "util.auxiliary".load_file;
-local tostring, type = tostring, type;
+local tonumber, tostring, type = tonumber, tostring, type;
 
 local metronome = metronome;
 local resolve_path = configmanager.resolve_relative_path;
 local config_path = metronome.paths.config;
 
-local noticket, verifyext, no_compression, disable_sslv3;
+local luasec_major, luasec_minor, noticket, verifyext, no_compression, disable_sslv3;
 if ssl then
-	local luasec_major, luasec_minor = ssl._VERSION:match("^(%d+)%.(%d+)");
+	luasec_major, luasec_minor = ssl._VERSION:match("^(%d+)%.(%d+)");
 	noticket = tonumber(luasec_major)>0 or tonumber(luasec_minor)>=4;
 	verifyext = tonumber(luasec_major)>0 or tonumber(luasec_minor)>=5;
 	no_compression = tonumber(luasec_major)>0 or tonumber(luasec_minor)>=5;
@@ -56,8 +56,8 @@ if no_compression and configmanager.get("*", "ssl_compression") ~= true then
 	default_options[#default_options + 1] = "no_compression";
 end
 
-function create_context(host, mode, user_ssl_config)
-	user_ssl_config = user_ssl_config or default_ssl_config;
+function get_ssl_config(host, mode, user_ssl_config)
+	user_ssl_config = user_ssl_config or configmanager.get(host, "ssl") or default_ssl_config;
 
 	if not ssl then return nil, "LuaSec (required for encryption) was not found"; end
 	if not user_ssl_config then return nil, "No SSL/TLS configuration present for "..host; end
@@ -75,7 +75,7 @@ function create_context(host, mode, user_ssl_config)
 	
 	local ssl_config = {
 		mode = mode;
-		protocol = user_ssl_config.protocol or "sslv23";
+		protocol = user_ssl_config.protocol or ((tonumber(luasec_minor) or 5) > 5 and "any" or "sslv23");
 		key = resolve_path(config_path, user_ssl_config.key);
 		password = user_ssl_config.password or function() log("error", "Encrypted certificate for %s requires 'ssl' 'password' to be set in config", host); end;
 		certificate = resolve_path(config_path, user_ssl_config.certificate);
@@ -89,11 +89,20 @@ function create_context(host, mode, user_ssl_config)
 		dhparam = dhparam;
 	};
 
-	local ctx, err = ssl_newcontext(ssl_config);
+	return ssl_config;
+end
+
+function create_context(host, mode, user_ssl_config)
+	local ctx, err, ssl_config;
+
+	ssl_config, err = get_ssl_config(host, mode, user_ssl_config);
+	if not ssl_config then return nil, err; end
+
+	ctx, err = ssl_newcontext(ssl_config);
 
 	if ctx then
 		local success;
-		success, err = ssl_context.setcipher(ctx, user_ssl_config.ciphers or default_ciphers);
+		success, err = ssl_context.setcipher(ctx, user_ssl_config and user_ssl_config.ciphers or default_ciphers);
 		if not success then ctx = nil; end
 	end
 
