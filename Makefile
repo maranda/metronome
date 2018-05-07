@@ -51,7 +51,7 @@ install: metronome.install metronomectl.install metronome.cfg.lua.install metron
 	test -e $(CONFIG)/metronome.cfg.lua || install -m644 metronome.cfg.lua.install $(CONFIG)/metronome.cfg.lua
 	test -e $(CONFIG)/templates/register.template.txt || install -m644 ./templates/register.template.txt $(CONFIG)/templates/register.template.txt
 	test -e $(CONFIG)/templates/reset.template.txt || install -m644 ./templates/reset.template.txt $(CONFIG)/templates/reset.template.txt
-	test -e metronome.version && install metronome.version $(SOURCE)/metronome.version || true
+	test -e metronome.version && install -m644 metronome.version $(SOURCE)/metronome.version || true
 	$(MAKE) install -C util-src
 
 git-upgrade:
