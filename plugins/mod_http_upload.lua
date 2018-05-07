@@ -493,3 +493,14 @@ module:provides("http", {
 module:hook_global("user-deleted", purge_files, 20);
 
 module:log("info", "URL: <%s>; Storage path: %s", module:http_url(nil, default_base_path), storage_path);
+
+local function clean_timers() -- clean timers
+	for jid, bare_session in pairs(bare_sessions) do
+		bare_session.upload_timer = nil;
+	end
+end
+
+module.load = clean_timers();
+module.unload = clean_timers();
+
+
