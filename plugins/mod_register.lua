@@ -158,7 +158,7 @@ local function handle_registration_stanza(event)
 					if usermanager_set_password(username, password, session.host) then
 						module:fire_event(
 							"user-changed-password", 
-							{ username = node, host = module.host, password = password, source = "mod_register" }
+							{ username = username, host = module.host, password = password, source = "mod_register" }
 						);
 						session.send(st.reply(stanza));
 					else
