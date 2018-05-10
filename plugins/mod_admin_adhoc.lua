@@ -45,8 +45,8 @@ local function generate_error_message(errors)
 end
 
 local function validate_password(password)
-	if not ((data.password:find("%d+") or data.password:find("%p+")) and data.password:find("%u+")) or 
-		data.password:len() < min_pass_len or data.password:len() > max_pass_len then
+	if not ((password:find("%d+") or password:find("%p+")) and password:find("%u+")) or 
+		password:len() < min_pass_len or password:len() > max_pass_len then
 		return false;
 	end
 	return true;
