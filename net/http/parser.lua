@@ -7,8 +7,7 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2011-2013, Kim Alvefur, Matthew Wild, Waqas Hussain
 
-local tonumber = tonumber;
-local assert = assert;
+local assert, tonumber, t_insert, t_concat = assert, tonumber, table.insert, table.concat;
 local url_parse = require "socket.url".parse;
 local urldecode = require "net.http".urldecode;
 
@@ -36,7 +35,8 @@ local httpstream = {};
 function httpstream.new(success_cb, error_cb, parser_type, options_cb)
 	local client = true;
 	if not parser_type or parser_type == "server" then client = false; else assert(parser_type == "client", "Invalid parser type"); end
-	local buf = "";
+	local buf, buf_len, has_buf = {}, 0, true;
+	local buf_limit = 30*1024*1024;
 	local chunked;
 	local state = nil;
 	local packet;
@@ -55,9 +55,12 @@ function httpstream.new(success_cb, error_cb, parser_type, options_cb)
 				end
 				return;
 			end
-			buf = buf..data;
-			while #buf > 0 do
+			if has_buf then	t_insert(buf, data); else buf = { buf, data }; has_buf = true; end
+			buf_len = buf_len + #data;
+			if buf_len > buf_limit then error = true; return error_cb("buffer-size-limit-exceeded"); end
+			while buf_len > 0 do
 				if state == nil then -- read request
+					if has_buf then buf, has_buf = t_concat(buf), false; end
 					local index = buf:find("\r\n\r\n", nil, true);
 					if not index then return; end -- not enough data
 					local method, path, httpversion, status_code, reason_phrase;
@@ -115,11 +118,13 @@ function httpstream.new(success_cb, error_cb, parser_type, options_cb)
 						};
 					end
 					buf = buf:sub(index + 4);
+					buf_len = #buf;
 					state = true;
 				end
 				if state then -- read body
 					if client then
 						if chunked then
+							if has_buf then buf, has_buf = t_concat(buf), false; end
 							local index = buf:find("\r\n", nil, true);
 							if not index then return; end -- not enough data
 							local chunk_size = buf:match("^%x+");
@@ -128,17 +133,21 @@ function httpstream.new(success_cb, error_cb, parser_type, options_cb)
 							index = index + 2;
 							if chunk_size == 0 then
 								state = nil; success_cb(packet);
-							elseif #buf - index + 1 >= chunk_size then -- we have a chunk
+							elseif buf_len - index + 1 >= chunk_size then -- we have a chunk
 								packet.body = packet.body..buf:sub(index, index + chunk_size - 1);
 								buf = buf:sub(index + chunk_size);
 							end
 							error("trailers"); -- FIXME MUST read trailers
-						elseif len and #buf >= len then
+						elseif len and buf_len >= len then
+							if has_buf then buf, has_buf = t_concat(buf), false; end
 							packet.body, buf = buf:sub(1, len), buf:sub(len + 1);
+							buf_len = #buf;
 							state = nil; success_cb(packet);
 						end
-					elseif #buf >= len then
+					elseif buf_len >= len then
+						if has_buf then buf, has_buf = t_concat(buf), false; end
 						packet.body, buf = buf:sub(1, len), buf:sub(len + 1);
+						buf_len = #buf;
 						state = nil; success_cb(packet);
 					else
 						break;
