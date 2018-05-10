@@ -55,7 +55,7 @@ function httpstream.new(success_cb, error_cb, parser_type, options_cb)
 				end
 				return;
 			end
-			if has_buf then	t_insert(buf, data); else buf = { buf, data }; has_buf = true; end
+			if has_buf then t_insert(buf, data); else buf = { buf, data }; has_buf = true; end
 			buf_len = buf_len + #data;
 			if buf_len > buf_limit then error = true; return error_cb("buffer-size-limit-exceeded"); end
 			while buf_len > 0 do
