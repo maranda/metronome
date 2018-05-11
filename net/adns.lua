@@ -13,7 +13,7 @@ local dns = require "net.dns";
 local log = require "util.logger".init("adns");
 
 local t_insert, t_remove = table.insert, table.remove;
-local coroutine, tostring, pcall = coroutine, tostring, pcall;
+local coroutine, pcall, setmetatable, tostring = coroutine, pcall, setmetatable, tostring;
 
 local function dummy_send(sock, data, i, j) return (j-i)+1; end
 

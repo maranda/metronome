@@ -50,7 +50,7 @@ end
 function getchar(n)
 	local stty_ret = os.execute("stty raw -echo 2>/dev/null");
 	local ok, char;
-	if stty_ret == 0 then
+	if stty_ret == true or stty_ret == 0 then
 		ok, char = pcall(io.read, n or 1);
 		os.execute("stty sane");
 	else

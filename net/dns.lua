@@ -27,7 +27,7 @@ local s_byte, s_char, s_format, s_gmatch, s_len, s_lower, s_sub =
 	string.byte, string.char, string.format, string.gmatch, string.len, string.lower, string.sub;
 
 local ipairs, next, pairs, print, setmetatable, tostring, assert, error, unpack, select, type =
-	ipairs, next, pairs, print, setmetatable, tostring, assert, error, unpack, select, type;
+	ipairs, next, pairs, print, setmetatable, tostring, assert, error, table.unpack or unpack, select, type;
 
 local ztact = { -- public domain 20080404 lua@ztact.com
 	get = function(parent, ...)
