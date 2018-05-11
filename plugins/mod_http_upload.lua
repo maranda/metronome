@@ -74,9 +74,9 @@ local storage_path = module:get_option_string("http_file_path", join_path(metron
 lfs.mkdir(storage_path);
 
 --- sanity
-if file_size_limit > 6*1024*1024 then
-	module:log("warn", "http_file_size_limit exceeds HTTP parser limit on body size, capping file size to 6 MiB");
-	file_size_limit = 6*1024*1024;
+if file_size_limit > 12*1024*1024 then
+	module:log("warn", "http_file_size_limit exceeds max allowed size, capping file size to 12 MiB");
+	file_size_limit = 12*1024*1024;
 end
 
 -- utility
