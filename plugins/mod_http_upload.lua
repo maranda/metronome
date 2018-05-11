@@ -47,6 +47,7 @@ local default_mime_types = {
 	["mp4"] = "video/mp4",
 	["ogg"] = "application/ogg",
 	["png"] = "image/png",
+	["qt"] = "video/quicktime",
 	["tiff"] = "image/tiff",
 	["txt"] = "text/plain",
 	["xml"] = "text/xml",
