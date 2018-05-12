@@ -66,10 +66,17 @@ local function save_session_store(event)
 	local user, host = event.session.username, event.session.host;
 	local bare_jid = jid_join(user, host);
 	local user_archive = session_stores[bare_jid];
-	if user_archive.changed then
+	if user_archive and user_archive.changed then
 		user_archive.changed = nil;
 		storage:set(user, user_archive);
 	end
+end
+
+local function delete_store(event)
+	local user, host = event.username, event.host;
+	local bare_jid = jid_join(user, host);
+	session_stores[bare_jid] = nil;
+	storage:set(user, nil);
 end
 
 local function process_inbound_messages(event)
@@ -194,6 +201,7 @@ end
 module:hook("pre-resource-unbind", save_session_store, 30);
 module:hook("resource-bind", initialize_session_store);
 module:hook("resource-unbind", remove_session_store, 30);
+module:hook("user-deleted", delete_store);
 
 module:hook("message/bare", process_inbound_messages, 30);
 module:hook("pre-message/bare", process_outbound_messages, 30);
