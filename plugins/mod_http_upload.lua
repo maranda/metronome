@@ -419,7 +419,7 @@ local function serve_uploaded_files(event, path, head)
 	local cached = cache[full_path];
 
 	if not cached then 
-		cached = {}; 
+		cached = {}; cache[full_path] = cached;
 		cached.attrs = lfs.attributes(full_path);
 		if not cached.attrs then return 404; end
 		module:add_timer(expire_cache, function()
@@ -446,7 +446,6 @@ local function serve_uploaded_files(event, path, head)
 
 		cached.data = data;
 	end
-	cache[full_path] = cached;
 
 	module:log("debug", "%s sent %s request for uploaded file at: %s (%d bytes)", 
 		request.conn:ip(), head and "HEAD" or "GET", path, attrs.size);
