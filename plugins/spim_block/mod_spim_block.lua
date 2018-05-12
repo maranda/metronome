@@ -37,7 +37,7 @@ local base_path = module:get_option_string("spim_base", "spim");
 local http_host = module:get_option_string("spim_http_host");
 local reset_count = module:get_option_number("spim_reset_count", 2000);
 local ban_time = module:get_option_number("spim_s2s_ban_time", 3600);
-if not base_path:match(".*/$") then base_path = base_path .. "/"; end
+if not base_path:match(".*/$") then base_path = base_path:gsub("^[/]+", "/") .. "/"; end
 base_url = module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/"), http_host);
 
 local files_base = module.path:gsub("[/\\][^/\\]*$","") .. "/template/";
@@ -89,7 +89,7 @@ local function r_template(event, type, jid)
 	local data = open_file(files_base..type..".html");
 	if data then
 		event.response.headers["Content-Type"] = "application/xhtml+xml";
-		data = data:gsub("%%REG%-URL", base_path);
+		data = data:gsub("%%REG%-URL", not base_path:find("^/") and "/"..base_path or base_path);
 		if jid then data = data:gsub("%%USER%%", jid); end
 		return data;
 	else return http_error_reply(event, 500, "Failed to obtain template."); end
@@ -114,8 +114,8 @@ end
 local function send_message(origin, to, from, token)
 	module:log("info", "requiring authentication for message directed to %s from %s", to, from);
 	local message = st.message({ id = new_uuid(), type = "chat", from = to, to = from }, 
-		"Greetings, this is the "..module.host.." server before sending a message to this user, please visit "..
-		base_url.." and input the following code in the form: "..token);
+		"Greetings, this is the "..module.host.." server before sending a message or presence subscription to this user, "..
+		"please visit "..base_url.." and input the following code in the form: "..token);
 	origin.send(message);
 	return true;
 end
@@ -174,10 +174,10 @@ local function handle_incoming(event)
 	local origin, stanza = event.origin, event.stanza;
 		
 	if origin.type == "s2sin" or origin.bidirectional then -- don't handle local traffic.
-		local to, from, type = stanza.attr.to, stanza.attr.from, stanza.attr.type;
-		
-		if type == "error" or type == "groupchat" then return; end
-		if stanza:child_with_name("result") and	not stanza:child_with_name("body") then
+		local to, from, type, name = stanza.attr.to, stanza.attr.from, stanza.attr.type, stanza.name;
+
+		if (name == "presence" and type ~= "subscribe") or type == "error" or type == "groupchat" then return; end
+		if name == "message" and stanza:child_with_name("result") and not stanza:child_with_name("body") then
 			return; -- probable MAM archive result
 		end
 
@@ -194,7 +194,7 @@ local function handle_incoming(event)
 		if to_allow_list and to_allow_list[from_bare] then return; end
 		
 		if block_list[to_bare] and block_list[to_bare][from_bare] then
-			module:log("info", "blocking unsolicited message to %s from %s", to_bare, from_bare);
+			module:log("info", "blocking unsolicited %s to %s from %s", name, to_bare, from_bare);
 			module:fire_event("call-gate-guard", { origin = origin, from = from, reason = "SPIM", ban_time = ban_time });
 			return true; 
 		end
@@ -250,6 +250,7 @@ module:hook("pre-message/bare", handle_outgoing, 100);
 module:hook("pre-message/full", handle_outgoing, 100);
 module:hook("message/bare", handle_incoming, 100);
 module:hook("message/full", handle_incoming, 100);
+module:hook("presence/bare", handle_incoming, 100);
 module:hook("resource-unbind", function(event)
 	local username, host = event.session.username, event.session.host;
 	local jid = username.."@"..host;
