@@ -477,6 +477,7 @@ local function handle_verify(event, path)
 				if usermanager.user_exists(username, module.host) then -- Just unlock
 					module:log("info", "Account %s@%s is successfully verified and unlocked", username, module.host);
 					usermanager.unlock_user(username, module.host);
+					pending[id_token] = nil; pending_node[username] = nil;
 					return r_template(event, "verify_success");
 				end
 
@@ -488,7 +489,7 @@ local function handle_verify(event, path)
 					);
 					module:log("info", "Account %s@%s is successfully verified and activated", username, module.host);
 					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
-					pending[id_token] = nil ; pending_node[username] = nil;
+					pending[id_token] = nil; pending_node[username] = nil;
 					return r_template(event, "verify_success");
 				else
 					module:log("error", "User creation failed: "..error);
