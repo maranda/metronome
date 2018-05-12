@@ -524,7 +524,7 @@ local function handle_user_registration(event)
 			..(secure and "secure" or "").."' &"
 		);
 
-		pending[id_token] = { node = user, password = password, ip = session.conn:ip() };
+		pending[id_token] = { node = user, password = password, ip = session.ip };
 		pending_node[user] = id_token;
 			
 		timer.add_task(300, function()
