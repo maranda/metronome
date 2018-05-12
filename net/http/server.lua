@@ -244,7 +244,7 @@ function _M.send_response(response, body)
 	local status_line = "HTTP/"..response.request.httpversion.." "..(response.status or codes[response.status_code]);
 	local headers = response.headers;
 	body = body or response.body or "";
-	if not headers["Content-Length"] then headers.content_length = #body; end -- do not set if already set
+	if not headers["Content-Length"] or not headers.content_length then headers.content_length = #body; end -- do not set if already set
 	if not headers.connection then headers.connection = keep_alive and "Keep-Alive" or "close"; end
 
 	local output = { status_line };

@@ -441,7 +441,8 @@ local function serve_uploaded_files(event, path, head)
 		response.headers = headers;
 	end
 
-	if not cached.data and attrs.size <= cacheable_size then
+	local size = attrs.size;
+	if not cached.data and size <= cacheable_size then
 		local f = open(full_path, "rb");
 		if f then data = f:read("*a"); f:close(); end
 
@@ -449,10 +450,10 @@ local function serve_uploaded_files(event, path, head)
 	end
 
 	module:log("debug", "%s sent %s request for uploaded file at: %s (%d bytes)", 
-		request.conn:ip(), head and "HEAD" or "GET", path, attrs.size);
+		request.conn:ip(), head and "HEAD" or "GET", path, size);
 
 	if head then
-		if not headers["Content-Length"] then headers["Content-Length"] = attrs.size; end
+		if not headers.content_length then headers.content_length = size; end
 		response:send();		
 	else
 		data = cached.data;
@@ -463,7 +464,8 @@ local function serve_uploaded_files(event, path, head)
 
 		response:send(data);
 	end
-	if attrs.size > 500*1024 then gc(); end
+
+	if size > 500*1024 then gc(); end
 	return true;
 end
 
