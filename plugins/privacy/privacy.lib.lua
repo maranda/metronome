@@ -398,7 +398,7 @@ local function check_stanza(e, session)
 		if apply then
 			if block then
 				module:log("debug", "stanza blocked: %s, to: %s, from: %s", tostring(stanza.name), tostring(to), tostring(from));
-				if stanza.name == "message" and stanza.attr.type ~= "groupchat" then
+				if stanza.name == "message" and stanza.attr.type ~= "groupchat" and stanza.attr.type ~= "error" then
 					local reply = st.error_reply(stanza, "cancel", "not-acceptable");
 					reply:child_with_name("error"):tag("blocked", { xmlns = blocking_xmlns..":errors" }):up();
 					origin.send(reply);
