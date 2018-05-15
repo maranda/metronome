@@ -16,6 +16,8 @@ local rostermanager = require "util.rostermanager";
 local gdpr_signed = {};
 local gdpr_agreement_sent = {};
 
+local gdpr_addendum = module:get_option_string("gdpr_addendum");
+
 local header = st.message({ from = module.host, type = "chat" },
 		"Greetings, to comply with EU's General Data Protection Regulation (GDPR) before enabling server-to-server communication " ..
 		"with remote entities the "..module.host.." instant messaging service requires you the following:"
@@ -36,7 +38,7 @@ local d = st.message({ from = module.host, type = "chat" },
 		"Just reply these messages with: I don't consent"
 );
 local agreement = {
-	header, a, b, c, d
+	header, a, b, c, d, gdpr_addendum
 };
 
 local function send_agreement(origin, from)
@@ -91,11 +93,12 @@ local function gdpr_handle_consent(event)
 			local roster = origin.roster;
 			if roster then
 				for jid, item in pairs(roster) do
-					if jid ~= false or jid ~= "pending" and hosts[jid_section(jid, "host")] then
+					if jid ~= false or jid ~= "pending" and not hosts[jid_section(jid, "host")] then
 						if item.subscription == "both" or item.subscription == "from" or (roster.pending and roster.pending[jid]) then
-							module:fire_global_event("route/post", origin, st.presence({type="unsubscribed", from=origin.full_jid, to=to_bare}));
-						elseif item.subscription == "both" or item.subscription == "to" or item.ask then
-							module:fire_global_event("route/post", origin, st.presence({type="unsubscribe", from=origin.full_jid, to=to_bare}));
+							module:fire_global_event("route/post", origin, st.presence({ type = "unsubscribed", from = origin.full_jid, to = jid }));
+						end
+						if item.subscription == "both" or item.subscription == "to" or item.ask then
+							module:fire_global_event("route/post", origin, st.presence({ type = "unsubscribe", from = origin.full_jid, to = jid }));
 						end
 						local success = rostermanager.remove_from_roster(origin, jid);
 						if success then rostermanager.roster_push(origin.username, origin.host, jid); end
