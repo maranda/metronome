@@ -133,11 +133,13 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 			end
 		end
 		for _, queued in ipairs(_q) do
-			local reply = st_reply(queued);
-			if reply.attr.to ~= full_jid and (has_carbons and reply.name ~= "message" or not has_carbons) then
-				reply.attr.type = "error";
-				reply:tag("error", attr):tag("recipient-unavailable", { xmlns = xmlns_e });
-				fire_event("route/process", session, reply);
+			if queued.attr.type ~= "error" then
+				local reply = st_reply(queued);
+				if reply.attr.to ~= full_jid and (has_carbons and reply.name ~= "message" or not has_carbons) then
+					reply.attr.type = "error";
+					reply:tag("error", attr):tag("recipient-unavailable", { xmlns = xmlns_e });
+					fire_event("route/process", session, reply);
+				end
 			end
 		end
 		_q, session.sm_queue = {}, {};
