@@ -211,10 +211,10 @@ local function enable_handler(session, stanza)
 	local max;
 	if c2s and stanza.attr.max then
 		max = tonumber(stanza.attr.max);
-		if max >= timeout then max = timeout; else session.sm_timeout = max; end
+		if max > timeout then max = timeout; else session.sm_timeout = max < timeout and max or nil; end
 	end
 	(session.sends2s or session.send)(
-		st_stanza("enabled", { xmlns = xmlns_sm, id = token, max = max and tostring(max) or nil, resume = c2s and resume or nil })
+		st_stanza("enabled", { xmlns = xmlns_sm, id = token, max = c2s and tostring(max or timeout) or nil, resume = c2s and resume or nil })
 	);
 	return true;
 end
