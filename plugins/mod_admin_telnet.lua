@@ -18,6 +18,7 @@ local _G = _G;
 
 local metronome = _G.metronome;
 local hosts = metronome.hosts;
+local full_sessions = metronome.full_sessions;
 local incoming_s2s = metronome.incoming_s2s;
 
 local console_listener = { default_port = 5582; default_mode = "*a"; interface = "127.0.0.1" };
@@ -225,10 +226,11 @@ function commands.help(session, data)
 		print [[c2s:show_sm() - Show all stream management enabled client connections]]
 		print [[c2s:show_csi() - Show all client state indication enabled client connections]]
 		print [[c2s:close(jid) - Close all sessions for the specified JID]]
+		print [[c2s:closeall() - Close all c2s sessions]]
 	elseif section == "s2s" then
 		print [[s2s:show(domain) - Show all s2s connections for the given domain (or all if no domain given)]]
 		print [[s2s:close(from, to) - Close a connection from one domain to another]]
-		print [[s2s:closeall(host) - Close all the incoming/outgoing s2s sessions to specified host]]
+		print [[s2s:closeall(host) - Close all the incoming/outgoing s2s sessions, or all to the specified host]]
 	elseif section == "module" then
 		print [[module:load(module, host) - Load the specified module on the specified host (or all hosts if none given)]]
 		print [[module:reload(module, host) - The same, but unloads and loads the module (saving state if the module supports it)]]
@@ -532,14 +534,7 @@ end
 def_env.c2s = {};
 
 local function show_c2s(callback)
-	for hostname, host in pairs(hosts) do
-		for username, user in pairs(host.sessions or {}) do
-			for resource, session in pairs(user.sessions or {}) do
-				local jid = username.."@"..hostname.."/"..resource;
-				callback(jid, session);
-			end
-		end
-	end
+	for jid, session in pairs(full_sessions or {}) do callback(jid, session); end
 end
 
 function def_env.c2s:count(match_jid)
@@ -627,6 +622,15 @@ function def_env.c2s:close(match_jid)
 			session:close();
 		end
 	end);
+	return true, "Total: "..count.." sessions closed";
+end
+
+function def_env.c2s:closeall()
+	local count = 0;
+	for jid, session in pairs(full_sessions) do
+		count = count + 1;
+		session:close();
+	end
 	return true, "Total: "..count.." sessions closed";
 end
 
@@ -870,37 +874,29 @@ function def_env.s2s:close(from, to)
 end
 
 function def_env.s2s:closeall(host)
-        local count = 0;
+	local count = 0;
 
-        if not host or type(host) ~= "string" then return false, "wrong syntax: please use s2s:closeall('hostname.tld')"; end
-        if hosts[host] then
-                for session in pairs(incoming_s2s) do
-                        if session.to_host == host then
-                                (session.close or s2smanager.destroy_session)(session);
-                                count = count + 1;
-                        end
-                end
-                for _, session in pairs(hosts[host].s2sout) do
-                        (session.close or s2smanager.destroy_session)(session);
-                        count = count + 1;
-                end
-        else
-                for session in pairs(incoming_s2s) do
-			if session.from_host == host then
+	if type(host) ~= "string" and type(host) ~= "nil" then return false, "wrong syntax: please use s2s:closeall('hostname.tld')"; end
+	for session in pairs(incoming_s2s) do
+		if session.to_host == host or session.from_host == host or not host then
+			(session.close or s2smanager.destroy_session)(session);
+			count = count + 1;
+		end
+	end
+	for i, _host in pairs(hosts) do
+		for name, session in pairs(_host.s2sout) do
+			if name == host or not host then
 				(session.close or s2smanager.destroy_session)(session);
 				count = count + 1;
 			end
 		end
-		for _, h in pairs(hosts) do
-			if h.s2sout[host] then
-				(h.s2sout[host].close or s2smanager.destroy_session)(h.s2sout[host]);
-				count = count + 1;
-			end
-		end
-        end
+	end
 
-	if count == 0 then return false, "No sessions to close.";
-	else return true, "Closed "..count.." s2s session"..((count == 1 and "") or "s"); end
+	if count == 0 then 
+		return false, "No sessions to close.";
+	else
+		return true, "Closed "..count.." s2s session"..((count == 1 and "") or "s");
+	end
 end
 
 def_env.host = {}; def_env.hosts = def_env.host;
