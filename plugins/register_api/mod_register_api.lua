@@ -236,7 +236,7 @@ end
 
 local function handle_register(data, event)
 	-- Set up variables
-	local username, password, ip, mail, token = data.username, data.password, data.ip, data.mail, data.auth_token;
+	local username, password, ip, mail = data.username, data.password, data.ip, data.mail;
 
 	-- Blacklist can be checked here.
 	if blacklist:contains(ip) then 
@@ -384,7 +384,7 @@ local function handle_req(event)
 	
 	-- Check if user is an admin of said host
 	if data.auth_token ~= auth_token then
-		module:log("warn", "%s tried to retrieve a registration token for %s@%s", request.ip, username, module.host);
+		module:log("warn", "%s tried to retrieve a registration token for %s@%s", request.conn:ip(), username, module.host);
 		return http_error_reply(event, 401, "Auth token is invalid! The attempt has been logged.");
 	else
 		data.auth_token = nil;
@@ -392,6 +392,7 @@ local function handle_req(event)
 	
 	-- Decode JSON data and check that all bits are there else throw an error
 	if data.username and data.password and data.ip and data.mail then
+		data.mail = data.mail:lower();
 		return handle_register(data, event);
 	elseif data.reset and data.ip then
 		return handle_password_reset(data, event);
@@ -509,7 +510,7 @@ end
 
 local function handle_user_registration(event)
 	local user, hostname, password, data, session = event.username, event.host, event.password, event.data, event.session;
-	local mail = event.source == "mod_register" and data.email;
+	local mail = event.source == "mod_register" and data.email and data.email:lower();
 	if do_mail_verification and mail and hashes:add(user, mail) then
 		local id_token = generate_secret(20);
 		if not id_token then
