@@ -39,6 +39,7 @@ local require_encryption = module:get_option_boolean("s2s_require_encryption", n
 local max_inactivity = module:get_option_number("s2s_max_inactivity", 1800);
 local check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
 local encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
+if connect_timeout < 60 then connect_timeout = 60; end
 
 local sessions = module:shared("sessions");
 
@@ -628,6 +629,7 @@ module:hook("config-reloaded", function()
 	max_inactivity = module:get_option_number("s2s_max_inactivity", 1800);
 	check_inactivity = module:get_option_number("s2s_check_inactivity", 900);
 	encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
+	if connect_timeout < 60 then connect_timeout = 60; end
 end);
 
 module:hook("host-deactivating", function(event)
