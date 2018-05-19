@@ -485,11 +485,13 @@ local function session_close(session, reason, remote_reason)
 				if not session.destroyed then
 					session.log("warn", "Failed to receive a stream close response, closing connection anyway...");
 					s2s_destroy_session(session, reason);
+					sessions[conn] = nil;
 					conn:close();
 				end
 			end);
 		else
 			s2s_destroy_session(session, reason);
+			sessions[conn] = nil;
 			conn:close(); -- Close immediately, as this is an outgoing connection or is not authed
 		end
 	end
