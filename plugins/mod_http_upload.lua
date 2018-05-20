@@ -413,6 +413,7 @@ end
 local function serve_uploaded_files(event, path, head)
 	local response = event.response;
 	local request = event.request;
+	response.on_destroy = function() gc(); end
 
 	local full_path = join_path(storage_path, path);
 	local cached = cache[full_path];
@@ -429,14 +430,14 @@ local function serve_uploaded_files(event, path, head)
 		cache[full_path] = cached;
 	end
 
-	local headers = response.headers;
+	local headers, size = response.headers, #cached;
 	local ext = full_path:match("%.([^%.]*)$");
 	headers.content_type = mime_types[ext and ext:lower()];
 
 	if head then response:send(); else response:send(cached); end
 
 	module:log("debug", "%s sent %s request for uploaded file at: %s (%d bytes)", 
-		request.conn:ip(), head and "HEAD" or "GET", path, #cached);
+		request.conn:ip(), head and "HEAD" or "GET", path, size);
 
 	if size > 500*1024 then gc(); end
 	return true;
