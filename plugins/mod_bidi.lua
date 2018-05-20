@@ -70,6 +70,10 @@ local function make_bidirectional(session)
 	end
 end
 
+module:hook("s2s-is-bidirectional", function(host)
+	if incoming[host] or outgoing[host] then return true; end
+end);
+
 module:hook("route/remote", function(event)
 	local from, to, stanza = event.from_host, event.to_host, event.stanza;
 	if from == myself then

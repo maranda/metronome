@@ -170,7 +170,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	
 	if origin.type == "s2sin_unauthed" or origin.type == "s2sin" then
-		local attr = stanza.attr;
+		local attr, streamid = stanza.attr, origin.streamid;
 		local to, from = nameprep(attr.to), nameprep(attr.from);
 		local from_multiplexed;
 
@@ -213,11 +213,17 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		end
 		
 		origin.hosts[from] = { dialback_key = stanza[1] };
-		dialback_requests[from.."/"..origin.streamid] = origin;
+		dialback_requests[from.."/"..streamid] = origin;
 
-		module:add_timer(30, function() -- make this timer half the minimal connetion timeout allowed for s2s (60 seconds)
-			if not origin.destroyed and (not origin.bidirectional or origin.type == "s2sin") and hosts[to] and not hosts[to].s2sout[from] then
-				send_db_error(origin, "db:result", "cancel", "remote-connection-failed", to, from, attr.id);
+		module:add_timer(15, function()
+			if dialback_requests[from.."/"..streamid] then
+				local verifying = dialback_requests[from.."/"..streamid];
+				if not verifying.destroyed and hosts[verifying.to_host] and not hosts[verifying.to_host].s2sout[verifying.from_host] and
+					not module:fire_event("s2s-is-bidirectional", verifying.from_host) then
+					module:log("debug", "Failed to open an outgoing verification stream to %s (id: %s)", verifying.from_host, attr.id);
+					send_db_error(origin, "db:result", "cancel", "remote-connection-failed", verifying.to_host, verifying.from_host, attr.id);
+				end
+				dialback_requests[from.."/"..streamid] = nil;
 			end
 		end);
 		
