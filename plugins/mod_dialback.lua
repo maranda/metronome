@@ -216,7 +216,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		dialback_requests[from.."/"..origin.streamid] = origin;
 
 		module:add_timer(30, function() -- make this timer half the minimal connetion timeout allowed for s2s (60 seconds)
-			if not origin.destroyed and hosts[to] and not hosts[to].s2sout[from] then
+			if not origin.destroyed and not origin.bidirectional and hosts[to] and not hosts[to].s2sout[from] then
 				send_db_error(origin, "db:result", "cancel", "remote-connection-failed", to, from, attr.id);
 			end
 		end);
