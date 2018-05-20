@@ -271,8 +271,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 	if origin.type == "s2sout_unauthed" or origin.type == "s2sout" then
 		local attr = stanza.attr;
 		if not hosts[attr.to] then
-			send_db_error(origin, "db:result", "cancel", "item-not-found", attr.to, attr.from, attr.id);
-			return true;
+			return send_db_error(origin, "db:result", "cancel", "item-not-found", attr.to, attr.from, attr.id);
 		elseif hosts[attr.to].s2sout[attr.from] ~= origin then
 			-- This isn't right
 			origin:close("invalid-id");
