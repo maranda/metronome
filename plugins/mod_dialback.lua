@@ -76,6 +76,20 @@ local function exceed_errors(origin)
 	end
 end
 
+local function send_db_error(origin, name, type, condition, from, to, id)
+	module:log("debug", "sending dialback error (%s) to %s...", condition, to);
+	local db_error = st.stanza(name, { from = from, to = to, id = id, type = "error" })
+		:tag("error", { type = type })
+			:tag(condition, { xmlns = xmlns_stanzas });
+
+	origin.db_errors = (origin.db_errors or 0) + 1;
+
+	if exceed_errors(origin) then return true; end
+	
+	origin.sends2s(db_error);
+	return true;
+end
+
 local errors_map = {
 	["bad-request"] = "the receiving entity was unable to process the dialback request",
 	["forbidden"] = "received a response of type invalid while authenticating with the authoritative server",
@@ -91,7 +105,7 @@ local errors_map = {
 	["remote-server-timeout"] = "time exceeded while attempting to contact the authoritative server",
 	["resource-constraint"] = "the remote server is currently too busy, try again laters"
 };
-local function handle_db_errors(origin, stanza)
+local function handle_db_errors(origin, stanza, verifying)
 	local attr = stanza.attr;
 	local condition = stanza:child_with_name("error") and stanza:child_with_name("error")[1];
 	local err = condition and errors_map[condition.name];
@@ -107,24 +121,19 @@ local function handle_db_errors(origin, stanza)
 	else -- non graceful error condition
 		origin:close({ condition = "undefined-condition", text = "Condition is non graceful, good bye" }, "dialback failure");
 	end
+
+	if verifying and not verifying.destroyed then -- send back condition to verifying stream
+		if condition.name == "item-not-found" then 
+			send_db_error(verifying, "db:result", "cancel", "remote-server-not-found", attr.to, attr.from, attr.id);
+		else
+			send_db_error(verifying, "db:result", "modify", "not-acceptable", attr.to, attr.from, attr.id);
+		end
+	end
 	
 	if format then 
 		module:log("warn", format);
 		if origin.bounce_sendq then origin:bounce_sendq(err); end
 	end
-	return true;
-end
-local function send_db_error(origin, name, condition, from, to, id)
-	module:log("debug", "sending dialback error (%s) to %s...", condition, to);
-	local db_error = st.stanza(name, { from = from, to = to, id = id, type = "error" })
-		:tag("error", { type = "cancel" })
-			:tag(condition, { xmlns = xmlns_stanzas });
-
-	origin.db_errors = (origin.db_errors or 0) + 1;
-
-	if exceed_errors(origin) then return true; end
-	
-	origin.sends2s(db_error);
 	return true;
 end
 
@@ -138,6 +147,10 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 			module:log("warn", "Ignoring incoming session from %s claiming a dialback key for %s is %s",
 				origin.from_host or "(unknown)", attr.from or "(unknown)", attr.type);
 			return true;
+		end
+
+		if not hosts[attr.to] or not hosts[attr.to].s2sout[attr.from] then
+			return send_db_error(origin, "db:verify", "cancel", "item-not-found", attr.to, attr.from, attr.id);
 		end
 
 		local type;
@@ -173,13 +186,13 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		
 		if not hosts[to] then
 			origin.log("info", "%s tried to connect to %s, which we don't serve", from, to);
-			return send_db_error(origin, "db:result", "item-not-found", to, from, attr.id);
+			return send_db_error(origin, "db:result", "cancel", "item-not-found", to, from, attr.id);
 		elseif not from then
-			return send_db_error(origin, "db:result", "improper-addressing", to, from, attr.id);
+			return send_db_error(origin, "db:result", "modify", "improper-addressing", to, from, attr.id);
 		elseif origin.blocked then
-			return send_db_error(origin, "db:result", "not-allowed", to, from, attr.id);
+			return send_db_error(origin, "db:result", "cancel", "not-allowed", to, from, attr.id);
 		elseif require_encryption and not origin.secure and not encryption_exceptions:contains(from) then
-			return send_db_error(origin, "db:result", "policy-violation", to, from, attr.id);
+			return send_db_error(origin, "db:result", "cancel", "policy-violation", to, from, attr.id);
 		end
 
 		-- Implement Dialback without Dialback (See XEP-0344) shortcircuiting
@@ -201,6 +214,12 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		
 		origin.hosts[from] = { dialback_key = stanza[1] };
 		dialback_requests[from.."/"..origin.streamid] = origin;
+
+		module:add_timer(30, function() -- make this timer half the minimal connetion timeout allowed for s2s (60 seconds)
+			if not origin.destroyed and hosts[to] and not hosts[to].s2sout[from] then
+				send_db_error(origin, "db:result", "cancel", "remote-connection-failed", to, from, attr.id);
+			end
+		end);
 		
 		origin.log("debug", "asking %s if key %s belongs to them", from, stanza[1]);
 		module:fire_event("route/remote", {
@@ -224,7 +243,7 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 				authed = make_authenticated(dialback_verifying, attr.from);
 				valid = "valid";
 			elseif attr.type == "error" then
-				return handle_db_errors(origin, stanza);
+				return handle_db_errors(origin, stanza, dialback_verifying);
 			else
 				log("warn", "authoritative server for %s denied the key", attr.from or "(unknown)");
 				valid = "invalid";
@@ -236,10 +255,10 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 						:text(dialback_verifying.hosts[attr.from].dialback_key));
 			end
 			if not destroyed and not authed then
-				send_db_error(dialback_verifying, "db:result", "forbidden", attr.to, attr.from, attr.id);
+				send_db_error(dialback_verifying, "db:result", "auth", "forbidden", attr.to, attr.from, attr.id);
 			end
 		else
-			send_db_error(origin, "db:verify", "remote-server-not-found", attr.to, attr.from, attr.id);
+			origin:close(); -- just close the stream gracefully
 		end
 		origin.doing_db = nil;
 		return true;
@@ -252,7 +271,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 	if origin.type == "s2sout_unauthed" or origin.type == "s2sout" then
 		local attr = stanza.attr;
 		if not hosts[attr.to] then
-			send_db_error(origin, "db:result", "item-not-found", attr.to, attr.from, attr.id);
+			send_db_error(origin, "db:result", "cancel", "item-not-found", attr.to, attr.from, attr.id);
 			return true;
 		elseif hosts[attr.to].s2sout[attr.from] ~= origin then
 			-- This isn't right
@@ -263,13 +282,8 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 			make_authenticated(origin, attr.from);
 		elseif attr.type == "error" then
 			return handle_db_errors(origin, stanza);
-		else
-			local dialback_verifying = dialback_requests[attr.from.."/"..(attr.id or "")];
-			if dialback_verifying and not dialback_verifying.destroyed then
-				send_db_error(dialback_verifying, "db:result", "forbidden", attr.to, attr.from, attr.id);
-			end
-			dialback_requests[attr.from.."/"..(attr.id or "")] = nil;
 		end
+
 		origin.doing_db = nil;
 		return true;
 	end
