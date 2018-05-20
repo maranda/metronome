@@ -55,8 +55,8 @@ local default_mime_types = {
 	["webm"] = "video/webm"
 };
 
-local cache = {};
-local throttle = {};
+local cache = module:shared("upload_file_cache")
+local throttle = module:shared("upload_throttles");
 
 local bare_sessions = bare_sessions;
 
@@ -69,7 +69,6 @@ local expire_any = module:get_option_number("http_file_perfom_expire_any", 1800)
 local expire_slot = module:get_option_number("http_file_expire_upload_slots", 900);
 local expire_cache = module:get_option_number("http_file_expire_file_caches", 450);
 local throttle_time = module:get_option_number("http_file_throttle_time", 180);
-local cacheable_size = module:get_option_number("http_file_cacheable_size", file_size_limit);
 local default_base_path = module:get_option_string("http_file_base_path", "share");
 local storage_path = module:get_option_string("http_file_path", join_path(metronome.paths.data, "http_file_upload"));
 lfs.mkdir(storage_path);
@@ -418,10 +417,11 @@ local function serve_uploaded_files(event, path, head)
 	local full_path = join_path(storage_path, path);
 	local cached = cache[full_path];
 
-	if not cached then 
-		cached = {};
-		cached.attrs = lfs.attributes(full_path);
-		if not cached.attrs then return 404; end
+	if not cached then
+		local f = open(full_path, "rb");
+		if f then cached = f:read("*a"); f:close(); end
+		
+		if not cached then return 404; end
 		module:add_timer(expire_cache, function()
 			cache[full_path] = nil;
 			gc();
@@ -429,41 +429,14 @@ local function serve_uploaded_files(event, path, head)
 		cache[full_path] = cached;
 	end
 
-	local headers, attrs, data = cached.headers, cached.attrs;
-	if not headers then
-		headers = response.headers;
-		local ext = full_path:match("%.([^%.]*)$");
-		headers["Content-Type"] = mime_types[ext and ext:lower()];
-		headers["Last-Modified"] = os.date("!%a, %d %b %Y %X GMT", attrs.modification);
-		cached.headers = headers;
-	else
-		headers.date = response.headers.date;
-		response.headers = headers;
-	end
+	local headers = response.headers;
+	local ext = full_path:match("%.([^%.]*)$");
+	headers.content_type = mime_types[ext and ext:lower()];
 
-	local size = attrs.size;
-	if not cached.data and size <= cacheable_size then
-		local f = open(full_path, "rb");
-		if f then data = f:read("*a"); f:close(); end
-
-		cached.data = data;
-	end
+	if head then response:send(); else response:send(cached); end
 
 	module:log("debug", "%s sent %s request for uploaded file at: %s (%d bytes)", 
-		request.conn:ip(), head and "HEAD" or "GET", path, size);
-
-	if head then
-		if not headers.content_length then headers.content_length = size; end
-		response:send();		
-	else
-		data = cached.data;
-		if not data then
-			local f = open(full_path, "rb");
-			if f then data = f:read("*a"); f:close(); end
-		end
-
-		response:send(data);
-	end
+		request.conn:ip(), head and "HEAD" or "GET", path, #cached);
 
 	if size > 500*1024 then gc(); end
 	return true;
