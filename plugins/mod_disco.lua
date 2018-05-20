@@ -75,8 +75,8 @@ local function build_server_disco_info()
 			:tag("field", { type = "hidden", var = "FORM_TYPE" })
 				:tag("value"):text("http://jabber.org/network/serverinfo"):up():up();
 		for type, addresses in pairs(contact_info) do
-			query:tag("field", { var = type });
-			for _, address in ipairs(addresses) do query:tag("value"):text(address):up();	end
+			query:tag("field", { var = type, type = "list-multi" });
+			for _, address in ipairs(addresses) do query:tag("value"):text(address):up(); end
 			query:up();
 		end
 		query:up();
