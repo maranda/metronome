@@ -434,7 +434,7 @@ local function serve_uploaded_files(event, path, head)
 	local ext = full_path:match("%.([^%.]*)$");
 	headers.content_type = mime_types[ext and ext:lower()];
 
-	if head then response:send(); else response:send(cached); end
+	if head then headers.content_length = size; response:send(); else response:send(cached); end
 
 	module:log("debug", "%s sent %s request for uploaded file at: %s (%d bytes)", 
 		request.conn:ip(), head and "HEAD" or "GET", path, size);
