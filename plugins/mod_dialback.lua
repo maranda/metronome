@@ -12,8 +12,6 @@ local incoming = metronome.incoming_s2s;
 local host_session = hosts[module.host];
 local s2s_make_authenticated = require "util.s2smanager".make_authenticated;
 
-local tostring = tostring;
-
 local log = module._log;
 local no_encryption = metronome.no_encryption;
 local require_encryption = module:get_option_boolean("s2s_require_encryption", not no_encryption);
@@ -222,7 +220,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 				local verifying = dialback_requests[from.."/"..streamid];
 				if not verifying.destroyed and hosts[verifying.to_host] and not hosts[verifying.to_host].s2sout[verifying.from_host] and
 					not module:fire_event("s2s-is-bidirectional", verifying.from_host) then
-					module:log("debug", "Failed to open an outgoing verification stream to %s (id: %s)", verifying.from_host, tostring(attr.id));
+					module:log("debug", "Failed to open an outgoing verification stream to %s (id: %s)", verifying.from_host, attr.id or "none");
 					send_db_error(verifying, "db:result", "cancel", "remote-connection-failed", verifying.to_host, verifying.from_host, attr.id);
 				end
 				dialback_requests[from.."/"..streamid] = nil;
