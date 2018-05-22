@@ -235,6 +235,7 @@ module:hook("iq/host", function(event)
 				module:log("debug", "Received error type %s condition %s while sending %s PUSH notification, disabling related node for %s",
 					err_type, condition, id, user);
 				store[sent_id.app_server].nodes[sent_id.node] = nil;
+				dm.store(user, module.host, "push", store);
 			end
 		else
 			module:log("debug", "PUSH App Server handled %s", id);
