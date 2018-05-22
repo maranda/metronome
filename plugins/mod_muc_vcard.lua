@@ -78,7 +78,11 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 			end
 
 			if #vCard.tags == 0 then
-				session.send(st.error_reply(stanza, "modify", "policy-violation", "The vCard needs to contain the PHOTO element"));
+				if store(node, host, "room_icons", nil) then
+					session.send(st.reply(stanza));
+				else
+					session.send(st.error_reply(stanza, "wait", "internal-server-error", "Failed to remove room icon"));
+				end
 				return true;
 			elseif not vCard.tags[1]:child_with_name("TYPE") or not vCard.tags[1]:child_with_name("BINVAL") then
 				session.send(st.error_reply(stanza, "modify", "bad-request", "The PHOTO element is invalid"));
