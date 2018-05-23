@@ -119,8 +119,8 @@ local function list_certs(self, data, state, secure)
 end
 
 local adhoc_new = module:require "adhoc".new;
-local add_descriptor = adhoc_new("Associate a client certificate with this account", add_xmlns, add_cert);
-local list_descriptor = adhoc_new("List associated client certificates with this account", list_xmlns, list_certs);
+local add_descriptor = adhoc_new("Associate a client certificate with this account", add_xmlns, add_cert, "user");
+local list_descriptor = adhoc_new("List associated client certificates with this account", list_xmlns, list_certs, "user");
 module:provides("adhoc", add_descriptor);
 module:provides("adhoc", list_descriptor);
 

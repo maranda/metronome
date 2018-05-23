@@ -50,7 +50,7 @@ local function change_push_options(self, data, state)
 end
 
 local change_push_options_descriptor = adhoc_new(
-	"Toggle last-message-sender in Push Notifications", "change_push_last_sender", change_push_options
+	"Toggle last-message-sender in Push Notifications", "change_push_last_sender", change_push_options, "user"
 );
 module:provides("adhoc", change_push_options_descriptor);
 
