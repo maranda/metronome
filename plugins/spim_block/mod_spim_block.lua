@@ -163,8 +163,8 @@ local function disable_spim(self, data, state)
 	end
 end
 
-local enable_spim_descriptor = adhoc_new("Enable SPIM protection", "enable_spim", enable_spim, "user");
-local disable_spim_descriptor = adhoc_new("Disable SPIM protection", "disable_spim", disable_spim, "user");
+local enable_spim_descriptor = adhoc_new("Enable SPIM protection", "enable_spim", enable_spim, "local_user");
+local disable_spim_descriptor = adhoc_new("Disable SPIM protection", "disable_spim", disable_spim, "local_user");
 module:provides("adhoc", enable_spim_descriptor);
 module:provides("adhoc", disable_spim_descriptor);
 
