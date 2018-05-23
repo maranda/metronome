@@ -80,6 +80,12 @@ if file_size_limit > 12*1024*1024 then
 end
 
 -- utility
+local function add_cors_headers(headers)
+	headers["Access-Control-Allow-Origin"] = "*";
+	headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS, PUT";
+	headers["Access-Control-Allow-Headers"] = "Content-Type, Origin, X-Requested-With";
+end
+
 local function purge_files(event)
 	local user, host = event.username, event.host;
 	local uploads = datamanager.list_load(user, host, module.name);
@@ -374,6 +380,8 @@ local function upload_data(event, path)
 	local ok, err = datamanager.store(nil, host, module.name, has_downloads);
 	if err then module:log("warn", "Couldn't save %s's list of users using HTTP Uploads: %s", host, err); end
 	module:log("info", "File uploaded by %s to slot %s", uploader, random_dir);
+
+	add_cors_headers(event.response.headers);
 	return 201;
 end
 
@@ -431,6 +439,8 @@ local function serve_uploaded_files(event, path, head)
 	end
 
 	local headers, size = response.headers, #cached;
+	
+	add_cors_headers(headers);
 	local ext = full_path:match("%.([^%.]*)$");
 	headers.content_type = mime_types[ext and ext:lower()];
 
@@ -448,6 +458,11 @@ local function serve_head(event, path)
 	return serve_uploaded_files(event, path, true);
 end
 
+local function serve_options(event, path)
+	add_cors_headers(event.response.headers);
+	return 200;
+end
+
 local function serve_hello(event)
 	event.response.headers["Content-Type"] = "text/html";
 	return [[<!DOCTYPE html><html><head><title>Metronome's HTTP Upload</title></head><body>
@@ -463,6 +478,7 @@ module:provides("http", {
 		["GET /"] = serve_hello,
 		["GET /*"] = serve_uploaded_files,
 		["HEAD /*"] = serve_head,
+		["OPTIONS /*"] = serve_options,
 		["PUT /*"] = upload_data
 	}
 });
