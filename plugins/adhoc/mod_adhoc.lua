@@ -27,7 +27,7 @@ module:hook("iq/host/"..xmlns_disco.."#info:query", function (event)
 			local is_local = section(stanza.attr.from or origin.host, "host") == module.host;
 			local privileged = is_admin(stanza.attr.from, stanza.attr.to);
 			if (commands[node].permission == "admin" and privileged)
-			    or (commands[node].permission == "local_user" and is_local)
+				or (commands[node].permission == "local_user" and is_local)
 				or (commands[node].permission == "user") then
 				reply = st.reply(stanza);
 				reply:tag("query", { xmlns = xmlns_disco.."#info",
@@ -68,9 +68,9 @@ module:hook("iq/host/"..xmlns_disco.."#items:query", function (event)
 		for i, node in ipairs(commands_order) do
 			command = commands[node];
 			if (command.permission == "admin" and admin)
-			    or (command.permission == "global_admin" and global_admin)
+				or (command.permission == "global_admin" and global_admin)
 				or (command.permission == "local_user" and is_local)
-			    or (command.permission == "user") then
+				or (command.permission == "user") then
 				reply:tag("item", { name = command.name,
 				    node = node, jid = module:get_host() });
 				reply:up();
@@ -90,7 +90,7 @@ module:hook("iq/host/"..xmlns_cmd..":command", function (event)
 			local admin = is_admin(stanza.attr.from, stanza.attr.to);
 			local global_admin = is_admin(stanza.attr.from);
 			if (commands[node].permission == "admin" and not admin)
-			    or (commands[node].permission == "global_admin" and not global_admin)
+				or (commands[node].permission == "global_admin" and not global_admin)
 				or (commands[node].permission == "local_user" and not is_local) then
 				origin.send(st.error_reply(stanza, "auth", "forbidden", "You don't have permission to execute this command"):up()
 				    :add_child(commands[node]:cmdtag("canceled")
