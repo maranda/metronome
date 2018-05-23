@@ -283,7 +283,7 @@ local function purge_uploads(self, data, state)
 	return { status = "completed", info = "All uploaded files have been removed" };
 end
 
-local purge_uploads_descriptor = adhoc_new("Purge HTTP Upload Files", "http_upload_purge", purge_uploads);
+local purge_uploads_descriptor = adhoc_new("Purge HTTP Upload Files", "http_upload_purge", purge_uploads, "server_user");
 module:provides("adhoc", purge_uploads_descriptor);
 
 -- hooks
