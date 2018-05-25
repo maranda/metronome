@@ -57,6 +57,10 @@ local function gdpr_s2s_check(event)
 	if origin and origin.type == "c2s" then
 		local from = jid_join(origin.username, origin.host);
 
+		if stanza.name == "presence" and (stanza.attr.type == "unsubscribe" or stanza.attr.type == "unsubscribed") then
+			return;
+		end
+
 		if gdpr_signed[from] == nil then
 			origin.send(error_reply(event.stanza, "cancel", "policy-violation", 
 				"GDPR agreement needs to be accepted before communicating with a remote server"));
