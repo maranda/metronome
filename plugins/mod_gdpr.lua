@@ -113,6 +113,26 @@ local function gdpr_handle_consent(event)
 	end
 end
 
+module:depends("adhoc");
+local adhoc_new = module:require "adhoc".new;
+
+local function revoke_signature(self, data, state)
+	local from = jid_bare(data.from);
+		
+	if gdpr_signed[from] == nil then
+		return { status = "completed", error = { message = "You didn't sign the agreement yet" } };
+	else
+		gdpr_signed[from] = nil;
+		save(nil, module.host, "gdpr", gdpr_signed);
+		return { status = "completed", info = "Revoked GDPR sign status, you'll be able to pick your choice again" };
+	end
+end
+
+local revoke_signature_descriptor = adhoc_new(
+	"Revoke GDPR signature for S2S communication", "revoke_gdpr_signature", revoke_signature, "local_user"
+);
+module:provides("adhoc", revoke_signature_descriptor);
+
 module:hook("route/remote", gdpr_s2s_check, 450);
 module:hook("message/host", gdpr_handle_consent, 450);
 
