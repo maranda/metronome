@@ -6,7 +6,7 @@
 
 local hosts = hosts;
 local jid_bare, jid_join, jid_section = require "util.jid".bare, require "util.jid".join, require "util.jid".section;
-local load, save = require "util.datamanager".load, require "util.datamanager".save;
+local load, save = require "util.datamanager".load, require "util.datamanager".store;
 
 local st = require "util.stanza";
 local error_reply = require "util.stanza".error_reply;
@@ -38,27 +38,28 @@ local d = st.message({ from = module.host, type = "chat" },
 		"Just reply these messages with: I don't consent"
 );
 local agreement = {
-	header, a, b, c, d, gdpr_addendum
+	header, a, b, c, d
 };
+if gdpr_addendum then agreement[#agreement + 1] = st.message({ from = module.host, type = "chat" }, gdpr_addendum); end
 
 local function send_agreement(origin, from)
 	gdpr_agreement_sent[from] = true;
 	for _, stanza in ipairs(agreement) do
 		local message = st.clone(stanza);
-		message.attr.to = from;
+		message.attr.to = origin.full_jid;
 		origin.send(message);
 	end
 end
 
 local function gdpr_s2s_check(event)
 	local origin = event.origin;
-	if origin.type == "c2s" then
-		local from = jid_join(session.username, session.host);
+	if origin and origin.type == "c2s" then
+		local from = jid_join(origin.username, origin.host);
 
 		if gdpr_signed[from] == nil then
 			origin.send(error_reply(event.stanza, "cancel", "policy-violation", 
 				"GDPR agreement needs to be accepted before communicating with a remote server"));
-			if not gdpr_agreement_sent[from] then send_agreement(origin, origin.full_jid); end
+			if not gdpr_agreement_sent[from] then send_agreement(origin, from); end
 			return true;
 		elseif gdpr_signed[from] == false then
 			origin.send(error_reply(event.stanza, "cancel", "policy-violation", 
@@ -75,19 +76,19 @@ local function gdpr_handle_consent(event)
 	local origin, stanza = event.origin, event.stanza;
 
 	local from = jid_bare(stanza.attr.from) or jid_join(origin.username, origin.host);
-	local body = stanza:child_with_name("body");
+	local body = stanza:get_child_text("body");
 
-	if origin.type == "c2s" and body and gdpr_agreement_sent[from] then
+	if origin and origin.type == "c2s" and body and gdpr_agreement_sent[from] then
 		if body:match("^I consent$") then
 			gdpr_signed[from] = true;
 			gdpr_agreement_sent[from] = nil;
 			save(nil, module.host, "gdpr", gdpr_signed);
 			module:log("info", "%s signed the GDPR agreement, enabling s2s communication", from);
-			origin.send(st.message({ to = from, from = module.host, type = "chat" }, "Thank you."));
+			origin.send(st.message({ to = origin.full_jid, from = module.host, type = "chat" }, "Thank you."));
 			return true;
 		elseif body:match("^I don't consent$") then
 			module:log("info", "%s refused the GDPR agreement, disabling s2s communication and clearing eventual remote contacts", from);
-			origin.send(st.message({ to = from, from = module.host, type = "chat" },
+			origin.send(st.message({ to = origin.full_jid, from = module.host, type = "chat" },
 				"Acknowledged, disabling s2s and removing remote contact entries, " ..
 				"remember you can consent by sending \"I consent\" to the service host anytime."));
 			local roster = origin.roster;
@@ -117,7 +118,7 @@ module:hook("message/host", gdpr_handle_consent, 450);
 
 module.load = function()
 	module:log("debug", "initializing GDPR compliance module... loading signatures table");
-	gdpr_signed = load(nil, module.host, "gdpr");
+	gdpr_signed = load(nil, module.host, "gdpr") or {};
 end
 module.save = function() return { gdpr_signed = gdpr_signed, gdpr_agreement_sent = gdpr_agreement_sent }; end
 module.restore = function(data) gdpr_signed = data.gdpr_signed or {}, data.gdpr_agreement_sent or {}; end
