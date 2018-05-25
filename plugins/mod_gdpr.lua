@@ -56,17 +56,20 @@ local function gdpr_s2s_check(event)
 	local origin, stanza = event.origin, event.stanza;
 	if origin and origin.type == "c2s" then
 		local from = jid_join(origin.username, origin.host);
+		local name, type = stanza.name, stanza.attr.type;
 
-		if stanza.name == "presence" and (stanza.attr.type == "unsubscribe" or stanza.attr.type == "unsubscribed") then
+		if name == "presence" and (type == "unsubscribe" or type == "unsubscribed") then
 			return;
 		end
 
 		if gdpr_signed[from] == nil then
+			module:log("debug", "blocked stanza %s (type: %s) from %s, agreement not yet accepted", name, type or "absent", from);
 			origin.send(error_reply(stanza, "cancel", "policy-violation", 
 				"GDPR agreement needs to be accepted before communicating with a remote server"));
 			if not gdpr_agreement_sent[from] then send_agreement(origin, from); end
 			return true;
 		elseif gdpr_signed[from] == false then
+			module:log("debug", "blocked stanza %s (type: %s) from %s, agreement refused", name, type or "absent", from);
 			origin.send(error_reply(stanza, "cancel", "policy-violation", 
 				"You refused the GDPR agreement, therefore s2s communication is disabled... " ..
 				"should you decide to enable it, send a message directly to "..module.host.." " ..
