@@ -53,7 +53,7 @@ local function send_agreement(origin, from)
 end
 
 local function gdpr_s2s_check(event)
-	local origin = event.origin;
+	local origin, stanza = event.origin, event.stanza;
 	if origin and origin.type == "c2s" then
 		local from = jid_join(origin.username, origin.host);
 
@@ -62,12 +62,12 @@ local function gdpr_s2s_check(event)
 		end
 
 		if gdpr_signed[from] == nil then
-			origin.send(error_reply(event.stanza, "cancel", "policy-violation", 
+			origin.send(error_reply(stanza, "cancel", "policy-violation", 
 				"GDPR agreement needs to be accepted before communicating with a remote server"));
 			if not gdpr_agreement_sent[from] then send_agreement(origin, from); end
 			return true;
 		elseif gdpr_signed[from] == false then
-			origin.send(error_reply(event.stanza, "cancel", "policy-violation", 
+			origin.send(error_reply(stanza, "cancel", "policy-violation", 
 				"You refused the GDPR agreement, therefore s2s communication is disabled... " ..
 				"should you decide to enable it, send a message directly to "..module.host.." " ..
 				"with wrote: I consent"
