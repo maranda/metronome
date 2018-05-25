@@ -102,7 +102,7 @@ local function gdpr_handle_consent(event)
 			local roster = origin.roster;
 			if roster then
 				for jid, item in pairs(roster) do
-					if jid ~= false or jid ~= "pending" and not hosts[jid_section(jid, "host")] then
+					if jid ~= false and jid ~= "pending" and not hosts[jid_section(jid, "host")] then
 						if item.subscription == "both" or item.subscription == "from" or (roster.pending and roster.pending[jid]) then
 							module:fire_global_event("route/post", origin, st.presence({ type = "unsubscribed", from = origin.full_jid, to = jid }));
 						end
