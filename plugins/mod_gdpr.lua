@@ -5,6 +5,7 @@
 -- information about copyright and licensing.
 
 local hosts = hosts;
+local bare_sessions = bare_sessions;
 local jid_bare, jid_join, jid_section = require "util.jid".bare, require "util.jid".join, require "util.jid".section;
 local load, save = require "util.datamanager".load, require "util.datamanager".store;
 
@@ -135,6 +136,27 @@ module:provides("adhoc", revoke_signature_descriptor);
 
 module:hook("route/remote", gdpr_s2s_check, 450);
 module:hook("message/host", gdpr_handle_consent, 450);
+module:hook("pre-presence/full", function(event)
+	local origin, stanza = event.origin, event.stanza;
+	local to = stanza.attr.to;
+	
+	if origin.type == "c2s" and not stanza.attr.type and not gdpr_signed[jid_join(origin.username, origin.host)] and 
+		not origin.directed_bare[jid_bare(to)] then
+		local host = hosts[jid_section(to, "host")];
+		if host and host.muc then
+			origin.send(st.message({ from = module.host, to = origin.full_jid, type = "chat" }, 
+				"*Privacy Warn* When using a local MUC groupchat (like "..jid_bare(to)..") users from a remote server may join, " ..
+				"see your messages and process your data. If you don't agree with that you should leave the room or make it members " ..
+				"only if you just created it."
+			));
+		end
+	end
+end, 100);
+module:hook("resource-unbind", function(event)
+	local username, host = event.session.username, event.session.host;
+	local jid = username.."@"..host;
+	if not bare_sessions[jid] then gdpr_agreement_sent[jid] = nil; end
+end);
 
 module.load = function()
 	module:log("debug", "initializing GDPR compliance module... loading signatures table");
