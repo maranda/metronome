@@ -424,13 +424,26 @@ module:hook("account-disco-info", function(event)
 end);
 
 module:hook("account-disco-items", function(event)
-	local stanza = event.stanza;
-	local bare = jid_bare(stanza.attr.to);
+	local reply, node = event.reply, event.node;
+	local bare = jid_bare(reply.attr.to);
 	local user_data = services[bare] and services[bare].nodes;
 
 	if user_data then
-		for node, _ in pairs(user_data) do
-			stanza:tag("item", {jid = bare, node = node}):up();
+		if node then
+			local ok, ret, orderly = services[bare]:get_items(node, true);
+			if ok then
+				reply.tags[1].attr.node = node;
+				for _, id in pairs(orderly) do
+					reply:tag("item", { jid = bare, name = id }):up();
+				end
+			else
+				reply = pep_error_reply(event.stanza, ret);
+				reply.attr.from = bare; return reply;
+			end
+		else
+			for node, data in pairs(user_data) do
+				reply:tag("item", { jid = bare, node = node, name = data.config.title }):up();
+			end
 		end
 	end
 end);
