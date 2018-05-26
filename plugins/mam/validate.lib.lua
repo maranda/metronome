@@ -18,7 +18,7 @@ local df_xmlns = "jabber:x:data";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
 local max_results = module:get_option_number("mam_max_retrievable_results", 150);
-if max_results >= 300 then max_results = 300; end
+if max_results >= 350 then max_results = 350; end
 
 local function rsm_parse(stanza, query)
 	local rsm = query:get_child("set", rsm_xmlns);
