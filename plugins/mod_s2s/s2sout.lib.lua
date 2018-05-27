@@ -53,20 +53,6 @@ function s2sout.initiate_connection(host_session)
 		-- session is needed, connected or not
 		s2s_destroy_session(host_session);
 	end
-	
-	if not host_session.sends2s then
-		-- A sends2s which buffers data (until the stream is opened, data is sent before stream is authed and can't be acked)
-		local buffer;
-		function host_session.sends2s(data)
-			if not buffer then
-				buffer = {};
-				host_session.send_buffer = buffer;
-			end
-			log("debug", "Buffering data on unconnected s2sout to %s", tostring(host_session.to_host));
-			buffer[#buffer+1] = data;
-			log("debug", "Buffered item %d: %s", #buffer, tostring(data));
-		end
-	end
 end
 
 function s2sout.attempt_connection(host_session, err)

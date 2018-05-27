@@ -112,8 +112,11 @@ function route_to_existing_session(event)
 			(host.log or log)("debug", "trying to send over unauthed s2sout to "..to_host);
 
 			-- Queue stanza until we are able to send it
-			if host.sendq then t_insert(host.sendq, {tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza)});
-			else host.sendq = { {tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza)} }; end
+			if host.sendq then 
+				t_insert(host.sendq, { tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza) });
+			else 
+				host.sendq = { { tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza) } };
+			end
 			host.log("debug", "stanza [%s] queued ", stanza.name);
 			-- Retry to authenticate using dialback...
 			if host.can_do_dialback then hosts[from_host].events.fire_event("s2s-dialback-again", host); end
@@ -158,7 +161,8 @@ end
 
 -- Create a new outgoing session for a stanza
 function route_to_new_session(event)
-	local from_host, to_host, from_multiplexed, stanza = event.from_host, event.to_host, event.from_multiplexed, event.stanza;
+	local from_host, to_host, from_multiplexed, verify_only, stanza =
+		event.from_host, event.to_host, event.from_multiplexed, event.verify_only, event.stanza;
 	log("debug", "opening a new outgoing connection for this stanza");
 	local host_session = s2s_new_outgoing(from_host, to_host);
 
@@ -166,8 +170,9 @@ function route_to_new_session(event)
 	host_session.bounce_sendq = bounce_sendq;
 	host_session.open_stream = session_open_stream;
 	if from_multiplexed then host_session.from_multiplexed = from_multiplexed; end
+	if verify_only then host_session.verify_only = verify_only; end
 
-	host_session.sendq = { {tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza)} };
+	host_session.sendq = { { tostring(stanza), stanza.attr.type ~= "error" and stanza.attr.type ~= "result" and st.reply(stanza) } };
 	log("debug", "stanza [%s] queued until connection complete", tostring(stanza.name));
 	s2sout.initiate_connection(host_session);
 	if (not host_session.connecting) and (not host_session.conn) then
@@ -193,9 +198,17 @@ function module.add_host(module)
 		load_module(module.host, "sasl_s2s");
 	end
 	module:hook_stanza(xmlns_stream, "features", function(origin, stanza)
-		if origin.type == "s2sout_unauthed" and not origin.can_do_dialback then
-			module:log("warn", "Remote server doesn't offer any mean of (known) authentication, closing stream(s)");
-			origin:close({ condition = "unsupported-feature", text = "Unable to authenticate at this time" }, "couldn't authenticate with the remote server");
+		if origin.type == "s2sout_unauthed" then
+			if origin.verify_only then -- we only should verify
+				for i, queued in ipairs(origin.sendq) do
+					if queued[2].name == "db:verify" then origin.sends2s(queued[1]); break; end
+				end
+				origin.sendq = nil; return true;
+			end
+			if not origin.can_do_dialback then
+				module:log("warn", "Remote server doesn't offer any mean of (known) authentication, closing stream(s)");
+				origin:close({ condition = "unsupported-feature", text = "Unable to authenticate at this time" }, "couldn't authenticate with the remote server");
+			end
 		end
 		return true;
 	end, -100)
@@ -364,17 +377,6 @@ function stream_callbacks.streamopened(session, attr)
 
 		if session.secure and not session.cert_chain_status then check_cert_status(session); end
 
-		-- Send unauthed buffer
-		local send_buffer = session.send_buffer;
-		if send_buffer and #send_buffer > 0 then
-			log("debug", "Sending s2s send_buffer now...");
-			for i, data in ipairs(send_buffer) do
-				session.sends2s(tostring(data));
-				send_buffer[i] = nil;
-			end
-		end
-		session.send_buffer = nil;
-	
 		-- If server is pre-1.0, don't wait for features, just do dialback
 		if session.version < 1.0 then
 			local from, to = session.from_host, session.to_host;

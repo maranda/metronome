@@ -36,11 +36,6 @@ end
 local function make_bidirectional(session)
 	local from, to = session.from_host, session.to_host;
 	if session.type == "s2sin" then
-		local outgoing = hosts[session.to_host].s2sout[from];
-		if outgoing and outgoing.close then -- close stream possibly used for dialback
-			outgoing:close();
-		end
-
 		session.bidirectional = true;
 		incoming[from] = session;
 		verifying[from] = nil;
@@ -72,6 +67,10 @@ end
 
 module:hook("s2s-is-bidirectional", function(host)
 	if incoming[host] or outgoing[host] then return true; end
+end);
+
+module:hook("s2s-is-bidirectional-verifying", function(host)
+	if verifying[host] then return verifying[host]; end
 end);
 
 module:hook("route/remote", function(event)

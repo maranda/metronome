@@ -211,6 +211,9 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 			make_authenticated(origin, from);
 			return true;
 		end
+
+		local verify_only = module:fire_event("s2s-is-bidirectional-verifying", from);
+		if verify_only == "incoming" then verify_only = true; else verify_only = nil; end
 		
 		origin.hosts[from] = { dialback_key = stanza[1] };
 		dialback_requests[from.."/"..streamid] = origin;
@@ -229,7 +232,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		
 		origin.log("debug", "asking %s if key %s belongs to them", from, stanza[1]);
 		module:fire_event("route/remote", {
-			from_host = to, to_host = from, from_multiplexed = from_multiplexed,
+			from_host = to, to_host = from, from_multiplexed = from_multiplexed, verify_only = verify_only,
 			stanza = st.stanza("db:verify", { from = to, to = from, id = origin.streamid }):text(stanza[1])
 		});
 		return true;
@@ -262,6 +265,10 @@ module:hook("stanza/"..xmlns_db..":verify", function(event)
 			end
 			if not destroyed and not authed then
 				send_db_error(dialback_verifying, "db:result", "auth", "forbidden", attr.to, attr.from, attr.id);
+			end
+			if origin.verify_only then
+				log("debug", "dialback verification only stream, closing gracefully");
+				origin:close();
 			end
 		else
 			origin:close(); -- just close the stream gracefully
@@ -308,7 +315,7 @@ module:hook_stanza("urn:ietf:params:xml:ns:xmpp-sasl", "failure", function (orig
 end, 100);
 
 module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
-	if origin.type == "s2sout_unauthed" and (not origin.external_auth or origin.external_auth == "failed") then
+	if origin.type == "s2sout_unauthed" and not origin.verify_only and (not origin.external_auth or origin.external_auth == "failed") then
 		local tls = stanza:child_with_ns(xmlns_starttls);
 		if can_do_dialback(origin) then
 			local to, from = origin.to_host, origin.from_host;
@@ -318,10 +325,11 @@ module:hook_stanza(xmlns_stream, "features", function (origin, stanza)
 				module:log("warn", "please check your configuration and that mod_tls is loaded correctly");
 				-- Close paired incoming stream
 				for session in pairs(incoming) do
-					if session.from_host == to and session.to_host == from and not session.multiplexed_stream then
+					if session.from_host == to and session.to_host == from and (not session.bidirectional and not session.multiplexed_stream) then
 						session:close("internal-server-error", "dialback authentication failed on paired outgoing stream");
 					end
 				end
+				origin:close();
 				return;
 			end
 			
@@ -337,7 +345,7 @@ module:hook("s2s-stream-features", function (data)
 end, 98);
 
 module:hook("s2s-authenticate-legacy", function (session)
-	module:log("debug", "Initiating dialback...");
+	module:log("debug", "Initiating legacy dialback...");
 	initiate_dialback(session);
 	return true;
 end, 100);

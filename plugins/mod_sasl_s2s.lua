@@ -105,7 +105,7 @@ module:hook_stanza(xmlns_sasl, "failure", function (session, stanza)
 end, 90)
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function (session, stanza)
-	if session.type ~= "s2sout_unauthed" or not session.secure then
+	if session.type ~= "s2sout_unauthed" or session.verify_only or not session.secure then
 		return; 
 	end
 
