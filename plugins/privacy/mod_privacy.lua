@@ -16,10 +16,25 @@ end
 local st = require "util.stanza";
 local datamanager = require "util.datamanager";
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
-local jid_bare, jid_section = require "util.jid".bare, require "util.jid".section;
+local jid_bare, jid_join, jid_section = require "util.jid".bare, require "util.jid".join, require "util.jid".section;
 local ipairs, pairs, tonumber, t_insert, t_sort = ipairs, pairs, tonumber, table.insert, table.sort;
 
 local lib = module:require("privacy");
+
+-- Storage functions
+local function store_load(username)
+	local bare_session = bare_sessions[jid_join(username, module.host)];
+	if bare_session then
+		if bare_session.privacy_lists then
+			return bare_session.privacy_lists;
+		else
+			bare_session.privacy_lists = datamanager.load(username, module.host, "privacy") or { lists = {} };
+			return bare_session.privacy_lists;
+		end
+	else
+		return datamanager.load(username, module.host, "privacy") or { lists = {} };
+	end
+end
 
 -- Privacy List functions
 local priv_decline_list, priv_activate_list, priv_delete_list, priv_create_list, priv_get_list =
@@ -45,7 +60,7 @@ module:hook("iq/self/"..privacy_xmlns..":query", function(data)
 	
 	local query = stanza.tags[1]; -- the query element
 	local valid = false;
-	local privacy_lists = datamanager.load(origin.username, origin.host, "privacy") or { lists = {} };
+	local privacy_lists = store_load(origin.username);
 
 	if stanza.attr.type == "set" then
 		if #query.tags == 1 then --  the <query/> element MUST NOT include more than one child element
@@ -99,7 +114,7 @@ end);
 
 module:hook("iq-set/self/"..blocking_xmlns..":block", function(data)
 	local origin, stanza = data.origin, data.stanza;
-	local privacy_lists = datamanager.load(origin.username, origin.host, "privacy") or { lists = {} };
+	local privacy_lists = store_load(origin.username);
 
 	local block = stanza.tags[1];
 	if #block.tags > 0 then
@@ -127,7 +142,7 @@ end);
 
 module:hook("iq-set/self/"..blocking_xmlns..":unblock", function(data)
 	local origin, stanza = data.origin, data.stanza;
-	local privacy_lists = datamanager.load(origin.username, origin.host, "privacy");
+	local privacy_lists = store_load(origin.username);
 	
 	if not privacy_lists or not privacy_lists.lists.simple then
 		origin.send(st.error_reply(stanza, "cancel", "item-not-found", "Blocking list is empty."));
@@ -165,7 +180,7 @@ end);
 
 module:hook("iq-get/self/"..blocking_xmlns..":blocklist", function(data)
 	local origin, stanza = data.origin, data.stanza;
-	local privacy_lists = datamanager.load(origin.username, origin.host, "privacy");
+	local privacy_lists = store_load(origin.username);
 	local simple = privacy_lists and privacy_lists.lists.simple;
 	
 	if simple then
@@ -202,3 +217,7 @@ module:hook("iq/host", check_incoming, 500);
 module:hook("presence/full", check_incoming, 500);
 module:hook("presence/bare", check_incoming, 500);
 module:hook("presence/host", check_incoming, 500);
+
+module.unload = function()
+	for jid, session in pairs(bare_sessions) do session.privacy_lists = nil; end
+end
