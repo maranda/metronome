@@ -87,14 +87,14 @@ local function gdpr_handle_consent(event)
 	local body = stanza:get_child_text("body");
 
 	if origin and origin.type == "c2s" and body and gdpr_agreement_sent[from] then
-		if body:match("^I consent$") then
+		if body:match(".*I consent.*") then
 			gdpr_signed[from] = true;
 			gdpr_agreement_sent[from] = nil;
 			save(nil, module.host, "gdpr", gdpr_signed);
 			module:log("info", "%s signed the GDPR agreement, enabling s2s communication", from);
 			origin.send(st.message({ to = origin.full_jid, from = module.host, type = "chat" }, "Thank you."));
 			return true;
-		elseif body:match("^I don't consent$") then
+		elseif body:match(".*I don't consent.*") then
 			module:log("info", "%s refused the GDPR agreement, disabling s2s communication and clearing eventual remote contacts", from);
 			origin.send(st.message({ to = origin.full_jid, from = module.host, type = "chat" },
 				"Acknowledged, disabling s2s and removing remote contact entries, " ..
