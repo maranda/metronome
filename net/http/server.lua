@@ -175,7 +175,7 @@ function handle_request(conn, request, finish_cb)
 	local response = {
 		request = request;
 		status_code = 200;
-		headers = { server = "Metronome/3.8 (net.http.server; https://metronome.im)", date = date_header };
+		headers = { server = "Metronome/3.9 (net.http.server; https://metronome.im)", date = date_header };
 		keep_alive = keep_alive;
 		conn = conn;
 		send = _M.send_response;
@@ -244,10 +244,8 @@ function _M.send_response(response, body)
 	local status_line = "HTTP/"..response.request.httpversion.." "..(response.status or codes[response.status_code]);
 	local headers = response.headers;
 	body = body or response.body or "";
-	headers.content_length = #body;
-	if not headers.connection then
-		headers.connection = keep_alive and "Keep-Alive" or "close";
-	end
+	if not headers["Content-Length"] or not headers.content_length then headers.content_length = #body; end -- do not set if already set
+	if not headers.connection then headers.connection = keep_alive and "Keep-Alive" or "close"; end
 
 	local output = { status_line };
 	for k, v in pairs(headers) do

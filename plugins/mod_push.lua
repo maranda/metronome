@@ -50,7 +50,7 @@ local function change_push_options(self, data, state)
 end
 
 local change_push_options_descriptor = adhoc_new(
-	"Toggle last-message-sender in Push Notifications", "change_push_last_sender", change_push_options
+	"Toggle last-message-sender in Push Notifications", "change_push_last_sender", change_push_options, "local_user"
 );
 module:provides("adhoc", change_push_options_descriptor);
 
@@ -235,6 +235,7 @@ module:hook("iq/host", function(event)
 				module:log("debug", "Received error type %s condition %s while sending %s PUSH notification, disabling related node for %s",
 					err_type, condition, id, user);
 				store[sent_id.app_server].nodes[sent_id.node] = nil;
+				dm.store(user, module.host, "push", store);
 			end
 		else
 			module:log("debug", "PUSH App Server handled %s", id);

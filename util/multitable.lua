@@ -9,7 +9,7 @@
 
 local select = select;
 local t_insert = table.insert;
-local unpack, pairs, next, type = unpack, pairs, next, type;
+local unpack, pairs, next, type = table.unpack or unpack, pairs, next, type;
 
 module "multitable"
 

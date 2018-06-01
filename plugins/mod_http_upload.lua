@@ -25,6 +25,8 @@ local join, split = require "util.jid".join, require "util.jid".split;
 local gc, ipairs, pairs, open, os_remove, os_time, s_upper, t_concat, t_insert, tostring =
 	collectgarbage, ipairs, pairs, io.open, os.remove, os.time, string.upper, table.concat, table.insert, tostring;
 
+local hosts = hosts;
+
 local function join_path(...)
 	return table.concat({ ... }, package.config:sub(1,1));
 end
@@ -47,6 +49,7 @@ local default_mime_types = {
 	["mp4"] = "video/mp4",
 	["ogg"] = "application/ogg",
 	["png"] = "image/png",
+	["qt"] = "video/quicktime",
 	["tiff"] = "image/tiff",
 	["txt"] = "text/plain",
 	["xml"] = "text/xml",
@@ -54,8 +57,8 @@ local default_mime_types = {
 	["webm"] = "video/webm"
 };
 
-local cache = {};
-local throttle = {};
+local cache = module:shared("upload_file_cache")
+local throttle = module:shared("upload_throttles");
 
 local bare_sessions = bare_sessions;
 
@@ -68,18 +71,23 @@ local expire_any = module:get_option_number("http_file_perfom_expire_any", 1800)
 local expire_slot = module:get_option_number("http_file_expire_upload_slots", 900);
 local expire_cache = module:get_option_number("http_file_expire_file_caches", 450);
 local throttle_time = module:get_option_number("http_file_throttle_time", 180);
-local cacheable_size = module:get_option_number("http_file_cacheable_size", file_size_limit);
 local default_base_path = module:get_option_string("http_file_base_path", "share");
 local storage_path = module:get_option_string("http_file_path", join_path(metronome.paths.data, "http_file_upload"));
 lfs.mkdir(storage_path);
 
 --- sanity
-if file_size_limit > 6*1024*1024 then
-	module:log("warn", "http_file_size_limit exceeds HTTP parser limit on body size, capping file size to 6 MiB");
-	file_size_limit = 6*1024*1024;
+if file_size_limit > 12*1024*1024 then
+	module:log("warn", "http_file_size_limit exceeds max allowed size, capping file size to 12 MiB");
+	file_size_limit = 12*1024*1024;
 end
 
 -- utility
+local function add_cors_headers(headers)
+	headers["Access-Control-Allow-Origin"] = "*";
+	headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS, PUT";
+	headers["Access-Control-Allow-Headers"] = "Content-Type, Origin, X-Requested-With";
+end
+
 local function purge_files(event)
 	local user, host = event.username, event.host;
 	local uploads = datamanager.list_load(user, host, module.name);
@@ -197,7 +205,7 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 	local username, host = origin.username, origin.host;
 	local last_uploaded_sum = throttle[join(username, host)];
 	-- local clients only
-	if origin.type ~= "c2s" then
+	if origin.type ~= "c2s" or origin.is_anonymous then
 		module:log("debug", "Request for upload slot from a %s", origin.type);
 		return nil, st.error_reply(stanza, "cancel", "not-authorized");
 	end
@@ -277,7 +285,7 @@ local function purge_uploads(self, data, state)
 	return { status = "completed", info = "All uploaded files have been removed" };
 end
 
-local purge_uploads_descriptor = adhoc_new("Purge HTTP Upload Files", "http_upload_purge", purge_uploads);
+local purge_uploads_descriptor = adhoc_new("Purge HTTP Upload Files", "http_upload_purge", purge_uploads, "server_user");
 module:provides("adhoc", purge_uploads_descriptor);
 
 -- hooks
@@ -374,6 +382,8 @@ local function upload_data(event, path)
 	local ok, err = datamanager.store(nil, host, module.name, has_downloads);
 	if err then module:log("warn", "Couldn't save %s's list of users using HTTP Uploads: %s", host, err); end
 	module:log("info", "File uploaded by %s to slot %s", uploader, random_dir);
+
+	add_cors_headers(event.response.headers);
 	return 201;
 end
 
@@ -413,62 +423,50 @@ end
 local function serve_uploaded_files(event, path, head)
 	local response = event.response;
 	local request = event.request;
+	response.on_destroy = function() gc(); end
+
+	for name, host in pairs(hosts) do
+		if host.type == "local" and not host.anonymous_host then expire_host(name); end
+	end
 
 	local full_path = join_path(storage_path, path);
 	local cached = cache[full_path];
 
-	if not cached then 
-		cached = {}; 
-		cached.attrs = lfs.attributes(full_path);
-		if not cached.attrs then return 404; end
+	if not cached then
+		local f = open(full_path, "rb");
+		if f then cached = f:read("*a"); f:close(); end
+		
+		if not cached then return 404; end
 		module:add_timer(expire_cache, function()
 			cache[full_path] = nil;
 			gc();
 		end);
+		cache[full_path] = cached;
 	end
 
-	local headers, attrs, data = cached.headers, cached.attrs;
-	if not headers then
-		headers = response.headers;
-		local ext = full_path:match("%.([^%.]*)$");
-		headers["Content-Type"] = mime_types[ext and ext:lower()];
-		headers["Last-Modified"] = os.date("!%a, %d %b %Y %X GMT", attrs.modification);
-		cached.headers = headers;
-	else
-		headers.date = response.headers.date;
-		response.headers = headers;
-	end
+	local headers, size = response.headers, #cached;
+	
+	add_cors_headers(headers);
+	local ext = full_path:match("%.([^%.]*)$");
+	headers.content_type = mime_types[ext and ext:lower()];
 
-	if not cached.data and attrs.size <= cacheable_size then
-		local f = open(full_path, "rb");
-		if f then data = f:read("*a"); f:close(); end
-
-		cached.data = data;
-	end
-	cache[full_path] = cached;
+	if head then headers.content_length = size; response:send(); else response:send(cached); end
 
 	module:log("debug", "%s sent %s request for uploaded file at: %s (%d bytes)", 
-		request.conn:ip(), head and "HEAD" or "GET", path, attrs.size);
+		request.conn:ip(), head and "HEAD" or "GET", path, size);
 
-	if head then
-		if not headers["Content-Length"] then headers["Content-Length"] = attrs.size; end
-		response:send();		
-	else
-		data = cached.data;
-		if not data then
-			local f = open(full_path, "rb");
-			if f then data = f:read("*a"); f:close(); end
-		end
-
-		response:send(data);
-	end
-	if attrs.size > 500*1024 then gc(); end
+	if size > 500*1024 then gc(); end
 	return true;
 end
 
 local function serve_head(event, path)
 	event.response.send = send_response_sans_body;
 	return serve_uploaded_files(event, path, true);
+end
+
+local function serve_options(event, path)
+	add_cors_headers(event.response.headers);
+	return 200;
 end
 
 local function serve_hello(event)
@@ -486,6 +484,7 @@ module:provides("http", {
 		["GET /"] = serve_hello,
 		["GET /*"] = serve_uploaded_files,
 		["HEAD /*"] = serve_head,
+		["OPTIONS /*"] = serve_options,
 		["PUT /*"] = upload_data
 	}
 });

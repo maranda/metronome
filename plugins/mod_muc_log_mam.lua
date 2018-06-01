@@ -40,14 +40,16 @@ local kill_caches_after = module:get_option_number("muc_log_mam_expire_caches", 
 
 local last_caches_clean = os_time();
 
+local mam_cache = {};
+
 local function initialize_mam_cache(jid)
 	local node, host = jid_split(jid);
 	local room = muc_object.rooms[jid];
 
-	if room and not room.mam_cache then
+	if room and not mam_cache[jid] then
 		-- load this last month's discussion.
-		room.mam_cache = {};
-		local cache = room.mam_cache;
+		mam_cache[jid] = {};
+		local cache = mam_cache[jid];
 		local yearmonth = os_date("!%Y%m");
 
 		module:log("debug", "Initialize MAM cache for %s", jid);
@@ -68,20 +70,14 @@ local function clean_inactive_room_caches(rooms, time_now)
 		module:log("debug", "Checking for inactive rooms MAM caches...");
 
 		for jid, room in pairs(rooms) do
-			if time_now - room.last_used > kill_caches_after and room.mam_cache then
+			if time_now - room.last_used > kill_caches_after and mam_cache[jid] then
 				module:log("debug", "Dumping MAM cache for %s", jid);
-				room.mam_cache = nil;
+				mam_cache[jid] = nil;
 			end
 		end
 		
 		last_caches_clean = os_time();
 	end
-end
-
-function module.unload()
-	-- remove all caches when the module is unloaded.
-	local rooms = muc_object.rooms;
-	for jid, room in pairs(rooms) do room.mam_cache = nil; end
 end
 
 module:hook("muc-disco-info-features", function(room, reply)
@@ -91,12 +87,16 @@ end, -100);
 module:hook("muc-host-used", clean_inactive_room_caches, -100);
 
 module:hook("muc-log-add-to-mamcache", function(room, entry)
-	local cache = room.mam_cache;
+	local cache = mam_cache[room.jid];
 	if cache then cache[#cache + 1] = entry; end
 end, -100);
 
+module:hook("muc-log-get-mamcache", function(jid)
+	return mam_cache[jid];
+end);
+
 module:hook("muc-log-remove-from-mamcache", function(room, from, rid)
-	local cache = room.mam_cache;
+	local cache = mam_cache[room.jid];
 	if cache then
 		local count = 0;
 		for i, entry in ripairs(cache) do
@@ -125,15 +125,15 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 	local room = muc_object.rooms[to];
 	
 	if room._data.logging then
-	  -- check that requesting entity has access
-	  if (room:get_option("members_only") and not room:is_affiliated(from)) or
-	  	room:get_affiliation(from) == "outcast" then
-	  		origin.send(st.error_reply(stanza, "auth", "not-authorized"));
-	  		return true;
-	  end
+		-- check that requesting entity has access
+		if (room:get_option("members_only") and not room:is_affiliated(from)) or
+	  		room:get_affiliation(from) == "outcast" then
+			origin.send(st.error_reply(stanza, "auth", "not-authorized"));
+			return true;
+		end
 	
 		initialize_mam_cache(to);
-		local archive = { logs = room.mam_cache };
+		local archive = { logs = mam_cache[to] };
 	
 		local start, fin, with, after, before, max, index;
 		local ok, ret = validate_query(stanza, query, qid);

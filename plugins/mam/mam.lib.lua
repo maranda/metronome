@@ -28,7 +28,7 @@ local markers_xmlns = "urn:xmpp:chat-markers:0";
 local sid_xmlns = "urn:xmpp:sid:0";
 
 local store_time = module:get_option_number("mam_save_time", 300);
-local stores_cap = module:get_option_number("mam_stores_cap", 5000);
+local stores_cap = module:get_option_number("mam_stores_cap", 10000);
 local max_length = module:get_option_number("mam_message_max_length", 3000);
 local store_elements = module:get_option_set("mam_allowed_elements");
 

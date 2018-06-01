@@ -26,7 +26,10 @@ local timer_add_task = require "util.timer".add_task;
 local dataforms_new = require "util.dataforms".new;
 local array = require "util.array";
 local modulemanager = require "modulemanager";
+local tonumber, tostring = tonumber, tostring;
 
+local min_pass_len = module:get_option_number("register_min_pass_length", 8);
+local max_pass_len = module:get_option_number("register_max_pass_length", 30);
 local hashed_auth = module:get_option_string("authentication");
 if hashed_auth == "internal_hashed" then hashed_auth = true; else hashed_auth = false; end
 
@@ -40,6 +43,18 @@ local function generate_error_message(errors)
 	end
 	return { status = "completed", error = { message = t_concat(errmsg, "\n") } };
 end
+
+local function validate_password(password)
+	if not ((password:find("%d+") or password:find("%p+")) and password:find("%u+")) or 
+		password:len() < min_pass_len or password:len() > max_pass_len then
+		return false;
+	end
+	return true;
+end
+
+local pass_error = "Passwords must contain at least one digit or one special character, one uppercase letter " ..
+	"and must be at least " .. tostring(min_pass_len) .. " chars in length and not exceed " ..
+	tostring(max_pass_len) .. " chars.";
 
 function add_user_command_handler(self, data, state)
 	local add_user_layout = dataforms_new{
@@ -68,8 +83,13 @@ function add_user_command_handler(self, data, state)
 			if usermanager_user_exists(username, host) then
 				return { status = "completed", error = { message = "Account already exists" } };
 			else
+				if not validate_password(fields.password) then return { status = "completed", error = { message = pass_error } }; end
 				if usermanager_create_user(username, fields.password, host) then
 					module:log("info", "Created new account %s@%s", username, host);
+					module:fire_event(
+						"user-registered", 
+						{ username = username, host = host, password = fields.password, source = "mod_admin_adhoc" }
+					);
 					return { status = "completed", info = "Account successfully created" };
 				else
 					return { status = "completed", error = { message = "Failed to write data to disk" } };
@@ -106,7 +126,12 @@ function change_user_password_command_handler(self, data, state)
 		if data.to ~= host then
 			return { status = "completed", error = { message = "Trying to change the password of a user on " .. host .. " but command was sent to " .. data.to}};
 		end
+		if not validate_password(fields.password) then return { status = "completed", error = { message = pass_error } }; end
 		if usermanager_user_exists(username, host) and usermanager_set_password(username, fields.password, host) then
+			module:fire_event(
+				"user-changed-password", 
+				{ username = username, host = host, password = fields.password, source = "mod_admin_adhoc" }
+			);
 			return { status = "completed", info = "Password successfully changed" };
 		else
 			return { status = "completed", error = { message = "User does not exist" } };

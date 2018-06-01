@@ -133,11 +133,14 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 			end
 		end
 		for _, queued in ipairs(_q) do
-			local reply = st_reply(queued);
-			if reply.attr.to ~= full_jid and (has_carbons and reply.name ~= "message" or not has_carbons) then
-				reply.attr.type = "error";
-				reply:tag("error", attr):tag("recipient-unavailable", { xmlns = xmlns_e });
-				fire_event("route/process", session, reply);
+			local _name = queued.name;
+			if (_name == "iq" or _name == "message" or _name == "presence") and queued.attr.type ~= "error" then
+				local reply = st_reply(queued);
+				if reply.attr.to ~= full_jid and (has_carbons and _name ~= "message" or not has_carbons) then
+					reply.attr.type = "error";
+					reply:tag("error", attr):tag("recipient-unavailable", { xmlns = xmlns_e });
+					fire_event("route/process", session, reply);
+				end
 			end
 		end
 		_q, session.sm_queue = {}, {};
@@ -205,8 +208,13 @@ local function enable_handler(session, stanza)
 		token = uuid();
 		handled_sessions[token], session.token = session, token;
 	end
+	local max;
+	if c2s and stanza.attr.max then
+		max = tonumber(stanza.attr.max);
+		if max > timeout then max = timeout; else session.sm_timeout = max < timeout and max or nil; end
+	end
 	(session.sends2s or session.send)(
-		st_stanza("enabled", { xmlns = xmlns_sm, id = token, max = (c2s and tostring(timeout)) or nil, resume = (c2s and resume) or nil })
+		st_stanza("enabled", { xmlns = xmlns_sm, id = token, max = c2s and tostring(max or timeout) or nil, resume = c2s and resume or nil })
 	);
 	return true;
 end
@@ -313,7 +321,7 @@ module:hook("pre-resource-unbind", function(event)
 			local _now, token = now(), session.token;
 			session.halted, session.detached = _now, true;
 			module:fire_event("sm-process-queue", { username = session.username, host = session.host, queue = session.sm_queue });
-			add_timer(timeout, function()
+			add_timer(session.sm_timeout or timeout, function()
 				local current = full_sessions[session.full_jid];
 				if not session.destroyed and current and (current.token == token and session.halted == _now) then
 					session.log("debug", "%s session has been halted too long, destroying", session.full_jid);

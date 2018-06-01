@@ -75,8 +75,8 @@ local function build_server_disco_info()
 			:tag("field", { type = "hidden", var = "FORM_TYPE" })
 				:tag("value"):text("http://jabber.org/network/serverinfo"):up():up();
 		for type, addresses in pairs(contact_info) do
-			query:tag("field", { var = type });
-			for _, address in ipairs(addresses) do query:tag("value"):text(address):up();	end
+			query:tag("field", { var = type, type = "list-multi" });
+			for _, address in ipairs(addresses) do query:tag("value"):text(address):up(); end
 			query:up();
 		end
 		query:up();
@@ -191,8 +191,8 @@ module:hook("iq/bare/http://jabber.org/protocol/disco#items:query", function(eve
 	if not stanza.attr.to or is_contact_subscribed(username, my_host, jid_bare(stanza.attr.from)) then
 		local reply = st.reply(stanza):tag("query", { xmlns = "http://jabber.org/protocol/disco#items" });
 		if not reply.attr.from then reply.attr.from = origin.username.."@"..origin.host; end
-		module:fire_event("account-disco-items", { origin = origin, stanza = reply, node = node });
-		return origin.send(reply);
+		local err = module:fire_event("account-disco-items", { origin = origin, reply = reply, stanza = stanza, node = node });
+		return origin.send(err or reply);
 	end
 end);
 

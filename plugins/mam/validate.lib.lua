@@ -17,8 +17,8 @@ local xmlns = "urn:xmpp:mam:2";
 local df_xmlns = "jabber:x:data";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 
-local max_results = module:get_option_number("mam_max_retrievable_results", 50);
-if max_results >= 100 then max_results = 100; end
+local max_results = module:get_option_number("mam_max_retrievable_results", 150);
+if max_results >= 350 then max_results = 350; end
 
 local function rsm_parse(stanza, query)
 	local rsm = query:get_child("set", rsm_xmlns);
@@ -79,9 +79,9 @@ local function validate_query(stanza, query, qid)
 	if max and max > max_results then max = max_results; end
 
 	if not start and not fin and not before and not max then -- Assume safe defaults
-		before, max = true, 30;
+		before, max = true, 50;
 	elseif not max then
-		max = 30;
+		max = 50;
 	end
 
 	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before, index = index };

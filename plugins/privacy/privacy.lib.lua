@@ -8,6 +8,7 @@
 -- ** Copyright (c) 2009-2011, Florian Zeitz, Matthew Wild, Waqas Hussain
 
 local st = require "util.stanza";
+local dm_load = require "util.datamanager".load;
 local rostermanager = require "util.rostermanager";
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local ipairs, pairs, tonumber, tostring, t_insert, t_remove, t_sort = 
@@ -17,6 +18,22 @@ local jid_bare, jid_join, jid_split =
 
 local privacy_xmlns = "jabber:iq:privacy";
 local blocking_xmlns = "urn:xmpp:blocking";
+
+-- Storage Functions
+
+local function store_load(username)
+	local bare_session = bare_sessions[jid_join(username, module.host)];
+	if bare_session then
+		if bare_session.privacy_lists then
+			return bare_session.privacy_lists;
+		else
+			bare_session.privacy_lists = dm_load(username, module.host, "privacy") or { lists = {} };
+			return bare_session.privacy_lists;
+		end
+	else
+		return dm_load(username, module.host, "privacy") or { lists = {} };
+	end
+end
 
 -- Privacy List Functions
 
@@ -316,7 +333,7 @@ end
 
 local function check_stanza(e, session)
 	local origin, stanza = e.origin, e.stanza;
-	local privacy_lists = datamanager.load(session.username, session.host, "privacy") or {};
+	local privacy_lists = store_load(session.username);
 	local session_username, session_host = session.username, session.host;
 	local bare_jid = session_username.."@"..session_host;
 	local to = stanza.attr.to or bare_jid;
@@ -398,7 +415,7 @@ local function check_stanza(e, session)
 		if apply then
 			if block then
 				module:log("debug", "stanza blocked: %s, to: %s, from: %s", tostring(stanza.name), tostring(to), tostring(from));
-				if stanza.name == "message" and stanza.attr.type ~= "groupchat" then
+				if stanza.name == "message" and stanza.attr.type ~= "groupchat" and stanza.attr.type ~= "error" then
 					local reply = st.error_reply(stanza, "cancel", "not-acceptable");
 					reply:child_with_name("error"):tag("blocked", { xmlns = blocking_xmlns..":errors" }):up();
 					origin.send(reply);
@@ -453,6 +470,7 @@ local function stanza_check_outgoing(e)
 end
 
 local _M = {};
+_M.store_load = store_load;
 _M.priv_decline_list = priv_decline_list;
 _M.priv_activate_list = priv_activate_list;
 _M.priv_delete_list = priv_delete_list;

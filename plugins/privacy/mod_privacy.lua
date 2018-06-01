@@ -14,12 +14,15 @@ if hosts[module.host].anonymous_host then
 end
 
 local st = require "util.stanza";
-local datamanager = require "util.datamanager";
+local store_save = require "util.datamanager".store;
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
-local jid_bare, jid_section = require "util.jid".bare, require "util.jid".section;
+local jid_bare, jid_join, jid_section = require "util.jid".bare, require "util.jid".join, require "util.jid".section;
 local ipairs, pairs, tonumber, t_insert, t_sort = ipairs, pairs, tonumber, table.insert, table.sort;
 
 local lib = module:require("privacy");
+
+-- Storage functions
+local store_load = lib.store_load;
 
 -- Privacy List functions
 local priv_decline_list, priv_activate_list, priv_delete_list, priv_create_list, priv_get_list =
@@ -45,7 +48,7 @@ module:hook("iq/self/"..privacy_xmlns..":query", function(data)
 	
 	local query = stanza.tags[1]; -- the query element
 	local valid = false;
-	local privacy_lists = datamanager.load(origin.username, origin.host, "privacy") or { lists = {} };
+	local privacy_lists = store_load(origin.username);
 
 	if stanza.attr.type == "set" then
 		if #query.tags == 1 then --  the <query/> element MUST NOT include more than one child element
@@ -91,7 +94,7 @@ module:hook("iq/self/"..privacy_xmlns..":query", function(data)
 		end
 		origin.send(st.error_reply(stanza, valid[1], valid[2], valid[3]));
 	else
-		datamanager.store(origin.username, origin.host, "privacy", privacy_lists);
+		store_save(origin.username, origin.host, "privacy", privacy_lists);
 	end
 
 	return true;
@@ -99,7 +102,7 @@ end);
 
 module:hook("iq-set/self/"..blocking_xmlns..":block", function(data)
 	local origin, stanza = data.origin, data.stanza;
-	local privacy_lists = datamanager.load(origin.username, origin.host, "privacy") or { lists = {} };
+	local privacy_lists = store_load(origin.username);
 
 	local block = stanza.tags[1];
 	if #block.tags > 0 then
@@ -121,13 +124,13 @@ module:hook("iq-set/self/"..blocking_xmlns..":block", function(data)
 		origin.send(st.error_reply(stanza, "modify", "bad-request", "You need to specify at least one item to add."));
 	end
 	
-	datamanager.store(origin.username, origin.host, "privacy", privacy_lists);
+	store_save(origin.username, origin.host, "privacy", privacy_lists);
 	return true;
 end);
 
 module:hook("iq-set/self/"..blocking_xmlns..":unblock", function(data)
 	local origin, stanza = data.origin, data.stanza;
-	local privacy_lists = datamanager.load(origin.username, origin.host, "privacy");
+	local privacy_lists = store_load(origin.username);
 	
 	if not privacy_lists or not privacy_lists.lists.simple then
 		origin.send(st.error_reply(stanza, "cancel", "item-not-found", "Blocking list is empty."));
@@ -158,14 +161,14 @@ module:hook("iq-set/self/"..blocking_xmlns..":unblock", function(data)
 		simple_push_entries(self_bare, self_resource, "unblock");
 	end
 	
-	datamanager.store(origin.username, origin.host, "privacy", privacy_lists);
+	store_save(origin.username, origin.host, "privacy", privacy_lists);
 	origin.send(st.reply(stanza));
 	return true;
 end);
 
 module:hook("iq-get/self/"..blocking_xmlns..":blocklist", function(data)
 	local origin, stanza = data.origin, data.stanza;
-	local privacy_lists = datamanager.load(origin.username, origin.host, "privacy");
+	local privacy_lists = store_load(origin.username);
 	local simple = privacy_lists and privacy_lists.lists.simple;
 	
 	if simple then
@@ -179,7 +182,7 @@ module:hook("iq-get/self/"..blocking_xmlns..":blocklist", function(data)
 		origin.send(st.reply(stanza):tag("blocklist", { xmlns = blocking_xmlns }));
 	end
 	
-	datamanager.store(origin.username, origin.host, "privacy", privacy_lists);
+	store_save(origin.username, origin.host, "privacy", privacy_lists);
 	return true;
 end);
 
@@ -202,3 +205,7 @@ module:hook("iq/host", check_incoming, 500);
 module:hook("presence/full", check_incoming, 500);
 module:hook("presence/bare", check_incoming, 500);
 module:hook("presence/host", check_incoming, 500);
+
+module.unload = function()
+	for jid, session in pairs(bare_sessions) do session.privacy_lists = nil; end
+end
