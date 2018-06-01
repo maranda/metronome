@@ -41,7 +41,6 @@ if metronome.serialization == "json" then
 	end
 end
 
-
 local raw_mkdir = lfs.mkdir;
 local function fallocate(f, offset, len)
 	-- This assumes that current position == offset
@@ -160,7 +159,6 @@ function load(username, host, datastore)
 	if not data then
 		local mode = lfs.attributes(getpath(username, host, datastore), "mode");
 		if not mode then
-			log("debug", "Assuming empty %s storage ('%s') for user: %s@%s", datastore, ret or "File not found", username or "nil", host or "nil");
 			return nil;
 		else -- file exists, but can't be read
 			log("error", "Failed to load %s storage ('%s') for user: %s@%s", datastore, ret or "File can't be read", username or "nil", host or "nil");
@@ -302,10 +300,8 @@ function list_load(username, host, datastore)
 	if not data then
 		local mode = lfs.attributes(getpath(username, host, datastore, "list"), "mode");
 		if not mode then
-			log("debug", "Assuming empty %s storage ('%s') for user: %s@%s", datastore, ret, username or "nil", host or "nil");
 			return nil;
 		else -- file exists, but can't be read
-			-- TODO more detailed error checking and logging?
 			log("error", "Failed to load %s storage ('%s') for user: %s@%s", datastore, ret, username or "nil", host or "nil");
 			return nil, "Error reading storage";
 		end
