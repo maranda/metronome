@@ -25,6 +25,8 @@ local join, split = require "util.jid".join, require "util.jid".split;
 local gc, ipairs, pairs, open, os_remove, os_time, s_upper, t_concat, t_insert, tostring =
 	collectgarbage, ipairs, pairs, io.open, os.remove, os.time, string.upper, table.concat, table.insert, tostring;
 
+local hosts = hosts;
+
 local function join_path(...)
 	return table.concat({ ... }, package.config:sub(1,1));
 end
@@ -422,6 +424,10 @@ local function serve_uploaded_files(event, path, head)
 	local response = event.response;
 	local request = event.request;
 	response.on_destroy = function() gc(); end
+
+	for name, host in pairs(hosts) do
+		if host.type == "local" then expire_host(name); end
+	end
 
 	local full_path = join_path(storage_path, path);
 	local cached = cache[full_path];
