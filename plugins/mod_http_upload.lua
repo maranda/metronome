@@ -205,7 +205,7 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 	local username, host = origin.username, origin.host;
 	local last_uploaded_sum = throttle[join(username, host)];
 	-- local clients only
-	if origin.type ~= "c2s" then
+	if origin.type ~= "c2s" or origin.is_anonymous then
 		module:log("debug", "Request for upload slot from a %s", origin.type);
 		return nil, st.error_reply(stanza, "cancel", "not-authorized");
 	end
@@ -426,7 +426,7 @@ local function serve_uploaded_files(event, path, head)
 	response.on_destroy = function() gc(); end
 
 	for name, host in pairs(hosts) do
-		if host.type == "local" then expire_host(name); end
+		if host.type == "local" and not host.anonymous_host then expire_host(name); end
 	end
 
 	local full_path = join_path(storage_path, path);
