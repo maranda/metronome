@@ -133,7 +133,7 @@ local function priv_delete_list(privacy_lists, origin, stanza, name)
 		return true;
 	end
 
-	return { "modify", "bad-request", "Not existing list specifed to be deleted." };
+	return { "modify", "bad-request", "Not existing list specified to be deleted." };
 end
 
 local function priv_create_list(privacy_lists, origin, stanza, name, entries)
