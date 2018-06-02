@@ -30,7 +30,7 @@ local additional_fields = module:get_option("additional_registration_fields", {}
 local min_pass_len = module:get_option_number("register_min_pass_length", 8);
 local max_pass_len = module:get_option_number("register_max_pass_length", 30);
 local require_verification = module:get_option_boolean("register_require_verification", false);
-local register_tos = module:get_option_string("register_tos", "By registering you implicitly accept our terms of service");
+local register_tos = module:get_option_string("register_tos", "By registering you implicitly accept our terms of service.");
 
 local field_map = {
 	username = { name = "username", type = "text-single", label = "Username", required = true };
@@ -110,7 +110,7 @@ local function validate_password(stanza, session, password)
 		session.send(st.error_reply(stanza, "modify", "policy-violation",
 			"Passwords must contain at least one digit or one special character, one uppercase letter " ..
 			"and must be at least " .. tostring(min_pass_len) .. " chars in length and not exceed " ..
-			tostring(max_pass_len) .. " chars."
+			tostring(max_pass_len) .. " chars"
 		));
 		return false;
 	end
@@ -259,7 +259,7 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 				else
 					-- Check that the user is not blacklisted or registering too often
 					if match_ip(session.ip) or (whitelist_only and not match_ip(session.ip, true)) then
-						session.send(st.error_reply(stanza, "cancel", "not-acceptable", "You are not allowed to register an account."));
+						session.send(st.error_reply(stanza, "cancel", "not-acceptable", "You are not allowed to register an account"));
 						return true;
 					elseif min_seconds_between_registrations and not match_ip(session.ip, true) then
 						if not recent_ips[session.ip] then
@@ -280,13 +280,13 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 					data.username, data.password = nil, nil;
 					local host = module.host;
 					if not username or username == "" then
-						session.send(st.error_reply(stanza, "modify", "not-acceptable", "The requested username is invalid."));
+						session.send(st.error_reply(stanza, "modify", "not-acceptable", "The requested username is invalid"));
 					elseif usermanager_user_exists(username, host) then
-						session.send(st.error_reply(stanza, "cancel", "conflict", "The requested username already exists."));
+						session.send(st.error_reply(stanza, "cancel", "conflict", "The requested username already exists"));
 					else
 						if not validate_password(stanza, session, password) then return true; end
 
-						local error_reply = st.error_reply(stanza, "wait", "internal-server-error", "Failed to write data to disk.");
+						local error_reply = st.error_reply(stanza, "wait", "internal-server-error", "Failed to write data to disk");
 						if usermanager_create_user(username, password, host, require_verification and true) then
 							if next(data) and not datamanager.store(username, host, "account_details", data) then
 								usermanager_delete_user(username, host, "mod_register");

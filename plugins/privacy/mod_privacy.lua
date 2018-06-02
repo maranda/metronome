@@ -112,7 +112,7 @@ module:hook("iq-set/self/"..blocking_xmlns..":block", function(data)
 		simple_create_list(privacy_lists);
 		local entries = simple_process_entries(block);
 		if not entries then
-			origin.send(st.error_reply(stanza, "modify", "bad-request", "Item stanza is not well formed."));
+			origin.send(st.error_reply(stanza, "modify", "bad-request", "Item stanza is not well formed"));
 			return true;
 		end
 		
@@ -121,7 +121,7 @@ module:hook("iq-set/self/"..blocking_xmlns..":block", function(data)
 		
 		origin.send(st.reply(stanza));
 	else
-		origin.send(st.error_reply(stanza, "modify", "bad-request", "You need to specify at least one item to add."));
+		origin.send(st.error_reply(stanza, "modify", "bad-request", "You need to specify at least one item to add"));
 	end
 	
 	store_save(origin.username, origin.host, "privacy", privacy_lists);
@@ -133,7 +133,7 @@ module:hook("iq-set/self/"..blocking_xmlns..":unblock", function(data)
 	local privacy_lists = store_load(origin.username);
 	
 	if not privacy_lists or not privacy_lists.lists.simple then
-		origin.send(st.error_reply(stanza, "cancel", "item-not-found", "Blocking list is empty."));
+		origin.send(st.error_reply(stanza, "cancel", "item-not-found", "Blocking list is empty"));
 		return true;
 	end
 	
@@ -144,7 +144,7 @@ module:hook("iq-set/self/"..blocking_xmlns..":unblock", function(data)
 	
 		local entries = simple_process_entries(unblock);
 		if not entries then
-			origin.send(st.error_reply(stanza, "modify", "bad-request", "Item stanza is not well formed."));
+			origin.send(st.error_reply(stanza, "modify", "bad-request", "Item stanza is not well formed"));
 			return true;
 		end
 		

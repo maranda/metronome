@@ -91,18 +91,18 @@ local function subscribe_command_handler(self, data, state)
 		
 		local peer = fields.peerjid;
 		if not peer or peer == "" then 
-			return { status = "completed", error = { message = "You need to supply the server QDN." } };
+			return { status = "completed", error = { message = "You need to supply the server QDN" } };
 		else
 			if peer == my_host then
 				return { status = "completed", error = { message = "I can't subscribe to myself!!! *rolls eyes*" } };
 			elseif subscribed[peer] then
-				return { status = "completed", error = { message = "I'm already subscribed to this entity." } };
+				return { status = "completed", error = { message = "I'm already subscribed to this entity" } };
 			end
 			local subscribe = st.presence({ to = peer, from = my_host, type = "subscribe" });
 			outbound[peer] = true;
 			module:send(subscribe);
 			datamanager.store("outbound", my_host, "server_presence", outbound);
-			return { status = "completed", info = "Subscription request sent." };
+			return { status = "completed", info = "Subscription request sent" };
 		end
 	else
 		return { status = "executing", form = layout }, "executing"
@@ -159,7 +159,7 @@ local function remove_command_handler(self, data, state)
 		end
 
 		if _changed then datamanager.store("subscribed", my_host, "server_presence", subscribed); end
-		return { status = "completed", info = "Done." };
+		return { status = "completed", info = "Done" };
 	else
 		return { status = "executing", form = layout }, "executing"
 	end

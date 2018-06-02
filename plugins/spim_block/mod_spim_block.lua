@@ -59,7 +59,7 @@ local function generate_secret(bytes)
 	if secret then
 		return secret;
 	else
-		module:log("warn", "Failed to generate secret for SPIM token, the stanza will be allowed through.");
+		module:log("warn", "Failed to generate secret for SPIM token, the stanza will be allowed through");
 		return nil;
 	end
 end

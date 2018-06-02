@@ -133,7 +133,7 @@ module:hook("muc-fields-process", function(room, fields, stanza, changed)
 	room:set_option("limits_enabled", enabled, changed);
 	if enabled then
 		if not tonumber(stanzas) or not tonumber(seconds) then
-			return st.error_reply(stanza, "cancel", "forbidden", "You need to submit valid number values for muc_limits fields.");
+			return st.error_reply(stanza, "cancel", "forbidden", "You need to submit valid number values for muc_limits fields");
 		end
 		stanzas, seconds = math.max(tonumber(stanzas), 1), math.max(tonumber(seconds), 0);
 		room:set_option("limits_stanzas", stanzas, changed);

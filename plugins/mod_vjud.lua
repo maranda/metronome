@@ -75,7 +75,7 @@ local function search_process_handler(event)
 	if not form then origin.send(st.error_reply(stanza, "cancel", "service-unavailable")) return end
 
 	if form.attr.type == "cancel" then origin.send(st.reply(stanza)) ; return end
-	if form.attr.type ~= "submit" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "You need to submit the search form.")) ; return end
+	if form.attr.type ~= "submit" then origin.send(st.error_reply(stanza, "cancel", "bad-request", "You need to submit the search form")) ; return end
 
 	local fields = search_form_layout():data(form)
 	if fields.FORM_TYPE ~= "jabber:iq:search" then 
@@ -198,7 +198,7 @@ local function optin_command_handler(self, data, state)
 		local fields = optin_layout:data(data.form)
 		if restrict_to_hosts then
 			local node, host = jid_split(data.from)
-			if not restrict_to_hosts:contains(host) then return { status = completed, error = { message = "Signup to this directory is restricted." } } end
+			if not restrict_to_hosts:contains(host) then return { status = completed, error = { message = "Signup to this directory is restricted" } } end
 		end
 		if not fields.nickname and not fields.realname and not fields.country and not fields.email then
 			return { status = "completed", error = { message = "You need to fill at least one field." } }
@@ -210,10 +210,10 @@ local function optin_command_handler(self, data, state)
 				if datamanager.store("store", my_host, "directory", directory) then
 					return { status = "completed", info = "Success." }
 				else
-					return { status = "completed", error = { message = "Adding was successful but I failed to write to the directory store, please report to the admin." } }
+					return { status = "completed", error = { message = "Adding was successful but I failed to write to the directory store, please report to the admin" } }
 				end
 			else
-				return { status = "completed", error = { message = "You have already opted in, please opt out first, if you want to change your data." } }
+				return { status = "completed", error = { message = "You have already opted in, please opt out first, if you want to change your data" } }
 			end
 		end
 	else
@@ -226,7 +226,7 @@ local function optin_vcard_command_handler(self, data, state)
 	local jid = jid_bare(data.from)
 
 	if host ~= synchronize_to_host or not hosts[synchronize_to_host] then
-		return { status = completed, error = { message = "You can't signup to this directory sorry." } }
+		return { status = completed, error = { message = "You can't signup to this directory sorry" } }
 	end
 
 	local vcard = metronome.events.fire_event("vcard-synchronize", { node = node, host = host })
@@ -239,7 +239,7 @@ local function optin_vcard_command_handler(self, data, state)
 	if datamanager.store("store", my_host, "directory", directory) then
 		return { status = "completed", info = "Success." }
 	else
-		return { status = "completed", error = { message = "Adding was successful but I failed to write to the directory store, please report to the admin." } }
+		return { status = "completed", error = { message = "Adding was successful but I failed to write to the directory store, please report to the admin" } }
 	end
 end
 
@@ -249,7 +249,7 @@ local function optout_command_handler(self, data, state)
 		if datamanager.store("store", my_host, "directory", directory) then
 			return { status = "completed", info = "You have been removed from the user directory." }
 		else
-			return { status = "completed", error = { message = "Removal was successful but I failed to write to the directory store, please report to the admin." } }
+			return { status = "completed", error = { message = "Removal was successful but I failed to write to the directory store, please report to the admin" } }
 		end		
 	else
 		return { status = "completed", error = { message = "You need to optin first!" } }
