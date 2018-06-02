@@ -18,6 +18,7 @@ local fire_event = metronome.events.fire_event;
 local st = require "util.stanza";
 local logger = require "util.logger";
 local log = logger.init("mod_bosh");
+local nameprep = require "util.encodings".stringprep.nameprep;
 local math_min = math.min;
 
 local initialize_filters = require "util.filters".initialize;
@@ -233,12 +234,13 @@ function stream_callbacks.streamopened(context, attr)
 	if not sid then
 		context.notopen = nil; -- Signals that we accept this opening tag
 		
-		if not hosts[attr.to] then
+		local normalized_to, rid, wait = nameprep(attr.to), tonumber(attr.rid), tonumber(attr.wait);
+		if not hosts[normalized_to] then
 			log("debug", "BOSH client tried to connect to unknown host: %s", tostring(attr.to));
 			response:send(tostring(st.stanza("body", { xmlns = xmlns_bosh, type = "terminate",
 				["xmlns:stream"] = xmlns_streams, condition = "host-unknown" })));
 			return false;
-		elseif hosts[attr.to].type == "component" then
+		elseif hosts[normalized_to].type == "component" then
 			log("debug", "BOSH client tried to connect to a component host: %s", tostring(attr.to));
 			local reply = st.stanza("body", { xmlns = xmlns_bosh, type = "terminate",
 				["xmlns:stream"] = xmlns_streams, condition = "remote-stream-error" })
@@ -248,11 +250,17 @@ function stream_callbacks.streamopened(context, attr)
 			response:send(tostring(reply));
 			return false;
 		end
+		if not rid or (not wait and attr.wait or wait < 0) then
+			log("debug", "BOSH client sent invalid rid or wait attributes: rid - %s, wait - %s", tostring(attr.rid), tostring(attr.wait));
+			response:send(tostring(st.stanza("body", { xmlns = xmlns_bosh, type = "terminate",
+				["xmlns:stream"] = xmlns_streams, condition = "bad-request" })));
+			return false;			
+		end
 		
 		sid = new_uuid();
 		local session = {
-			type = "c2s_unauthed", conn = {}, sid = sid, rid = tonumber(attr.rid)-1, host = attr.to,
-			bosh_version = attr.ver, bosh_wait = math_min(attr.wait, BOSH_MAX_WAIT), streamid = sid,
+			type = "c2s_unauthed", conn = {}, sid = sid, rid = rid-1, host = normalized_to,
+			bosh_version = attr.ver, bosh_wait = math_min(wait, BOSH_MAX_WAIT), streamid = sid,
 			bosh_hold = BOSH_DEFAULT_HOLD, bosh_max_inactive = BOSH_DEFAULT_INACTIVITY, requests = {},
 			send_buffer = {}, reset_stream = bosh_reset_stream, close = bosh_close_stream,
 			dispatch_stanza = stream_callbacks.handlestanza, notopen = true, log = logger.init("bosh"..sid),
