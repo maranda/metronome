@@ -24,28 +24,28 @@ function new_default_provider(host)
 	local provider = { name = "anonymous" };
 
 	function provider.test_password(username, password)
-		return nil, "Password based auth not supported.";
+		return nil, "Password based auth not supported";
 	end
 
 	function provider.get_password(username)
-		return nil, "Password not available.";
+		return nil, "Password not available";
 	end
 
 	function provider.set_password(username, password)
-		return nil, "Password based auth not supported.";
+		return nil, "Password based auth not supported";
 	end
 
 	function provider.user_exists(username)
 		local user_session = my_host.sessions[username];
 		if not user_session then 
-			return nil, "No anonymous user connected with that username."; 
+			return nil, "No anonymous user connected with that username"; 
 		end
 
 		return true;
 	end
 
 	function provider.create_user(username, password)
-		return nil, "Account creation/modification not supported.";
+		return nil, "Account creation/modification not supported";
 	end
 
 	function provider.get_sasl_handler(session)
@@ -60,7 +60,7 @@ function new_default_provider(host)
 				end
 
 				if not test_mode and not multi_resourcing and my_host.sessions[username] then
-					return nil, "not-authorized", "You're allowed to have only one anonymous session at any given time, good bye.";
+					return nil, "not-authorized", "You're allowed to have only one anonymous session at any given time, good bye";
 				end
 
 				session.is_anonymous = true;

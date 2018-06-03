@@ -29,7 +29,7 @@ function new_default_provider(host)
 		if password == credentials.password then
 			return true;
 		else
-			return nil, "Auth failed. Invalid username or password.";
+			return nil, "Auth failed, invalid username or password";
 		end
 	end
 
@@ -44,14 +44,14 @@ function new_default_provider(host)
 			account.password = password;
 			return datamanager.store(username, host, "accounts", account);
 		end
-		return nil, "Account not available.";
+		return nil, "Account not available";
 	end
 
 	function provider.user_exists(username)
 		local account = datamanager.load(username, host, "accounts");
 		if not account then
 			log("debug", "account not found for username '%s' at host '%s'", username, module.host);
-			return nil, "Auth failed. Invalid username";
+			return nil, "Auth failed, invalid username";
 		end
 		return true;
 	end
@@ -59,7 +59,7 @@ function new_default_provider(host)
 	function provider.is_locked(username)
 		local account = datamanager.load(username, host, "accounts");
 		if not account then
-			return nil, "Auth failed. Invalid username";
+			return nil, "Auth failed, invalid username";
 		elseif account and account.locked then
 			return true;
 		end
@@ -69,7 +69,7 @@ function new_default_provider(host)
 	function provider.unlock_user(username)
 		local account = datamanager.load(username, host, "accounts");
 		if not account then
-			return nil, "Auth failed. Invalid username";
+			return nil, "Auth failed, invalid username";
 		elseif account and account.locked then
 			account.locked = nil;
 			local bare_session = bare_sessions[username.."@"..host];

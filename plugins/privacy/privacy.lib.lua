@@ -66,11 +66,11 @@ end
 local function priv_decline_list(privacy_lists, origin, stanza, which)
 	if which == "default" then
 		if privacy_lists.default == "simple" then
-			return { "cancel", "forbidden", "Can't decline current default list via privacy lists." };
+			return { "cancel", "forbidden", "Can't decline current default list via privacy lists" };
 		end
 		
 		if priv_is_defaultlist_used(origin) then
-			return { "cancel", "conflict", "Another session is online and using the default list." };
+			return { "cancel", "conflict", "Another session is online and using the default list" };
 		end
 		privacy_lists.default = nil;
 		origin.send(st.reply(stanza));
@@ -78,7 +78,7 @@ local function priv_decline_list(privacy_lists, origin, stanza, which)
 		origin.active_privacylist = nil;
 		origin.send(st.reply(stanza));
 	else
-		return { "modify", "bad-request", "Neither default nor active list specified to decline." };
+		return { "modify", "bad-request", "Neither default nor active list specified to decline" };
 	end
 	return true;
 end
@@ -88,11 +88,11 @@ local function priv_activate_list(privacy_lists, origin, stanza, which, name)
 
 	if which == "default" and list then
 		if privacy_lists.default == "simple" then
-			return { "cancel", "forbidden", "Can't change current default list via privacy lists." };
+			return { "cancel", "forbidden", "Can't change current default list via privacy lists" };
 		end
 	
 		if priv_is_defaultlist_used(origin) then
-			return { "cancel", "conflict", "Another session is online and using the default list." };
+			return { "cancel", "conflict", "Another session is online and using the default list" };
 		end
 		privacy_lists.default = name;
 
@@ -104,7 +104,7 @@ local function priv_activate_list(privacy_lists, origin, stanza, which, name)
 	elseif not list then
 		return { "cancel", "item-not-found", "No such list: "..name };
 	else
-		return { "modify", "bad-request", "No list chosen to be active or default." };
+		return { "modify", "bad-request", "No list chosen to be active or default" };
 	end
 
 	return true;
@@ -115,11 +115,11 @@ local function priv_delete_list(privacy_lists, origin, stanza, name)
 
 	if list then
 		if name == "simple" then
-			return { "modify", "policy-violation", "This list cannot be deleted via privacy lists." };
+			return { "modify", "policy-violation", "This list cannot be deleted via privacy lists" };
 		end
 
 		if priv_is_list_used(origin, name, privacy_lists) then
-			return { "cancel", "conflict", "Another session is online and using the list which should be deleted." };
+			return { "cancel", "conflict", "Another session is online and using the list which should be deleted" };
 		end
 		if privacy_lists.default == name then
 			privacy_lists.default = nil;
@@ -133,12 +133,12 @@ local function priv_delete_list(privacy_lists, origin, stanza, name)
 		return true;
 	end
 
-	return { "modify", "bad-request", "Not existing list specifed to be deleted." };
+	return { "modify", "bad-request", "Not existing list specified to be deleted" };
 end
 
 local function priv_create_list(privacy_lists, origin, stanza, name, entries)
 	if name == "simple" then
-		return { "modify", "policy-violation", "This list name is reserved and can't be created via privacy lists." };
+		return { "modify", "policy-violation", "This list name is reserved and can't be created via privacy lists" };
 	end
 
 	local bare_jid = origin.username.."@"..origin.host;
@@ -156,12 +156,12 @@ local function priv_create_list(privacy_lists, origin, stanza, name, entries)
 
 	for _, item in ipairs(entries) do
 		if tonumber(item.attr.order) == nil or tonumber(item.attr.order) < 0 or order_check[item.attr.order] then
-			return { "modify", "bad-request", "Order attribute not valid." };
+			return { "modify", "bad-request", "Order attribute not valid" };
 		end
 		
 		if item.attr.type ~= "jid" and item.attr.type ~= "subscription" and
 		   item.attr.type ~= "group" and item.attr.type ~= nil then
-			return { "modify", "bad-request", "Type attribute not valid." };
+			return { "modify", "bad-request", "Type attribute not valid" };
 		end
 		
 		local tmp = {};
@@ -187,12 +187,12 @@ local function priv_create_list(privacy_lists, origin, stanza, name, entries)
 				tmp.value ~= "to" and
 				tmp.value ~= "from" and
 				tmp.value ~= "none" then
-				return { "cancel", "bad-request", "Subscription value must be both, to, from or none." };
+				return { "cancel", "bad-request", "Subscription value must be both, to, from or none" };
 			end
 		end
 		
 		if tmp.action ~= "deny" and tmp.action ~= "allow" then
-			return { "cancel", "bad-request", "Action must be either deny or allow." };
+			return { "cancel", "bad-request", "Action must be either deny or allow" };
 		end
 		list.items[#list.items + 1] = tmp;
 	end
@@ -210,7 +210,7 @@ local function priv_create_list(privacy_lists, origin, stanza, name, entries)
 			session.send(iq);
 		end
 	else
-		return { "cancel", "bad-request", "internal error." };
+		return { "cancel", "bad-request", "Internal error" };
 	end
 
 	return true;
@@ -245,7 +245,7 @@ local function priv_get_list(privacy_lists, origin, stanza, name)
 				reply:up();
 			end
 		else
-			return {"cancel", "item-not-found", "Unknown list specified."};
+			return {"cancel", "item-not-found", "Unknown list specified"};
 		end
 	end
 	

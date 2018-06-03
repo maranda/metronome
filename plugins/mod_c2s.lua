@@ -40,13 +40,21 @@ local stream_xmlns_attr = {xmlns = "urn:ietf:params:xml:ns:xmpp-streams"};
 local default_stream_attr = { ["xmlns:stream"] = "http://etherx.jabber.org/streams", xmlns = stream_callbacks.default_ns, version = "1.0", id = "" };
 
 function stream_callbacks.streamopened(session, attr)
-	local send = session.send;
-	session.host = nameprep(attr.to);
-	if not session.host then
+	local send, host = session.send, nameprep(attr.to);
+
+	if not host then
 		session:close{ condition = "improper-addressing",
 			text = "A valid 'to' attribute is required on stream headers" };
+		return;		
+	end
+	if host and not session.host then
+		session.host = host;
+	elseif host ~= session.host then
+		session:close{ condition = "not-allowed",
+			text = "The 'to' attribute changed across the stream restart" };
 		return;
 	end
+
 	local session_host = hosts[session.host];
 	session.version = tonumber(attr.version) or 0;
 	session.streamid = uuid_generate();

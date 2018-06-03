@@ -66,7 +66,7 @@ local function rr_hook(event)
 		end
 		module:log("info", "%s attempted to connect to a blocked remote host %s", stanza.attr.from or event.origin.full_jid, to_host);
 		if stanza.attr.type ~= "error" then
-			send(error_reply(event.stanza, "cancel", "policy-violation", "Communicating with a blocked remote server is not allowed."));
+			send(error_reply(event.stanza, "cancel", "policy-violation", "Communicating with a blocked remote server is not allowed"));
 		end
 		return true;
 	end
@@ -99,7 +99,7 @@ function module.add_host(module)
 	module:set_component_inheritable();
 
 	local host = module.host;
-	if not host.anonymous then
+	if not host.anonymous_host then
 		module:hook("route/remote", rr_hook, 500);
 		module:hook("stanza/jabber:server:dialback:result", function(event)
 			return filter(event.origin, event.stanza.attr.from, event.stanza.attr.to);

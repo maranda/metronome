@@ -240,7 +240,7 @@ local function list_incidents_command_handler(self, data, state)
 				local single_incident_layout = ih_lib.render_single(incidents[fields.ids])
 				return { status = "executing", actions = { "prev", "complete", default = "complete" }, form = single_incident_layout }, { step = 1, form_layout = single_incident_layout, id = fields.ids }
 			else
-				return { status = "completed", error = { message = "You need to select the report ID to continue." } }
+				return { status = "completed", error = { message = "You need to select the report ID to continue" } }
 			end
 		end
 	else
@@ -264,7 +264,7 @@ local function send_inquiry_command_handler(self, data, state)
 		local fields = send_inquiry_layout:data(data.form)
 
 		if not fields.hostname or not fields.id or not fields.server then
-			return { status = "completed", error = { message = "You must supply the server to quest, the involved incident host and the incident ID." } }
+			return { status = "completed", error = { message = "You must supply the server to quest, the involved incident host and the incident ID" } }
 		else
 			local iq_send = st.iq({ from = my_host, to = fields.server, type = "get" })
 						:tag("inquiry", { xmlns = xmlns_inc })
@@ -273,7 +273,7 @@ local function send_inquiry_command_handler(self, data, state)
 
 			module:log("debug", "Sending incident inquiry to %s", fields.server)
 			module:send(iq_send)
-			return { status = "completed", info = "Inquiry sent, if an answer can be obtained from the remote server it'll be listed between incidents." }
+			return { status = "completed", info = "Inquiry sent, if an answer can be obtained from the remote server it'll be listed between incidents" }
 		end
 	else
 		return { status = "executing", form = send_inquiry_layout }, "executing"
@@ -282,7 +282,7 @@ end
 
 local function rr_command_handler(self, data, state, formtype)
 	local send_layout = ih_lib.get_incident_layout(formtype)
-	local err_no_fields = { status = "completed", error = { message = "You need to fill all fields, except the eventual related incident." } }
+	local err_no_fields = { status = "completed", error = { message = "You need to fill all fields, except the eventual related incident" } }
 	local err_proc = { status = "completed", error = { message = "There was an error processing your request, check out the syntax" } }
 
 	if state then
