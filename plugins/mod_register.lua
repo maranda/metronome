@@ -17,7 +17,7 @@ local usermanager_user_exists = require "core.usermanager".user_exists;
 local usermanager_create_user = require "core.usermanager".create_user;
 local usermanager_set_password = require "core.usermanager".set_password;
 local usermanager_delete_user = require "core.usermanager".delete_user;
-local os_time, t_insert, t_remove, tostring = os.time, table.insert, table.remove, tostring;
+local os_time, t_concat, t_insert, t_remove, tostring = os.time, table.concat, table.insert, table.remove, tostring;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local jid_bare = require "util.jid".bare;
 local new_ip = require "util.ip".new_ip;
@@ -197,13 +197,11 @@ local function parse_response(query)
 			if field_map[name] then
 				data[name] = query:get_child_text(name);
 				if (not data[name] or #data[name] == 0) and required then
-					errors[name] = "Required value missing";
+					t_insert(errors, name);
 				end
 			end
 		end
-		if next(errors) then
-			return data, errors;
-		end
+		if #errors ~= 0 then return data, errors; end
 		return data;
 	end
 end
@@ -255,7 +253,8 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 			else
 				local data, errors = parse_response(query);
 				if errors then
-					session.send(st.error_reply(stanza, "modify", "not-acceptable"));
+					session.send(st.error_reply(stanza, "modify", "not-acceptable", 
+						"Required value/s missing: "..t_concat(errors, ", ")));
 				else
 					-- Check that the user is not blacklisted or registering too often
 					if match_ip(session.ip) or (whitelist_only and not match_ip(session.ip, true)) then
