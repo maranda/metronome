@@ -515,6 +515,8 @@ local function handle_user_registration(event)
 	if do_mail_verification and mail and hashes:add(user, mail) then
 		local id_token = generate_secret(20);
 		if not id_token or not check_mail(mail) then
+			module:log("warn", "%s, invalidating %s registration and deleting account",
+				not id_token and "Failed to generate token" or "Supplied mail address is bogus or forbidden", user);
 			hashes:remove(user);
 			usermanager.delete_user(user, hostname, "mod_register_api");
 			return;
