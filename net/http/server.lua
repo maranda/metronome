@@ -260,7 +260,7 @@ function _M.send_response(response, body)
 		response:on_destroy();
 		response.on_destroy = nil;
 	end
-	if keep_alive then
+	if response.keep_alive then
 		response:finish_cb();
 	else
 		response.conn:close();
