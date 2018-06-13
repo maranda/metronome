@@ -12,6 +12,7 @@ local ssl = require "ssl";
 local b64 = require "util.encodings".base64.encode;
 local url = require "socket.url";
 local httpstream_new = require "util.httpstream".new;
+local metronome = metronome;
 
 local luasec_version = ssl and ssl._VERSION:match("^%d+%.(%d+)") or nil;
 luasec_version = luasec_version and tonumber(luasec_version);
@@ -154,7 +155,7 @@ function request(u, ex, callback)
 	
 	headers = {
 		["Host"] = req.host;
-		["User-Agent"] = "Metronome/3.9 (net.http; https://metronome.im)";
+		["User-Agent"] = "Metronome/"..metronome.version.." (net.http; https://metronome.im)";
 	};
 	
 	if req.userinfo then

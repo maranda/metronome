@@ -20,6 +20,7 @@ local xpcall = xpcall;
 local debug = debug;
 local tostring = tostring;
 local codes = require "net.http.codes";
+local metronome = metronome;
 
 local _M = {};
 
@@ -129,8 +130,6 @@ function listener.onconnect(conn)
 	end
 	local function error_cb(err)
 		log("debug", "error_cb: %s", err or "<nil>");
-		-- FIXME don't close immediately, wait until we process current stuff
-		-- FIXME if err, send off a bad-request response
 		sessions[conn] = nil;
 		conn:close();
 	end
@@ -175,7 +174,7 @@ function handle_request(conn, request, finish_cb)
 	local response = {
 		request = request;
 		status_code = 200;
-		headers = { server = "Metronome/3.9 (net.http.server; https://metronome.im)", date = date_header };
+		headers = { server = "Metronome/"..metronome.version.." (net.http.server; https://metronome.im)", date = date_header };
 		keep_alive = keep_alive;
 		conn = conn;
 		send = _M.send_response;
@@ -235,24 +234,26 @@ function handle_request(conn, request, finish_cb)
 	response.status_code = 404;
 	response:send(events.fire_event("http-error", { code = 404, response = response }));
 end
+
 function _M.send_response(response, body)
 	if response.finished then return; end
 	response.finished = true;
 	response.conn._http_open_response = nil;
 	
-	local keep_alive = response.keep_alive;
 	local status_line = "HTTP/"..response.request.httpversion.." "..(response.status or codes[response.status_code]);
 	local headers = response.headers;
-	body = body or response.body or "";
-	if not headers["Content-Length"] or not headers.content_length then headers.content_length = #body; end -- do not set if already set
-	if not headers.connection then headers.connection = keep_alive and "Keep-Alive" or "close"; end
+	if body ~= false then
+		body = body or response.body or "";
+		headers.content_length = #body;
+	end
+	if not headers.connection then headers.connection = response.keep_alive and "Keep-Alive" or "close"; end
 
 	local output = { status_line };
 	for k, v in pairs(headers) do
 		t_insert(output, headerfix[k]..v);
 	end
 	t_insert(output, "\r\n\r\n");
-	t_insert(output, body);
+	t_insert(output, body ~= false and body or nil);
 
 	response.conn:write(t_concat(output));
 	if response.on_destroy then
@@ -271,7 +272,6 @@ end
 function _M.remove_handler(event, handler)
 	events.remove_handler(event, handler);
 end
-
 function _M.listen_on(port, interface, ssl)
 	addserver(interface or "*", port, listener, "*a", ssl);
 end
