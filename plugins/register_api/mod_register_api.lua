@@ -130,7 +130,7 @@ local function generate_secret(bytes)
 end
 
 local function check_mail(address)
-	if not address:match("^[%w.+]+@%w+%.%w+$") then return false; end
+	if not address:match("^[%w.+]+@[%w.]+%.%w+$") then return false; end
 	for _, pattern in ipairs(fm_patterns) do 
 		if address:match(pattern) then return false; end
 	end
