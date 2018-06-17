@@ -168,7 +168,7 @@ local function query_handler(event)
 	origin.send(reply);
 
 	module:log("debug", "MAM query %s completed (returned messages: %s)",
-		qid and qid or "", count == 0 and "none" or tostring(count));
+		qid and qid or "without id", count == 0 and "none" or tostring(count));
 	return true;
 end
 

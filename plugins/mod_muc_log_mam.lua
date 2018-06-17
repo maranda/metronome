@@ -162,7 +162,7 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 		origin.send(reply);
 	
 		module:log("debug", "MAM query %s completed (returned messages: %s)",
-			qid and qid or "", count == 0 and "none" or tostring(count));
+			qid and qid or "without id", count == 0 and "none" or tostring(count));
 	else
 		origin.send(st.error_reply(stanza, "cancel", "forbidden", "Room logging needs to be enabled"));
 	end
