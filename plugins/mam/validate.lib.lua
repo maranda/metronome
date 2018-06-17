@@ -69,8 +69,8 @@ local function validate_query(stanza, query, qid)
 		module:log("debug", "Invalid RSM parameters received: After - %s, Before - %s, Max - %s, Index - %s",
 			tostring(after), tostring(before), tostring(max), tostring(index));
 		return false, st.error_reply(stanza, "modify", "bad-request");
-	elseif before == true and not max then -- Assume max is equal to max_results
-		max = max_results;
+	elseif before == true and not max then -- Assume max is equal to safe default
+		max = 50;
 	end
 	
 	if max and max > max_results then max = max_results; end

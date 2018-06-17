@@ -278,7 +278,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 
 		count = max and (type(before) == "string" and entry_index - entries_count) or entries_count - max;
 		query = generate_fin(stanzas, first, last, (count < 0 and 0) or count, index, before == true);
-		return stanzas, query, (count < 0 and 0) or count;
+		return stanzas, query, #stanzas;
 	elseif after then
 		entry_index = get_index(logs, after);
 		if not entry_index then return nil; end
@@ -308,7 +308,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 	
 	count = entries_count - max;
 	query = generate_fin(stanzas, first, last, (count < 0 and 0) or count, index);
-	return stanzas, query, (count < 0 and 0) or count;
+	return stanzas, query, #stanzas;
 end
 
 local function add_to_store(store, user, recipient)
