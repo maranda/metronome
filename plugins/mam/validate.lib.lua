@@ -50,9 +50,6 @@ end
 local function validate_query(stanza, query, qid)
 	local start, fin, with = df_parse(query);
 
-	module:log("debug", "MAM query received, %s with %s from %s until %s",
-		(qid and "id "..tostring(qid)) or "idless,", with or "anyone", start or "epoch", fin or "now");
-
 	-- Validate attributes
 	local vstart, vfin, vwith = (start and dt_parse(start)), (fin and dt_parse(fin)), (with and jid_prep(with));
 	if (start and not vstart) or (fin and not vfin) then
@@ -69,7 +66,7 @@ local function validate_query(stanza, query, qid)
 	-- Get RSM set
 	local after, before, max, index = rsm_parse(stanza, query);
 	if (before and after) or max == "" or after == "" then
-		module:log("debug", "MAM Query RSM parameters were invalid: After - %s, Before - %s, Max - %s, Index - %s",
+		module:log("debug", "Invalid RSM parameters received: After - %s, Before - %s, Max - %s, Index - %s",
 			tostring(after), tostring(before), tostring(max), tostring(index));
 		return false, st.error_reply(stanza, "modify", "bad-request");
 	elseif before == true and not max then -- Assume max is equal to max_results
@@ -83,6 +80,10 @@ local function validate_query(stanza, query, qid)
 	elseif not max then
 		max = 50;
 	end
+
+	module:log("debug", "MAM query received, %s with %s from %s until %s (RSM: After - %s, Before - %s, Max - %s, Index - %s)",
+		(qid and "id "..qid) or "idless,", with or "anyone", start or "epoch", fin or "now",
+		tostring(after), tostring(before), tostring(max), tostring(index));
 
 	return true, { start = start, fin = fin, with = with, max = max, after = after, before = before, index = index };
 end
