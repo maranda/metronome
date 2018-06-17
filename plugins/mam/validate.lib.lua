@@ -75,7 +75,7 @@ local function validate_query(stanza, query, qid)
 	
 	if max and max > max_results then max = max_results; end
 
-	if not start and not fin and not before and not max then -- Assume safe defaults
+	if not start and not fin and not after and not before and not max then -- Assume safe defaults
 		before, max = true, 50;
 	elseif not max then
 		max = 50;
