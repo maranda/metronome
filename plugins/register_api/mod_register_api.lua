@@ -130,6 +130,7 @@ local function generate_secret(bytes)
 end
 
 local function check_mail(address)
+	if not address:match("^[^.]+[%w!#$%%&'*+-/=?^_`{|}~][^..]+@[%w.]+%.%w+$") then return false; end
 	for _, pattern in ipairs(fm_patterns) do 
 		if address:match(pattern) then return false; end
 	end
@@ -246,7 +247,7 @@ local function handle_register(data, event)
 
 	if not check_mail(mail) then
 		module:log("warn", "%s attempted to use an invalid mail address (%s).", ip, mail);
-		return http_error_reply(event, 403, "Requesting to register using this E-Mail address is forbidden, sorry.");
+		return http_error_reply(event, 403, "The supplied E-Mail address is either forbidden or invalid, sorry.");
 	end
 
 	-- We first check if the supplied username for registration is already there.
@@ -513,8 +514,12 @@ local function handle_user_registration(event)
 	local mail = event.source == "mod_register" and data.email and data.email:lower();
 	if do_mail_verification and mail and hashes:add(user, mail) then
 		local id_token = generate_secret(20);
-		if not id_token then
-			hashes:remove(user); return;
+		if not id_token or not check_mail(mail) then
+			module:log("warn", "%s, invalidating %s registration and deleting account",
+				not id_token and "Failed to generate token" or "Supplied mail address is bogus or forbidden", user);
+			hashes:remove(user);
+			usermanager.delete_user(user, hostname, "mod_register_api");
+			return;
 		end
 		
 		if use_nameapi then check_dea(mail, user); end

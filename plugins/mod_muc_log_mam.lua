@@ -144,10 +144,9 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 				ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.index;
 		end
 		
-		local messages, rq = generate_stanzas(archive, start, fin, with, max, after, before, index, qid);
+		local messages, rq, count = generate_stanzas(archive, start, fin, with, max, after, before, index, qid);
 		if not messages then
-			module:log("debug", "%s MAM query RSM parameters were out of bounds: After - %s, Before - %s, Max - %s, Index - %s",
-				to, tostring(after), tostring(before), tostring(max), tostring(index));
+			module:log("debug", "%s MAM query RSM parameters were out of bounds", to);
 			local rsm_error = st.error_reply(stanza, "cancel", "item-not-found");
 			rsm_error:add_child(query);
 			return origin.send(rsm_error);
@@ -162,7 +161,8 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 		end
 		origin.send(reply);
 	
-		module:log("debug", "MAM query %s completed", qid and tostring(qid).." " or "");
+		module:log("debug", "MAM query %s completed (returned messages: %s)",
+			qid and qid or "without id", count == 0 and "none" or tostring(count));
 	else
 		origin.send(st.error_reply(stanza, "cancel", "forbidden", "Room logging needs to be enabled"));
 	end

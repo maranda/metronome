@@ -387,39 +387,6 @@ local function upload_data(event, path)
 	return 201;
 end
 
-local codes = require "net.http.codes";
-local headerfix = require "net.http.server".generate_header_fix();
-
-local function send_response_sans_body(response)
-	if response.finished then return; end
-	response.finished = true;
-	response.conn._http_open_response = nil;
-
-	local status_line = "HTTP/"..response.request.httpversion.." "..(response.status or codes[response.status_code]);
-	local headers = response.headers;
-	if not headers.connection then
-		headers.connection = response.keep_alive and "Keep-Alive" or "close";
-	end
-
-	local output = { status_line };
-	for k,v in pairs(headers) do
-		t_insert(output, headerfix[k]..v);
-	end
-	t_insert(output, "\r\n\r\n");
-	-- Here we *don't* add the body to the output
-
-	response.conn:write(t_concat(output));
-	if response.on_destroy then
-		response:on_destroy();
-		response.on_destroy = nil;
-	end
-	if response.persistent then
-		response:finish_cb();
-	else
-		response.conn:close();
-	end
-end
-
 local function serve_uploaded_files(event, path, head)
 	local response = event.response;
 	local request = event.request;
@@ -450,7 +417,7 @@ local function serve_uploaded_files(event, path, head)
 	local ext = full_path:match("%.([^%.]*)$");
 	headers.content_type = mime_types[ext and ext:lower()];
 
-	if head then headers.content_length = size; response:send(); else response:send(cached); end
+	if head then headers.content_length = size; response:send(false); else response:send(cached); end
 
 	module:log("debug", "%s sent %s request for uploaded file at: %s (%d bytes)", 
 		request.conn:ip(), head and "HEAD" or "GET", path, size);
@@ -460,7 +427,6 @@ local function serve_uploaded_files(event, path, head)
 end
 
 local function serve_head(event, path)
-	event.response.send = send_response_sans_body;
 	return serve_uploaded_files(event, path, true);
 end
 
@@ -470,7 +436,7 @@ local function serve_options(event, path)
 end
 
 local function serve_hello(event)
-	event.response.headers["Content-Type"] = "text/html";
+	event.response.headers.content_type = "text/html";
 	return [[<!DOCTYPE html><html><head><title>Metronome's HTTP Upload</title></head><body>
 		<p>Welcome! This components implements <a href="https://xmpp.org/extensions/xep-0363.html">XEP-0363</a> and 
 		allows you to upload files out-of-band using the HTTP Protocol.</p>

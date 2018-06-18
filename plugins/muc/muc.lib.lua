@@ -238,11 +238,20 @@ function room_mt:get_disco_info(stanza)
 	-- pass features to module handlers
 	module:fire_event("muc-disco-info-features", self, reply);
 	
-	reply:add_child(dataform.new({
+	local extended_layout = {
 		{ name = "FORM_TYPE", type = "hidden", value = "http://jabber.org/protocol/muc#roominfo" },
-		{ name = "muc#roominfo_description", label = "Description"},
+		{ name = "muc#roominfo_description", label = "Description" },
+		{ name = "muc#roominfo_lang", label = "Primary Language for Room Discussion" },
 		{ name = "muc#roominfo_occupants", label = "Number of occupants", value = tostring(count) }
-	}):form({["muc#roominfo_description"] = self:get_option("description")}, "result"));
+	};
+	local extended_data = {
+		["muc#roominfo_description"] = self:get_option("description"),
+		["muc#roominfo_lang"] = self:get_option("language")
+	};
+	-- pass extended infos to module handlers
+	module:fire_event("muc-disco-info-extended", self, { layout = extended_layout, data = extended_data });
+
+	reply:add_child(dataform.new(extended_layout):form(extended_data, "result"));
 	return reply;
 end
 function room_mt:get_disco_items(stanza)
@@ -546,13 +555,19 @@ function room_mt:get_form_layout()
 			name = "muc#roomconfig_roomname",
 			type = "text-single",
 			label = "Name",
-			value = self:get_option("name") or "",
+			value = self:get_option("name") or ""
 		},
 		{
 			name = "muc#roomconfig_roomdesc",
 			type = "text-single",
 			label = "Description",
-			value = self:get_option("description") or "",
+			value = self:get_option("description") or ""
+		},
+		{
+			name = "muc#roomconfig_lang",
+			type = "text-single",
+			label = "Primary Language for Room Discussion",
+			value = self:get_option("language") or ""
 		},
 		{
 			name = "muc#roomconfig_persistentroom",
@@ -654,6 +669,7 @@ function room_mt:process_form(origin, stanza)
 
 	self:set_option("name", name, changed);
 	self:set_option("description", fields["muc#roomconfig_roomdesc"], changed);
+	self:set_option("language", fields["muc#roomconfig_lang"], changed);
 	self:set_option("persistent", fields["muc#roomconfig_persistentroom"], changed);
 	self:set_option("moderated", fields["muc#roomconfig_moderatedroom"], changed);
 	self:set_option("members_only", fields["muc#roomconfig_membersonly"], changed);
