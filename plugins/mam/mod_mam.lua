@@ -181,7 +181,7 @@ function module.load()
 			bare_session.archiving = session_stores[bare_jid];
 		end
 	end
-	collectgarbage();
+	module:add_timer(5, function() collectgarbage(); end);
 end
 function module.unload()
 	save_stores();
@@ -190,7 +190,7 @@ function module.unload()
 		local host = jid_section(bare_jid, "host");
 		if host == module_host then bare_session.archiving = nil; end
 	end
-	collectgarbage();
+	module:add_timer(5, function() collectgarbage(); end);
 end
 
 module:hook("pre-resource-unbind", save_session_store, 30);
