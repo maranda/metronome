@@ -182,13 +182,6 @@ function module.load()
 		end
 	end
 end
-function module.save() return { storage = storage, session_stores = session_stores } end
-function module.restore(data) 
-	mamlib.storage = data.storage;
-	mamlib.session_stores = data.session_stores or {};
-	storage, session_stores = mamlib.storage, mamlib.session_stores;
-	if not data.storage then storage = initialize_storage(); end
-end
 function module.unload()
 	save_stores();
 	-- remove all caches from bare_sessions.
