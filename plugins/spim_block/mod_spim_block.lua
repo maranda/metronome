@@ -6,7 +6,8 @@
 
 local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
-local pairs, next, open, os_time = pairs, next, io.open, os.time;
+local pairs, next, open, os_time, random, tonumber, tostring =
+	pairs, next, io.open, os.time, math.random, tonumber, tostring;
 local jid_bare, jid_join, jid_section, jid_split =
 	require "util.jid".bare, require "util.jid".join,
 	require "util.jid".section, require "util.jid".split;
@@ -25,6 +26,7 @@ disabled_list = {};
 auth_list = {};
 block_list = {};
 allow_list = {};
+challenge_list = setmetatable({}, { __mode = "v" });
 count = 0;
 
 local bare_sessions = bare_sessions;
@@ -85,11 +87,31 @@ local function http_error_reply(event, code, message, headers)
 	return true;
 end
 
+local operands = { "plus", "minus", "multiplicated by" };
+local function generate_challenge()
+	local operand_string = operands[random(3)];
+	local first, second, result = random(30), random(30);
+	if operand_string == "plus" then
+		result = first + second;
+	elseif operand_string == "minus" then
+		result = first - second;
+	elseif operand_string == "multiplicated by" then
+		result = first * second;
+	end
+
+	return tostring(first).." "..operand_string.." "..tostring(second), result;
+end
+
 local function r_template(event, type, jid)
 	local data = open_file(files_base..type..".html");
 	if data then
 		event.response.headers["Content-Type"] = "application/xhtml+xml";
 		data = data:gsub("%%REG%-URL", not base_path:find("^/") and "/"..base_path or base_path);
+		if type == "form" then
+			local challenge, result = generate_challenge();
+			data = data:gsub("%%MATH%-CHALLENGE", challenge);
+			challenge_list[event.request.conn:ip()] = result;
+		end
 		if jid then data = data:gsub("%%USER%%", jid); end
 		return data;
 	else return http_error_reply(event, 500, "Failed to obtain template."); end
@@ -266,6 +288,7 @@ end);
 local function handle_spim(event, path)
 	local request = event.request;
 	local body = request.body;
+	local ip = request.conn:ip();
 	
 	if secure and not request.secure then return nil; end
 	
@@ -274,10 +297,10 @@ local function handle_spim(event, path)
 	elseif request.method == "POST" then
 		if path == "" then
 			if not body then return http_error_reply(event, 400, "Bad Request."); end
-			local spim_token = body:match("^spim_token=(.*)$");
-			if spim_token then
+			local spim_token, challenge = body:match("^spim_token=(.*)&math_challenge=(.*)$");
+			if spim_token and challenge then
 				local has_auth = auth_list[urldecode(spim_token)];
-				if has_auth then
+				if has_auth and challenge_list[ip] == tonumber(challenge) then
 					local from, to = has_auth.from, has_auth.user;
 					local bare_session = bare_sessions[to];
 					if not allow_list[to] then allow_list[to] = {}; end
@@ -291,7 +314,7 @@ local function handle_spim(event, path)
 					if not next(block_list[to]) then block_list[to] = nil; end
 					auth_list[spim_token] = nil;
 					has_auth = nil;
-					module:log("info", "%s (%s) is now allowed to send messages to %s", from, request.conn:ip(), to);
+					module:log("info", "%s (%s) is now allowed to send messages to %s", from, ip, to);
 					return r_template(event, "success", to);
 				else
 					return r_template(event, "fail");
