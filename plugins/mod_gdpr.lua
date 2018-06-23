@@ -125,7 +125,7 @@ module:depends("adhoc");
 local adhoc_new = module:require "adhoc".new;
 
 local function adhoc_send_agreement(self, data, state)
-	local from = jid_bare(from);
+	local from = jid_bare(data.from);
 	local session = full_sessions[data.from];
 
 	if not gdpr_signed[from] then
