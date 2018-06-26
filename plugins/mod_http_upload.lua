@@ -124,6 +124,7 @@ module:hook("iq/host/http://jabber.org/protocol/disco#info:query", function(even
 		:query("http://jabber.org/protocol/disco#info")
 			:tag("identity", { category = "store", type = "file", name = disco_name }):up()
 			:tag("feature", { var = "http://jabber.org/protocol/commands" }):up()
+			:tag("feature", { var = "http://jabber.org/protocol/disco#info" }):up()
 			:tag("feature", { var = namespace }):up()
 			:tag("feature", { var = legacy_namespace }):up();
 

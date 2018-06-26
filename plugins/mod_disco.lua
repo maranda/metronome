@@ -171,6 +171,7 @@ module:hook("iq/bare/http://jabber.org/protocol/disco#info:query", function(even
 	if not stanza.attr.to or is_contact_subscribed(username, my_host, jid_bare(stanza.attr.from)) then
 		local reply = st.reply(stanza):tag("query", { xmlns = "http://jabber.org/protocol/disco#info" });
 		reply:tag("identity", { category = "account", type = account_type(username, my_host) }):up();
+		reply:tag("feature", { var = "http://jabber.org/protocol/disco#info" }):up();
 		if not reply.attr.from then reply.attr.from = origin.username.."@"..origin.host; end
 		module:fire_event("account-disco-info", { origin = origin, stanza = reply, node = node });
 		if reply[false] then -- error caught during callbacks

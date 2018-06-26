@@ -25,6 +25,7 @@ local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
 local hash_map, services;
 
 local features = {
+	"http://jabber.org/protocol/disco#items",
 	"http://jabber.org/protocol/pubsub#access-presence",
 	"http://jabber.org/protocol/pubsub#auto-create",
 	"http://jabber.org/protocol/pubsub#create-and-configure",

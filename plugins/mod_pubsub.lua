@@ -130,6 +130,8 @@ end
 local function build_disco_info(service)
 	local disco_info = st.stanza("query", { xmlns = "http://jabber.org/protocol/disco#info" })
 		:tag("identity", { category = "pubsub", type = "service", name = pubsub_disco_name }):up()
+		:tag("feature", { var = "http://jabber.org/protocol/disco#info" }):up();
+		:tag("feature", { var = "http://jabber.org/protocol/disco#items" }):up();
 		:tag("feature", { var = "http://jabber.org/protocol/pubsub" }):up();
 	add_disco_features_from_service(disco_info, service);
 	return disco_info;
