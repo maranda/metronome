@@ -66,7 +66,7 @@ local function gdpr_s2s_check(event)
 			module:log("debug", "blocked stanza %s (type: %s) from %s, agreement not yet accepted", name, type or "absent", from);
 			origin.send(error_reply(stanza, "cancel", "policy-violation", 
 				"GDPR agreement needs to be accepted before communicating with a remote server"));
-			if not gdpr_agreement_sent[from] then send_agreement(origin, from); end
+			if not gdpr_agreement_sent[from] and not origin.halted then send_agreement(origin, from); end
 			return true;
 		elseif gdpr_signed[from] == false then
 			module:log("debug", "blocked stanza %s (type: %s) from %s, agreement refused", name, type or "absent", from);
