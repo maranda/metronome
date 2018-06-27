@@ -226,14 +226,15 @@ function room_mt:get_disco_info(stanza)
 	local count = 0; for _ in pairs(self._occupants) do count = count + 1; end
 	local reply = st.reply(stanza);
 	reply:query("http://jabber.org/protocol/disco#info")
-		:tag("identity", {category = "conference", type = "text", name = self:get_name()}):up()
-		:tag("feature", {var = "http://jabber.org/protocol/muc"}):up()
-		:tag("feature", {var = self:get_option("password") and "muc_passwordprotected" or "muc_unsecured"}):up()
-		:tag("feature", {var = self:get_option("moderated") and "muc_moderated" or "muc_unmoderated"}):up()
-		:tag("feature", {var = self:get_option("members_only") and "muc_membersonly" or "muc_open"}):up()
-		:tag("feature", {var = self:get_option("persistent") and "muc_persistent" or "muc_temporary"}):up()
-		:tag("feature", {var = self:get_option("hidden") and "muc_hidden" or "muc_public"}):up()
-		:tag("feature", {var = self._data.whois ~= "anyone" and "muc_semianonymous" or "muc_nonanonymous"}):up();
+		:tag("identity", { category = "conference", type = "text", name = self:get_name() }):up()
+		:tag("feature", { var = "http://jabber.org/protocol/disco#info" }):up()
+		:tag("feature", { var = "http://jabber.org/protocol/muc" }):up()
+		:tag("feature", { var = self:get_option("password") and "muc_passwordprotected" or "muc_unsecured" }):up()
+		:tag("feature", { var = self:get_option("moderated") and "muc_moderated" or "muc_unmoderated" }):up()
+		:tag("feature", { var = self:get_option("members_only") and "muc_membersonly" or "muc_open" }):up()
+		:tag("feature", { var = self:get_option("persistent") and "muc_persistent" or "muc_temporary" }):up()
+		:tag("feature", { var = self:get_option("hidden") and "muc_hidden" or "muc_public" }):up()
+		:tag("feature", { var = self._data.whois ~= "anyone" and "muc_semianonymous" or "muc_nonanonymous" }):up();
 	
 	-- pass features to module handlers
 	module:fire_event("muc-disco-info-features", self, reply);
