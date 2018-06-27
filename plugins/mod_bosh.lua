@@ -367,6 +367,7 @@ function stream_callbacks.streamopened(context, attr)
 	end
 end
 
+local bosh_payloads = { iq = true, message = true, presence = true };
 function stream_callbacks.handlestanza(context, stanza)
 	if context.ignore then return true; end
 	log("debug", "BOSH stanza received: %s\n", stanza:top_tag());
@@ -381,7 +382,7 @@ function stream_callbacks.handlestanza(context, stanza)
 		end
 		stanza = (session or context).filter("stanzas/in", stanza);
 		if stanza then
-			if (session or context).user_language and not stanza.attr["xml:lang"] then
+			if (session or context).user_language and not stanza.attr["xml:lang"] and bosh_payloads[stanza.name] then
 				stanza.attr["xml:lang"] = (session or context).user_language;
 			end
 			fire_event("route/process", (session or context), stanza);

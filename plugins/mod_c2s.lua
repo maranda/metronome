@@ -126,11 +126,14 @@ function stream_callbacks.error(session, error, data)
 	end
 end
 
+local c2s_payloads = { iq = true, message = true, presence = true };
 local function handleerr(err) log("error", "Traceback[c2s]: %s: %s", tostring(err), traceback()); end
 function stream_callbacks.handlestanza(session, stanza)
 	stanza = session.filter("stanzas/in", stanza);
 	if stanza then
-		if session.user_language and not stanza.attr["xml:lang"] then stanza.attr["xml:lang"] = session.user_language; end
+		if session.user_language and not stanza.attr["xml:lang"] and c2s_payloads[stanza.name] then
+			stanza.attr["xml:lang"] = session.user_language;
+		end
 		return xpcall(function () return fire_event("route/process", session, stanza) end, handleerr);
 	end
 end
