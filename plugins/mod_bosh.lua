@@ -260,12 +260,12 @@ function stream_callbacks.streamopened(context, attr)
 		sid = new_uuid();
 		local session = {
 			type = "c2s_unauthed", conn = {}, sid = sid, rid = rid-1, host = normalized_to,
-			bosh_version = attr.ver, bosh_wait = math_min(wait, BOSH_MAX_WAIT), streamid = sid,
-			bosh_hold = BOSH_DEFAULT_HOLD, bosh_max_inactive = BOSH_DEFAULT_INACTIVITY, requests = {},
-			send_buffer = {}, reset_stream = bosh_reset_stream, close = bosh_close_stream,
+			bosh_version = attr.ver, user_language = attr["xml:lang"], bosh_wait = math_min(wait, BOSH_MAX_WAIT),
+			streamid = sid, bosh_hold = BOSH_DEFAULT_HOLD, bosh_max_inactive = BOSH_DEFAULT_INACTIVITY,
+			requests = {}, send_buffer = {}, reset_stream = bosh_reset_stream, close = bosh_close_stream,
 			dispatch_stanza = stream_callbacks.handlestanza, notopen = true, log = logger.init("bosh"..sid),
 			secure = consider_bosh_secure or request.secure, ip = get_ip_from_request(request),
-			headers = custom_headers;
+			headers = custom_headers
 		};
 		sessions[sid] = session;
 
@@ -290,10 +290,11 @@ function stream_callbacks.streamopened(context, attr)
 			if oldest_request and not session.bosh_processing then
 				log("debug", "We have an open request, so sending on that");
 				oldest_request.headers = session.headers or clone_table(default_headers);
-				local body_attr = { xmlns = "http://jabber.org/protocol/httpbind",
-					["xmlns:stream"] = "http://etherx.jabber.org/streams";
-					type = session.bosh_terminate and "terminate" or nil;
-					sid = sid;
+				local body_attr = {
+					xmlns = "http://jabber.org/protocol/httpbind",
+					["xmlns:stream"] = "http://etherx.jabber.org/streams",
+					type = session.bosh_terminate and "terminate" or nil,
+					sid = sid
 				};
 				if creating_session then
 					body_attr.wait = tostring(session.bosh_wait);
@@ -379,7 +380,12 @@ function stream_callbacks.handlestanza(context, stanza)
 			end
 		end
 		stanza = (session or context).filter("stanzas/in", stanza);
-		if stanza then fire_event("route/process", (session or context), stanza); end
+		if stanza then
+			if (session or context).user_language and not stanza.attr["xml:lang"] then
+				stanza.attr["xml:lang"] = (session or context).user_language;
+			end
+			fire_event("route/process", (session or context), stanza);
+		end
 	end
 end
 
