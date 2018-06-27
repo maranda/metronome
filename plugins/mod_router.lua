@@ -200,7 +200,7 @@ local function route_stanza(origin, stanza)
 		fire_event("route/post", origin, stanza);
 	else
 		if origin.locked then
-			fire_event("route/local", host_session, st.error_reply(stanza, "cancel", "forbidden", "Account is still locked"));
+			fire_event("route/local", hosts[from_host], st.error_reply(stanza, "cancel", "forbidden", "Account is still locked"));
 			return;
 		end
 		log("debug", "Routing to remote...");
