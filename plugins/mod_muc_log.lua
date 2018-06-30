@@ -30,6 +30,7 @@ local hints_xmlns = "urn:xmpp:hints";
 local sid_xmlns = "urn:xmpp:sid:0";
 
 local mod_host = module:get_host();
+local host_object = hosts[mod_host];
 
 -- Module Definitions
 
@@ -44,7 +45,7 @@ function log_if_needed(e)
 		if not node then return; end
 
 		local bare = jid_bare(to_room);
-		local room = hosts[mod_host].muc.rooms[bare];
+		local room = hosts_object.muc and hosts_object.muc.rooms[bare];
 
 		if room then
 			local today = os.date("!%Y%m%d");
