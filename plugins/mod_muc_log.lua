@@ -45,7 +45,7 @@ function log_if_needed(e)
 		if not node then return; end
 
 		local bare = jid_bare(to_room);
-		local room = hosts_object.muc and hosts_object.muc.rooms[bare];
+		local room = host_object.muc and host_object.muc.rooms[bare];
 
 		if room then
 			local today = os.date("!%Y%m%d");
