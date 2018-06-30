@@ -30,8 +30,8 @@ local parent_host = module:get_option_boolean("muc_whitelist_parent_peers") == t
 local disconnect_after = module:get_option_number("muc_disconnect_after_throttles", 20);
 local use_gate_guard = module:get_option_boolean("muc_use_gate_guard", true);
 
-local rooms = metronome.hosts[module.host].modules.muc.rooms;
 local hosts = metronome.hosts;
+local host_object = hosts[module.host];
 local _parent, _default_period, _default_burst = nil, period*2, burst*10;
 
 -- Handlers
@@ -54,7 +54,7 @@ local function handle_stanza(event)
 	end
 
 	local dest_room, dest_host, dest_nick = jid_split(stanza.attr.to);
-	local room = rooms[dest_room.."@"..dest_host];
+	local room = host_object.muc and host_object.muc.rooms[dest_room.."@"..dest_host];
 	if not room then return; end
 	local from_jid = stanza.attr.from;
 	local occupant_jid = room._jid_nick[from_jid];
@@ -145,6 +145,7 @@ module:hook("muc-fields-process", function(room, fields, stanza, changed)
 end, -101);
 
 function module.unload()
+	local rooms = host_object.muc and host_object.muc.rooms;
 	for room_jid, room in pairs(rooms) do
 		room.throttle = nil;
 	end
