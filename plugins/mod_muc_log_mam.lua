@@ -25,7 +25,7 @@ local data_load = datamanager.load;
 local datastore = "muc_log";
 local error_reply = require "util.stanza".error_reply;
 
-local muc_object = metronome.hosts[module.host].muc;
+local host_object = hosts[module.host];
 
 local xmlns = "urn:xmpp:mam:2";
 local delay_xmlns = "urn:xmpp:delay";
@@ -44,7 +44,7 @@ local mam_cache = {};
 
 local function initialize_mam_cache(jid)
 	local node, host = jid_split(jid);
-	local room = muc_object.rooms[jid];
+	local room = host_object.muc.rooms[jid];
 
 	if room and not mam_cache[jid] then
 		-- load this last month's discussion.
@@ -122,7 +122,7 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 	local query = stanza.tags[1];
 	local qid = query.attr.queryid;
 	
-	local room = muc_object.rooms[to];
+	local room = host_object.muc.rooms[to];
 	
 	if room._data.logging then
 		-- check that requesting entity has access
