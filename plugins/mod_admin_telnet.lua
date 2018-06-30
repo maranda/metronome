@@ -209,6 +209,7 @@ function commands.help(session, data)
 		print [[s2s - Commands to manage sessions between this server and others]]
 		print [[module - Commands to load/reload/unload modules/plugins]]
 		print [[host - Commands to activate, deactivate and list virtual hosts]]
+		print [[muc - Commands to retrieve and manage MUC room objects]]
 		print [[user - Commands to create and delete users, and change their passwords]]
 		print [[server - Uptime, version, shutting down, etc.]]
 		print [[config - Reloading the configuration, etc.]]
