@@ -8,12 +8,11 @@
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Florian Zeitz, Marco Cirillo, Matthew Wild, Paul Aurich, Waqas Hussain
 
 local is_component = module:get_host_type() == "component";
-local rooms;
 if is_component and not hosts[module.host].muc then
 	error("mod_pastebin can't be loaded on non muc components", 0);
-elseif is_component then
-	rooms = hosts[module.host].muc.rooms;
 end
+
+local host_object = hosts[module.host];
 
 local st = require "util.stanza";
 module:depends("http");
@@ -83,7 +82,7 @@ function handle_request(event, pasteid)
 end
 
 local function is_occupant(to, from)
-	local room = rooms[jid_bare(to)];
+	local room = host_object.muc and host_object.muc.rooms[jid_bare(to)];
 	if not room then return; end
 	return room:is_occupant(from);
 end
