@@ -23,7 +23,7 @@ local jid_join = require "util.jid".join;
 local jid_prep = require "util.jid".prep;
 local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
-local ipairs, tonumber, tostring = ipairs, tonumber, tostring;
+local collectgarbage, ipairs, tonumber, tostring = collectgarbage, ipairs, tonumber, tostring;
 
 local xmlns = "urn:xmpp:mam:2";
 local purge_xmlns = "http://metronome.im/protocol/mam-purge";
@@ -181,13 +181,7 @@ function module.load()
 			bare_session.archiving = session_stores[bare_jid];
 		end
 	end
-end
-function module.save() return { storage = storage, session_stores = session_stores } end
-function module.restore(data) 
-	mamlib.storage = data.storage;
-	mamlib.session_stores = data.session_stores or {};
-	storage, session_stores = mamlib.storage, mamlib.session_stores;
-	if not data.storage then storage = initialize_storage(); end
+	module:add_timer(5, function() collectgarbage(); end);
 end
 function module.unload()
 	save_stores();
@@ -196,6 +190,7 @@ function module.unload()
 		local host = jid_section(bare_jid, "host");
 		if host == module_host then bare_session.archiving = nil; end
 	end
+	module:add_timer(5, function() collectgarbage(); end);
 end
 
 module:hook("pre-resource-unbind", save_session_store, 30);

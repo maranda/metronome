@@ -11,7 +11,7 @@ if not modulemanager.is_loaded(module.host, "muc") then
 	return;
 end
 
-local rooms = hosts[module.host].muc.rooms;
+local host_object = hosts[module.host];
 
 local ipairs, tostring, t_remove = ipairs, tostring, table.remove;
 local st = require "util.stanza";
@@ -55,7 +55,7 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 	local from, to = jid_bare(stanza.attr.from) or session.username.."@"..session.host, stanza.attr.to;
 	local node, host = jid_split(to);
 
-	local room = rooms[to];
+	local room = host_object.muc.rooms[to];
 	if not room then
 		session.send(st.error_reply(stanza, "cancel", "item-not-found"));
 		return true;

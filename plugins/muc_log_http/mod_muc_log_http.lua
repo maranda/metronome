@@ -47,7 +47,7 @@ local lfs = require "lfs";
 local html = {};
 local theme, theme_path;
 
-local muc_rooms = hosts[my_host].muc.rooms;
+local host_object = hosts[my_host];
 
 -- Module Definitions
 
@@ -61,6 +61,7 @@ end
 local function generate_room_list()
 	local rooms = "";
 	local html_rooms = html.rooms;
+	local muc_rooms = host_object.muc and host_object.muc.rooms or {};
 	for jid, room in pairs(muc_rooms) do
 		local node = section_jid(jid, "node");
 		if not room._data.hidden and room._data.logging and node then
@@ -209,6 +210,7 @@ local function generate_day_room_content(bare_room_jid)
 	path = path:gsub("/[^/]*$", "");
 	do
 		local found = 0;
+		local muc_rooms = host_object.muc and host_object.muc.rooms or {};
 		for jid, room in pairs(muc_rooms) do
 			local node = section_jid(jid, "node");
 			if not room._data.hidden and room._data.logging and node then
@@ -435,6 +437,7 @@ local function handle_error(code, err) return http_event("http-error", { code = 
 function handle_request(event)
 	local response = event.response;
 	local request = event.request;
+	local muc_rooms = host_object.muc and host_object.muc.rooms or {};
 	local room;
 
 	local request_path = request.url.path;

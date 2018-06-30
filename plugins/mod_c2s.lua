@@ -72,6 +72,8 @@ function stream_callbacks.streamopened(session, attr)
 		return;
 	end
 
+	session.user_language = attr["xml:lang"]; -- user has a language preference, maybe we should check for sanity
+
 	send("<?xml version='1.0'?>"..st.stanza("stream:stream", {
 		xmlns = "jabber:client", ["xmlns:stream"] = "http://etherx.jabber.org/streams";
 		id = session.streamid, from = session.host, version = "1.0", ["xml:lang"] = "en" }):top_tag());
@@ -124,10 +126,14 @@ function stream_callbacks.error(session, error, data)
 	end
 end
 
+local c2s_payloads = { iq = true, message = true, presence = true };
 local function handleerr(err) log("error", "Traceback[c2s]: %s: %s", tostring(err), traceback()); end
 function stream_callbacks.handlestanza(session, stanza)
 	stanza = session.filter("stanzas/in", stanza);
 	if stanza then
+		if session.user_language and not stanza.attr["xml:lang"] and c2s_payloads[stanza.name] then
+			stanza.attr["xml:lang"] = session.user_language;
+		end
 		return xpcall(function () return fire_event("route/process", session, stanza) end, handleerr);
 	end
 end

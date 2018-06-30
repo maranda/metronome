@@ -5,7 +5,7 @@
 -- information about copyright and licensing.
 
 local hosts = hosts;
-local bare_sessions = bare_sessions;
+local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local jid_bare, jid_join, jid_section = require "util.jid".bare, require "util.jid".join, require "util.jid".section;
 local load, save = require "util.datamanager".load, require "util.datamanager".store;
 
@@ -66,7 +66,7 @@ local function gdpr_s2s_check(event)
 			module:log("debug", "blocked stanza %s (type: %s) from %s, agreement not yet accepted", name, type or "absent", from);
 			origin.send(error_reply(stanza, "cancel", "policy-violation", 
 				"GDPR agreement needs to be accepted before communicating with a remote server"));
-			if not gdpr_agreement_sent[from] then send_agreement(origin, from); end
+			if not gdpr_agreement_sent[from] and not origin.halted then send_agreement(origin, from); end
 			return true;
 		elseif gdpr_signed[from] == false then
 			module:log("debug", "blocked stanza %s (type: %s) from %s, agreement refused", name, type or "absent", from);
@@ -124,6 +124,18 @@ end
 module:depends("adhoc");
 local adhoc_new = module:require "adhoc".new;
 
+local function adhoc_send_agreement(self, data, state)
+	local from = jid_bare(data.from);
+	local session = full_sessions[data.from];
+
+	if not gdpr_signed[from] then
+		send_agreement(session, from);
+		return { status = "completed", info = "GDPR agreement sent" };
+	else
+		return { status = "completed", error = { message = "You already signed, you need to first revoke the signature" } };
+	end
+end
+
 local function revoke_signature(self, data, state)
 	local from = jid_bare(data.from);
 		
@@ -136,9 +148,13 @@ local function revoke_signature(self, data, state)
 	end
 end
 
+local adhoc_send_agreement_descriptor = adhoc_new(
+	"Send GDPR agreement", "send_gdpr_agreement", adhoc_send_agreement, "local_user"
+);
 local revoke_signature_descriptor = adhoc_new(
 	"Revoke GDPR signature for S2S communication", "revoke_gdpr_signature", revoke_signature, "local_user"
 );
+module:provides("adhoc", adhoc_send_agreement_descriptor);
 module:provides("adhoc", revoke_signature_descriptor);
 
 module:hook("route/remote", gdpr_s2s_check, 450);

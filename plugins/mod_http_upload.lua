@@ -124,6 +124,7 @@ module:hook("iq/host/http://jabber.org/protocol/disco#info:query", function(even
 		:query("http://jabber.org/protocol/disco#info")
 			:tag("identity", { category = "store", type = "file", name = disco_name }):up()
 			:tag("feature", { var = "http://jabber.org/protocol/commands" }):up()
+			:tag("feature", { var = "http://jabber.org/protocol/disco#info" }):up()
 			:tag("feature", { var = namespace }):up()
 			:tag("feature", { var = legacy_namespace }):up();
 
@@ -459,11 +460,15 @@ module:hook_global("user-deleted", purge_files, 20);
 
 module:log("info", "URL: <%s>; Storage path: %s", module:http_url(nil, default_base_path), storage_path);
 
-local function clean_timers() -- clean timers
+local function clear_shared(shared)
+	for k in pairs(shared) do shared[k] = nil; end
+end
+local function cleanup() -- cleanup
 	for jid, bare_session in pairs(bare_sessions) do
 		bare_session.upload_timer = nil;
 	end
+	clear_shared(cache); clear_shared(throttle); clear_shared(pending_slots);
 end
 
-module.load = clean_timers();
-module.unload = clean_timers();
+module.load = cleanup;
+module.unload = cleanup;

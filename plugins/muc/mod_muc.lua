@@ -40,8 +40,6 @@ local host_session = hosts[muc_host];
 local rooms = rooms;
 local persistent_rooms = datamanager.load(nil, muc_host, "persistent") or {};
 
-module:add_feature("http://jabber.org/protocol/muc");
-
 -- Configurable options
 local max_history_messages = module:get_option_number("max_history_messages", 100);
 muclib.set_max_history(max_history_messages);
@@ -76,6 +74,11 @@ local function toggle_muc_su_handler(self, data, state)
 end
 local toggle_muc_su_descriptor = adhoc_new("Toggle Superuser mode for Multi-user chats", "toggle", toggle_muc_su_handler, "admin");
 module:provides("adhoc", toggle_muc_su_descriptor);
+
+-- Add features
+module:add_feature("http://jabber.org/protocol/disco#info");
+module:add_feature("http://jabber.org/protocol/disco#items");
+module:add_feature("http://jabber.org/protocol/muc");
 
 local function is_admin(jid)
 	return um_is_admin(jid, module.host);
