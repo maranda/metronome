@@ -240,6 +240,8 @@ function commands.help(session, data)
 		print [[host:activate(hostname) - Activates the specified host]]
 		print [[host:deactivate(hostname) - Disconnects all clients on this host and deactivates]]
 		print [[host:list() - List the currently-activated hosts]]
+	elseif section == "muc" then
+		print [[muc:room(roomjid) - Return room object for the choosen room jid, e.g. you can destroy by using muc:room(roomjid):destroy()]]
 	elseif section == "user" then
 		print [[user:create(jid, password) - Create the specified user account]]
 		print [[user:password(jid, password) - Set the password for the specified user account]]
