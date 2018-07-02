@@ -54,7 +54,15 @@ local function extract_data(cert)
 	return xmpp_addresses;
 end
 
-local function offer_external(session)
+local function can_do_external(session)
+	local socket = session.conn:socket();
+	if not socket.getpeercertificate or not socket:getpeercertificate() then
+		return false;
+	end
+	return true;
+end
+
+local function verify_certificate(session)
 	local sasl = session.sasl_handler;
 	local sasl_profile = sasl.profile;
 	local sasl_host = sasl_profile.host;
@@ -128,10 +136,12 @@ local function external_backend(sasl, session, authid)
 	local sasl_profile = sasl.profile;
 	local sasl_host = sasl_profile.host;
 	local username, identities, err;
-	if module:fire_event("auth-external-proxy-withid", sasl, authid) then
+	if authid and module:fire_event("auth-external-proxy-withid", sasl, authid) then
 		username, err = sasl_profile.ext_user, sasl_profile.ext_err;
 		return username, err;
 	end
+
+	verify_certificate(session);
 
 	username, identities, err =
 		sasl_profile.ext_user, sasl_profile.valid_identities, sasl_profile.ext_err;
@@ -191,7 +201,8 @@ return {
 	to_hex = to_hex,
 	get_address = get_address,
 	extract_data = extract_data,
-	offer_external = offer_external,
+	can_do_external = can_do_external,
+	verify_certificate = verify_certificate,
 	external_backend = external_backend,
 	hashed_plain_test = hashed_plain_test,
 	hashed_scram_backend = hashed_scram_backend,

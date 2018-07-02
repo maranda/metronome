@@ -7,6 +7,7 @@
 local st = require "util.stanza";
 local s2s_make_authenticated = require "util.s2smanager".make_authenticated;
 local base64 = require "util.encodings".base64;
+local can_do_external = module:require "sasl_aux".can_do_external;
 local cert_verify_identity = require "util.x509".verify_identity;
 
 local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
@@ -29,6 +30,8 @@ local function s2s_auth(session, stanza)
 		end
 		return true;
 	end
+
+	module:fire_event("s2s-check-certificate-status", session);
 
 	if mechanism ~= "EXTERNAL" or session.cert_chain_status ~= "valid" then
 		session.sends2s(build_error("invalid-mechanism"));
@@ -62,11 +65,6 @@ local function s2s_auth(session, stanza)
 			return true;
 		end
 	else
-		if text == "" then
-			session.sends2s(build_error("invalid-authzid"));
-			return true;
-		end
-			
 		session.sends2s(build_error("not-authorized"));
 		return true;
 	end
@@ -80,7 +78,7 @@ local function s2s_auth(session, stanza)
 	module:log("info", "Accepting SASL EXTERNAL identity from %s", domain);
 	s2s_make_authenticated(session, domain);
 	session:reset_stream();
-	return true
+	return true;
 end
 
 module:hook_stanza(xmlns_sasl, "success", function (session, stanza)
@@ -96,8 +94,8 @@ end)
 module:hook_stanza(xmlns_sasl, "failure", function (session, stanza)
 	if session.type ~= "s2sout_unauthed" or session.external_auth ~= "attempting" then return; end
 
-	module:log("info", "SASL EXTERNAL with %s failed", session.to_host)
-	session.external_auth = "failed"
+	module:log("info", "SASL EXTERNAL with %s failed", session.to_host);
+	session.external_auth = "failed";
 end, 500)
 
 module:hook_stanza(xmlns_sasl, "failure", function (session, stanza)
@@ -126,21 +124,12 @@ end, 150);
 
 module:hook("stanza/urn:ietf:params:xml:ns:xmpp-sasl:auth", function(event)
 	local session, stanza = event.origin, event.stanza;
-	if session.type == "s2sin_unauthed" then
-		return s2s_auth(session, stanza);
-	end
+	if session.type == "s2sin_unauthed" then return s2s_auth(session, stanza); end
 end, 10);
 
 module:hook("s2s-stream-features", function(event)
 	local origin, features = event.origin, event.features;
-	if origin.secure and origin.type == "s2sin_unauthed" then
-		-- Offer EXTERNAL if chain is valid and either we didn't validate
-		-- the identity or it passed.
-		if origin.cert_chain_status == "valid" and origin.cert_identity_status ~= "invalid" then
-			module:log("debug", "Offering SASL EXTERNAL")
-			features:tag("mechanisms", { xmlns = xmlns_sasl })
-				:tag("mechanism"):text("EXTERNAL")
-			:up():up();
-		end
+	if origin.secure and origin.type == "s2sin_unauthed" and can_do_external(origin) then
+		features:tag("mechanisms", { xmlns = xmlns_sasl }):tag("mechanism"):text("EXTERNAL"):up():up();
 	end
 end, 99);

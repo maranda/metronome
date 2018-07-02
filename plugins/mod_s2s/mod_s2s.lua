@@ -183,55 +183,6 @@ function route_to_new_session(event)
 	return true;
 end
 
-function module.add_host(module)
-	module:set_component_inheritable();
-
-	local modules_disabled = module:get_option_set("modules_disabled", {});
-	if not s2s_strict_mode then
-		module:depends("dialback");
-	else
-		if not is_module_loaded(module.host, "dialback") and not modules_disabled:contains("dialback") then
-			load_module(module.host, "dialback");
-		end
-	end
-	if not is_module_loaded(module.host, "sasl_s2s") and not modules_disabled:contains("sasl_s2s") then
-		load_module(module.host, "sasl_s2s");
-	end
-	module:hook_stanza(xmlns_stream, "features", function(origin, stanza)
-		if origin.type == "s2sout_unauthed" then
-			if origin.verify_only then -- we only should verify
-				for i, queued in ipairs(origin.sendq) do
-					if queued[2].name == "db:verify" then origin.sends2s(queued[1]); break; end
-				end
-				origin.sendq = nil; return true;
-			end
-			if not origin.can_do_dialback then
-				module:log("warn", "Remote server doesn't offer any mean of (known) authentication, closing stream(s)");
-				origin:close({ condition = "unsupported-feature", text = "Unable to authenticate at this time" }, "couldn't authenticate with the remote server");
-			end
-		end
-		return true;
-	end, -100)
-	module:hook("route/remote", route_to_existing_session, 200);
-	module:hook("route/remote", route_to_new_session, 100);
-	module:hook("s2s-authenticated", function(event)
-		-- Everytime you remove this return a kitten dies... And we no want good kittehs die ye?
-		return true;
-	end, -100);
-	module:hook("s2s-no-encryption", function(session)
-		local to = session.to_host;
-		if encryption_exceptions:contains(session.from_multiplexed) then
-			return;
-		elseif not encryption_exceptions:contains(to) then
-			session:close({
-				condition = "policy-violation",
-				text = "TLS encryption is mandatory but was not offered" }, "authentication failure");
-			return true;
-		end
-		return;
-	end)
-end
-
 --- Helper to check that a session peer's certificate is valid
 local function check_cert_status(session)
 	local conn = session.conn:socket();
@@ -273,6 +224,56 @@ local function check_cert_status(session)
 			end
 		end
 	end
+end
+
+function module.add_host(module)
+	module:set_component_inheritable();
+
+	local modules_disabled = module:get_option_set("modules_disabled", {});
+	if not s2s_strict_mode then
+		module:depends("dialback");
+	else
+		if not is_module_loaded(module.host, "dialback") and not modules_disabled:contains("dialback") then
+			load_module(module.host, "dialback");
+		end
+	end
+	if not is_module_loaded(module.host, "sasl_s2s") and not modules_disabled:contains("sasl_s2s") then
+		load_module(module.host, "sasl_s2s");
+	end
+	module:hook_stanza(xmlns_stream, "features", function(origin, stanza)
+		if origin.type == "s2sout_unauthed" then
+			if origin.verify_only then -- we only should verify
+				for i, queued in ipairs(origin.sendq) do
+					if queued[2].name == "db:verify" then origin.sends2s(queued[1]); break; end
+				end
+				origin.sendq = nil; return true;
+			end
+			if not origin.can_do_dialback then
+				module:log("warn", "Remote server doesn't offer any mean of (known) authentication, closing stream(s)");
+				origin:close({ condition = "unsupported-feature", text = "Unable to authenticate at this time" }, "couldn't authenticate with the remote server");
+			end
+		end
+		return true;
+	end, -100)
+	module:hook("route/remote", route_to_existing_session, 200);
+	module:hook("route/remote", route_to_new_session, 100);
+	module:hook("s2s-authenticated", function(event)
+		-- Everytime you remove this return a kitten dies... And we no want good kittehs die ye?
+		return true;
+	end, -100);
+	module:hook("s2s-check-certificate-status", check_cert_status);
+	module:hook("s2s-no-encryption", function(session)
+		local to = session.to_host;
+		if encryption_exceptions:contains(session.from_multiplexed) then
+			return;
+		elseif not encryption_exceptions:contains(to) then
+			session:close({
+				condition = "policy-violation",
+				text = "TLS encryption is mandatory but was not offered" }, "authentication failure");
+			return true;
+		end
+		return;
+	end)
 end
 
 --- XMPP stream event handlers
@@ -349,8 +350,6 @@ function stream_callbacks.streamopened(session, attr)
 			end
 		end
 
-		if session.secure and not session.cert_chain_status then check_cert_status(session); end
-
 		if (not to or not from) and s2s_strict_mode then
 			session:close({ condition = "improper-addressing", text = "No to or from attributes on stream header" });
 			return;
@@ -374,8 +373,6 @@ function stream_callbacks.streamopened(session, attr)
 		-- If we are just using the connection for verifying dialback keys, we won't try and auth it
 		if not attr.id then error("stream response did not give us a streamid!!!"); end
 		session.streamid = attr.id;
-
-		if session.secure and not session.cert_chain_status then check_cert_status(session); end
 
 		-- If server is pre-1.0, don't wait for features, just do dialback
 		if session.version < 1.0 then
