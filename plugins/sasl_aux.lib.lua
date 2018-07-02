@@ -134,7 +134,6 @@ end
 
 local function external_backend(sasl, session, authid)
 	local sasl_profile = sasl.profile;
-	local sasl_host = sasl_profile.host;
 	local username, identities, err;
 	if authid and module:fire_event("auth-external-proxy-withid", sasl, authid) then
 		username, err = sasl_profile.ext_user, sasl_profile.ext_err;
