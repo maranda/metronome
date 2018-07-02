@@ -55,8 +55,8 @@ local function extract_data(cert)
 end
 
 local function can_do_external(session)
-	local socket = session.conn:socket();
-	if not socket.getpeercertificate or not socket:getpeercertificate() then
+	local socket = session.conn.socket and session.conn:socket();
+	if not socket or not socket.getpeercertificate or not socket:getpeercertificate() then
 		return false;
 	end
 	return true;
