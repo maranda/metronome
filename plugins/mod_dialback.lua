@@ -197,11 +197,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 
 		-- Implement Dialback without Dialback (See XEP-0344) shortcircuiting
 		local shortcircuit;
-		if origin.cert_identity_status == "valid" and from == origin.from_host then
-			shortcircuit = true;
-		elseif from ~= origin.from_host and verify_identity(origin, from) then
-			shortcircuit = true;
-		end
+		if verify_identity(origin, from) then shortcircuit = true; end
 
 		if shortcircuit then
 			origin.log("debug", "shortcircuiting %s dialback request, as it presented a valid certificate", from);
