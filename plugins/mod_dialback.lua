@@ -189,7 +189,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 
 		-- Implement Dialback without Dialback (See XEP-0344) shortcircuiting
 		if origin.external_auth == "failed" and origin.from_host == from then
-			origin.log("debug", "SASL EXTERNAL for %s failed and host is not multiplexed, skipping certificate check", from);
+			origin.log("debug", "SASL EXTERNAL for %s failed and stream is not multiplexed, skipping certificate check", from);
 		else
 			module:fire_event("s2s-check-certificate-status", origin, from, to);
 		end
