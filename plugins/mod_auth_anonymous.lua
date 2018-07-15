@@ -44,6 +44,14 @@ function new_default_provider(host)
 		return true;
 	end
 
+	function provider.is_locked(username)
+		return false;
+	end
+
+	function provider.unlock_user(username)
+		return nil, "Action not available with this backend";
+	end
+
 	function provider.create_user(username, password)
 		return nil, "Account creation/modification not supported";
 	end

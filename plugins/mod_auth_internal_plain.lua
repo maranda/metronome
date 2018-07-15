@@ -7,7 +7,6 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2010-2013, Kim Alvefur, Matthew Wild, Waqas Hussain
 
-
 local datamanager = require "util.datamanager";
 local new_sasl = require "util.sasl".new;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
@@ -80,7 +79,7 @@ function new_default_provider(host)
 			end
 			return datamanager.store(username, host, "accounts", account);
 		end
-		return nil, "User isn't locked"
+		return nil, "User isn't locked";
 	end
 
 	function provider.create_user(username, password, locked)

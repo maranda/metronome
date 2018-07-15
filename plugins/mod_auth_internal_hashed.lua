@@ -109,7 +109,7 @@ function new_hashpass_provider(host)
 			end
 			return datamanager.store(username, host, "accounts", account);
 		end
-		return nil, "User isn't locked"
+		return nil, "User isn't locked";
 	end
 
 	function provider.create_user(username, password, locked)
