@@ -12,7 +12,6 @@ local new_sasl = require "util.sasl".new;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local plain_backend = module:require "sasl_aux".plain_backend;
 local external_backend = module:require "sasl_aux".external_backend;
-local my_host = module.host;
 local bare_sessions = bare_sessions;
 
 local log = module._log;
@@ -95,14 +94,14 @@ function new_default_provider(host)
 			external = session.secure and external_backend,
 			plain = plain_backend,
 			session = session,
-			host = my_host
+			host = host
 		};
 		if session.secure then
 			getpass_authentication_profile.order = { "external", "plain" };
 		else
 			getpass_authentication_profile.order = { "plain" };
 		end
-		return new_sasl(module.host, getpass_authentication_profile);
+		return new_sasl(host, getpass_authentication_profile);
 	end
 	
 	return provider;

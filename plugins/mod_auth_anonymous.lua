@@ -58,7 +58,6 @@ function new_default_provider(host)
 
 	function provider.get_sasl_handler(session)
 		local anonymous_authentication_profile = {
-			order = { "anonymous" },
 			anonymous = function(sasl, session, realm)
 				local username;
 				if test_mode or (randomize_for_trusted and randomize_for_trusted:contains(session.ip)) then
@@ -75,9 +74,10 @@ function new_default_provider(host)
 				return username;
 			end,
 			session = session,
-			host = my_host
+			host = host,
+			order = { "anonymous" }
 		};
-		return new_sasl(module.host, anonymous_authentication_profile);
+		return new_sasl(host, anonymous_authentication_profile);
 	end
 
 	return provider;
