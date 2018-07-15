@@ -16,7 +16,6 @@ local log = module._log;
 local no_encryption = metronome.no_encryption;
 local require_encryption = module:get_option_boolean("s2s_require_encryption", not no_encryption);
 local encryption_exceptions = module:get_option_set("s2s_encryption_exceptions", {});
-local cert_verify_identity = require "util.x509".verify_identity;
 
 local st = require "util.stanza";
 local sha256_hash = require "util.hashes".sha256;
@@ -50,13 +49,6 @@ end
 
 function make_authenticated(session, host)
 	return s2s_make_authenticated(session, host);
-end
-
-local function verify_identity(origin, from)
-	local conn = origin.conn:socket();
-	local cert;
-	if conn.getpeercertificate then cert = conn:getpeercertificate(); end
-	if cert then return cert_verify_identity(from, "xmpp-server", cert); end
 end
 
 local function can_do_dialback(origin)
@@ -171,7 +163,7 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 	
 	if origin.type == "s2sin_unauthed" or origin.type == "s2sin" then
 		local attr, streamid = stanza.attr, origin.streamid;
-		local to, from = nameprep(attr.to), nameprep(attr.from);
+		local from, to = nameprep(attr.from), nameprep(attr.to);
 		local from_multiplexed;
 
 		if not origin.from_host then
@@ -196,10 +188,9 @@ module:hook("stanza/"..xmlns_db..":result", function(event)
 		end
 
 		-- Implement Dialback without Dialback (See XEP-0344) shortcircuiting
-		local shortcircuit;
-		if verify_identity(origin, from) then shortcircuit = true; end
+		module:fire_event("s2s-check-certificate-status", origin, from, to);
 
-		if shortcircuit then
+		if origin.cert_identity_status == "valid" then
 			origin.log("debug", "shortcircuiting %s dialback request, as it presented a valid certificate", from);
 			origin.sends2s(
 				st.stanza("db:result", { from = to, to = from, id = attr.id, type = "valid" }):text(stanza[1])
