@@ -12,21 +12,23 @@ local cert_verify_identity = require "util.x509".verify_identity;
 
 local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
 
-local function build_error(err)
-	local reply = st.stanza("failure", {xmlns = xmlns_sasl});
+local function build_error(session, err)
+	session.external_auth = "failed";
+
+	local reply = st.stanza("failure", { xmlns = xmlns_sasl });
 	reply:tag(err):up();
 	return reply;
 end
 
-local success = st.stanza("success", {xmlns = xmlns_sasl});
+local success = st.stanza("success", { xmlns = xmlns_sasl });
 local function s2s_auth(session, stanza)
 	local mechanism = stanza.attr.mechanism;
 
 	if not session.secure then
 		if mechanism == "EXTERNAL" then
-			session.sends2s(build_error("encryption-required"));
+			session.sends2s(build_error(session, "encryption-required"));
 		else
-			session.sends2s(build_error("invalid-mechanism"));
+			session.sends2s(build_error(session, "invalid-mechanism"));
 		end
 		return true;
 	end
@@ -34,13 +36,13 @@ local function s2s_auth(session, stanza)
 	module:fire_event("s2s-check-certificate-status", session);
 
 	if mechanism ~= "EXTERNAL" or session.cert_chain_status ~= "valid" then
-		session.sends2s(build_error("invalid-mechanism"));
+		session.sends2s(build_error(session, "invalid-mechanism"));
 		return true;
 	end
 
 	local text = stanza[1];
 	if not text then
-		session.sends2s(build_error("malformed-request"));
+		session.sends2s(build_error(session, "malformed-request"));
 		return true;
 	end
 
@@ -50,22 +52,22 @@ local function s2s_auth(session, stanza)
 
 	text = base64.decode(text);
 	if not text then
-		session.sends2s(build_error("incorrect-encoding"));
+		session.sends2s(build_error(session, "incorrect-encoding"));
 		return true;
 	end
 
 	if session.blocked then
-		session.sends2s(build_error("not-allowed"));
+		session.sends2s(build_error(session, "not-allowed"));
 		return true;
 	end
 
 	if session.cert_identity_status == "valid" then
 		if text ~= "" and text ~= session.from_host then
-			session.sends2s(build_error("invalid-authzid"));
+			session.sends2s(build_error(session, "invalid-authzid"));
 			return true;
 		end
 	else
-		session.sends2s(build_error("not-authorized"));
+		session.sends2s(build_error(session, "not-authorized"));
 		return true;
 	end
 
