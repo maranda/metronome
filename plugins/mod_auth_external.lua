@@ -151,11 +151,14 @@ local function new_external_provider(host)
 		return nil, "Account creation/modification not available.";
 	end
 
-	function provider.get_sasl_handler()
+	function provider.get_sasl_handler(session)
 		local testpass_authentication_profile = {
 			plain_test = function(sasl, username, password, realm)
 				return usermanager.test_password(username, realm, password), true;
 			end,
+			session = session,
+			host = host,
+			order = { "plain_test" }
 		};
 		return new_sasl(host, testpass_authentication_profile);
 	end
