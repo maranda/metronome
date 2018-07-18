@@ -512,7 +512,14 @@ end
 local function handle_user_registration(event)
 	local user, hostname, password, data, session = event.username, event.host, event.password, event.data, event.session;
 	local mail = event.source == "mod_register" and data.email and data.email:lower();
-	if do_mail_verification and mail and hashes:add(user, mail) then
+	if do_mail_verification then
+		if not mail or not hashes:add(user, mail) then
+			module:log("warn", "%s register form doesn't have mail data or failed to add the address hash (mail provided is: %s)", 
+				user, tostring(mail));
+			usermanager.delete_user(user, hostname, "mod_register_api");
+			return;
+		end
+
 		local id_token = generate_secret(20);
 		if not id_token or not check_mail(mail) then
 			module:log("warn", "%s, invalidating %s registration and deleting account",
