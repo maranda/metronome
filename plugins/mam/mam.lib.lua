@@ -452,7 +452,7 @@ local function process_message(event, outbound)
 		end
 
 		if not bare_session then storage:set(user, archive); end
-		if not outbound and id then message:tag("stanza-id", { xmlns = sid_xmlns, by = bare_to, id = id }):up(); end
+		if (not outbound or not to or to == bare_from) and id then message:tag("stanza-id", { xmlns = sid_xmlns, by = bare_to, id = id }):up(); end
 	else
 		return;
 	end	
