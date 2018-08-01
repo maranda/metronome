@@ -23,6 +23,7 @@ local delay_xmlns = "urn:xmpp:delay";
 local e2e_xmlns = "http://www.xmpp.org/extensions/xep-0200.html#ns";
 local forward_xmlns = "urn:xmpp:forward:0";
 local hints_xmlns = "urn:xmpp:hints";
+local lmc_xmlns = "urn:xmpp:message-correct:0";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 local markers_xmlns = "urn:xmpp:chat-markers:0";
 local sid_xmlns = "urn:xmpp:sid:0";
@@ -45,6 +46,7 @@ if store_elements then
 	store_elements:remove("body");
 	store_elements:remove("displayed");
 	store_elements:remove("markable");
+	store_elements:remove("origin-id");
 	store_elements:remove("received");
 	if store_elements:empty() then store_elements = nil; end
 end
@@ -67,7 +69,7 @@ local function save_stores()
 	end	
 end
 
-local function log_entry(session_archive, to, bare_to, from, bare_from, id, type, body, marker, marker_id, tags)
+local function log_entry(session_archive, to, bare_to, from, bare_from, id, type, body, marker, marker_id, oid, tags)
 	local uid = uuid();
 	local entry = {
 		from = from,
@@ -80,6 +82,7 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, type
 		marker = marker,
 		marker_id = marker_id,
 		timestamp = now(),
+		oid = oid,
 		uid = uid
 	};
 	if tags then
@@ -97,7 +100,7 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, type
 	return uid;
 end
 
-local function log_entry_with_replace(session_archive, to, bare_to, from, bare_from, id, rid, type, body)
+local function log_entry_with_replace(session_archive, to, bare_to, from, bare_from, id, rid, type, body, marker, marker_id, oid, tags)
 	-- handle XEP-308 or try to...
 	local count = 0;
 	local logs = session_archive.logs;
@@ -111,10 +114,10 @@ local function log_entry_with_replace(session_archive, to, bare_to, from, bare_f
 		end
 	end
 	
-	return log_entry(session_archive, to, bare_to, from, bare_from, id, type, body);
+	return log_entry(session_archive, to, bare_to, from, bare_from, id, type, body, marker, marker_id, oid, tags);
 end
 
-local function log_marker(session_archive, to, bare_to, from, bare_from, id, type, marker, marker_id)
+local function log_marker(session_archive, to, bare_to, from, bare_from, id, type, marker, marker_id, oid, tags)
 	local count = 0;
 
 	for i, entry in ripairs(session_archive.logs) do
@@ -126,7 +129,7 @@ local function log_marker(session_archive, to, bare_to, from, bare_from, id, typ
 		   (entry_to == bare_to or entry_to == bare_from) and
 		   (entry_marker == "markable" or entry_marker == "received") and
 		   entry_marker ~= marker then
-			return log_entry(session_archive, to, bare_to, from, bare_from, id, type, nil, marker, marker_id);
+			return log_entry(session_archive, to, bare_to, from, bare_from, id, type, nil, marker, marker_id, oid, tags);
 		end
 	end
 end
@@ -139,6 +142,7 @@ local function append_stanzas(stanzas, entry, qid)
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
 
 	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
+	if entry.oid then to_forward:tag("origin-id", { xmlns = sid_xmlns, id = entry.oid }):up(); end
 	if entry.tags then
 		for i = 1, #entry.tags do to_forward:add_child(st.preserialize(entry.tags[i])):up(); end
 	end
@@ -391,6 +395,7 @@ local function process_message(event, outbound)
 	local body = message:child_with_name("body");
 	local marker = message:child_with_ns(markers_xmlns);
 	local marker_id = marker and marker.attr.id;
+	local markable;
 	if not body and not marker then
 		return; 
 	else
@@ -403,7 +408,10 @@ local function process_message(event, outbound)
 			-- COMPAT, Drop OTR/E2E messages for clients not implementing XEP-334
 			if message:get_child("c", e2e_xmlns) or body:match("^%?OTR%:[^%s]*%.$") then return; end
 		end
-		if marker then marker = valid_markers[marker.name]; end
+		if marker then 
+			marker = valid_markers[marker.name];
+			if marker == "markable" then markable = true; end
+		end
 	end
 	
 	local from, to = (message.attr.from or origin.full_jid), message.attr.to;
@@ -426,7 +434,8 @@ local function process_message(event, outbound)
 	end
 
 	if archive and add_to_store(archive, user, outbound and bare_to or bare_from) then
-		local replace = message:get_child("replace", "urn:xmpp:message-correct:0");
+		local replace = message:get_child("replace", lmc_xmlns);
+		local oid = message:get_child("origin-id", sid_xmlns);
 		local id, tags;
 
 		if store_elements then
@@ -438,16 +447,22 @@ local function process_message(event, outbound)
 			if not next(tags) then tags = nil; end
 		end
 
-		if replace then
-			id = log_entry_with_replace(archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, message.attr.type, body);
+		if replace and body then
+			id = log_entry_with_replace(
+				archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, message.attr.type, body,
+				markable and marker or nil, markable and marker_id or nil, oid and oid.attr.id, tags
+			);
 		else
 			if body then
-				id = marker == "markable" and log_entry(
+				id = log_entry(
 					archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, body,
-					marker, marker_id, tags
-				) or log_entry(archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, body, nil, nil, tags);
-			elseif marker and marker ~= "markable" then
-				id = log_marker(archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, marker, marker_id);
+					markable and marker or nil, markable and marker_id or nil, oid and oid.attr.id, tags
+				);
+			elseif marker and not markable then
+				id = log_marker(
+					archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, marker, marker_id,
+					oid and oid.attr.id, tags
+				);
 			end
 		end
 
