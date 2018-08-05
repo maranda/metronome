@@ -30,7 +30,7 @@ module:depends("adhoc");
 local adhoc_new = module:require "adhoc".new;
 
 local function change_push_options(self, data, state)
-	local node = jid_split(data.from);
+	local node, host = jid_split(data.from);
 	local options;
 	if not user_list[node] then 
 		user_list[node] = { last_sender = true }; options = user_list[node]; 
