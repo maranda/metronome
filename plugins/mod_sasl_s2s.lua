@@ -33,6 +33,15 @@ local function s2s_auth(session, stanza)
 		return true;
 	end
 
+	if session.blocked then
+		if mechanism == "EXTERNAL" then
+			session.sends2s(build_error(session, "not-allowed"));
+		else
+			session.sends2s(build_error(session, "invalid-mechanism"));
+		end
+		return true;
+	end
+
 	module:fire_event("s2s-check-certificate-status", session);
 
 	if mechanism ~= "EXTERNAL" or session.cert_chain_status ~= "valid" then
@@ -53,11 +62,6 @@ local function s2s_auth(session, stanza)
 	text = base64.decode(text);
 	if not text then
 		session.sends2s(build_error(session, "incorrect-encoding"));
-		return true;
-	end
-
-	if session.blocked then
-		session.sends2s(build_error(session, "not-allowed"));
 		return true;
 	end
 
