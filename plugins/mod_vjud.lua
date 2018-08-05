@@ -31,7 +31,7 @@ end
 local function search_form_layout()
 	return dataforms_new{
 		title = "Directory Search";
-		instructions = "This let's you browse the User Directory, your client MUST support Data Forms.";
+		instructions = "This form let's you browse the directory, please provide at least one of the following information";
 
 		{ name = "FORM_TYPE", type = "hidden", value = "jabber:iq:search" };
 		{ name = "nickname", type = "text-single", label = "Nickname" };
@@ -63,7 +63,9 @@ end
 local function search_get_handler(event)
 	local origin, stanza = event.origin, event.stanza
 	local reply = st.reply(stanza)
-	reply:query("jabber:iq:search"):add_child(search_form_layout():form())
+	reply:query("jabber:iq:search")
+		:tag("instructions"):text("To use this User Directory, your client requires to support Data Forms (XEP-0004)"):up()
+		:add_child(search_form_layout():form())
 	
 	origin.send(reply) ; return true
 end
