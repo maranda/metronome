@@ -53,17 +53,17 @@ module:hook("iq-set/self/urn:xmpp:sift:2:sift", function(event)
 		module:log("info", "%s removing presence SIFT filters", session.full_jid);
 		session.presence_block = nil;
 		for st in pairs(session.to_block) do
-			if st.name == "presence" then t_remove(session.to_block, st); end
+			if st.name == "presence" then session.to_block[st] = nil; end
 		end
 	elseif presence and not message then
 		module:log("info", "%s removing message SIFT filters", session.full_jid);
 		session.message_block = nil;
 		for st in pairs(session.to_block) do
-			if st.name == "message" then t_remove(session.to_block, st); end
+			if st.name == "message" then session.to_block[st] = nil; end
 		end
 	elseif #sift.tags == 0 then
 		module:log("info", "%s removing all SIFT filters", session.full_jid);
-		session.presence_block, session.message_block, session.to_block = nil, nil;
+		session.presence_block, session.message_block, session.to_block = nil, nil, nil;
 		session.send(st.reply(stanza));
 		return true;
 	end
@@ -105,7 +105,7 @@ module:hook("stanza/urn:xmpp:csi:0:active", function(event)
 				send(queue[i]);
 			end
 		end
-		session.csi_queue, session.presence_block, session.to_block, queue = nil, nil, nil, nil;
+		session.csi_queue, session.csi_queue_idx, session.presence_block, session.to_block, queue = nil, nil, nil, nil, nil;
 		module:fire_event("client-state-changed", { session = session, state = session.csi });
 	end
 	return true;
@@ -117,7 +117,7 @@ module:hook("stanza/urn:xmpp:csi:0:inactive", function(event)
 		module:log("info", "%s signaling client is inactive blocking and queuing incoming presences", 
 			session.full_jid or jid_join(session.username, session.host));
 		session.csi = "inactive";
-		session.csi_queue, session.to_block, session.presence_block = {}, {}, true;
+		session.csi_queue, session.csi_queue_idx, session.to_block, session.presence_block = {}, {}, {}, true;
 		module:fire_event("client-state-changed", { session = session, state = session.csi });
 	end
 	return true;
@@ -152,7 +152,14 @@ module:hook("presence/bare", function(event)
 			if resource.presence_block == true then
 				if resource.csi == "inactive" then
 					module:log("debug", "queuing presence for %s: %s", resource.full_jid, stanza:top_tag());
-					t_insert(resource.csi_queue, st.clone(stanza)); 
+					if not resource.csi_queue_idx[stanza.attr.from] then
+						resource.csi_queue_idx[stanza.attr.from] = #resource.csi_queue + 1;
+						t_insert(resource.csi_queue, st.clone(stanza));
+					else
+						t_remove(resource.csi_queue, resource.csi_queue_idx[stanza.attr.from]);
+						resource.csi_queue_idx[stanza.attr.from] = #resource.csi_queue + 1;
+						t_insert(resource.csi_queue, st.clone(stanza));
+					end
 				end
 				resource.to_block[stanza] = true;
 			elseif resource.presence_block == "remote" and (origin.type == "s2sin" or origin.type == "bidirectional") then
@@ -172,7 +179,14 @@ local function full_handler(event)
 	if to_full then
 		if to_full.csi == "inactive" and st_name == "presence" then
 			module:log("debug", "queuing presence for %s: %s", to_full.full_jid, stanza:top_tag());
-			t_insert(to_full.csi_queue, st.clone(stanza));
+			if not to_full.csi_queue_idx[stanza.attr.from] then
+				to_full.csi_queue_idx[stanza.attr.from] = #to_full.csi_queue + 1;
+				t_insert(to_full.csi_queue, st.clone(stanza));
+			else
+				t_remove(to_full.csi_queue, to_full.csi_queue_idx[stanza.attr.from]);
+				to_full.csi_queue_idx[stanza.attr.from] = #to_full.csi_queue + 1;
+				t_insert(to_full.csi_queue, st.clone(stanza));
+			end
 		end
 		if to_full[st_name.."_block"] == true or to_full[st_name.."_block"] == "remote" and 
 			(origin.type == "s2sin" or origin.type == "bidirectional") then
@@ -196,6 +210,7 @@ function module.unload(reload)
 				end
 			end
 			full_session.csi_queue = nil;
+			full_session.csi_queue_idx = nil;
 			full_session.presence_block = nil;
 			full_session.message_block = nil;
 			full_session.to_block = nil;
