@@ -10,6 +10,7 @@
 module:set_component_inheritable();
 
 local bare_sessions = bare_sessions;
+local hosts = hosts;
 
 local ipairs, min, now, pairs, t_insert, t_remove, tonumber, tostring =
 	ipairs, math.min, os.time, pairs, table.insert, table.remove, tonumber, tostring;
@@ -100,7 +101,7 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 			end
 			t_insert(_q, cached);
 		end
-		if stanza.name == "message" and #_q > 0 and (session.waiting_ack or session.halted) then
+		if session.type == "c2s" and stanza.name == "message" and #_q > 0 and (session.waiting_ack or session.halted) then
 			module:fire_event("sm-push-message", { username = session.username, host = session.host, stanza = stanza });
 		end
 		if session.halted then return true; end
@@ -124,22 +125,34 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 	end
 	
 	function session.handle_unacked(session)
-		local attr = { type = "cancel" };
-		local full_jid, bare_jid, resource = session.full_jid, session.username.."@"..session.host, session.resource;
-		local bare_session, has_carbons = bare_sessions[bare_jid];
-		if bare_session.has_carbons then
-			for _resource, _session in pairs(bare_session.sessions) do
-				if _resource ~= resource and _session.carbons then has_carbons = true; break; end
+		if session.type == "c2s" then
+			local full_jid, bare_jid, resource = session.full_jid, session.username.."@"..session.host, session.resource;
+			local bare_session, has_carbons = bare_sessions[bare_jid];
+			if bare_session.has_carbons then
+				for _resource, _session in pairs(bare_session.sessions) do
+					if _resource ~= resource and _session.carbons then has_carbons = true; break; end
+				end
 			end
-		end
-		for _, queued in ipairs(_q) do
-			local _name = queued.name;
-			if (_name == "iq" or _name == "message" or _name == "presence") and queued.attr.type ~= "error" then
-				local reply = st_reply(queued);
-				if reply.attr.to ~= full_jid and (has_carbons and _name ~= "message" or not has_carbons) then
+			for _, queued in ipairs(_q) do
+				local _name = queued.name;
+				if (_name == "iq" or _name == "message" or _name == "presence") and queued.attr.type ~= "error" then
+					local reply = st_reply(queued);
+					if reply.attr.to ~= full_jid and (has_carbons and _name ~= "message" or not has_carbons) then
+						reply.attr.type = "error";
+						reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
+						fire_event("route/process", session, reply);
+					end
+				end
+			end
+		elseif session.type == "s2sout" or session.bidirectional then
+			local host_session = session.direction == "outgoing" and hosts[session.from_host] or hosts[session.to_host];
+			for _, queued in ipairs(_q) do
+				local _name = queued.name;
+				if (_name == "iq" or _name == "message" or _name == "presence") and queued.attr.type ~= "error" then
+					local reply = st_reply(queued);
 					reply.attr.type = "error";
-					reply:tag("error", attr):tag("recipient-unavailable", { xmlns = xmlns_e });
-					fire_event("route/process", session, reply);
+					reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
+					fire_event("route/process", host_session, reply);
 				end
 			end
 		end
@@ -314,7 +327,7 @@ module:hook_stanza(xmlns_sm2, "resume", resume_handler);
 module:hook_stanza(xmlns_sm3, "resume", resume_handler);
 
 module:hook("pre-resource-unbind", function(event)
-	local session, _error = event.session, event.error;
+	local session = event.session;
 	if session.sm then
 		if session.token then
 			session.log("debug", "Session is being halted for up to %d seconds", timeout);
@@ -332,14 +345,23 @@ module:hook("pre-resource-unbind", function(event)
 			end);
 			return true;
 		else
-			local _q = session.sm_queue;
-			if #_q > 0 then
+			if #session.sm_queue > 0 then
 				session.log("warn", "Session is being destroyed while it still has unacked stanzas");
 				session:handle_unacked();
 			end
 		end
 	end
 end, 10);
+
+local function handle_s2s_unacked(event)
+	local session = event.session;
+	if (session.type == "s2sout" or session.bidirectional) and session.sm and #session.sm_queue > 0 then
+		session.log("warn", "Session is being destroyed while it still has unacked stanzas");
+		session:handle_unacked();
+	end
+end
+module:hook("s2sin-destroyed", handle_s2s_unacked, 10);
+module:hook("s2sout-destroyed", handle_s2s_unacked, 10);
 
 -- Module Methods
 
