@@ -152,7 +152,7 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 					local reply = st_reply(queued);
 					reply.attr.type = "error";
 					reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
-					fire_event("route/process", host_session, reply);
+					fire_event("route/local", host_session, reply);
 				end
 			end
 		end
