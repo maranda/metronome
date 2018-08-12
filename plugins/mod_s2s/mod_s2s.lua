@@ -53,12 +53,12 @@ local xmlns_stream = "http://etherx.jabber.org/streams";
 module:add_timer(check_inactivity, function()
 	module:log("debug", "checking incoming streams for inactivity...");
 	for session in pairs(metronome.incoming_s2s) do
-		if now - session.last_receive > max_inactivity then session:close(); end
+		if now() - session.last_receive > max_inactivity then session:close(); end
 	end
 	module:log("debug", "checking outgoing streams for inactivity...");
 	for _, host in pairs(hosts) do
 		for domain, session in pairs(host.s2sout) do
-			if not session.notopen and now - session.last_send > max_inactivity then session:close(); end
+			if not session.notopen and now() - session.last_send > max_inactivity then session:close(); end
 		end
 	end
 	return check_inactivity;
