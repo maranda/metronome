@@ -221,7 +221,6 @@ function stanza_handler(event)
 	else
 		origin.send(st.error_reply(stanza, "cancel", "not-allowed"));
 	end
-	module:fire_event("muc-host-used", rooms, now(), bare);
 	return true;
 end
 

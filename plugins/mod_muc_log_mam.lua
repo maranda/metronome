@@ -38,9 +38,20 @@ local fields_handler, generate_stanzas = mamlib.fields_handler, mamlib.generate_
 local check_inactivity = module:get_option_number("muc_log_mam_check_inactive", 1800);
 local kill_caches_after = module:get_option_number("muc_log_mam_expire_caches", 3600);
 
-local last_caches_clean = os_time();
-
 local mam_cache = {};
+
+module:add_timer(check_inactivity, function()
+	module:log("debug", "Checking for inactive rooms MAM caches...");
+
+	for jid, room in pairs(host_object.muc.rooms) do
+		if os_time() - room.last_used > kill_caches_after and mam_cache[jid] then
+			module:log("debug", "Dumping MAM cache for %s", jid);
+			mam_cache[jid] = nil;
+		end
+	end
+
+	return check_inactivity;
+end);
 
 local function initialize_mam_cache(jid)
 	local node, host = jid_split(jid);
@@ -65,26 +76,9 @@ local function initialize_mam_cache(jid)
 	end
 end
 
-local function clean_inactive_room_caches(rooms, time_now)
-	if time_now - last_caches_clean > check_inactivity then
-		module:log("debug", "Checking for inactive rooms MAM caches...");
-
-		for jid, room in pairs(rooms) do
-			if time_now - room.last_used > kill_caches_after and mam_cache[jid] then
-				module:log("debug", "Dumping MAM cache for %s", jid);
-				mam_cache[jid] = nil;
-			end
-		end
-		
-		last_caches_clean = os_time();
-	end
-end
-
 module:hook("muc-disco-info-features", function(room, reply)
 	reply:tag("feature", { var = xmlns }):up()
 end, -100);
-
-module:hook("muc-host-used", clean_inactive_room_caches, -100);
 
 module:hook("muc-log-add-to-mamcache", function(room, entry)
 	local cache = mam_cache[room.jid];

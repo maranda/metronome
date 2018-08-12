@@ -44,29 +44,25 @@ if connect_timeout < 60 then connect_timeout = 60; end
 local sessions = module:shared("sessions");
 
 local log = module._log;
-local last_inactive_clean = now();
 local fire_event = metronome.events.fire_event;
 
 local xmlns_stream = "http://etherx.jabber.org/streams";
 
 --- Handle stanzas to remote domains
 
-local function time_and_clean(_session, now)
-	_session["last_"..((_session.direction == "outgoing" and "send") or "receive")] = now;
-	if now - last_inactive_clean > check_inactivity then
-		module:log("debug", "checking incoming streams for inactivity...");
-		for session in pairs(metronome.incoming_s2s) do
-			if now - session.last_receive > max_inactivity then session:close(); end
-		end
-		module:log("debug", "checking outgoing streams for inactivity...");
-		for _, host in pairs(hosts) do
-			for domain, session in pairs(host.s2sout) do
-				if not session.notopen and now - session.last_send > max_inactivity then session:close(); end
-			end
-		end
-		last_inactive_clean = now;
+module:add_timer(check_inactivity, function()
+	module:log("debug", "checking incoming streams for inactivity...");
+	for session in pairs(metronome.incoming_s2s) do
+		if now - session.last_receive > max_inactivity then session:close(); end
 	end
-end
+	module:log("debug", "checking outgoing streams for inactivity...");
+	for _, host in pairs(hosts) do
+		for domain, session in pairs(host.s2sout) do
+			if not session.notopen and now - session.last_send > max_inactivity then session:close(); end
+		end
+	end
+	return check_inactivity;
+end);
 
 local bouncy_stanzas = { message = true, presence = true, iq = true };
 local function bounce_sendq(session, reason)
@@ -106,7 +102,7 @@ function route_to_existing_session(event)
 	end
 	local host = hosts[from_host].s2sout[to_host];
 	if host then
-		time_and_clean(host, now());
+		host.last_send = now();
 		-- We have a connection to this host already
 		if host.type == "s2sout_unauthed" and (stanza.name ~= "db:verify" or not host.dialback_key) then
 			(host.log or log)("debug", "trying to send over unauthed s2sout to "..to_host);
@@ -581,7 +577,7 @@ end
 function listener.onincoming(conn, data)
 	local session = sessions[conn];
 	if session then
-		time_and_clean(session, now());
+		session.last_receive = now();
 		session.data(data);
 	end
 end
