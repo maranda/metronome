@@ -275,7 +275,9 @@ module.restore = function(data)
 		rooms[jid] = room;
 	end
 	hosts[module:get_host()].muc = { rooms = rooms };
-	muclib.admin_toggles = data.admin_toggles or {};
+	for jid in pairs(data.admin_toggles or {}) do
+		muclib.admin_toggles[jid] = true;
+	end
 end
 
 function shutdown_room(room, stanza)
