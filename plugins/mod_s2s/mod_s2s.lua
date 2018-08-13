@@ -468,7 +468,7 @@ local function session_close(session, reason, remote_reason)
 			end
 		end
 
-		if reason == nil or reason == false then session.graceful_close = true; end
+		if not reason then session.graceful_close = true; end
 
 		session.sends2s("</stream:stream>");
 		function session.sends2s() return false; end
