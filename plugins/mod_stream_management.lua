@@ -79,7 +79,7 @@ end
 local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 	local _q = (_r and session.sm_queue) or {};
 	if not _r then
-		session.sm_queue, session.sm_last_ack, session.sm_handled = _q, 0, 0;
+		session.sm_queue, session.sm_last_ack, session.sm_last_req, session.sm_handled = _q, 0, 0, 0;
 		local session_type = session.type;
 		add_filter(session, (session_type == "s2sout" and "stanzas/out") or "stanzas/in", function(stanza)
 			if not stanza.attr.xmlns then
@@ -247,6 +247,7 @@ module:hook_stanza(xmlns_sm3, "enabled", enabled_handler);
 
 local function req_handler(session, stanza)
 	if session.sm then
+		session.sm_last_req = session.sm_handled;
 		session.log("debug", "Received ack request for %d", session.sm_handled);
 		(session.sends2s or session.send)(st_stanza("a", { xmlns = stanza.attr.xmlns, h = tostring(session.sm_handled) }));
 	end
@@ -352,6 +353,15 @@ module:hook("pre-resource-unbind", function(event)
 		end
 	end
 end, 10);
+
+local function handle_s2s_preclose(event)
+	if session.sm and session.sm_handled > session.sm_last_req then
+		session.log("debug", "Sending ack before closing for %d, as we handled more stanzas", session.sm_handled);
+		session.sends2s(st_stanza("a", { xmlns = stanza.attr.xmlns, h = tostring(session.sm_handled) }));
+	end
+end
+module:hook("s2sin-pre-destroy", handle_s2s_preclose, 10);
+module:hook("s2sout-pre-destroy", handle_s2s_preclose, 10);
 
 local function handle_s2s_unacked(event)
 	local session = event.session;

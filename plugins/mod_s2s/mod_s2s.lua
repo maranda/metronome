@@ -466,6 +466,16 @@ local function session_close(session, reason, remote_reason)
 					session.sends2s(reason);
 				end
 			end
+		elseif reason == nil then
+			if session.type == "s2sin" then
+				local event_data = { session = session };
+				metronome.events.fire_event("s2sin-pre-destroy", event_data);
+				hosts[session.to_host].events.fire_event("s2sin-pre-destroy", event_data);
+			elseif session.type == "s2sout" then
+				local event_data = { session = session };
+				metronome.events.fire_event("s2sout-pre-destroy", event_data);
+				hosts[session.to_host].events.fire_event("s2sout-pre-destroy", event_data);				
+			end
 		end
 
 		if not reason then session.graceful_close = true; end
