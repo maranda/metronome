@@ -386,6 +386,8 @@ function stream_callbacks.streamopened(session, attr)
 				session:close("internal-server-error", "unable to authenticate, dialback is not available");
 				return;
 			end
+		elseif session.secure and not session.verify_only and not session.cert_chain_status then
+			check_cert_status(session);
 		end
 	end
 	session.notopen = nil;
