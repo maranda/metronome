@@ -355,7 +355,7 @@ end, 10);
 
 local function handle_s2s_unacked(event)
 	local session = event.session;
-	if (session.type == "s2sout" or session.bidirectional) and session.sm and #session.sm_queue > 0 then
+	if (session.type == "s2sout" or session.bidirectional) and not session.graceful_close and session.sm and #session.sm_queue > 0 then
 		session.log("warn", "Session is being destroyed while it still has unacked stanzas");
 		session:handle_unacked();
 	end
