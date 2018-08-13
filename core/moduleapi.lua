@@ -343,6 +343,14 @@ function api:add_timer(delay, callback)
 	end, self.name);
 end
 
+function api:remove_timer(uuid)
+	return timer.remove_task(uuid);
+end
+
+function api:remove_all_timers()
+	return timer.remove_tasks_from_origin(self.name);
+end
+
 local path_sep = package.config:sub(1,1);
 function api:get_directory()
 	return self.path and (self.path:gsub("%"..path_sep.."[^"..path_sep.."]*$", "")) or nil;
