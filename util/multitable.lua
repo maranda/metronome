@@ -25,7 +25,7 @@ end
 local function add(self, ...)
 	local t = self.data;
 	local count = select('#', ...);
-	for n = 1,count-1 do
+	for n = 1, count - 1 do
 		local key = select(n, ...);
 		local tab = t[key];
 		if not tab then tab = {}; t[key] = tab; end
@@ -37,13 +37,13 @@ end
 local function set(self, ...)
 	local t = self.data;
 	local count = select('#', ...);
-	for n = 1,count-2 do
+	for n = 1, count - 2 do
 		local key = select(n, ...);
 		local tab = t[key];
 		if not tab then tab = {}; t[key] = tab; end
 		t = tab;
 	end
-	t[(select(count-1, ...))] = (select(count, ...));
+	t[(select(count - 1, ...))] = (select(count, ...));
 end
 
 local function r(t, n, _end, ...)
@@ -56,14 +56,14 @@ local function r(t, n, _end, ...)
 	if k then
 		local v = t[k];
 		if v then
-			r(v, n+1, _end, ...);
+			r(v, n + 1, _end, ...);
 			if not next(v) then
 				t[k] = nil;
 			end
 		end
 	else
 		for _,b in pairs(t) do
-			r(b, n+1, _end, ...);
+			r(b, n + 1, _end, ...);
 			if not next(b) then
 				t[_] = nil;
 			end
@@ -96,11 +96,11 @@ local function s(t, n, results, _end, ...)
 	if k then
 		local v = t[k];
 		if v then
-			s(v, n+1, results, _end, ...);
+			s(v, n + 1, results, _end, ...);
 		end
 	else
 		for _,b in pairs(t) do
-			s(b, n+1, results, _end, ...);
+			s(b, n + 1, results, _end, ...);
 		end
 	end
 end
@@ -120,7 +120,7 @@ end
 local function search_add(self, results, ...)
 	if not results then results = {}; end
 	local _end = select('#', ...);
-	for n = _end,1 do
+	for n = _end, 1 do
 		if select(n, ...) then _end = n; break; end
 	end
 	s(self.data, 1, results, _end, ...);
@@ -152,7 +152,7 @@ function iter(self, ...)
 					result[i] = keys[i];
 				end
 				result[depth+1] = value;
-				return unpack(result, 1, depth+1);
+				return unpack(result, 1, depth + 1);
 			elseif type(value) == "table" then
 				t_insert(stack, value); -- Descend
 			end

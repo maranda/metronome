@@ -7,6 +7,8 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2011, Matthew Wild, Waqas Hussain
 
+local t_insert, unpack = table.insert, table.unpack or unpack;
+
 --[[ Iterators ]]--
 
 local it = {};
@@ -19,18 +21,18 @@ function it.reverse(f, s, var)
 	while true do
 		local ret = { f(s, var) };
 		var = ret[1];
-	        if var == nil then break; end
-		table.insert(results, 1, ret);
+		if var == nil then break; end
+		t_insert(results, 1, ret);
 	end
 	
 	-- Then return our reverse one
-	local i,max = 0, #results;
+	local i, max = 0, #results;
 	return function (results)
-			if i<max then
-				i = i + 1;
-				return unpack(results[i]);
-			end
-		end, results;
+		if i < max then
+			i = i + 1;
+			return unpack(results[i]);
+		end
+	end, results;
 end
 
 -- Iterate only over keys in a table
@@ -74,7 +76,7 @@ function it.count(f, s, var)
 	while true do
 		local ret = { f(s, var) };
 		var = ret[1];
-	        if var == nil then break; end
+		if var == nil then break; end
 		x = x + 1;
 	end
 	
@@ -107,8 +109,8 @@ function it.tail(n, f, s, var)
 	while true do
 		local ret = { f(s, var) };
 		var = ret[1];
-	        if var == nil then break; end
-		results[(count%n)+1] = ret;
+		if var == nil then break; end
+		results[(count % n) + 1] = ret;
 		count = count + 1;
 	end
 
@@ -118,7 +120,7 @@ function it.tail(n, f, s, var)
 	return function ()
 		pos = pos + 1;
 		if pos > n then return nil; end
-		return unpack(results[((count-1+pos)%n)+1]);
+		return unpack(results[((count - 1 + pos) % n) + 1]);
 	end
 	--return reverse(head(n, reverse(f, s, var)));
 end
@@ -134,8 +136,8 @@ function it.to_array(f, s, var)
 	local t, var = {};
 	while true do
 		var = f(s, var);
-	        if var == nil then break; end
-		table.insert(t, var);
+		if var == nil then break; end
+		t_insert(t, var);
 	end
 	return t;
 end
@@ -146,7 +148,7 @@ function it.to_table(f, s, var)
 	local t, var2 = {};
 	while true do
 		var, var2 = f(s, var);
-	        if var == nil then break; end
+		if var == nil then break; end
 		t[var] = var2;
 	end
 	return t;

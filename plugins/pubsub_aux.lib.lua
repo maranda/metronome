@@ -7,7 +7,8 @@
 -- PubSub exportable standard handlers/function library.
 
 local hosts = hosts;
-local ripairs, tonumber, type = ripairs, tonumber, type;
+local ripairs, tonumber, tostring, type, unpack = 
+	ripairs, tonumber, tostring, type, table.unpack or unpack;
 
 local st = require "util.stanza";
 local uuid_generate = require "util.uuid".generate;

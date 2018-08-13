@@ -17,7 +17,7 @@ local timer = require "util.timer";
 
 local t_insert, t_remove, t_concat = table.insert, table.remove, table.concat;
 local error, setmetatable, type = error, setmetatable, type;
-local ipairs, pairs, select, unpack = ipairs, pairs, select, unpack;
+local ipairs, pairs, select, unpack = ipairs, pairs, select, table.unpack or unpack;
 local tonumber, tostring = tonumber, tostring;
 
 local metronome = metronome;
