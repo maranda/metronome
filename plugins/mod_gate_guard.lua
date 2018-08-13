@@ -64,6 +64,10 @@ local function rr_hook(event)
 			clean_filtered(to_host);
 			return;
 		end
+		
+		local outgoing_session = hosts[from_host].s2sout[to_host];
+		if outgoing_session and outgoing_session.close then outgoing_session:close(); end
+
 		module:log("info", "%s attempted to connect to a blocked remote host %s", stanza.attr.from or event.origin.full_jid, to_host);
 		if stanza.attr.type ~= "error" then
 			send(error_reply(event.stanza, "cancel", "policy-violation", "Communicating with a blocked remote server is not allowed"));
@@ -124,7 +128,7 @@ function module.add_host(module)
 					guard_banned[host] = { expire = now() + ban_time or guard_expire, reason = reason };
 					for i, _host in pairs(hosts) do
 						for name, session in pairs(_host.s2sout) do
-							if name == host then session:close(); end
+							if session.close and name == host then session:close(); end
 						end
 					end
 					for session in pairs(incoming_s2s) do

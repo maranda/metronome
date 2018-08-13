@@ -27,6 +27,7 @@ local uuid = require "util.uuid".generate;
 local os_time, ripairs, t_insert, t_remove = os.time, ripairs, table.insert, table.remove;
 
 local hints_xmlns = "urn:xmpp:hints";
+local lmc_xmlns = "urn:xmpp:message-correct:0";
 local sid_xmlns = "urn:xmpp:sid:0";
 
 local mod_host = module:get_host();
@@ -67,7 +68,8 @@ function log_if_needed(e)
 
 			if muc_from then
 				local data = data_load(node, mod_host, datastore .. "/" .. today) or {};
-				local replace = stanza:child_with_name("replace");
+				local replace = stanza:get_child("replace", lmc_xmlns);
+				local oid = stanza:get_child("origin-id", sid_xmlns);
 				local id = stanza.attr.id;
 				
 				if replace then -- implements XEP-308
@@ -91,6 +93,7 @@ function log_if_needed(e)
 					from = muc_from,
 					resource = from_room,
 					id = stanza.attr.id,
+					oid = oid and oid.attr.id, -- needed for mod_muc_log_mam
 					uid = uid,
 					type = stanza.attr.type, -- needed for mod_muc_log_mam
 					body = body and body:get_text(),

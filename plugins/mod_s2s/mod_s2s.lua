@@ -44,29 +44,25 @@ if connect_timeout < 60 then connect_timeout = 60; end
 local sessions = module:shared("sessions");
 
 local log = module._log;
-local last_inactive_clean = now();
 local fire_event = metronome.events.fire_event;
 
 local xmlns_stream = "http://etherx.jabber.org/streams";
 
 --- Handle stanzas to remote domains
 
-local function time_and_clean(_session, now)
-	_session["last_"..((_session.direction == "outgoing" and "send") or "receive")] = now;
-	if now - last_inactive_clean > check_inactivity then
-		module:log("debug", "checking incoming streams for inactivity...");
-		for session in pairs(metronome.incoming_s2s) do
-			if now - session.last_receive > max_inactivity then session:close(); end
-		end
-		module:log("debug", "checking outgoing streams for inactivity...");
-		for _, host in pairs(hosts) do
-			for domain, session in pairs(host.s2sout) do
-				if not session.notopen and now - session.last_send > max_inactivity then session:close(); end
-			end
-		end
-		last_inactive_clean = now;
+module:add_timer(check_inactivity, function()
+	module:log("debug", "checking incoming streams for inactivity...");
+	for session in pairs(metronome.incoming_s2s) do
+		if now() - session.last_receive > max_inactivity then session:close(); end
 	end
-end
+	module:log("debug", "checking outgoing streams for inactivity...");
+	for _, host in pairs(hosts) do
+		for domain, session in pairs(host.s2sout) do
+			if not session.notopen and now() - session.last_send > max_inactivity then session:close(); end
+		end
+	end
+	return check_inactivity;
+end);
 
 local bouncy_stanzas = { message = true, presence = true, iq = true };
 local function bounce_sendq(session, reason)
@@ -106,7 +102,7 @@ function route_to_existing_session(event)
 	end
 	local host = hosts[from_host].s2sout[to_host];
 	if host then
-		time_and_clean(host, now());
+		host.last_send = now();
 		-- We have a connection to this host already
 		if host.type == "s2sout_unauthed" and (stanza.name ~= "db:verify" or not host.dialback_key) then
 			(host.log or log)("debug", "trying to send over unauthed s2sout to "..to_host);
@@ -183,6 +179,49 @@ function route_to_new_session(event)
 	return true;
 end
 
+--- Helper to check that a session peer's certificate is valid
+local function check_cert_status(session, from, to)
+	local conn = session.conn:socket();
+	local cert;
+	if conn.getpeercertificate then
+		cert = conn:getpeercertificate();
+	end
+
+	if cert then
+		local chain_valid, errors;
+		if conn.getpeerverification then						
+			chain_valid, errors = conn:getpeerverification();
+			errors = type(errors) == "nil" and {} or errors;
+		else
+			chain_valid, errors = false, { { "This version of LuaSec doesn't support peer verification" } };
+		end
+
+		-- Is there any interest in printing out all/the number of errors here?
+		if not chain_valid then
+			(session.log or log)("debug", "certificate chain validation result: invalid");
+			for depth, t in ipairs(errors) do
+				(session.log or log)("debug", "certificate error(s) at depth %d: %s", depth-1, table.concat(t, ", "));
+			end
+			session.cert_chain_status = "invalid";
+		else
+			(session.log or log)("debug", "certificate chain validation result: valid");
+			session.cert_chain_status = "valid";
+
+			local host = session.direction == "incoming" and (from or session.from_host) or (to or session.to_host);
+
+			-- We'll go ahead and verify the asserted identity if the
+			-- connecting server specified one.
+			if host then
+				if cert_verify_identity(host, "xmpp-server", cert) then
+					session.cert_identity_status = "valid";
+				else
+					session.cert_identity_status = "invalid";
+				end
+			end
+		end
+	end
+end
+
 function module.add_host(module)
 	module:set_component_inheritable();
 
@@ -218,6 +257,7 @@ function module.add_host(module)
 		-- Everytime you remove this return a kitten dies... And we no want good kittehs die ye?
 		return true;
 	end, -100);
+	module:hook("s2s-check-certificate-status", check_cert_status);
 	module:hook("s2s-no-encryption", function(session)
 		local to = session.to_host;
 		if encryption_exceptions:contains(session.from_multiplexed) then
@@ -230,49 +270,6 @@ function module.add_host(module)
 		end
 		return;
 	end)
-end
-
---- Helper to check that a session peer's certificate is valid
-local function check_cert_status(session)
-	local conn = session.conn:socket();
-	local cert;
-	if conn.getpeercertificate then
-		cert = conn:getpeercertificate();
-	end
-
-	if cert then
-		local chain_valid, errors;
-		if conn.getpeerverification then						
-			chain_valid, errors = conn:getpeerverification();
-			errors = type(errors) == "nil" and {} or errors;
-		else
-			chain_valid, errors = false, { { "This version of LuaSec doesn't support peer verification" } };
-		end
-
-		-- Is there any interest in printing out all/the number of errors here?
-		if not chain_valid then
-			(session.log or log)("debug", "certificate chain validation result: invalid");
-			for depth, t in ipairs(errors) do
-				(session.log or log)("debug", "certificate error(s) at depth %d: %s", depth-1, table.concat(t, ", "));
-			end
-			session.cert_chain_status = "invalid";
-		else
-			(session.log or log)("debug", "certificate chain validation result: valid");
-			session.cert_chain_status = "valid";
-
-			local host = session.direction == "incoming" and session.from_host or session.to_host
-
-			-- We'll go ahead and verify the asserted identity if the
-			-- connecting server specified one.
-			if host then
-				if cert_verify_identity(host, "xmpp-server", cert) then
-					session.cert_identity_status = "valid"
-				else
-					session.cert_identity_status = "invalid"
-				end
-			end
-		end
-	end
 end
 
 --- XMPP stream event handlers
@@ -349,8 +346,6 @@ function stream_callbacks.streamopened(session, attr)
 			end
 		end
 
-		if session.secure and not session.cert_chain_status then check_cert_status(session); end
-
 		if (not to or not from) and s2s_strict_mode then
 			session:close({ condition = "improper-addressing", text = "No to or from attributes on stream header" });
 			return;
@@ -374,8 +369,6 @@ function stream_callbacks.streamopened(session, attr)
 		-- If we are just using the connection for verifying dialback keys, we won't try and auth it
 		if not attr.id then error("stream response did not give us a streamid!!!"); end
 		session.streamid = attr.id;
-
-		if session.secure and not session.cert_chain_status then check_cert_status(session); end
 
 		-- If server is pre-1.0, don't wait for features, just do dialback
 		if session.version < 1.0 then
@@ -474,6 +467,8 @@ local function session_close(session, reason, remote_reason)
 				end
 			end
 		end
+
+		if not reason then session.graceful_close = true; end
 
 		session.sends2s("</stream:stream>");
 		function session.sends2s() return false; end
@@ -584,7 +579,7 @@ end
 function listener.onincoming(conn, data)
 	local session = sessions[conn];
 	if session then
-		time_and_clean(session, now());
+		session.last_receive = now();
 		session.data(data);
 	end
 end

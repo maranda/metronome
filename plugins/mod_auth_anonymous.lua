@@ -44,13 +44,20 @@ function new_default_provider(host)
 		return true;
 	end
 
+	function provider.is_locked(username)
+		return false;
+	end
+
+	function provider.unlock_user(username)
+		return nil, "Action not available with this backend";
+	end
+
 	function provider.create_user(username, password)
 		return nil, "Account creation/modification not supported";
 	end
 
 	function provider.get_sasl_handler(session)
 		local anonymous_authentication_profile = {
-			order = { "anonymous" },
 			anonymous = function(sasl, session, realm)
 				local username;
 				if test_mode or (randomize_for_trusted and randomize_for_trusted:contains(session.ip)) then
@@ -67,9 +74,10 @@ function new_default_provider(host)
 				return username;
 			end,
 			session = session,
-			host = my_host
+			host = host,
+			order = { "anonymous" }
 		};
-		return new_sasl(module.host, anonymous_authentication_profile);
+		return new_sasl(host, anonymous_authentication_profile);
 	end
 
 	return provider;

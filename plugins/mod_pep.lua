@@ -31,7 +31,6 @@ local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
 
 hash_map = {};
 services = {};
-local last_idle_cleanup = os_time();
 local handlers = {};
 local handlers_owner = {};
 local NULL = {};
@@ -57,14 +56,17 @@ local pep_new = pep_lib.pep_new;
 
 singleton_nodes:add_list(module:get_option("pep_custom_singleton_nodes"));
 
-local function idle_service_closer()
+local check_service_inactivity = module:get_option_number("pep_check_service_inactivity", 3600);
+module:add_timer(check_service_inactivity, function()
+	module:log("debug", "Checking for idle PEP Services...");
 	for name, service in pairs(services) do
 		if not bare_sessions[name] then
 			module:log("debug", "Deactivated inactive PEP Service -- %s", name);
 			services[name] = nil;
 		end
 	end
-end
+	return check_service_inactivity;
+end);
 
 local function disco_info_query(from, to)
 	module:log("debug", "Sending disco info query to: %s", to);
@@ -96,12 +98,6 @@ function handle_pubsub_iq(event)
 
 	if not user_service then return; end
 
-	if time_now - last_idle_cleanup >= 3600 then
-		module:log("debug", "Checking for idle PEP Services...");
-		idle_service_closer();
-		last_idle_cleanup = time_now;
-	end
-	
 	local pubsub = stanza.tags[1];
 	local action = pubsub.tags[1];
 	if not action then return origin.send(pep_error_reply(stanza, "bad-request")); end
@@ -663,12 +659,11 @@ function module.load()
 end
 
 function module.save()
-	return { hash_map = hash_map, services = services, last_idle_cleanup = last_idle_cleanup };
+	return { hash_map = hash_map, services = services };
 end
 
 function module.restore(data)
 	hash_map = data.hash_map or {};
-	last_idle_cleanup = data.last_idle_cleanup or os_time();
 	local _services = data.services or {};
 	for id, service in pairs(_services) do
 		username = jid_split(id);

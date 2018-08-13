@@ -34,7 +34,7 @@ local forbid_purge = module:get_option_boolean("mam_forbid_purge", false);
 
 local mamlib = module:require("mam");
 local validate_query = module:require("validate").validate_query;
-local initialize_storage, save_stores =	mamlib.initialize_storage, mamlib.save_stores;
+local initialize_storage, save_stores = mamlib.initialize_storage, mamlib.save_stores;
 local get_prefs, set_prefs = mamlib.get_prefs, mamlib.set_prefs;
 local fields_handler, generate_stanzas, process_message, purge_messages =
 	mamlib.fields_handler, mamlib.generate_stanzas, mamlib.process_message, mamlib.purge_messages;

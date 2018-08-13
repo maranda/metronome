@@ -17,7 +17,6 @@ local scram_backend = module:require "sasl_aux".hashed_scram_backend;
 local external_backend = module:require "sasl_aux".external_backend;
 local from_hex = module:require "sasl_aux".from_hex;
 local to_hex = module:require "sasl_aux".to_hex;
-local my_host = module.host;
 local bare_sessions = bare_sessions;
 
 -- Default; can be set per-user
@@ -109,7 +108,7 @@ function new_hashpass_provider(host)
 			end
 			return datamanager.store(username, host, "accounts", account);
 		end
-		return nil, "User isn't locked"
+		return nil, "User isn't locked";
 	end
 
 	function provider.create_user(username, password, locked)
@@ -134,14 +133,14 @@ function new_hashpass_provider(host)
 			scram_sha_1 = scram_backend,
 			plain_test = plain_test,
 			session = session,
-			host = my_host
+			host = host
 		};
 		if session.secure then
 			testpass_authentication_profile.order = { "external", "scram_sha_1", "plain_test" };
 		else
 			testpass_authentication_profile.order = { "scram_sha_1", "plain_test" };
 		end
-		return new_sasl(module.host, testpass_authentication_profile);
+		return new_sasl(host, testpass_authentication_profile);
 	end
 	
 	return provider;

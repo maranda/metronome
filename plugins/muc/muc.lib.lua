@@ -546,7 +546,7 @@ function room_mt:get_form_layout()
 	local title = "Configuration for "..self.jid;
 	local layout = {
 		title = title,
-		instructions = title,
+		instructions = "Through this form you can configure all settings of the room",
 		{
 			name = "FORM_TYPE",
 			type = "hidden",
