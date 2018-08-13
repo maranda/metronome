@@ -12,6 +12,7 @@ local math_min = math.min;
 local math_huge = math.huge;
 local get_time = require "socket".gettime;
 local uuid = require "util.uuid".generate;
+local pairs = pairs;
 
 module "timer"
 
@@ -21,9 +22,9 @@ local EVENT_LEAVE = (event.core and event.core.LEAVE) or -1;
 
 task_list = {};
 
-function add_task(delay, callback)
+function add_task(delay, callback, origin)
 	local uuid, event_handle = uuid();
-	task_list[uuid] = { delay = delay, callback = callback };
+	task_list[uuid] = { delay = delay, callback = callback, origin = origin };
 	event_handle = event_base:addevent(nil, 0, function ()
 		if not task_list[uuid] then return EVENT_LEAVE; end
 
@@ -46,6 +47,17 @@ function remove_task(uuid)
 	else
 		return false;
 	end
+end
+
+function remove_tasks_from_origin(origin)
+	local count = 0;
+	for uuid, task in pairs(task_list) do
+		if task.origin == origin then
+			task_list[uuid] = nil;
+			count = count + 1;
+		end
+	end
+	return count;
 end
 
 return _M;

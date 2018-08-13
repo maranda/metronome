@@ -340,7 +340,7 @@ function api:add_timer(delay, callback)
 	return timer.add_task(delay, function (t)
 		if self.loaded == false then return; end
 		return callback(t);
-	end);
+	end, self.name);
 end
 
 local path_sep = package.config:sub(1,1);
