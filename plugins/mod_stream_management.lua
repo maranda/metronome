@@ -355,6 +355,7 @@ module:hook("pre-resource-unbind", function(event)
 end, 10);
 
 local function handle_s2s_preclose(event)
+	local session = event.session;
 	if session.sm and session.sm_handled > session.sm_last_req then
 		session.log("debug", "Sending ack before closing for %d, as we handled more stanzas", session.sm_handled);
 		session.sends2s(st_stanza("a", { xmlns = stanza.attr.xmlns, h = tostring(session.sm_handled) }));
