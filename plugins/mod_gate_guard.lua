@@ -178,3 +178,4 @@ module.restore = function(data) guard_banned, guard_hits = data.guard_banned or 
 
 module:log("debug", "initializing Metronome's gate guard...");
 module:hook("config-reloaded", reload);
+close_filtered();
