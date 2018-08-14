@@ -82,7 +82,8 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 		session.sm_queue, session.sm_last_ack, session.sm_last_req, session.sm_handled = _q, 0, 0, 0;
 		local session_type = session.type;
 		add_filter(session, (session_type == "s2sout" and "stanzas/out") or "stanzas/in", function(stanza)
-			if not stanza.attr.xmlns then
+			local name = stanza.name;
+			if name == "iq" or name == "message" or name == "presence" then
 				session.sm_handled = session.sm_handled + 1;
 				session.log("debug", "Handled %s stanzas: %d", 
 					(session_type == "s2sout" and "outgoing") or "incoming", session.sm_handled);
@@ -134,10 +135,10 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 				end
 			end
 			for _, queued in ipairs(_q) do
-				local _name = queued.name;
-				if (_name == "iq" or _name == "message" or _name == "presence") and queued.attr.type ~= "error" then
+				local name = queued.name;
+				if (name == "iq" or name == "message" or name == "presence") and queued.attr.type ~= "error" then
 					local reply = st_reply(queued);
-					if reply.attr.to ~= full_jid and (has_carbons and _name ~= "message" or not has_carbons) then
+					if reply.attr.to ~= full_jid and (has_carbons and name ~= "message" or not has_carbons) then
 						reply.attr.type = "error";
 						reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
 						fire_event("route/process", session, reply);
@@ -147,8 +148,8 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 		elseif session.type == "s2sout" or session.bidirectional then
 			local host_session = session.direction == "outgoing" and hosts[session.from_host] or hosts[session.to_host];
 			for _, queued in ipairs(_q) do
-				local _name = queued.name;
-				if (_name == "iq" or _name == "message" or _name == "presence") and queued.attr.type ~= "error" then
+				local name = queued.name;
+				if (name == "iq" or name == "message" or name == "presence") and queued.attr.type ~= "error" then
 					local reply = st_reply(queued);
 					reply.attr.type = "error";
 					reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
