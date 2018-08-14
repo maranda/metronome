@@ -173,16 +173,8 @@ local function reload()
 	close_filtered();
 end
 
-local function setup()
-	module:log("debug", "initializing Metronome's gate guard...");
-	module:hook("config-reloaded", reload);
-end
-
 module.save = function() return { guard_banned = guard_banned, guard_hits = guard_hits }; end
 module.restore = function(data) guard_banned, guard_hits = data.guard_banned or {}, data.guard_hits or {}; end
 
-if metronome.start_time then
-	setup();
-else
-	module:hook("server-started", setup);
-end
+module:log("debug", "initializing Metronome's gate guard...");
+module:hook("config-reloaded", reload);
