@@ -7,12 +7,11 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Marco Cirillo, Markus Kutter, Matthew Wild, Rob Hoelz, Waqas Hussain
 
-local pairs, ipairs, next, ripairs = pairs, ipairs, next, ripairs;
+local pairs, ipairs, ripairs, next, tonumber, tostring, type, math, os =
+	pairs, ipairs, ripairs, next, tonumber, tostring, type, math, os;
 
 local datetime = require "util.datetime";
-
 local dataform = require "util.dataforms";
-
 local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local jid_bare = require "util.jid".bare;
@@ -100,13 +99,22 @@ function room_mt:get_default_role(affiliation)
 	end
 end
 
-function room_mt:broadcast_presence(stanza, sid, code, nick)
+function room_mt:broadcast_presence(stanza, sid, code, nick, reason)
 	stanza = get_filtered_presence(stanza);
 	local occupant = self._occupants[stanza.attr.from];
 	stanza:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
-		:tag("item", {affiliation = occupant.affiliation or "none", role = occupant.role or "none", nick=nick}):up();
+		:tag("item", {affiliation = occupant.affiliation or "none", role = occupant.role or "none", nick=nick});
+	if reason then
+		stanza:tag("reason"):text(reason):up():up();
+	else
+		stanza:up();
+	end
 	if code then
-		stanza:tag("status", {code=code}):up();
+		if type(code) == "string" then
+			stanza:tag("status", {code=code}):up();
+		elseif type(code) == "table" then
+			for _, c in ipairs(code) do stanza:tag("status", {code=code}):up(); end
+		end
 	end
 	self:broadcast_except_nick(stanza, stanza.attr.from);
 	local me = self._occupants[stanza.attr.from];
@@ -273,14 +281,14 @@ function room_mt:set_subject(current_nick, subject)
 	return true;
 end
 
-local function build_unavailable_presence_from_error(stanza)
+local function build_unavailable_presence_from_error(room, stanza)
 	local type, condition, text = stanza:get_error();
-	local error_message = "Kicked: "..(condition and condition:gsub("%-", " ") or "presence error");
+	local error_message = (condition and condition:gsub("%-", " ") or "presence error");
 	if text then
 		error_message = error_message..": "..text;
 	end
-	return st.presence({type = "unavailable", from = stanza.attr.from, to = stanza.attr.to})
-		:tag("status"):text(error_message);
+	room.to_kick[stanza.attr.from] = error_message;
+	return st.presence({type = "unavailable", from = stanza.attr.from, to = stanza.attr.to});
 end
 
 -- config handlers
@@ -343,12 +351,14 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 		if type == "error" then -- error, kick em out!
 			if current_nick then
 				log("debug", "kicking %s from %s", current_nick, room);
-				self:handle_to_occupant(origin, build_unavailable_presence_from_error(stanza));
+				self:handle_to_occupant(origin, build_unavailable_presence_from_error(self, stanza));
 			end
 		elseif type == "unavailable" then -- unavailable
 			if current_nick then
 				log("debug", "%s leaving %s", current_nick, room);
 				self._jid_nick[from] = nil;
+				local to_kick = self._to_kick[from];
+				if to_kick then self._to_kick[from] = nil; end
 				local occupant = self._occupants[current_nick];
 				local sessions = occupant.sessions;
 				local new_jid = next(sessions);
@@ -359,8 +369,15 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 					sessions[from] = nil;
 					pr.attr.to = from;
 					pr:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
-						:tag("item", {affiliation = occupant.affiliation or "none", role = "none"}):up()
-						:tag("status", {code = "110"}):up();
+						:tag("item", {affiliation = occupant.affiliation or "none", role = "none"});
+					if to_kick then
+						pr:tag("reason"):text(to_kick):up():up();
+						pr:tag("status", {code = "307"}):up();
+						pr:tag("status", {code = "333"}):up();
+					else
+						pr:up();
+					end
+					pr:tag("status", {code = "110"}):up();
 					module:fire_event("muc-occupant-part-presence", self, pr, origin);
 					self:_route_stanza(pr);
 					if jid ~= new_jid then
@@ -373,7 +390,11 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 				else
 					occupant.role = "none";
 					module:fire_event("muc-occupant-part-presence", self, pr, origin);
-					self:broadcast_presence(pr, from);
+					if to_kick then
+						self:broadcast_presence(pr, from, { "307", "333" }, nil, to_kick);
+					else
+						self:broadcast_presence(pr, from);
+					end
 					self._occupants[current_nick] = nil;
 				end
 				module:fire_event("muc-occupant-part", self, from, current_nick, origin, next(sessions, next(sessions)) and true);
@@ -503,7 +524,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 		origin.send(st.error_reply(stanza, "modify", "bad-request"));
 	elseif current_nick and stanza.name == "message" and type == "error" and is_kickable_error(stanza) then
 		log("debug", "%s kicked from %s for sending an error message", current_nick, self.jid);
-		self:handle_to_occupant(origin, build_unavailable_presence_from_error(stanza)); -- send unavailable
+		self:handle_to_occupant(origin, build_unavailable_presence_from_error(self, stanza)); -- send unavailable
 	else -- private stanza
 		local o_data = self._occupants[to];
 		if o_data then
@@ -873,7 +894,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 		local current_nick = self._jid_nick[stanza.attr.from];
 		if current_nick then
 			log("debug", "%s kicked from %s for sending an error message", current_nick, self.jid);
-			self:handle_to_occupant(origin, build_unavailable_presence_from_error(stanza)); -- send unavailable
+			self:handle_to_occupant(origin, build_unavailable_presence_from_error(self, stanza)); -- send unavailable
 		end
 	elseif stanza.name == "presence" then -- hack - some buggy clients send presence updates to the room rather than their nick
 		local to = stanza.attr.to;
@@ -1175,6 +1196,7 @@ local _M = {}; -- module "muc"
 function _M.new_room(jid)
 	return setmetatable({
 		jid = jid;
+		last_used = os.time();
 		_jid_nick = {};
 		_occupants = {};
 		_data = {
@@ -1182,6 +1204,7 @@ function _M.new_room(jid)
 		    history_length = default_history_length;
 		};
 		_affiliations = {};
+		_to_kick = {};
 	}, room_mt);
 end
 
