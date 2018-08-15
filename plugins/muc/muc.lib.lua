@@ -287,7 +287,7 @@ local function build_unavailable_presence_from_error(room, stanza)
 	if text then
 		error_message = error_message..": "..text;
 	end
-	room.to_kick[stanza.attr.from] = error_message;
+	room._to_kick[stanza.attr.from] = error_message;
 	return st.presence({type = "unavailable", from = stanza.attr.from, to = stanza.attr.to});
 end
 
