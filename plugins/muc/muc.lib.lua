@@ -113,7 +113,7 @@ function room_mt:broadcast_presence(stanza, sid, code, nick, reason)
 		if type(code) == "string" then
 			stanza:tag("status", {code=code}):up();
 		elseif type(code) == "table" then
-			for _, c in ipairs(code) do stanza:tag("status", {code=code}):up(); end
+			for _, c in ipairs(code) do stanza:tag("status", {code=c}):up(); end
 		end
 	end
 	self:broadcast_except_nick(stanza, stanza.attr.from);
