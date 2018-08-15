@@ -380,7 +380,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 			end
 		elseif not type then -- available
 			if current_nick then
-				--if #pr == #stanza or current_nick ~= to then -- commented because google keeps resending directed presence
+				if #pr == #stanza or current_nick ~= to then
 					if current_nick == to then -- simple presence
 						log("debug", "%s broadcasted presence", current_nick);
 						self._occupants[current_nick].sessions[from] = pr;
@@ -412,12 +412,12 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 							end
 						end
 					end
-				--else -- possible rejoin
-				--	log("debug", "%s had connection replaced", current_nick);
-				--	self:handle_to_occupant(origin, st.presence({type = "unavailable", from = from, to = to})
-				--		:tag("status"):text("Replaced by new connection"):up()); -- send unavailable
-				--	self:handle_to_occupant(origin, stanza); -- resend available
-				--end
+				else -- possible rejoin
+					log("debug", "%s had connection replaced", current_nick);
+					self:handle_to_occupant(origin, st.presence({type = "unavailable", from = from, to = to})
+						:tag("status"):text("Replaced by new connection"):up()); -- send unavailable
+					self:handle_to_occupant(origin, stanza); -- resend available
+				end
 			else -- enter room
 				if self.locked then
 					log("debug", "%s was prevented from joining %s, the room needs to be configured first", from, room);
@@ -487,10 +487,8 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 					end
 				end
 			end
-		elseif type ~= "result" then -- bad type
-			if type ~= "visible" and type ~= "invisible" then -- COMPAT ejabberd can broadcast or forward XEP-0018 presences
-				origin.send(st.error_reply(stanza, "modify", "bad-request")); -- FIXME correct error?
-			end
+		else then -- bad type
+			origin.send(st.error_reply(stanza, "modify", "bad-request"));
 		end
 	elseif not current_nick then -- not in room
 		if (type == "error" or type == "result") and stanza.name == "iq" then
