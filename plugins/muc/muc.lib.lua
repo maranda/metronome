@@ -487,7 +487,7 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 					end
 				end
 			end
-		else then -- bad type
+		else -- bad type
 			origin.send(st.error_reply(stanza, "modify", "bad-request"));
 		end
 	elseif not current_nick then -- not in room
