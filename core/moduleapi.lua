@@ -340,7 +340,7 @@ function api:add_timer(delay, callback)
 	return timer.add_task(delay, function (t)
 		if self.loaded == false then return; end
 		return callback(t);
-	end, self.name);
+	end, self.name, self.host);
 end
 
 function api:remove_timer(uuid)
@@ -348,7 +348,7 @@ function api:remove_timer(uuid)
 end
 
 function api:remove_all_timers()
-	return timer.remove_tasks_from_origin(self.name);
+	return timer.remove_tasks_from_origin(self.name, self.host);
 end
 
 local path_sep = package.config:sub(1,1);
