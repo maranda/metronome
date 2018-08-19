@@ -418,7 +418,7 @@ module:hook("account-disco-info", function(event)
 	else
 		append_disco_features(stanza);
 	end
-end);
+end, 50);
 
 module:hook("account-disco-items", function(event)
 	local reply, node = event.reply, event.node;
