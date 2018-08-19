@@ -385,8 +385,8 @@ function module.restore(data)
 	handled_sessions = data.handled_sessions or {};
 end
 
-function module.unload(restore)
-	if not restore then
+function module.unload(reload)
+	if not reload then
 		local full_sessions, incoming_s2s = full_sessions, metronome.incoming_s2s;
 		for _, session in pairs(full_sessions) do
 			if session.host == module.host and session.sm then session:close(); end
