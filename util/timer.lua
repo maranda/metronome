@@ -22,9 +22,9 @@ local EVENT_LEAVE = (event.core and event.core.LEAVE) or -1;
 
 task_list = {};
 
-function add_task(delay, callback, origin)
+function add_task(delay, callback, origin, host)
 	local uuid, event_handle = uuid();
-	task_list[uuid] = { delay = delay, callback = callback, origin = origin };
+	task_list[uuid] = { delay = delay, callback = callback, origin = origin, host = host };
 	event_handle = event_base:addevent(nil, 0, function ()
 		if not task_list[uuid] then return EVENT_LEAVE; end
 
@@ -49,10 +49,11 @@ function remove_task(uuid)
 	end
 end
 
-function remove_tasks_from_origin(origin)
+function remove_tasks_from_origin(origin, host)
+	if not (origin and host) then return 0; end
 	local count = 0;
 	for uuid, task in pairs(task_list) do
-		if task.origin == origin then
+		if task.origin == origin and task.host == host then
 			task_list[uuid] = nil;
 			count = count + 1;
 		end
