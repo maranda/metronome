@@ -10,7 +10,7 @@
 local hosts = metronome.hosts;
 local incoming = metronome.incoming_s2s;
 local host_session = hosts[module.host];
-local s2s_make_authenticated = require "util.s2smanager".make_authenticated;
+local make_authenticated = require "util.s2smanager".make_authenticated;
 
 local log = module._log;
 local no_encryption = metronome.no_encryption;
@@ -45,10 +45,6 @@ end
 
 function verify_dialback(id, to, from, key)
 	return key == generate_dialback(id, to, from);
-end
-
-function make_authenticated(session, host)
-	return s2s_make_authenticated(session, host);
 end
 
 local function can_do_dialback(origin)
