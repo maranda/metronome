@@ -289,6 +289,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		to_process = {};
 		-- we clone table from index
 		for i = entry_index + 1, #logs do to_process[#to_process + 1] = logs[i]; end
+		if #to_process == 0 then return nil; end
 	end
 	
 	entries_count = count_relevant_entries(to_process or logs, with, start, fin);
