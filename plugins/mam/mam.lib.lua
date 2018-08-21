@@ -253,6 +253,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			local total = (_logs_with and #_logs_with) or #logs;
 			local _logs = (_logs_with and _logs_with) or logs;
 			for i = (max > total and 1) or total - max, total do to_process[#to_process + 1] = _logs[i]; end
+			if #to_process == 0 then return nil; end
 			entries_count = total;
 		else
 			entry_index = get_index(logs, before);
@@ -276,10 +277,8 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			stanzas = remove_upto_index(stanzas, index);
 			if #stanzas == 0 then return nil; end
 		end
-		if #stanzas ~= 0 then
-			local first_e, last_e = to_process[1], to_process[#to_process];
-			first, last = first_e.uid, last_e.uid;
-		end
+		local first_e, last_e = to_process[1], to_process[#to_process];
+		first, last = first_e.uid, last_e.uid;
 
 		count = max and (type(before) == "string" and entry_index - entries_count) or entries_count - max;
 		query = generate_fin(stanzas, first, last, (count < 0 and 0) or count, index, before == true);
