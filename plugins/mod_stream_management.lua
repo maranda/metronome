@@ -172,7 +172,7 @@ module:hook("stream-features", function(event)
 		event.features:tag("sm", { xmlns = xmlns_sm2 }):up();
 		event.features:tag("sm", { xmlns = xmlns_sm3 }):up();
 	end
-end, 98);
+end, 97);
 
 module:hook("s2s-stream-features", function(event)
 	local session = event.origin;
@@ -180,7 +180,7 @@ module:hook("s2s-stream-features", function(event)
 		event.features:tag("sm", { xmlns = xmlns_sm2 }):up();
 		event.features:tag("sm", { xmlns = xmlns_sm3 }):up();
 	end
-end, 98);
+end, 97);
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function(session, stanza)
 	local session_type = session.type;

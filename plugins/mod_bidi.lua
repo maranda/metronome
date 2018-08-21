@@ -91,7 +91,7 @@ module:hook("s2s-stream-features", function(event)
 		verifying[from] ~= "outgoing" and not outgoing[from] then
 		features:tag("bidi", { xmlns = xmlns_features }):up();
 	end
-end, 100);
+end, 101);
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function(session, stanza) -- outgoing
 	local to = session.to_host;
