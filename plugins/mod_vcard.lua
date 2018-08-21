@@ -63,6 +63,14 @@ local function handle_vcard(event)
 			if vcard_max and tostring(vCard):len() > vcard_max then
 				return session.send(st.error_reply(stanza, "modify", "policy-violation", "The vCard data exceeded the max allowed size!"));
 			end
+
+			local count = 0;
+			for _, data_element in ipairs(vCard) do
+				if data_element.name == "PHOTO" then count = count + 1; end
+			end
+			if count > 1 then
+				return session.send(st.error_reply(stanza, "modify", "policy-violation", "vCards with multiple PHOTO elements are not supported"));
+			end
 			
 			local ok, err = datamanager.store(session.username, session.host, "vcard", st.preserialize(vCard));
 			if ok then
