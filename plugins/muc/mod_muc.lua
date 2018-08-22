@@ -35,7 +35,7 @@ local datamanager = require "util.datamanager";
 local fire_event = metronome.events.fire_event;
 local um_is_admin = require "core.usermanager".is_admin;
 local hosts = hosts;
-local pairs, ipairs, now = pairs, ipairs, os.time;
+local pairs, ipairs, next, now = pairs, ipairs, next, os.time;
 
 rooms = {};
 local host_session = hosts[muc_host];
