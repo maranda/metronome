@@ -736,7 +736,8 @@ function room_mt:destroy(newjid, reason, password)
 	if password then 
 		pr:tag("password"):text(password):up();
 	elseif redirects_expire_time and newjid then
-		redirects[newjid] = { to = newjid, added = os.time() };
+		log("debug", "Adding %d seconds redirect on %s for %s", redirects_expire_time, self.jid, newjid);
+		redirects[self.jid] = { to = newjid, added = os.time() };
 	end
 	for nick, occupant in pairs(self._occupants) do
 		pr.attr.from = nick;
