@@ -26,7 +26,7 @@ local add_timer = require "util.timer".add_task;
 
 local muc_domain = nil; --module:get_host();
 local default_history_length = 20;
-local max_history_length;
+local max_history_length, redirects_expire_time;
 
 ------------
 local filters = {["http://jabber.org/protocol/muc"]=true;["http://jabber.org/protocol/muc#user"]=true};
@@ -85,6 +85,7 @@ end
 
 local room_mt = {};
 local admin_toggles = {};
+local redirects = {};
 room_mt.__index = room_mt;
 
 function room_mt:get_default_role(affiliation)
@@ -732,7 +733,11 @@ function room_mt:destroy(newjid, reason, password)
 			:tag("item", { affiliation = "none", role = "none" }):up()
 			:tag("destroy", {jid = newjid})
 	if reason then pr:tag("reason"):text(reason):up(); end
-	if password then pr:tag("password"):text(password):up(); end
+	if password then 
+		pr:tag("password"):text(password):up();
+	elseif redirects_expire_time and newjid then
+		redirects[newjid] = { to = newjid, added = os.time() };
+	end
 	for nick, occupant in pairs(self._occupants) do
 		pr.attr.from = nick;
 		for jid in pairs(occupant.sessions) do
@@ -1212,7 +1217,12 @@ function _M.set_max_history(limit)
 	max_history_length = limit;
 end
 
+function _M.set_destruction_redirection(time)
+	redirects_expire_time = time;
+end
+
 _M.admin_toggles = admin_toggles;
+_M.redirects = redirects;
 _M.room_mt = room_mt;
 
 return _M;

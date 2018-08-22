@@ -23,6 +23,8 @@ if restrict_room_creation then
 	end
 end
 local allow_anonymous_creation = module:get_option_boolean("allow_anonymous_creation", false);
+local allow_destruction_redirection = module:get_option_boolean("allow_destruction_redirection", true);
+local expire_destruction_redirection = module:get_option_number("expire_destruction_redirection", 259200);
 local muclib = module:require "muc";
 local muc_new_room = muclib.new_room;
 local jid_section = require "util.jid".section;
@@ -43,6 +45,15 @@ local persistent_rooms = datamanager.load(nil, muc_host, "persistent") or {};
 -- Configurable options
 local max_history_messages = module:get_option_number("max_history_messages", 100);
 muclib.set_max_history(max_history_messages);
+if allow_destruction_redirection then
+	muclib.set_destruction_redirection(expire_destruction_redirection);
+	local redirects = datamanager.load(nil, muc_host, "redirects") or {};
+	if next(redirects) then
+		for r, data in pairs(redirects) do muclib.redirects[r] = data; end
+	end
+else
+	datamanager.store(nil, muc_host, "redirects", nil);
+end
 
 -- Superuser Adhoc handlers
 module:depends("adhoc");
@@ -199,6 +210,14 @@ function stanza_handler(event)
 			origin.send(st.error_reply(stanza, "cancel", "item-not-found"));
 			return true;
 		end
+		if allow_destruction_redirection and muclib.redirects[bare] then
+			local redirect = muclib.redirects[bare];
+			if redirect and (not is_admin(stanza.attr.from) and now() - redirect.added < expire_destruction_redirection) then
+				origin.send(st.error_reply(stanza, "modify", "gone", "xmpp:"..redirect.to.."?join"));
+				return true;
+			end
+			muclib.redirects[bare] = nil;
+		end
 		local from_host = jid_section(stanza.attr.from, "host");
 		if (allow_anonymous_creation or not origin.is_anonymous) and
 		   (not restrict_room_creation or (restrict_room_creation == "admin" and is_admin(stanza.attr.from)) or
@@ -273,6 +292,15 @@ module.restore = function(data)
 	hosts[module:get_host()].muc = { rooms = rooms };
 	for jid in pairs(data.admin_toggles or {}) do
 		muclib.admin_toggles[jid] = true;
+	end
+end
+module.unload = function(reload)
+	if not reload then
+		if next(muclib.redirects) then
+			datamanager.store(nil, muc_host, "redirects", muclib.redirects);
+		else
+			datamanager.store(nil, muc_host, "redirects", nil);
+		end
 	end
 end
 
