@@ -276,6 +276,7 @@ hosts[module:get_host()].muc = { rooms = rooms };
 local saved = false;
 module.save = function()
 	saved = true;
+	datamanager.store(nil, muc_host, "redirects", muclib.redirects);
 	return { rooms = rooms, admin_toggles = muclib.admin_toggles };
 end
 module.restore = function(data)
