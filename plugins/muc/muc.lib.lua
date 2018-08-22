@@ -728,14 +728,15 @@ function room_mt:process_form(origin, stanza)
 end
 
 function room_mt:destroy(newjid, reason, password)
+	newjid = jid_prep(newjid);
 	local pr = st.presence({type = "unavailable"})
 		:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
 			:tag("item", { affiliation = "none", role = "none" }):up()
-			:tag("destroy", {jid = newjid})
+			:tag("destroy", { jid = newjid })
 	if reason then pr:tag("reason"):text(reason):up(); end
 	if password then 
 		pr:tag("password"):text(password):up();
-	elseif redirects_expire_time and newjid then
+	elseif redirects_expire_time and newjid and self:get_option("persistent") then
 		log("debug", "Adding %d seconds redirect on %s for %s", redirects_expire_time, self.jid, newjid);
 		redirects[self.jid] = { to = newjid, added = os.time() };
 	end
