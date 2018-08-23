@@ -175,6 +175,7 @@ if expire_inactive_rooms then
 				room:destroy();
 			end
 		end
+		return 3600;
 	end);
 end
 
