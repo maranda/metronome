@@ -25,6 +25,9 @@ end
 local allow_anonymous_creation = module:get_option_boolean("allow_anonymous_creation", false);
 local allow_destruction_redirection = module:get_option_boolean("allow_destruction_redirection", true);
 local expire_destruction_redirection = module:get_option_number("expire_destruction_redirection", 259200);
+local expire_inactive_rooms = module:get_option_boolean("expire_inactive_rooms", false);
+local expire_inactive_rooms_time = module:get_option_boolean("expire_inactive_rooms_time", 2592000);
+local expire_inactive_rooms_whitelist = module:get_option_set("expire_inactive_rooms_whitelist", {});
 local muclib = module:require "muc";
 local muc_new_room = muclib.new_room;
 local jid_section = require "util.jid".section;
@@ -121,6 +124,9 @@ local function room_save(room, forced)
 			_data = room._data;
 			_affiliations = room._affiliations;
 		};
+		if expire_inactive_rooms then
+			data._last_used = room.last_used;
+		end
 		datamanager.store(node, muc_host, "config", data);
 		room._data.history = history;
 	elseif forced then
@@ -141,6 +147,11 @@ for jid in pairs(persistent_rooms) do
 		local room = muc_new_room(jid);
 		room._data = data._data;
 		room._affiliations = data._affiliations;
+		if expire_inactive_rooms then
+			local _last_used = room._data._last_used;
+			room._data._last_used = nil;
+			room.last_used = _last_used or room.last_used;
+		end
 		if history_length and history_length > max_history_messages then
 			room._data.history_length = 20;
 		end
@@ -154,6 +165,18 @@ for jid in pairs(persistent_rooms) do
 	end
 end
 if persistent_errors then datamanager.store(nil, muc_host, "persistent", persistent_rooms); end
+
+if expire_inactive_rooms then
+	module:add_timer(3600, function()
+		for jid, room in pairs(rooms) do
+			if room._data.persistent and not expire_inactive_rooms_whitelist:contains(jid_section(jid, "node")) and
+			now() - room.last_used > expire_inactive_rooms_time then
+				module:log("info", "Destroying %s due to exceeded inactivity time", jid);
+				room:destroy();
+			end
+		end
+	end);
+end
 
 local function get_disco_info(stanza)
 	local done = {};
@@ -231,7 +254,7 @@ function stanza_handler(event)
 	end
 	if room then
 		room:handle_stanza(origin, stanza);
-		room.last_used = now();
+		if room._jid_nick[stanza.attr.from] then room.last_used = now(); end -- make sure we update last used only on occupant's stanzas
 		if not next(room._occupants) and not persistent_rooms[room.jid] then -- empty, non-persistent room
 			rooms[bare] = nil; -- discard room
 		end
