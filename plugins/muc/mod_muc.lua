@@ -170,7 +170,7 @@ if expire_inactive_rooms then
 	module:add_timer(3600, function()
 		for jid, room in pairs(rooms) do
 			if room._data.persistent and not expire_inactive_rooms_whitelist:contains(jid_section(jid, "node")) and
-			now() - room.last_used > expire_inactive_rooms_time then
+			now() - room.last_used > expire_inactive_rooms_time and not next(room._occupants) then
 				module:log("info", "Destroying %s due to exceeded inactivity time", jid);
 				room:destroy();
 			end
