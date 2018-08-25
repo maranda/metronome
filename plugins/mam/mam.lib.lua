@@ -152,14 +152,14 @@ local function append_stanzas(stanzas, entry, qid)
 end
 
 local function generate_set(stanza, first, last, count, index)
-	stanza:tag("set", { xmlns = rsm_xmlns })
-		:tag("first", { index = index or 0 }):text(first):up()
-		:tag("last"):text(last):up()
-		:tag("count"):text(tostring(count)):up();
+	stanza:tag("set", { xmlns = rsm_xmlns });
+	if first then stanza:tag("first", { index = index }):text(first):up(); end
+	if last then stanza:tag("last"):text(last):up(); end
+	stanza:tag("count"):text(tostring(count)):up();
 end
 
 local function generate_fin(stanzas, first, last, count, index, complete)
-	local fin = st.stanza("fin", { xmlns = xmlns, complete = (complete or count == 0) and "true" or nil });
+	local fin = st.stanza("fin", { xmlns = xmlns, complete = complete and "true" or nil });
 	generate_set(fin, first, last, count, index);
 
 	return fin;
@@ -232,11 +232,40 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 	local query;
 	
 	local at = 1;
-	local first, last, entries_count, count, last_uid;
+	local first, last, entries_count, count, complete;
 	local entry_index, to_process;
+
+	if with or start or fin then
+		entries_count = count_relevant_entries(logs, with, start, fin);
+	else
+		entries_count = #logs;
+	end
 	
+	if max == 0 then
+		query = generate_fin(stanzas, first, last, entries_count, count, true);
+		return stanzas, query, #stanzas;
 	-- handle paging
-	if before then
+	elseif index then
+		local to_index = 0;
+
+		for i, entry in ipairs(logs) do
+			local timestamp = entry.timestamp;
+			local uid = entry.uid
+			local to_index = to_index + 1;
+			if not dont_add(entry, with, start, fin, timestamp) and to_index - 1 >= index then
+				append_stanzas(stanzas, entry, qid);
+				if at == 1 then first = uid; end
+				at = at + 1;
+				last = uid;
+			end
+			if at ~= 1 and at > max then break; end
+		end
+		if #stanzas == 0 then return nil; end
+		complete = logs[#logs].uid == last;
+
+		query = generate_fin(stanzas, first, last, entries_count, index, complete);
+		return stanzas, query, #stanzas;
+	elseif before then
 		if before == true then
 			to_process = {};
 			local _logs_with;
@@ -254,16 +283,14 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			local _logs = (_logs_with and _logs_with) or logs;
 			for i = (max > total and 1) or total - max, total do to_process[#to_process + 1] = _logs[i]; end
 			if #to_process == 0 then return nil; end
-			entries_count = total;
 		else
 			entry_index = get_index(logs, before);
-			if not entry_index then return nil; end
+			if not entry_index then return nil; else entry_index = entry_index - 1; end
 			to_process = {};
-			local sub = (max and entry_index - max) or 1;
+			local sub = entry_index - max;
 			-- we clone the table upto index
-			for i = (sub < 0 and 1) or sub, entry_index - 1 do to_process[#to_process + 1] = logs[i]; end
+			for i = (sub < 0 and 1) or sub, entry_index do to_process[#to_process + 1] = logs[i]; end
 			if #to_process == 0 then return nil; end
-			entries_count = count_relevant_entries(to_process, with, start, fin);
 		end
 
 		for i, entry in ipairs(to_process) do
@@ -273,27 +300,20 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 				append_stanzas(stanzas, entry, qid);
 			end
 		end
-		if index then
-			stanzas = remove_upto_index(stanzas, index);
-			if #stanzas == 0 then return nil; end
-		end
-		local first_e, last_e = to_process[1], to_process[#to_process];
-		first, last = first_e.uid, last_e.uid;
+		first, last = to_process[1].uid, to_process[#to_process].uid;
 
-		count = max and (type(before) == "string" and entry_index - entries_count) or entries_count - max;
-		query = generate_fin(stanzas, first, last, (count < 0 and 0) or count, index, before == true);
+		count = (type(before) == "string" and entry_index - 1 - max) or entries_count - 1 - max;
+		query = generate_fin(stanzas, first, last, entries_count, count < 0 and 0 or count, before == true or entry_index - max <= 1);
 		return stanzas, query, #stanzas;
 	elseif after then
 		entry_index = get_index(logs, after);
-		if not entry_index then return nil; end
+		if not entry_index then return nil; else entry_index = entry_index + 1; end
 		to_process = {};
 		-- we clone table from index
-		for i = entry_index + 1, #logs do to_process[#to_process + 1] = logs[i]; end
+		for i = entry_index, #logs do to_process[#to_process + 1] = logs[i]; end
 		if #to_process == 0 then return nil; end
 	end
 	
-	entries_count = count_relevant_entries(to_process or logs, with, start, fin);
-
 	for i, entry in ipairs(to_process or logs) do
 		local timestamp = entry.timestamp;
 		local uid = entry.uid;
@@ -301,18 +321,14 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			append_stanzas(stanzas, entry, qid);
 			if at == 1 then first = uid; end
 			at = at + 1;
-			last_uid = uid;
+			last = uid;
 		end
 		if at ~= 1 and at > max then break; end
 	end
-	last = last_uid;
-	if index then
-		stanzas = remove_upto_index(stanzas, index);
-		if #stanzas == 0 then return nil; end
-	end
+	complete = (to_process or logs)[to_process and #to_process or #logs].uid == last;
 	
-	count = entries_count - max;
-	query = generate_fin(stanzas, first, last, (count < 0 and 0) or count, index);
+	count = after and entry_index - 1 or 0;
+	query = generate_fin(stanzas, first, last, entries_count, count, complete);
 	return stanzas, query, #stanzas;
 end
 

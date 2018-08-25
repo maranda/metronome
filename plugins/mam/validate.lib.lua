@@ -65,7 +65,7 @@ local function validate_query(stanza, query, qid)
 	
 	-- Get RSM set
 	local after, before, max, index = rsm_parse(stanza, query);
-	if (before and after) or max == "" or after == "" then
+	if (before and after) or (index and (before or after or index < 0)) or max == "" or after == "" then
 		module:log("debug", "Invalid RSM parameters received: After - %s, Before - %s, Max - %s, Index - %s",
 			tostring(after), tostring(before), tostring(max), tostring(index));
 		return false, st.error_reply(stanza, "modify", "bad-request");
