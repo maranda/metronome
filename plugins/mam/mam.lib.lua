@@ -240,7 +240,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		for i, entry in ipairs(logs) do
 			local timestamp = entry.timestamp;
 			local uid = entry.uid
-			local to_index = to_index + 1;
+			to_index = to_index + 1;
 			if not dont_add(entry, with, start, fin, timestamp) and to_index - 1 >= index then
 				append_stanzas(stanzas, entry, qid);
 				if at == 1 then first = uid; end
