@@ -185,17 +185,6 @@ local function get_index(logs, index)
 	end
 end
 
-local function remove_upto_index(logs, index)
-	if index > #logs then
-		logs = {};
-	else
-		for i = 1, #logs do
-			if i ~= index then t_remove(logs, i); else break; end
-		end
-	end
-	return logs;
-end
-
 local function count_relevant_entries(logs, with, start, fin)
 	local count = 0;
 	for i, e in ipairs(logs) do
