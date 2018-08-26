@@ -18,6 +18,22 @@ module:add_feature("urn:xmpp:sift:senders:remote");
 module:add_feature("urn:xmpp:sift:stanzas:message");
 module:add_feature("urn:xmpp:sift:stanzas:presence");
 
+-- Util functions
+
+local ignore_ns_map = require "util.set".new({
+	"http://jabber.org/protocol/pubsub#event",
+	"urn:xmpp:carbons:2",
+	"urn:xmpp:chat-markers:0",
+	"urn:xmpp:mam:2"
+});
+local function whitelist_message(stanza)
+	for i, tag in ipairs(stanza.tags) do
+		if tag.name == "body" or ignore_ns_map:contains(tag.attr.xmlns) then
+			return true;
+		end
+	end
+end
+
 -- Define queue data structure
 
 local queue_mt = {}; queue_mt.__index = queue_mt
@@ -219,10 +235,7 @@ local function full_handler(event)
 			return true;
 		end
 		if to_full.csi == "inactive" and (st_name == "message" or st_name == "iq") then
-			if st_name == "message" and not stanza:child_with_name("body") and
-				not stanza:get_child("event", "http://jabber.org/protocol/pubsub#event") and
-				not stanza:get_child("received", "urn:xmpp:carbons:2") and
-				not stanza:get_child("result", "urn:xmpp:mam:2") then
+			if st_name == "message" and not whitelist_message(stanza) then
 				module:log("debug", "filtering bodyless message for %s: %s", to_full.full_jid, stanza:top_tag());
 				return true;
 			end
