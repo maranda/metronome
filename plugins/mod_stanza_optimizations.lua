@@ -237,7 +237,6 @@ function module.unload(reload)
 		for _, full_session in pairs(full_sessions) do 
 			full_session.csi = nil;
 			if full_session.csi_queue then
-				module:log("debug", "module is being unloaded...");
 				full_session.csi_queue:flush();
 				full_session.csi_queue = nil;
 			end
