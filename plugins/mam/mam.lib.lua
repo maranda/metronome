@@ -235,13 +235,10 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		return stanzas, query, #stanzas;
 	-- handle paging
 	elseif index then
-		local to_index = 0;
-
 		for i, entry in ipairs(logs) do
 			local timestamp = entry.timestamp;
 			local uid = entry.uid
-			to_index = to_index + 1;
-			if not dont_add(entry, with, start, fin, timestamp) and to_index - 1 >= index then
+			if not dont_add(entry, with, start, fin, timestamp) and i - 1 > index then
 				append_stanzas(stanzas, entry, qid);
 				if at == 1 then first = uid; end
 				at = at + 1;
@@ -270,12 +267,12 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			-- we clone the table from the end backward count
 			local total = (_logs_with and #_logs_with) or #logs;
 			local _logs = (_logs_with and _logs_with) or logs;
-			for i = (max > total and 1) or total - max, total do to_process[#to_process + 1] = _logs[i]; end
+			for i = (max > total and 1) or 1 + total - max, total do to_process[#to_process + 1] = _logs[i]; end
 		else
 			entry_index = get_index(logs, before);
 			if not entry_index then return nil; else entry_index = entry_index - 1; end
 			to_process = {};
-			local sub = entry_index - max;
+			local sub = 1 + entry_index - max;
 			-- we clone the table upto index
 			for i = (sub < 0 and 1) or sub, entry_index do to_process[#to_process + 1] = logs[i]; end
 		end
@@ -292,8 +289,8 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		end
 		first, last = to_process[1].uid, to_process[#to_process].uid;
 
-		count = (type(before) == "string" and entry_index - 1 - max) or entries_count - 1 - max;
-		query = generate_fin(stanzas, first, last, entries_count, count < 0 and 0 or count, before == true or entry_index - max <= 1);
+		count = (type(before) == "string" and entry_index - max) or entries_count - 1 - max;
+		query = generate_fin(stanzas, first, last, entries_count, count < 0 and 0 or count, before == true or count < 1);
 		return stanzas, query, #stanzas;
 	elseif after then
 		entry_index = get_index(logs, after);
