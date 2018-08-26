@@ -282,7 +282,6 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 
 		for i, entry in ipairs(to_process) do
 			local timestamp = entry.timestamp;
-			local uid = entry.uid
 			if not dont_add(entry, with, start, fin, timestamp) then
 				append_stanzas(stanzas, entry, qid);
 			end
