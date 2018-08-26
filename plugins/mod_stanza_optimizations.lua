@@ -4,8 +4,8 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
--- This module implements a minimal part of XEP-273 and XEP-352 to block incoming
--- presences particularly useful for Mobile Clients.
+-- This module implements a part of XEP-273 and XEP-352 to queue and filter
+-- incoming presences and messages, particularly useful for mobile clients.
 
 local NULL = {};
 local pairs, t_insert, t_remove = pairs, table.insert, table.remove;
