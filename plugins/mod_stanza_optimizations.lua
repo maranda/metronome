@@ -20,7 +20,7 @@ module:add_feature("urn:xmpp:sift:stanzas:presence");
 
 module:hook("stream-features", function(event)
 	if event.origin.type == "c2s" then event.features:tag("csi", { xmlns = "urn:xmpp:csi:0" }):up(); end
-end, 97);
+end, 96);
 	
 module:hook("iq-set/self/urn:xmpp:sift:2:sift", function(event)
 	local stanza, session = event.stanza, event.origin;
@@ -97,12 +97,13 @@ module:hook("stanza/urn:xmpp:csi:0:active", function(event)
 		local jid = session.full_jid or jid_join(session.username, session.host);
 		module:log("info", "%s signaling client is active", jid);
 		session.csi = "active";
-		local send, queue = session.send, session.csi_queue;
-		if queue and #queue > 0 then -- flush queue
+		local send, idx, queue = session.send, session.csi_queue_idx, session.csi_queue;
+		if idx and #idx > 0 then -- flush queue
 			module:log("debug", "flushing queued stanzas to %s", jid);
-			for i = 1, #queue do
-				module:log("debug", "sending presence: %s", queue[i]:top_tag());
-				send(queue[i]);
+			for i = 1, #idx do
+				local stanza = queue[idx[i]];
+				module:log("debug", "sending presence: %s", stanza:top_tag());
+				send(stanza);
 			end
 		end
 		session.csi_queue, session.csi_queue_idx, session.presence_block, session.to_block, queue = nil, nil, nil, nil, nil;
@@ -152,13 +153,15 @@ module:hook("presence/bare", function(event)
 			if resource.presence_block == true then
 				if resource.csi == "inactive" then
 					module:log("debug", "queuing presence for %s: %s", resource.full_jid, stanza:top_tag());
-					if not resource.csi_queue_idx[stanza.attr.from] then
-						resource.csi_queue_idx[stanza.attr.from] = #resource.csi_queue + 1;
-						t_insert(resource.csi_queue, st.clone(stanza));
+					if not resource.csi_queue[stanza.attr.from] then
+						resource.csi_queue[stanza.attr.from] = st.clone(stanza);
+						t_insert(resource.csi_queue_idx, stanza.attr.from);
 					else
-						t_remove(resource.csi_queue, resource.csi_queue_idx[stanza.attr.from]);
-						resource.csi_queue_idx[stanza.attr.from] = #resource.csi_queue + 1;
-						t_insert(resource.csi_queue, st.clone(stanza));
+						for i, from in ipairs(resource.csi_queue_idx) do
+							if from == stanza.attr.from then t_remove(resource.csi_queue_idx, i); break; end
+						end
+						resource.csi_queue[stanza.attr.from] = st.clone(stanza);
+						t_insert(resource.csi_queue_idx, stanza.attr.from);
 					end
 				end
 				resource.to_block[stanza] = true;
@@ -179,13 +182,15 @@ local function full_handler(event)
 	if to_full then
 		if to_full.csi == "inactive" and st_name == "presence" then
 			module:log("debug", "queuing presence for %s: %s", to_full.full_jid, stanza:top_tag());
-			if not to_full.csi_queue_idx[stanza.attr.from] then
-				to_full.csi_queue_idx[stanza.attr.from] = #to_full.csi_queue + 1;
-				t_insert(to_full.csi_queue, st.clone(stanza));
+			if not to_full.csi_queue[stanza.attr.from] then
+				to_full.csi_queue[stanza.attr.from] = st.clone(stanza);
+				t_insert(to_full.csi_queue_idx, stanza.attr.from);
 			else
-				t_remove(to_full.csi_queue, to_full.csi_queue_idx[stanza.attr.from]);
-				to_full.csi_queue_idx[stanza.attr.from] = #to_full.csi_queue + 1;
-				t_insert(to_full.csi_queue, st.clone(stanza));
+				for i, from in ipairs(to_full.csi_queue_idx) do
+					if from == stanza.attr.from then t_remove(to_full.csi_queue_idx, i); break; end
+				end
+				to_full.csi_queue[stanza.attr.from] = st.clone(stanza);
+				t_insert(to_full.csi_queue_idx, stanza.attr.from);
 			end
 		end
 		if to_full[st_name.."_block"] == true or to_full[st_name.."_block"] == "remote" and 

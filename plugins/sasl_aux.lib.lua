@@ -14,7 +14,7 @@ local test_password = require "core.usermanager".test_password;
 local jid_compare = require "util.jid".compare;
 local jid_split = require "util.jid".prepped_split;
 local log = require "util.logger".init("sasl");
-local get_time, ipairs, t_concat, unpack = os.time, ipairs, table.concat, unpack;
+local get_time, ipairs, t_concat, unpack = os.time, ipairs, table.concat, table.unpack or unpack;
 
 -- Util functions
 

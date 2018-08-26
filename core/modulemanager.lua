@@ -23,7 +23,7 @@ local setmetatable, rawget = setmetatable, rawget;
 local ipairs, pairs, type, tostring, t_insert = ipairs, pairs, type, tostring, table.insert;
 
 local debug_traceback = debug.traceback;
-local unpack, select = unpack, select;
+local unpack, select = table.unpack or unpack, select;
 pcall = function(f, ...)
 	local n = select("#", ...);
 	local params = { ... };

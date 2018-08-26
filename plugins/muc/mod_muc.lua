@@ -23,6 +23,11 @@ if restrict_room_creation then
 	end
 end
 local allow_anonymous_creation = module:get_option_boolean("allow_anonymous_creation", false);
+local allow_destruction_redirection = module:get_option_boolean("allow_destruction_redirection", true);
+local expire_destruction_redirection = module:get_option_number("expire_destruction_redirection", 259200);
+local expire_inactive_rooms = module:get_option_boolean("expire_inactive_rooms", false);
+local expire_inactive_rooms_time = module:get_option_number("expire_inactive_rooms_time", 2592000);
+local expire_inactive_rooms_whitelist = module:get_option_set("expire_inactive_rooms_whitelist", {});
 local muclib = module:require "muc";
 local muc_new_room = muclib.new_room;
 local jid_section = require "util.jid".section;
@@ -33,7 +38,7 @@ local datamanager = require "util.datamanager";
 local fire_event = metronome.events.fire_event;
 local um_is_admin = require "core.usermanager".is_admin;
 local hosts = hosts;
-local pairs, ipairs, now = pairs, ipairs, os.time;
+local pairs, ipairs, next, now = pairs, ipairs, next, os.time;
 
 rooms = {};
 local host_session = hosts[muc_host];
@@ -43,6 +48,15 @@ local persistent_rooms = datamanager.load(nil, muc_host, "persistent") or {};
 -- Configurable options
 local max_history_messages = module:get_option_number("max_history_messages", 100);
 muclib.set_max_history(max_history_messages);
+if allow_destruction_redirection then
+	muclib.set_destruction_redirection(expire_destruction_redirection);
+	local redirects = datamanager.load(nil, muc_host, "redirects") or {};
+	if next(redirects) then
+		for r, data in pairs(redirects) do muclib.redirects[r] = data; end
+	end
+else
+	datamanager.store(nil, muc_host, "redirects", nil);
+end
 
 -- Superuser Adhoc handlers
 module:depends("adhoc");
@@ -110,6 +124,9 @@ local function room_save(room, forced)
 			_data = room._data;
 			_affiliations = room._affiliations;
 		};
+		if expire_inactive_rooms then
+			data._last_used = room.last_used;
+		end
 		datamanager.store(node, muc_host, "config", data);
 		room._data.history = history;
 	elseif forced then
@@ -130,10 +147,14 @@ for jid in pairs(persistent_rooms) do
 		local room = muc_new_room(jid);
 		room._data = data._data;
 		room._affiliations = data._affiliations;
+		if expire_inactive_rooms then
+			local _last_used = room._data._last_used;
+			room._data._last_used = nil;
+			room.last_used = _last_used or room.last_used;
+		end
 		if history_length and history_length > max_history_messages then
 			room._data.history_length = 20;
 		end
-		room.last_used = now();
 		room.route_stanza = room_route_stanza;
 		room.save = room_save;
 		rooms[jid] = room;
@@ -144,6 +165,19 @@ for jid in pairs(persistent_rooms) do
 	end
 end
 if persistent_errors then datamanager.store(nil, muc_host, "persistent", persistent_rooms); end
+
+if expire_inactive_rooms then
+	module:add_timer(3600, function()
+		for jid, room in pairs(rooms) do
+			if room._data.persistent and not expire_inactive_rooms_whitelist:contains(jid_section(jid, "node")) and
+			now() - room.last_used > expire_inactive_rooms_time and not next(room._occupants) then
+				module:log("info", "Destroying %s due to exceeded inactivity time", jid);
+				room:destroy();
+			end
+		end
+		return 3600;
+	end);
+end
 
 local function get_disco_info(stanza)
 	local done = {};
@@ -163,7 +197,7 @@ local function get_disco_items(stanza)
 	local reply = st.iq({type = "result", id = stanza.attr.id, from = muc_host, to = stanza.attr.from})
 		:query("http://jabber.org/protocol/disco#items");
 	for jid, room in pairs(rooms) do
-		if not room:get_option("hidden") then
+		if not room:get_option("hidden") or muclib.admin_toggles[jid_bare(stanza.attr.from)] then
 			reply:tag("item", {jid = jid, name = room:get_name()}):up();
 		end
 	end
@@ -200,13 +234,20 @@ function stanza_handler(event)
 			origin.send(st.error_reply(stanza, "cancel", "item-not-found"));
 			return true;
 		end
+		if allow_destruction_redirection and muclib.redirects[bare] then
+			local redirect = muclib.redirects[bare];
+			if redirect and (not is_admin(stanza.attr.from) and now() - redirect.added < expire_destruction_redirection) then
+				origin.send(st.error_reply(stanza, "modify", "gone", "xmpp:"..redirect.to.."?join"));
+				return true;
+			end
+			muclib.redirects[bare] = nil;
+		end
 		local from_host = jid_section(stanza.attr.from, "host");
 		if (allow_anonymous_creation or not origin.is_anonymous) and
 		   (not restrict_room_creation or (restrict_room_creation == "admin" and is_admin(stanza.attr.from)) or
 		   (restrict_room_creation == "local" and from_host == module.host:gsub("^[^%.]+%.", ""))) then
 			room = muc_new_room(bare);
 			room.just_created = stanza:get_child("x", "http://jabber.org/protocol/muc") and true or nil;
-			room.last_used = now();
 			room.route_stanza = room_route_stanza;
 			room.save = room_save;
 			rooms[bare] = room;
@@ -214,7 +255,7 @@ function stanza_handler(event)
 	end
 	if room then
 		room:handle_stanza(origin, stanza);
-		room.last_used = now();
+		if room._jid_nick[stanza.attr.from] then room.last_used = now(); end -- make sure we update last used only on occupant's stanzas
 		if not next(room._occupants) and not persistent_rooms[room.jid] then -- empty, non-persistent room
 			rooms[bare] = nil; -- discard room
 		end
@@ -259,6 +300,7 @@ hosts[module:get_host()].muc = { rooms = rooms };
 local saved = false;
 module.save = function()
 	saved = true;
+	datamanager.store(nil, muc_host, "redirects", muclib.redirects);
 	return { rooms = rooms, admin_toggles = muclib.admin_toggles };
 end
 module.restore = function(data)
@@ -268,7 +310,6 @@ module.restore = function(data)
 		room._occupants = oldroom._occupants;
 		room._data = oldroom._data;
 		room._affiliations = oldroom._affiliations;
-		room.last_used = now();
 		room.route_stanza = room_route_stanza;
 		room.save = room_save;
 		rooms[jid] = room;
@@ -276,6 +317,15 @@ module.restore = function(data)
 	hosts[module:get_host()].muc = { rooms = rooms };
 	for jid in pairs(data.admin_toggles or {}) do
 		muclib.admin_toggles[jid] = true;
+	end
+end
+module.unload = function(reload)
+	if not reload then
+		if next(muclib.redirects) then
+			datamanager.store(nil, muc_host, "redirects", muclib.redirects);
+		else
+			datamanager.store(nil, muc_host, "redirects", nil);
+		end
 	end
 end
 

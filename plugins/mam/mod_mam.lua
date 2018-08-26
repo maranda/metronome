@@ -203,7 +203,7 @@ module:hook("pre-message/bare", process_outbound_messages, 30);
 module:hook("message/full", process_inbound_messages, 30);
 module:hook("pre-message/full", process_outbound_messages, 30);
 
-module:hook("account-disco-info", feature_handler);
+module:hook("account-disco-info", feature_handler, 35);
 module:hook("iq/self/"..xmlns..":prefs", prefs_handler);
 module:hook("iq-set/self/"..purge_xmlns..":purge", purge_handler);
 module:hook("iq-set/self/"..xmlns..":query", query_handler);

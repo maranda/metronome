@@ -6,6 +6,9 @@
 
 -- Objects and Functions for mod_pep.
 
+local tonumber, tostring, type, unpack = 
+	tonumber, tostring, type, table.unpack or unpack;
+
 local log = require "util.logger".init("mod_pep");
 local jid_bare = require "util.jid".bare;
 local jid_split = require "util.jid".split;

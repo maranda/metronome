@@ -26,7 +26,6 @@ local data_xmlns, metadata_xmlns = "urn:xmpp:avatar:data", "urn:xmpp:avatar:meta
 local vcard_max = module:get_option_number("vcard_max_size");
 
 module:add_feature("vcard-temp");
-module:add_feature("urn:xmpp:pep-vcard-conversion:0");
 
 local function handle_synchronize(event)
 	local node, host = event.node, event.host;
@@ -63,6 +62,14 @@ local function handle_vcard(event)
 			
 			if vcard_max and tostring(vCard):len() > vcard_max then
 				return session.send(st.error_reply(stanza, "modify", "policy-violation", "The vCard data exceeded the max allowed size!"));
+			end
+
+			local count = 0;
+			for _, data_element in ipairs(vCard) do
+				if data_element.name == "PHOTO" then count = count + 1; end
+			end
+			if count > 1 then
+				return session.send(st.error_reply(stanza, "modify", "policy-violation", "vCards with multiple PHOTO elements are not supported"));
 			end
 			
 			local ok, err = datamanager.store(session.username, session.host, "vcard", st.preserialize(vCard));
@@ -199,6 +206,10 @@ local function handle_presence_inject(event)
 		end
 	end
 end
+
+module:hook("account-disco-info", function(event)
+	event.stanza:tag("feature", { var = "urn:xmpp:pep-vcard-conversion:0" }):up();
+end, 45);
 
 module:hook_global("vcard-synchronize", handle_synchronize);
 module:hook("iq/bare/vcard-temp:vCard", handle_vcard);

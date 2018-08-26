@@ -72,9 +72,13 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 		if room:get_affiliation(from) == "owner" then
 			local vCard = stanza.tags[1];
 
+			local count = 0;
 			for n, tag in ipairs(vCard.tags) do
 				-- strip everything else
-				if tag.name ~= "PHOTO" then t_remove(vCard.tags, n); t_remove(vCard, n); end
+				if tag.name ~= "PHOTO" then t_remove(vCard.tags, n); t_remove(vCard, n); else count = count + 1; end
+			end
+			if count > 1 then
+				return session.send(st.error_reply(stanza, "modify", "policy-violation", "vCards with multiple PHOTO elements are not supported"));
 			end
 
 			if #vCard.tags == 0 then

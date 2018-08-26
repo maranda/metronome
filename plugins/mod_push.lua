@@ -182,7 +182,7 @@ end);
 
 module:hook("account-disco-info", function(event)
 	event.stanza:tag("feature", { var = push_xmlns }):up();
-end);
+end, 40);
 
 module:hook("sm-push-message", function(event)
 	local user, stanza = event.username, event.stanza;

@@ -16,7 +16,7 @@ local datamanager = require "util.datamanager";
 local storagemanager = require "core.storagemanager";
 local json = require "util.json";
 local message = metronomectl.show_message;
-local unpack = unpack;
+local unpack = table.unpack or unpack;
 	
 function module.command(arg)
 	local node, host, store = unpack(arg);

@@ -7,7 +7,7 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2010, Matthew Wild
 
-local t_insert = table.insert;
+local t_insert, unpack = table.insert, table.unpack or unpack;
 function import(module, ...)
 	local m = package.loaded[module] or require(module);
 	if type(m) == "table" and ... then

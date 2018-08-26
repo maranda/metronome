@@ -17,7 +17,7 @@ local timer = require "util.timer";
 
 local t_insert, t_remove, t_concat = table.insert, table.remove, table.concat;
 local error, setmetatable, type = error, setmetatable, type;
-local ipairs, pairs, select, unpack = ipairs, pairs, select, unpack;
+local ipairs, pairs, select, unpack = ipairs, pairs, select, table.unpack or unpack;
 local tonumber, tostring = tonumber, tostring;
 
 local metronome = metronome;
@@ -340,7 +340,15 @@ function api:add_timer(delay, callback)
 	return timer.add_task(delay, function (t)
 		if self.loaded == false then return; end
 		return callback(t);
-	end);
+	end, self.name, self.host);
+end
+
+function api:remove_timer(uuid)
+	return timer.remove_task(uuid);
+end
+
+function api:remove_all_timers()
+	return timer.remove_tasks_from_origin(self.name, self.host);
 end
 
 local path_sep = package.config:sub(1,1);

@@ -79,10 +79,11 @@ end
 local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 	local _q = (_r and session.sm_queue) or {};
 	if not _r then
-		session.sm_queue, session.sm_last_ack, session.sm_handled = _q, 0, 0;
+		session.sm_queue, session.sm_last_ack, session.sm_last_req, session.sm_handled = _q, 0, 0, 0;
 		local session_type = session.type;
 		add_filter(session, (session_type == "s2sout" and "stanzas/out") or "stanzas/in", function(stanza)
-			if not stanza.attr.xmlns then
+			local name = stanza.name;
+			if name == "iq" or name == "message" or name == "presence" then
 				session.sm_handled = session.sm_handled + 1;
 				session.log("debug", "Handled %s stanzas: %d", 
 					(session_type == "s2sout" and "outgoing") or "incoming", session.sm_handled);
@@ -134,10 +135,10 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 				end
 			end
 			for _, queued in ipairs(_q) do
-				local _name = queued.name;
-				if (_name == "iq" or _name == "message" or _name == "presence") and queued.attr.type ~= "error" then
+				local name = queued.name;
+				if (name == "iq" or name == "message" or name == "presence") and queued.attr.type ~= "error" then
 					local reply = st_reply(queued);
-					if reply.attr.to ~= full_jid and (has_carbons and _name ~= "message" or not has_carbons) then
+					if reply.attr.to ~= full_jid and (has_carbons and name ~= "message" or not has_carbons) then
 						reply.attr.type = "error";
 						reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
 						fire_event("route/process", session, reply);
@@ -147,8 +148,8 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 		elseif session.type == "s2sout" or session.bidirectional then
 			local host_session = session.direction == "outgoing" and hosts[session.from_host] or hosts[session.to_host];
 			for _, queued in ipairs(_q) do
-				local _name = queued.name;
-				if (_name == "iq" or _name == "message" or _name == "presence") and queued.attr.type ~= "error" then
+				local name = queued.name;
+				if (name == "iq" or name == "message" or name == "presence") and queued.attr.type ~= "error" then
 					local reply = st_reply(queued);
 					reply.attr.type = "error";
 					reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
@@ -171,7 +172,7 @@ module:hook("stream-features", function(event)
 		event.features:tag("sm", { xmlns = xmlns_sm2 }):up();
 		event.features:tag("sm", { xmlns = xmlns_sm3 }):up();
 	end
-end, 98);
+end, 97);
 
 module:hook("s2s-stream-features", function(event)
 	local session = event.origin;
@@ -179,7 +180,7 @@ module:hook("s2s-stream-features", function(event)
 		event.features:tag("sm", { xmlns = xmlns_sm2 }):up();
 		event.features:tag("sm", { xmlns = xmlns_sm3 }):up();
 	end
-end, 98);
+end, 97);
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features", function(session, stanza)
 	local session_type = session.type;
@@ -247,6 +248,7 @@ module:hook_stanza(xmlns_sm3, "enabled", enabled_handler);
 
 local function req_handler(session, stanza)
 	if session.sm then
+		session.sm_last_req = session.sm_handled;
 		session.log("debug", "Received ack request for %d", session.sm_handled);
 		(session.sends2s or session.send)(st_stanza("a", { xmlns = stanza.attr.xmlns, h = tostring(session.sm_handled) }));
 	end
@@ -353,6 +355,16 @@ module:hook("pre-resource-unbind", function(event)
 	end
 end, 10);
 
+local function handle_s2s_preclose(event)
+	local session = event.session;
+	if session.sm and session.sm_handled > session.sm_last_req then
+		session.log("debug", "Sending ack before closing for %d, as we handled more stanzas", session.sm_handled);
+		session.sends2s(st_stanza("a", { xmlns = session.sm_version == 3 and xmlns_sm3 or xmlns_sm2, h = tostring(session.sm_handled) }));
+	end
+end
+module:hook("s2sin-pre-destroy", handle_s2s_preclose, 10);
+module:hook("s2sout-pre-destroy", handle_s2s_preclose, 10);
+
 local function handle_s2s_unacked(event)
 	local session = event.session;
 	if (session.type == "s2sout" or session.bidirectional) and not session.graceful_close and session.sm and #session.sm_queue > 0 then
@@ -371,4 +383,19 @@ end
 
 function module.restore(data)
 	handled_sessions = data.handled_sessions or {};
+end
+
+function module.unload(reload)
+	if not reload then
+		local full_sessions, incoming_s2s = full_sessions, metronome.incoming_s2s;
+		for _, session in pairs(full_sessions) do
+			if session.host == module.host and session.sm then session:close(); end
+		end
+		for session in pairs(incoming_s2s) do
+			if session.to_host == module.host and session.sm then session:close(); end
+		end
+		for _, session in pairs(hosts[module.host].s2sout) do
+			if session.sm and session.close then session:close(); end
+		end
+	end
 end

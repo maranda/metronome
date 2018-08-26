@@ -396,6 +396,7 @@ local function handle_req(event)
 		data.mail = data.mail:lower();
 		return handle_register(data, event);
 	elseif data.reset and data.ip then
+		data.reset = data.reset:lower();
 		return handle_password_reset(data, event);
 	else
 		module:log("debug", "A request with an insufficent number of elements was sent");

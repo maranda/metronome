@@ -386,6 +386,8 @@ function stream_callbacks.streamopened(session, attr)
 				session:close("internal-server-error", "unable to authenticate, dialback is not available");
 				return;
 			end
+		elseif session.secure and not session.verify_only and not session.cert_chain_status then
+			check_cert_status(session);
 		end
 	end
 	session.notopen = nil;
@@ -465,6 +467,16 @@ local function session_close(session, reason, remote_reason)
 					log("debug", "Disconnecting %s->%s[%s], <stream:error> is: %s", session.from_host or "(unknown host)", session.to_host or "(unknown host)", session.type, tostring(reason));
 					session.sends2s(reason);
 				end
+			end
+		elseif reason == nil then
+			if session.type == "s2sin" and hosts[session.to_host] then
+				local event_data = { session = session };
+				metronome.events.fire_event("s2sin-pre-destroy", event_data);
+				hosts[session.to_host].events.fire_event("s2sin-pre-destroy", event_data);
+			elseif session.type == "s2sout" and hosts[session.from_host] then
+				local event_data = { session = session };
+				metronome.events.fire_event("s2sout-pre-destroy", event_data);
+				hosts[session.from_host].events.fire_event("s2sout-pre-destroy", event_data);				
 			end
 		end
 
