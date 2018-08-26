@@ -219,7 +219,9 @@ local function full_handler(event)
 			return true;
 		end
 		if to_full.csi == "inactive" and (st_name == "message" or st_name == "iq") then
-			if st_name == "message" and not stanza:child_with_name("body") then
+			if st_name == "message" and not stanza:child_with_name("body") and
+				not stanza:get_child("received", "urn:xmpp:carbons:2") and
+				not stanza:get_child("result", "urn:xmpp:mam:2") then
 				module:log("debug", "filtering bodyless message for %s: %s", to_full.full_jid, stanza:top_tag());
 				return true;
 			end
