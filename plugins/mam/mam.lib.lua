@@ -254,20 +254,9 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 	elseif before then
 		if before == true then
 			to_process = {};
-			local _logs_with;
-			if with then
-				_logs_with = {};
-				for i, e in ipairs(logs) do
-					if e.bare_to == with or e.bare_from == with then
-						_logs_with[#_logs_with + 1] = e;
-					end
-				end
-			end
-						
 			-- we clone the table from the end backward count
-			local total = (_logs_with and #_logs_with) or #logs;
-			local _logs = (_logs_with and _logs_with) or logs;
-			for i = (max > total and 1) or 1 + total - max, total do to_process[#to_process + 1] = _logs[i]; end
+			local total = #logs;
+			for i = (max > total and 1) or 1 + total - max, total do to_process[#to_process + 1] = logs[i]; end
 		else
 			entry_index = get_index(logs, before);
 			if not entry_index then return nil; else entry_index = entry_index - 1; end
@@ -282,11 +271,15 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 
 		for i, entry in ipairs(to_process) do
 			local timestamp = entry.timestamp;
+			local uid = entry.uid;
 			if not dont_add(entry, with, start, fin, timestamp) then
 				append_stanzas(stanzas, entry, qid);
+				if at == 1 then first = uid; end
+				at = at + 1;
+				last = uid;
 			end
+			if at ~= 1 and at > max then break; end
 		end
-		first, last = to_process[1].uid, to_process[#to_process].uid;
 
 		count = (type(before) == "string" and entry_index - max) or entries_count - 1 - max;
 		query = generate_fin(stanzas, first, last, entries_count, count < 0 and 0 or count, before == true or count < 1);
