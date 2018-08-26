@@ -271,7 +271,6 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			local total = (_logs_with and #_logs_with) or #logs;
 			local _logs = (_logs_with and _logs_with) or logs;
 			for i = (max > total and 1) or total - max, total do to_process[#to_process + 1] = _logs[i]; end
-			if #to_process == 0 then return nil; end
 		else
 			entry_index = get_index(logs, before);
 			if not entry_index then return nil; else entry_index = entry_index - 1; end
@@ -279,8 +278,8 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			local sub = entry_index - max;
 			-- we clone the table upto index
 			for i = (sub < 0 and 1) or sub, entry_index do to_process[#to_process + 1] = logs[i]; end
-			if #to_process == 0 then return nil; end
 		end
+		if #to_process == 0 then return nil; end
 
 		for i, entry in ipairs(to_process) do
 			local timestamp = entry.timestamp;
