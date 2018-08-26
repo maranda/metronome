@@ -415,12 +415,14 @@ local function check_stanza(e, session)
 		if apply then
 			if block then
 				module:log("debug", "stanza blocked: %s, to: %s, from: %s", tostring(stanza.name), tostring(to), tostring(from));
-				if stanza.name == "message" and stanza.attr.type ~= "groupchat" and stanza.attr.type ~= "error" then
-					local reply = st.error_reply(stanza, "cancel", "not-acceptable");
-					reply:child_with_name("error"):tag("blocked", { xmlns = blocking_xmlns..":errors" }):up();
-					origin.send(reply);
-				elseif stanza.name == "iq" and (stanza.attr.type == "get" or stanza.attr.type == "set") then
-					origin.send(st.error_reply(stanza, "cancel", "service-unavailable"));
+				if stanza.name ~= "presence" and stanza.attr.type ~= "error" and not (stanza.name == "iq" and stanza.attr.type == "result") then
+					if origin.type == "c2s" and from == origin.full_jid then
+						local reply = st.error_reply(stanza, "cancel", "not-acceptable");
+						reply:child_with_name("error"):tag("blocked", { xmlns = blocking_xmlns..":errors" }):up();
+						origin.send(reply);
+					elseif stanza.attr.type ~= "groupchat" then
+						origin.send(st.error_reply(stanza, "cancel", "service-unavailable"));
+					end
 				end
 				return true; -- stanza blocked !
 			else
