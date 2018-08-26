@@ -314,7 +314,11 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		end
 		if at ~= 1 and at > max then break; end
 	end
-	complete = (to_process or logs)[to_process and #to_process or #logs].uid == last;
+	if #logs ~= 0 then
+		complete = (to_process or logs)[to_process and #to_process or #logs].uid == last;
+	else
+		complete = true;
+	end
 	
 	count = after and entry_index - 1 or 0;
 	query = generate_fin(stanzas, first, last, entries_count, count, complete);
