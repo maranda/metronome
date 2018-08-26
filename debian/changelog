@@ -1,3 +1,9 @@
+metronome (3.10.7) stable; urgency=medium
+
+  * New upstream release.
+
+ -- Alexandre Aubin <alex.aubin@mailoo.org>  Sun, 26 Aug 2018 11:06:00 +0100
+
 metronome (3.9.20) stable; urgency=medium
 
   * New upstream release.
