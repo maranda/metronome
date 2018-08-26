@@ -219,7 +219,7 @@ local function full_handler(event)
 			return true;
 		end
 		if to_full.csi == "inactive" and (st_name == "message" or st_name == "iq") then
-			if st_name == "message" and not message:child_with_name("body") then
+			if st_name == "message" and not stanza:child_with_name("body") then
 				module:log("filtering bodyless message for %s: %s", to_full.full_jid, stanza:top_tag());
 				return true;
 			end
