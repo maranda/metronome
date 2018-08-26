@@ -44,9 +44,6 @@ local function verify(session)
 		if not session.resource then
 			return false, "unexpected-request", "A resource must be bound to use Stream Management";
 		else
-			if session.csi then
-				return false, "unexpected-request", "Stream Management negotiation MUST be done before signaling Client State";
-			end
 			return true;
 		end
 	elseif session_type == "s2sin" or session_type == "s2sout" then

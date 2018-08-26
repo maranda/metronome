@@ -51,6 +51,10 @@ function queue_mt:flush(clean)
 	end
 end
 
+function queue_mt:wrap_sm()
+	self._send = self._session.send;
+end
+
 local function new_queue(session)
 	return setmetatable({
 		_idx = {},
@@ -223,6 +227,10 @@ end
 module:hook("iq/full", full_handler, 100);
 module:hook("message/full", full_handler, 100);
 module:hook("presence/full", full_handler, 100);
+
+module:hook("c2s-sm-enabled", function(session)
+	if session.csi_queue then session.csi_queue:wrap_sm(); end
+end);
 
 function module.unload(reload)
 	if not reload then 
