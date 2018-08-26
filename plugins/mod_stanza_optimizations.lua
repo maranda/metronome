@@ -239,8 +239,8 @@ function module.unload(reload)
 			if full_session.csi_queue then
 				module:log("debug", "module is being unloaded...");
 				full_session.csi_queue:flush();
+				full_session.csi_queue = nil;
 			end
-			full_session.csi_queue = nil;
 			full_session.presence_block = nil;
 			full_session.message_block = nil;
 			full_session.to_block = nil;
