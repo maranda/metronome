@@ -20,15 +20,15 @@ module:add_feature("urn:xmpp:sift:stanzas:presence");
 
 -- Util functions
 
-local ignore_ns_map = require "util.set".new({
+local allowed_ns_map = module:get_option_set("allowed_inactive_message_payloads", {
 	"http://jabber.org/protocol/pubsub#event",
-	"urn:xmpp:carbons:2",
+	"urn:xmpp:eme:0",
 	"urn:xmpp:chat-markers:0",
 	"urn:xmpp:mam:2"
 });
 local function whitelist_message(stanza)
 	for i, tag in ipairs(stanza.tags) do
-		if tag.name == "body" or ignore_ns_map:contains(tag.attr.xmlns) then
+		if tag.name == "body" or allowed_ns_map:contains(tag.attr.xmlns) then
 			return true;
 		end
 	end

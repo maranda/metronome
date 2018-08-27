@@ -21,9 +21,13 @@ module:add_feature(xmlns);
 local received = st.stanza("received", { xmlns = xmlns });
 local sent = st.stanza("sent", { xmlns = xmlns });
 
+local allowed_ns_map = module:get_option_set("allowed_inactive_csi_carbon_payloads", {
+	"urn:xmpp:eme:0",
+	"urn:xmpp:chat-markers:0"
+});
 local function allow_message_to_csi(stanza)
 	for i, tag in ipairs(stanza.tags) do
-		if tag.name == "body" or tag.attr.xmlns == "urn:xmpp:chat-markers:0" then
+		if tag.name == "body" or allowed_ns_map:contains(tag.attr.xmlns) then
 			return true;
 		end
 	end
