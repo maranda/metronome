@@ -121,13 +121,18 @@ module:hook("message/bare", function(event)
 	local bare_session = bare_sessions[stanza.attr.to];
 
 	if bare_session and stanza.attr.type == "chat" then
-		local clone = st.clone(stanza);
+		local clone, allow_message = st.clone(stanza);
 		local top_resource = bare_session.top_resources and bare_session.top_resources[1];
 		for resource, session in pairs(bare_session.sessions) do
 			if session.carbons and session ~= top_resource then
-				clone.attr.to = jid_join(session.username, session.host, resource);
-				module:log("debug", "Forking message from %s to %s", stanza.attr.from, clone.attr.to);
-				session.send(clone);
+				if session.csi == "inactive" and allow_message == nil then
+					allow_message = allow_message_to_csi(stanza);
+				end
+				if session.csi ~= "inactive" or allow_message then
+					clone.attr.to = jid_join(session.username, session.host, resource);
+					module:log("debug", "Forking message from %s to %s", stanza.attr.from, clone.attr.to);
+					session.send(clone);
+				end
 			end
 		end
 	end
