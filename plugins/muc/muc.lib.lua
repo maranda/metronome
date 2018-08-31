@@ -23,6 +23,7 @@ local setmetatable = setmetatable;
 local base64 = require "util.encodings".base64;
 local md5 = require "util.hashes".md5;
 local add_timer = require "util.timer".add_task;
+local clone_table = require "util.auxiliary".clone_table;
 
 local muc_domain = nil; --module:get_host();
 local default_history_length = 20;
@@ -286,7 +287,7 @@ local function build_unavailable_presence_from_error(room, stanza)
 	local type, condition, text = stanza:get_error();
 	local error_message = (condition and condition:gsub("%-", " ") or "presence error");
 	if text then
-		error_message = error_message..": "..text;
+		error_message = error_message.." -> "..text;
 	end
 	room._to_kick[stanza.attr.from] = error_message;
 	return st.presence({type = "unavailable", from = stanza.attr.from, to = stanza.attr.to});
@@ -688,6 +689,8 @@ function room_mt:process_form(origin, stanza)
 	local hidden;
 	if not instant then hidden = not fields["muc#roomconfig_publicroom"]; end
 
+	local current_config = clone_table(self._data);
+
 	self:set_option("name", name, changed);
 	self:set_option("description", fields["muc#roomconfig_roomdesc"], changed);
 	self:set_option("language", fields["muc#roomconfig_lang"], changed);
@@ -702,7 +705,10 @@ function room_mt:process_form(origin, stanza)
 
 	-- Process custom entries
 	local invalid = module:fire_event("muc-fields-process", self, fields, stanza, changed);
-	if invalid then return origin.send(invalid); end
+	if invalid then
+		self._data = current_config;
+		return origin.send(invalid);
+	end
 	
 	if self.save then self:save(true); end
 	origin.send(st.reply(stanza));
