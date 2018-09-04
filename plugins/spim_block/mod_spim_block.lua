@@ -133,8 +133,8 @@ local function http_file_get(event, type, path)
 	end
 end
 
-local function send_message(origin, to, from, token)
-	module:log("info", "requiring authentication for message directed to %s from %s", to, from);
+local function send_message(origin, name, to, from, token)
+	module:log("info", "requiring authentication for %s directed to %s from %s", name, to, from);
 	local message = st.message({ id = new_uuid(), type = "chat", from = to, to = from }, 
 		"Greetings, this is the "..module.host.." server before sending a message or presence subscription to this user, "..
 		"please visit "..base_url.." and input the following code in the form: "..token);
@@ -226,7 +226,7 @@ local function handle_incoming(event)
 				local token = generate_secret(20);
 				if not token then return; end
 				set_block(token, to, from_bare);
-				return send_message(origin, to, from, token);
+				return send_message(origin, name, to, from, token);
 			end
 		else
 			local full_session = full_sessions[to];
@@ -235,7 +235,7 @@ local function handle_incoming(event)
 				local token = generate_secret(20);
 				if not token then return; end
 				set_block(token, to_bare, from_bare);
-				return send_message(origin, to, from, token);
+				return send_message(origin, name, to, from, token);
 			end
 		end
 		
