@@ -11,6 +11,7 @@ local http_request = require "net.http".request;
 local jid_prep = require "util.jid".prep;
 local json_decode = require "util.json".decode;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
+local saslprep = require "util.encodings".stringprep.saslprep;
 local ipairs, pairs, pcall, open, os_execute, os_time, setmt, tonumber = 
       ipairs, pairs, pcall, io.open, os.execute, os.time, setmetatable, tonumber;
 local sha1 = require "util.hashes".sha1;
@@ -276,6 +277,9 @@ local function handle_register(data, event)
 		elseif password:len() > max_pass_len then
 			module:log("debug", "%s submitted password is exceeding max length (%d characters)", ip, max_pass_len);
 			return http_error_reply(event, 406, "Supplied password is exceeding max length (" .. tostring(max_pass_len) .. " characters).");
+		elseif not saslprep(password) then
+			module:log("debug", "%s submitted password is violating SASLprep profile", ip);
+			return http_error_reply(event, 406, "Supplied password is violating SASLprep profile.");
 		end
 
 		if not usermanager.user_exists(username, module.host) then
@@ -423,7 +427,7 @@ local function handle_reset(event, path)
 					local node = reset_tokens[id_token] and reset_tokens[id_token].node;
 					if node then
 						if not ((password:find("%d+") or password:find("%p+")) and password:find("%u+")) or 
-							password:len() < min_pass_len or password:len() > max_pass_len then
+							password:len() < min_pass_len or password:len() > max_pass_len or not saslprep(password) then
 							return r_template(event, "reset_password_check");
 						end
 

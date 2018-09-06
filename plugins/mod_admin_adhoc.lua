@@ -21,6 +21,7 @@ local usermanager_delete_user = require "core.usermanager".delete_user;
 local usermanager_get_password = require "core.usermanager".get_password;
 local usermanager_set_password = require "core.usermanager".set_password;
 local rm_load_roster = require "util.rostermanager".load_roster;
+local saslprep = require "util.encodings".stringprep.saslprep;
 local st, jid, uuid = require "util.stanza", require "util.jid", require "util.uuid";
 local timer_add_task = require "util.timer".add_task;
 local dataforms_new = require "util.dataforms".new;
@@ -46,7 +47,7 @@ end
 
 local function validate_password(password)
 	if not ((password:find("%d+") or password:find("%p+")) and password:find("%u+")) or 
-		password:len() < min_pass_len or password:len() > max_pass_len then
+		password:len() < min_pass_len or password:len() > max_pass_len or not saslprep(password) then
 		return false;
 	end
 	return true;
@@ -54,7 +55,7 @@ end
 
 local pass_error = "Passwords must contain at least one digit or one special character, one uppercase letter " ..
 	"and must be at least " .. tostring(min_pass_len) .. " chars in length and not exceed " ..
-	tostring(max_pass_len) .. " chars.";
+	tostring(max_pass_len) .. " chars, passwords must also conform to RFC 4013";
 
 function add_user_command_handler(self, data, state)
 	local add_user_layout = dataforms_new{
