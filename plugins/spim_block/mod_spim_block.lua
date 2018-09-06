@@ -199,7 +199,7 @@ local function handle_incoming(event)
 		local to, from, type, name = stanza.attr.to, stanza.attr.from, stanza.attr.type, stanza.name;
 
 		if (name == "presence" and type ~= "subscribe") or type == "error" or type == "groupchat" then return; end
-		if name == "message" and stanza:child_with_name("result") and not stanza:child_with_name("body") then
+		if name == "message" and not type and #stanza.tags == 1 and stanza.tags[1].name == "result"  then
 			return; -- probable MAM archive result
 		end
 
@@ -216,6 +216,7 @@ local function handle_incoming(event)
 		if to_allow_list and to_allow_list[from_bare] then return; end
 		
 		if block_list[to_bare] and block_list[to_bare][from_bare] then
+			origin.send(st.error_reply(stanza, "auth", "not-authorized"));
 			module:log("info", "blocking unsolicited %s to %s from %s", name, to_bare, from_bare);
 			module:fire_event("call-gate-guard", { origin = origin, from = from, reason = "SPIM", ban_time = ban_time });
 			return true; 
@@ -226,6 +227,7 @@ local function handle_incoming(event)
 				local token = generate_secret(20);
 				if not token then return; end
 				set_block(token, to, from_bare);
+				origin.send(st.error_reply(stanza, "auth", "not-authorized"));
 				return send_message(origin, name, to, from, token);
 			end
 		else
@@ -235,6 +237,7 @@ local function handle_incoming(event)
 				local token = generate_secret(20);
 				if not token then return; end
 				set_block(token, to_bare, from_bare);
+				origin.send(st.error_reply(stanza, "auth", "not-authorized"));
 				return send_message(origin, name, to, from, token);
 			end
 		end
