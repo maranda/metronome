@@ -91,10 +91,12 @@ local function save_stores()
 	to_save = now();
 	for bare, store in pairs(session_stores) do
 		local user = jid_section(bare, "node");
+		local last_used = store.last_used;
 		if store.changed then
 			store.changed, store.last_used = nil, nil;
 			storage:set(user, store);
 		end
+		store.last_used = last_used;
 	end	
 end
 
