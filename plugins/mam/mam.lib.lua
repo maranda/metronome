@@ -447,17 +447,17 @@ local function process_message(event, outbound)
 	
 	local from, to = (message.attr.from or origin.full_jid), message.attr.to;
 	local bare_from, bare_to = jid_bare(from), jid_bare(to);
-	local archive, user;
+	local archive, loaded, user;
 	
 	if outbound then
 		user = jid_section(from, "node");
 		local bare_session = bare_sessions[bare_from];
-		if bare_session and not session_stores[bare_from] then initialize_session_store(user); end
+		if bare_session and not session_stores[bare_from] then initialize_session_store(user); loaded = true; end
 		archive = session_stores[bare_from];
 	else
 		user = jid_section(to, "node");
 		local bare_session = bare_sessions[bare_to];
-		if bare_session and not session_stores[bare_to] then initialize_session_store(user); end
+		if bare_session and not session_stores[bare_to] then initialize_session_store(user); loaded = true; end
 		archive = session_stores[bare_to];
 	end
 	
@@ -518,6 +518,7 @@ local function process_message(event, outbound)
 			end
 		end
 
+		if not loaded then archive.last_used = now(); end
 		if (not outbound or not to or to == bare_from) and id then message:tag("stanza-id", { xmlns = sid_xmlns, by = bare_to, id = id }):up(); end
 	else
 		return;
