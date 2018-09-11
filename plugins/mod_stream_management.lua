@@ -19,6 +19,7 @@ local st_clone, st_stanza, st_reply =
 	require "util.stanza".clone, require "util.stanza".stanza, require "util.stanza".reply;
 
 local add_filter = require "util.filters".add_filter;
+local add_timer = require "util.timer".add_task;
 local dt = require "util.datetime".datetime;
 local destroy = sessionmanager.destroy_session;
 local uuid = require "util.uuid".generate;
@@ -335,7 +336,7 @@ module:hook("pre-resource-unbind", function(event)
 			local _now, token = now(), session.token;
 			session.halted, session.detached = _now, true;
 			module:fire_event("sm-process-queue", { username = session.username, host = session.host, queue = session.sm_queue });
-			module:add_timer(session.sm_timeout or timeout, function()
+			add_timer(session.sm_timeout or timeout, function()
 				local current = full_sessions[session.full_jid];
 				if not session.destroyed and current and (current.token == token and session.halted == _now) then
 					session.log("debug", "%s session has been halted too long, destroying", session.full_jid);
@@ -343,7 +344,7 @@ module:hook("pre-resource-unbind", function(event)
 					session.token = nil;
 					destroy(session);
 				end
-			end);
+			end, module.name, module.host);
 			return true;
 		else
 			if #session.sm_queue > 0 then
