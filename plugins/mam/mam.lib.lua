@@ -69,7 +69,7 @@ local function initialize_session_store(user)
 		session_stores[bare_jid].last_used = now();
 		bare_session.archiving = session_stores[bare_jid];
 	end
-	module:add_timer(unload_cache_time, function()
+	module:add_timer(60, function()
 		if session_stores[bare_jid] then
 			local store = session_stores[bare_jid];
 			if now() - store.last_used > unload_cache_time then
@@ -81,7 +81,7 @@ local function initialize_session_store(user)
 				bare_sessions[bare_jid].archiving = nil;
 				session_stores[bare_jid] = nil;
 			else
-				return unload_cache_time;
+				return 60;
 			end
 		end
 	end);
