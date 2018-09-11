@@ -22,7 +22,6 @@ local t_insert, t_remove = table.insert, table.remove;
 local setmetatable = setmetatable;
 local base64 = require "util.encodings".base64;
 local md5 = require "util.hashes".md5;
-local add_timer = require "util.timer".add_task;
 local clone_table = require "util.auxiliary".clone_table;
 
 local muc_domain = nil; --module:get_host();
@@ -955,7 +954,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 					if self._occupants[_inviter] then
 						if not self._invites then self._invites = {}; end
 						self._invites[_recipient] = _from;
-						add_timer(60, function()
+						module:add_timer(60, function()
 							if self._invites then
 								self._invites[_recipient] = nil;
 								if not next(self._invites) then self._invites = nil; end
