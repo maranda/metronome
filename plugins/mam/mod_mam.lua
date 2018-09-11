@@ -57,8 +57,10 @@ local function save_session_store(event)
 	local bare_jid = jid_join(user, host);
 	local user_archive = session_stores[bare_jid];
 	if user_archive and user_archive.changed then
+		local last_used = user_archive.last_used;
 		user_archive.changed, user_archive.last_used = nil, nil;
 		storage:set(user, user_archive);
+		user_archive.last_used = last_used;
 	end
 end
 
