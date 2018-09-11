@@ -73,6 +73,7 @@ local function initialize_session_store(user)
 		if session_stores[bare_jid] then
 			local store = session_stores[bare_jid];
 			if now() - store.last_used > unload_cache_time then
+				module:log("debug", "Removing %s archive cache due to inactivity", bare_jid);
 				if store.changed then
 					store.changed, store.last_used = nil, nil;
 					storage:set(user, store);
