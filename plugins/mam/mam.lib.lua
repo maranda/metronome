@@ -466,14 +466,19 @@ local function process_message(event, outbound)
 		if not offline_overcap then
 			if not offline_stores[bare_to] then
 				archive = storage:get(user);
-				offline_stores[bare_to] = archive;
-				module:add_timer(300, function()
-					if offline_stores[bare_to] then
-						local store = offline_stores[bare_to];
-						if store.changed then store.changed, store.last_used = nil, nil; storage:set(user, store); end
-						offline_stores[bare_to] = nil;
-					end
-				end);
+				if archive then
+					offline_stores[bare_to] = archive;
+					module:add_timer(300, function()
+						if offline_stores[bare_to] then
+							local store = offline_stores[bare_to];
+							if store.changed then
+								store.changed, store.last_used = nil, nil;
+								storage:set(user, store);
+							end
+							offline_stores[bare_to] = nil;
+						end
+					end);
+				end
 			else
 				archive = offline_stores[bare_to];
 			end
