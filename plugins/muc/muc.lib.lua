@@ -17,7 +17,6 @@ local jid_split = require "util.jid".split;
 local jid_bare = require "util.jid".bare;
 local jid_prep = require "util.jid".prep;
 local st = require "util.stanza";
-local log = require "util.logger".init("mod_muc");
 local t_insert, t_remove = table.insert, table.remove;
 local setmetatable = setmetatable;
 local base64 = require "util.encodings".base64;
@@ -351,12 +350,12 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 		pr.attr.from = current_nick;
 		if type == "error" then -- error, kick em out!
 			if current_nick then
-				log("debug", "kicking %s from %s", current_nick, room);
+				module:log("debug", "kicking %s from %s", current_nick, room);
 				self:handle_to_occupant(origin, build_unavailable_presence_from_error(self, stanza));
 			end
 		elseif type == "unavailable" then -- unavailable
 			if current_nick then
-				log("debug", "%s leaving %s", current_nick, room);
+				module:log("debug", "%s leaving %s", current_nick, room);
 				self._jid_nick[from] = nil;
 				local to_kick = self._to_kick[from];
 				if to_kick then self._to_kick[from] = nil; end
@@ -404,21 +403,21 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 			if current_nick then
 				if #pr == #stanza or current_nick ~= to then
 					if current_nick == to then -- simple presence
-						log("debug", "%s broadcasted presence", current_nick);
+						module:log("debug", "%s broadcasted presence", current_nick);
 						self._occupants[current_nick].sessions[from] = pr;
 						self:broadcast_presence(pr, from);
 					else -- change nick
 						local occupant = self._occupants[current_nick];
 						local is_multisession = next(occupant.sessions, next(occupant.sessions));
 						if self._occupants[to] or is_multisession then
-							log("debug", "%s couldn't change nick", current_nick);
+							module:log("debug", "%s couldn't change nick", current_nick);
 							local reply = st.error_reply(stanza, "cancel", "conflict"):up();
 							origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 						else
 							local data = self._occupants[current_nick];
 							local to_nick = jid_section(to, "resource");
 							if to_nick then
-								log("debug", "%s (%s) changing nick to %s", current_nick, data.jid, to);
+								module:log("debug", "%s (%s) changing nick to %s", current_nick, data.jid, to);
 								local p = st.presence({type = "unavailable", from = current_nick});
 								self:broadcast_presence(p, from, "303", to_nick);
 								self._occupants[current_nick] = nil;
@@ -429,20 +428,20 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 								self:broadcast_presence(pr, from);
 								module:fire_event("muc-occupant-nick-change", self, from, current_nick, to);
 							else
-								log("debug", "%s sent a malformed nick change request!", current_nick);
+								module:log("debug", "%s sent a malformed nick change request!", current_nick);
 								origin.send(st.error_reply(stanza, "cancel", "jid-malformed"));
 							end
 						end
 					end
 				else -- possible rejoin
-					log("debug", "%s had connection replaced", current_nick);
+					module:log("debug", "%s had connection replaced", current_nick);
 					self:handle_to_occupant(origin, st.presence({type = "unavailable", from = from, to = to})
 						:tag("status"):text("Replaced by new connection"):up()); -- send unavailable
 					self:handle_to_occupant(origin, stanza); -- resend available
 				end
 			else -- enter room
 				if self.locked then
-					log("debug", "%s was prevented from joining %s, the room needs to be configured first", from, room);
+					module:log("debug", "%s was prevented from joining %s, the room needs to be configured first", from, room);
 					local reply = st.error_reply(stanza, "cancel", "item-not-found"):up();
 					origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 					return;
@@ -459,15 +458,15 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 				password = password and password:get_child("password", "http://jabber.org/protocol/muc");
 				password = password and password[1] ~= "" and password[1];
 				if self:get_option("password") and self:get_option("password") ~= password and not admin_toggles[jid_bare(from)] then
-					log("debug", "%s couldn't join %s due to invalid password", from, room);
+					module:log("debug", "%s couldn't join %s due to invalid password", from, room);
 					local reply = st.error_reply(stanza, "auth", "not-authorized"):up();
 					origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 				elseif not new_nick then
-					log("debug", "%s couldn't join due to nick conflict: %s", from, to);
+					module:log("debug", "%s couldn't join due to nick conflict: %s", from, to);
 					local reply = st.error_reply(stanza, "cancel", "conflict"):up();
 					origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
 				else
-					log("debug", "%s joining as %s", from, to);
+					module:log("debug", "%s joining as %s", from, to);
 					if not next(self._affiliations) then -- new room, no owners
 						self._affiliations[jid_bare(from)] = "owner";
 					end
@@ -524,12 +523,12 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 	elseif stanza.name == "message" and type == "groupchat" then -- groupchat messages not allowed in PM
 		origin.send(st.error_reply(stanza, "modify", "bad-request"));
 	elseif current_nick and stanza.name == "message" and type == "error" and is_kickable_error(stanza) then
-		log("debug", "%s kicked from %s for sending an error message", current_nick, self.jid);
+		module:log("debug", "%s kicked from %s for sending an error message", current_nick, self.jid);
 		self:handle_to_occupant(origin, build_unavailable_presence_from_error(self, stanza)); -- send unavailable
 	else -- private stanza
 		local o_data = self._occupants[to];
 		if o_data then
-			log("debug", "%s sent private stanza to %s (%s)", from, to, o_data.jid);
+			module:log("debug", "%s sent private stanza to %s (%s)", from, to, o_data.jid);
 			if stanza.name == "iq" then
 				local id = stanza.attr.id;
 				if stanza.attr.type == "get" or stanza.attr.type == "set" then
@@ -742,7 +741,7 @@ function room_mt:destroy(newjid, reason, password)
 	if password then 
 		pr:tag("password"):text(password):up();
 	elseif redirects_expire_time and newjid and self:get_option("persistent") then
-		log("debug", "Adding %d seconds redirect on %s for %s", redirects_expire_time, self.jid, newjid);
+		module:log("debug", "Adding %d seconds redirect on %s for %s", redirects_expire_time, self.jid, newjid);
 		redirects[self.jid] = { to = newjid, added = os.time() };
 	end
 	for nick, occupant in pairs(self._occupants) do
@@ -905,7 +904,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 	elseif stanza.name == "message" and type == "error" and is_kickable_error(stanza) then
 		local current_nick = self._jid_nick[stanza.attr.from];
 		if current_nick then
-			log("debug", "%s kicked from %s for sending an error message", current_nick, self.jid);
+			module:log("debug", "%s kicked from %s for sending an error message", current_nick, self.jid);
 			self:handle_to_occupant(origin, build_unavailable_presence_from_error(self, stanza)); -- send unavailable
 		end
 	elseif stanza.name == "presence" then -- hack - some buggy clients send presence updates to the room rather than their nick
@@ -948,7 +947,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 							:text(_from.." invited you to the room ".._to..(_reason and (" (".._reason..")") or ""))
 						:up();
 					if self:get_option("members_only") and not self:get_affiliation(_recipient) then
-						log("debug", "%s invited %s into members only room %s, granting membership", _from, _recipient, _to);
+						module:log("debug", "%s invited %s into members only room %s, granting membership", _from, _recipient, _to);
 						self:set_affiliation(_from, _recipient, "member", nil, "Invited by " .. self._jid_nick[_from]);
 					end
 					if self._occupants[_inviter] then
@@ -1000,7 +999,7 @@ function room_mt:handle_stanza(origin, stanza)
 		if name == "iq" and (type ~= "error" and type ~= "result") or name ~= "iq" then
 			self:handle_to_room(origin, stanza);
 		else
-			log("debug", "discarding iq %s sent to %s from %s", type, stanza.attr.to, stanza.attr.from);
+			module:log("debug", "discarding iq %s sent to %s from %s", type, stanza.attr.to, stanza.attr.from);
 		end
 	end
 end
