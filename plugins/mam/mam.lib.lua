@@ -17,7 +17,7 @@ local storagemanager = storagemanager;
 local load_roster = require "util.rostermanager".load_roster;
 local ipairs, next, now, pairs, ripairs, select, t_remove, tostring, type = 
 	ipairs, next, os.time, pairs, ripairs, select, table.remove, tostring, type;
-      
+    
 local xmlns = "urn:xmpp:mam:2";
 local delay_xmlns = "urn:xmpp:delay";
 local e2e_xmlns = "http://www.xmpp.org/extensions/xep-0200.html#ns";
@@ -32,8 +32,10 @@ local store_time = module:get_option_number("mam_save_time", 300);
 local stores_cap = module:get_option_number("mam_stores_cap", 10000);
 local max_length = module:get_option_number("mam_message_max_length", 3000);
 local store_elements = module:get_option_set("mam_allowed_elements");
+local unload_cache_time = module:get_option_number("mam_unload_cache_time", 3600);
 
 local session_stores = {};
+local offline_stores = {};
 local storage = {};
 local to_save = now();
 
@@ -58,12 +60,38 @@ local function initialize_storage()
 	return storage;
 end
 
+local function initialize_session_store(user)
+	local bare_jid = jid_join(user, module_host);
+	local bare_session = bare_sessions[bare_jid];
+	if offline_stores[bare_jid] then offline_stores[bare_jid] = nil; end
+	if bare_session and not bare_session.archiving then
+		session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = "never" } };
+		session_stores[bare_jid].last_used = now();
+		bare_session.archiving = session_stores[bare_jid];
+	end
+	module:add_timer(unload_cache_time, function()
+		if session_stores[bare_jid] then
+			local store = session_stores[bare_jid];
+			if now() - store.last_used > unload_cache_time then
+				if store.changed then
+					store.changed, store.last_used = nil, nil;
+					storage:set(user, store);
+				end
+				bare_sessions[bare_jid].archiving = nil;
+				session_stores[bare_jid] = nil;
+			else
+				return unload_cache_time;
+			end
+		end
+	end);
+end
+
 local function save_stores()
 	to_save = now();
 	for bare, store in pairs(session_stores) do
 		local user = jid_section(bare, "node");
 		if store.changed then
-			store.changed = nil;
+			store.changed, store.last_used = nil, nil;
 			storage:set(user, store);
 		end
 	end	
@@ -418,21 +446,37 @@ local function process_message(event, outbound)
 	
 	local from, to = (message.attr.from or origin.full_jid), message.attr.to;
 	local bare_from, bare_to = jid_bare(from), jid_bare(to);
-	local bare_session, user;
+	local archive, user;
 	
 	if outbound then
-		bare_session = bare_sessions[bare_from];
 		user = jid_section(from, "node");
+		local bare_session = bare_sessions[bare_from];
+		if bare_session and not session_stores[bare_from] then initialize_session_store(user); end
+		archive = session_stores[bare_from];
 	else
-		bare_session = bare_sessions[bare_to];
 		user = jid_section(to, "node");
+		local bare_session = bare_sessions[bare_to];
+		if bare_session and not session_stores[bare_to] then initialize_session_store(user); end
+		archive = session_stores[bare_to];
 	end
-	
-	local archive = bare_session and bare_session.archiving;
 	
 	if not archive and not outbound then -- assume it's an offline message
 		local offline_overcap = module:fire_event("message/offline/overcap", { node = user });
-		if not offline_overcap then archive = storage:get(user); end
+		if not offline_overcap then
+			if not offline_stores[bare_to] then
+				archive = storage:get(user);
+				offline_stores[bare_to] = archive;
+				module:add_timer(300, function()
+					if offline_stores[bare_to] then
+						local store = offline_stores[bare_to];
+						if store.changed then store.changed, store.last_used = nil, nil; storage:set(user, store); end
+						offline_stores[bare_to] = nil;
+					end
+				end);
+			else
+				archive = offline_stores[bare_to];
+			end
+		end
 	end
 
 	if archive and add_to_store(archive, user, outbound and bare_to or bare_from) then
@@ -468,7 +512,6 @@ local function process_message(event, outbound)
 			end
 		end
 
-		if not bare_session then storage:set(user, archive); end
 		if (not outbound or not to or to == bare_from) and id then message:tag("stanza-id", { xmlns = sid_xmlns, by = bare_to, id = id }):up(); end
 	else
 		return;
@@ -510,6 +553,7 @@ local function purge_messages(archive, id, jid, start, fin)
 end
 
 _M.initialize_storage = initialize_storage;
+_M.initialize_session_store = initialize_session_store;
 _M.save_stores = save_stores;
 _M.get_prefs = get_prefs;
 _M.set_prefs = set_prefs;

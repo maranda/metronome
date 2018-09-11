@@ -23,7 +23,7 @@ local jid_join = require "util.jid".join;
 local jid_prep = require "util.jid".prep;
 local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
-local collectgarbage, ipairs, tonumber, tostring = collectgarbage, ipairs, tonumber, tostring;
+local collectgarbage, ipairs, now, tonumber, tostring = collectgarbage, ipairs, os.time, tonumber, tostring;
 
 local xmlns = "urn:xmpp:mam:2";
 local purge_xmlns = "http://metronome.im/protocol/mam-purge";
@@ -34,7 +34,8 @@ local forbid_purge = module:get_option_boolean("mam_forbid_purge", false);
 
 local mamlib = module:require("mam");
 local validate_query = module:require("validate").validate_query;
-local initialize_storage, save_stores = mamlib.initialize_storage, mamlib.save_stores;
+local initialize_storage, initialize_session_store, save_stores =
+	mamlib.initialize_storage, mamlib.initialize_session_store, mamlib.save_stores;
 local get_prefs, set_prefs = mamlib.get_prefs, mamlib.set_prefs;
 local fields_handler, generate_stanzas, process_message, purge_messages =
 	mamlib.fields_handler, mamlib.generate_stanzas, mamlib.process_message, mamlib.purge_messages;
@@ -43,17 +44,6 @@ local session_stores = mamlib.session_stores;
 local storage = initialize_storage();
 
 -- Handlers
-
-local function initialize_session_store(event)
-	local user, host = event.session.username, event.session.host;
-	local bare_jid = jid_join(user, host);
-	
-	local bare_session = bare_sessions[bare_jid];
-	if bare_session and not bare_session.archiving then
-		session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = "never" } };
-		bare_session.archiving = session_stores[bare_jid];
-	end	
-end
 
 local function remove_session_store(event)
 	local user, host = event.session.username, event.session.host;
@@ -67,7 +57,7 @@ local function save_session_store(event)
 	local bare_jid = jid_join(user, host);
 	local user_archive = session_stores[bare_jid];
 	if user_archive and user_archive.changed then
-		user_archive.changed = nil;
+		user_archive.changed, user_archive.last_used = nil, nil;
 		storage:set(user, user_archive);
 	end
 end
@@ -98,6 +88,12 @@ local function prefs_handler(event)
 	local origin, stanza = event.origin, event.stanza;
 	local bare_session = bare_sessions[jid_bare(origin.full_jid)];
 
+	if not bare_session.archiving then
+		initialize_session_store(origin.username);
+	end
+
+	bare_session.archiving.last_used = now();
+
 	if stanza.attr.type == "get" then
 		local reply = st.reply(stanza);
 		reply:add_child(get_prefs(bare_session.archiving));
@@ -116,6 +112,13 @@ local function purge_handler(event)
 	
 	local bare_session = bare_sessions[bare_jid];
 	local archive = bare_session.archiving;
+
+	if not archive then
+		initialize_session_store(origin.username);
+		archive = bare_session.archiving;
+	end
+
+	archive.last_used = now();
 	
 	if forbid_purge then
 		return origin.send(st.error_reply(stanza, "cancel", "not-allowed", "Purging message archives is not allowed"));
@@ -141,6 +144,13 @@ local function query_handler(event)
 		
 	local bare_session = bare_sessions[jid_bare(origin.full_jid)];
 	local archive = bare_session.archiving;
+
+	if not archive then
+		initialize_session_store(origin.username);
+		archive = bare_session.archiving;
+	end
+
+	archive.last_used = now();
 
 	local start, fin, with, after, before, max, index;
 	local ok, ret = validate_query(stanza, query, qid);
@@ -172,17 +182,6 @@ local function query_handler(event)
 	return true;
 end
 
-function module.load()
-	-- initialize on all existing bare sessions.
-	for bare_jid, bare_session in pairs(bare_sessions) do
-		local user, host = jid_split(bare_jid);
-		if host == module_host then
-			session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = "never" } };
-			bare_session.archiving = session_stores[bare_jid];
-		end
-	end
-	module:add_timer(5, function() collectgarbage(); end);
-end
 function module.unload()
 	save_stores();
 	-- remove all caches from bare_sessions.
@@ -190,11 +189,11 @@ function module.unload()
 		local host = jid_section(bare_jid, "host");
 		if host == module_host then bare_session.archiving = nil; end
 	end
+	module:remove_all_timers();
 	module:add_timer(5, function() collectgarbage(); end);
 end
 
 module:hook("pre-resource-unbind", save_session_store, 30);
-module:hook("resource-bind", initialize_session_store);
 module:hook("resource-unbind", remove_session_store, 30);
 module:hook("user-deleted", delete_store);
 
