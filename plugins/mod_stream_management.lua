@@ -136,7 +136,7 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 			end
 			for _, queued in ipairs(_q) do
 				local name = queued.name;
-				if (name == "iq" or name == "message" or name == "presence") and queued.attr.type ~= "error" then
+				if (name == "iq" or name == "message" or name == "presence") and queued.attr.to and queued.attr.type ~= "error" then
 					local reply = st_reply(queued);
 					if reply.attr.to ~= full_jid and (has_carbons and name ~= "message" or not has_carbons) then
 						reply.attr.type = "error";
