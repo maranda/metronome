@@ -364,6 +364,19 @@ module:hook("iq/full", full_handler, 100);
 module:hook("message/full", full_handler, 100);
 module:hook("presence/full", full_handler, 100);
 
+module:hook("pre-resource-unbind", function(event)
+	local session = event.session;
+	if session.sm and session.csi == "inactive" and session.csi_queue then
+		session.csi = nil;
+		session.csi_queue:flush();
+		session.csi_queue = nil;
+		session.presence_block = nil;
+		for stanza in pairs(session.to_block) do
+			if stanza.name == "presence" then session.to_block[stanza] = nil; end
+		end
+	end
+end, 20);
+
 module:hook("resource-bind", function(event)
 	local user = event.session.username;
 	local bare_jid = jid_join(user, event.session.host);
