@@ -92,32 +92,33 @@ local function csi_config_handler(self, data, state)
 	if state then
 		if data.action == "cancel" then return { status = "canceled" }; end
 		local fields = get_config_dataform(config or default_csi_config):data(data.form);
-		if fields["csi#block_chatstates"] and fields["csi#queue_all_muc_messages_but_mentions"] then
-			local block_chatstates, queue_all_muc_messages_but_mentions = 
-				fields["csi#block_chatstates"], fields["csi#queue_all_muc_messages_but_mentions"];
-			if block_chatstates == default_csi_config.block_chatstates and
-				queue_all_muc_messages_but_mentions == default_csi_config.queue_all_muc_messages_but_mentions then
-				-- remove configuration
-				module:log("debug", "%s CSI configuration matches default, removing", bare_jid);
-				account_csi_config[bare_jid] = nil;
-				storage:set(user, nil);
-			else
-				if config then
-					config.block_chatstates = block_chatstates;
-					config.queue_all_muc_messages_but_mentions = queue_all_muc_messages_but_mentions;
-				else
-					config = {
-						block_chatstates = block_chatstates,
-						queue_all_muc_messages_but_mentions = queue_all_muc_messages_but_mentions
-					};
-					account_csi_config[bare_jid] = config;
-				end
-				storage:set(user, config);
-			end
-			return { status = "completed", info = "CSI options configured successfully" };
+		local block_chatstates, queue_all_muc_messages_but_mentions = 
+			fields["csi#block_chatstates"], fields["csi#queue_all_muc_messages_but_mentions"];
+
+		-- sanitize missing fields
+		if block_chatstates == nil then block_chatstates = false; end
+		if queue_all_muc_messages_but_mentions == nil then queue_all_muc_messages_but_mentions = false; end
+
+		if block_chatstates == default_csi_config.block_chatstates and
+			queue_all_muc_messages_but_mentions == default_csi_config.queue_all_muc_messages_but_mentions then
+			-- remove configuration
+			module:log("debug", "%s CSI configuration matches default, removing", bare_jid);
+			account_csi_config[bare_jid] = nil;
+			storage:set(user, nil);
 		else
-			return { status = "completed", error = { message = "Malformed configuration form received" } };
+			if config then
+				config.block_chatstates = block_chatstates;
+				config.queue_all_muc_messages_but_mentions = queue_all_muc_messages_but_mentions;
+			else
+				config = {
+					block_chatstates = block_chatstates,
+					queue_all_muc_messages_but_mentions = queue_all_muc_messages_but_mentions
+				};
+				account_csi_config[bare_jid] = config;
+			end
+			storage:set(user, config);
 		end
+		return { status = "completed", info = "CSI options configured successfully" };
 	else
 		return { status = "executing", form = get_config_dataform(config or default_csi_config) }, "executing";
 	end
@@ -389,6 +390,16 @@ end, 40);
 module:hook("c2s-sm-enabled", function(session)
 	if session.csi_queue then session.csi_queue:wrap_sm(); end
 end);
+
+function module.save()
+	return { account_csi_config = account_csi_config };
+end
+
+function module.restore(data)
+	for jid, config in pairs(data.account_csi_config or {}) do
+		account_csi_config[jid] = config;
+	end
+end
 
 function module.unload(reload)
 	if not reload then 
