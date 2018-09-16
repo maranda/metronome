@@ -9,14 +9,25 @@
 
 local NULL = {};
 local pairs, t_insert, t_remove = pairs, table.insert, table.remove;
+local dataforms_new = require "util.dataforms".new;
+local jid_bare = require "util.jid".bare;
 local jid_join = require "util.jid".join;
+local jid_section = require "util.jid".section;
 local st = require "util.stanza";
+local uuid = require "util.uuid".generate;
+
+local storagemanager = storagemanager;
 	
 module:add_feature("urn:xmpp:csi:0");
 module:add_feature("urn:xmpp:sift:2");
 module:add_feature("urn:xmpp:sift:senders:remote");
 module:add_feature("urn:xmpp:sift:stanzas:message");
 module:add_feature("urn:xmpp:sift:stanzas:presence");
+
+local queue_limit = module:get_option_number("csi_max_queued_stanzas", 1000);
+
+local account_csi_config = {};
+local storage = storagemanager.open(module.host, "csi_config");
 
 -- Util functions
 
@@ -34,13 +45,98 @@ local function whitelist_message(stanza)
 	end
 end
 
+local function filter_stanza(stanza, xmlns)
+	local body_found, xmlns_found;
+	for i, tag in ipairs(stanza.tags) do
+		if tag.name == "body" then body_found = true; break; end
+		if tag.attr.xmlns == xmlns then xmlns_found = true; end
+	end
+	if body_found then
+		return false;
+	elseif xmlns_found then
+		return true;
+	end
+end
+
+-- Define Adhoc interface
+
+local default_csi_config = {
+	block_chatstates = module:get_option_boolean("csi_config_block_chatstates", false);
+	queue_all_muc_messages_but_mentions = module:get_option_boolean("csi_config_queue_all_muc_messages_but_mentions", true);
+}
+
+local function get_config_dataform(config)
+	local layout = {
+		title = "Account CSI configuration";
+		instructions = "You can personalize your Client State Indication stanza optimizations here";
+
+		{ name = "FORM_TYPE", type = "hidden", value = "http://jabber.org/protocol/commands" };
+		{
+			name = "csi#block_chatstates", type = "boolean",
+			label = "Block All Chatstates (Active and Inactive)",
+			value = config.block_chatstates
+		};
+		{
+			name = "csi#queue_all_muc_messages_but_mentions", type = "boolean",
+			label = "Queue All MUC Messages but Mentions if Inactive",
+			value = config.queue_all_muc_messages_but_mentions
+		};
+	};
+
+	return dataforms_new(layout);
+end
+
+local function csi_config_handler(self, data, state)
+	local user, bare_jid = jid_section(data.from, "node"), jid_bare(data.from);
+	local config = account_csi_config[bare_jid];
+	if state then
+		if data.action == "cancel" then return { status = "canceled" }; end
+		local fields = get_config_dataform(config or default_csi_config):data(data.form);
+		if fields["csi#block_chatstates"] and fields["csi#queue_all_muc_messages_but_mentions"] then
+			local block_chatstates, queue_all_muc_messages_but_mentions = 
+				fields["csi#block_chatstates"], fields["csi#queue_all_muc_messages_but_mentions"];
+			if block_chatstates == default_csi_config.block_chatstates and
+				queue_all_muc_messages_but_mentions == default_csi_config.queue_all_muc_messages_but_mentions then
+				-- remove configuration
+				module:log("debug", "%s CSI configuration matches default, removing", bare_jid);
+				account_csi_config[bare_jid] = nil;
+				storage:set(user, nil);
+			else
+				if config then
+					config.block_chatstates = block_chatstates;
+					config.queue_all_muc_messages_but_mentions = queue_all_muc_messages_but_mentions;
+				else
+					config = {
+						block_chatstates = block_chatstates,
+						queue_all_muc_messages_but_mentions = queue_all_muc_messages_but_mentions
+					};
+					account_csi_config[bare_jid] = config;
+				end
+				storage:set(user, config);
+			end
+			return { status = "completed", info = "CSI options configured successfully" };
+		else
+			return { status = "completed", error = { message = "Malformed configuration form received" } };
+		end
+	else
+		return { status = "executing", form = get_config_dataform(config or default_csi_config) }, "executing";
+	end
+end
+
+local adhoc_new = module:require "adhoc".new;
+local csi_config_descriptor = adhoc_new("Configure CSI optimizations", "http://metronome.im/protocol/csi#config", csi_config_handler, "local_user");
+module:provides("adhoc", csi_config_descriptor);
+
 -- Define queue data structure
 
 local queue_mt = {}; queue_mt.__index = queue_mt
 
 function queue_mt:pop(from, stanza)
-	local idx, queue, session = self._idx, self._queue, self._session;
-	module:log("debug", "queuing presence for %s: %s", session.full_jid, stanza:top_tag());
+	local payload, idx, queue, session = stanza.name, self._idx, self._queue, self._session;
+	module:log("debug", "queuing %s for %s: %s", payload, session.full_jid, stanza:top_tag());
+	if payload == "message" then
+		from = from.."-"..uuid();
+	end
 	if not queue[from] then
 		queue[from] = st.clone(stanza); t_insert(idx, from);
 	else
@@ -48,6 +144,10 @@ function queue_mt:pop(from, stanza)
 			if _from == from then t_remove(idx, i); break; end
 		end
 		queue[from] = st.clone(stanza); t_insert(idx, from);
+	end
+	if #idx > queue_limit then -- flush it
+		module:log("debug", "%s reached queued stanzas limit...", session.full_jid);
+		self:flush(true);
 	end
 end
 
@@ -57,7 +157,7 @@ function queue_mt:flush(clean)
 		module:log("debug", "flushing queued stanzas to %s", session.full_jid);
 		for i = 1, #idx do
 			local stanza = queue[idx[i]];
-			module:log("debug", "sending presence: %s", stanza:top_tag());
+			module:log("debug", "sending %s: %s", stanza.name, stanza:top_tag());
 			send(stanza);
 		end
 	end
@@ -172,7 +272,7 @@ end);
 module:hook("stanza/urn:xmpp:csi:0:inactive", function(event)
 	local session = event.origin;
 	if session.type == "c2s" and session.csi ~= "inactive" then
-		module:log("info", "%s signaling client is inactive blocking and queuing incoming presences", 
+		module:log("info", "%s signaling client is inactive filtering and queuing incoming stanzas", 
 			session.full_jid or jid_join(session.username, session.host));
 		session.csi = "inactive";
 		session.csi_queue, session.to_block, session.presence_block = new_queue(session), session.to_block or {}, true;
@@ -227,19 +327,34 @@ local function full_handler(event)
 	
 	local to_full = full_sessions[stanza.attr.to];
 	if to_full then
-		if to_full.csi == "inactive" and st_name == "presence" then
-			to_full.csi_queue:pop(stanza.attr.from, stanza);
-		end
+		local csi_state = to_full.csi;
 		if to_full[st_name.."_block"] == true or to_full[st_name.."_block"] == "remote" and 
 			(origin.type == "s2sin" or origin.type == "bidirectional") then
 			return true;
 		end
-		if to_full.csi == "inactive" and (st_name == "message" or st_name == "iq") then
-			if st_name == "message" and not whitelist_message(stanza) then
-				module:log("debug", "filtering bodyless message for %s: %s", to_full.full_jid, stanza:top_tag());
-				return true;
+		if csi_state == "inactive" and st_name == "presence" then
+			to_full.csi_queue:pop(stanza.attr.from, stanza);
+		elseif csi_state and (st_name == "message" or st_name == "iq") then
+			if st_name == "message" then
+				local config = account_csi_config[jid_bare(to_full.full_jid)] or default_csi_config;
+				if config.block_chatstates and filter_stanza(stanza, "http://jabber.org/protocol/chatstates") then
+					module:log("debug", "filtering chatstate for %s: %s", to_full.full_jid, stanza:top_tag());
+					return true;
+				elseif csi_state == "inactive" then
+					if not whitelist_message(stanza) then
+						module:log("debug", "filtering bodyless message for %s: %s", to_full.full_jid, stanza:top_tag());
+						return true;
+					elseif stanza.attr.type == "groupchat" and config.queue_all_muc_messages_but_mentions then
+						local muc_nick, body = to_full.directed_bare[jid_bare(stanza.attr.from)], stanza:get_child_text("body");
+						local nick = jid_section(muc_nick, "resource");
+						if not nick or not body:find(nick) then
+							to_full.csi_queue:pop(stanza.attr.from, stanza);
+							return true;
+						end
+					end
+				end
 			end
-			to_full.csi_queue:flush(true);
+			if csi_state == "inactive" then to_full.csi_queue:flush(true); end
 		end
 	end
 end
@@ -247,6 +362,29 @@ end
 module:hook("iq/full", full_handler, 100);
 module:hook("message/full", full_handler, 100);
 module:hook("presence/full", full_handler, 100);
+
+module:hook("resource-bind", function(event)
+	local user = event.session.username;
+	local bare_jid = jid_join(user, event.session.host);
+	if not account_csi_config[bare_jid] then
+		local config = storage:get(user);
+		if config then
+			module:log("debug", "loading CSI account configuration for %s", bare_jid);
+			account_csi_config[bare_jid] = config;
+		end
+	end
+end, 40);
+
+module:hook("resource-unbind", function(event)
+	local user = event.session.username;
+	local bare_jid = jid_join(user, event.session.host);
+	local bare_session = bare_sessions[bare_jid];
+	local config = account_csi_config[bare_jid];
+	if not bare_session and config then
+		storage:set(user, config);
+		account_csi_config[bare_jid] = nil;
+	end
+end, 40);
 
 module:hook("c2s-sm-enabled", function(session)
 	if session.csi_queue then session.csi_queue:wrap_sm(); end
