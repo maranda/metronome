@@ -328,14 +328,15 @@ local function full_handler(event)
 	
 	local to_full = full_sessions[stanza.attr.to];
 	if to_full then
-		local csi_state = to_full.csi;
+		if csi_state == "inactive" and st_name == "presence" then
+			to_full.csi_queue:pop(stanza.attr.from, stanza);
+		end
 		if to_full[st_name.."_block"] == true or to_full[st_name.."_block"] == "remote" and 
 			(origin.type == "s2sin" or origin.type == "bidirectional") then
 			return true;
 		end
-		if csi_state == "inactive" and st_name == "presence" then
-			to_full.csi_queue:pop(stanza.attr.from, stanza);
-		elseif csi_state and (st_name == "message" or st_name == "iq") then
+		local csi_state = to_full.csi;
+		if csi_state and (st_name == "message" or st_name == "iq") then
 			if st_name == "message" then
 				local config = account_csi_config[jid_bare(to_full.full_jid)] or default_csi_config;
 				if config.block_chatstates and filter_stanza(stanza, "http://jabber.org/protocol/chatstates") then
