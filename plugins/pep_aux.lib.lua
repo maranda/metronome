@@ -19,7 +19,6 @@ local dataforms = require "util.dataforms";
 local encode_node = datamanager.path_encode;
 local um_is_admin = usermanager.is_admin;
 local fire_event = metronome.events.fire_event;
-local bare_sessions = bare_sessions;
 local hosts = hosts;
 
 local xmlns_pubsub_errors = "http://jabber.org/protocol/pubsub#errors";
@@ -381,7 +380,7 @@ local function send_event(self, node, message, jid)
 	local subscribers = self.nodes[node].subscribers;
 	if subscribers[jid] then
 		log("debug", "%s -- service sending %s notification to %s", self.name, node, jid);
-		message.attr.to = jid; fire_event("route/post", self.session or hosts[module.host], message);
+		message.attr.to = jid; fire_event("route/post", hosts[module.host], message);
 	end
 end
 

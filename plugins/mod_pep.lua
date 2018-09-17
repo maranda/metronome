@@ -116,11 +116,6 @@ function handle_pubsub_iq(event)
 		handler = handlers[stanza.attr.type.."_"..action.name];
 	end	
 
-	-- Update session to the one of the owner.
-	if origin.username and origin.host and user_service.name == origin.username.."@"..origin.host then 
-		user_service.session = origin;
-	end
-
 	if handler then
 		if not config then 
 			handler(user_service, origin, stanza, action); 
@@ -670,7 +665,6 @@ function module.restore(data)
 		services[id] = set_service(pubsub.new(pep_new(username)), id);
 		services[id].nodes = service.nodes or {};
 		services[id].recipients = service.recipients or {};
-		services[id].session = service.session;
 	end
 	pep_lib.set_closures(services, hash_map);
 end
