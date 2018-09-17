@@ -340,7 +340,7 @@ local function full_handler(event)
 	if to_full then
 		local csi_state = to_full.csi;
 		if csi_state == "inactive" and st_name == "presence" then
-			if not (t == nil or t == "unavaible") then
+			if not (t == nil or t == "unavailable") then
 				to_full.csi_queue:flush(true);
 				return;
 			else
