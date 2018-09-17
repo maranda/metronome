@@ -24,7 +24,7 @@ module:add_feature("urn:xmpp:sift:senders:remote");
 module:add_feature("urn:xmpp:sift:stanzas:message");
 module:add_feature("urn:xmpp:sift:stanzas:presence");
 
-local queue_limit = module:get_option_number("csi_max_queued_stanzas", 1000);
+local queue_limit = module:get_option_number("csi_max_queued_stanzas", 300);
 
 local account_csi_config = {};
 local storage = storagemanager.open(module.host, "csi_config");
