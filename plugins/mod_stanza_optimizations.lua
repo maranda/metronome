@@ -264,7 +264,13 @@ module:hook("stanza/urn:xmpp:csi:0:active", function(event)
 		session.csi = "active";
 		if session.csi_queue then session.csi_queue:flush(); end
 		session.csi_queue, session.presence_block = nil, nil;
-		if not session.message_block then session.to_block = nil; end
+		if not session.message_block then
+			session.to_block = nil;
+		else
+			for stanza in pairs(session.to_block) do
+				if stanza.name == "presence" then session.to_block[stanza] = nil; end
+			end
+		end
 		module:fire_event("client-state-changed", { session = session, state = session.csi });
 	end
 	return true;
@@ -301,7 +307,6 @@ end, 100);
 module:hook("presence/bare", function(event)
 	local stanza, origin = event.stanza, event.origin;
 	local t = stanza.attr.type;
-	if not (t == nil or t == "unavailable") then return; end
 
 	local to_bare = bare_sessions[stanza.attr.to];
 	if not to_bare then
@@ -310,7 +315,14 @@ module:hook("presence/bare", function(event)
 		for _, resource in pairs(to_bare.sessions or NULL) do
 			if resource.presence_block == true then
 				if resource.csi == "inactive" then
-					resource.csi_queue:pop(stanza.attr.from, stanza);
+					if t ~= nil and t ~= "unavailable" and t ~= "error" then
+						return;
+					elseif t == "error" then
+						resource.csi_queue:flush(true);
+						return;
+					else
+						resource.csi_queue:pop(stanza.attr.from, stanza);
+					end
 				end
 				resource.to_block[stanza] = true;
 			elseif resource.presence_block == "remote" and (origin.type == "s2sin" or origin.type == "bidirectional") then
@@ -324,13 +336,17 @@ local function full_handler(event)
 	local stanza, origin = event.stanza, event.origin;
 	local t = stanza.attr.type;
 	local st_name = stanza.name;
-	if st_name == "presence" and not (t == nil or t == "unavailable") then return; end
 	
 	local to_full = full_sessions[stanza.attr.to];
 	if to_full then
 		local csi_state = to_full.csi;
 		if csi_state == "inactive" and st_name == "presence" then
-			to_full.csi_queue:pop(stanza.attr.from, stanza);
+			if not (t == nil or t == "unavaible") then
+				to_full.csi_queue:flush(true);
+				return;
+			else
+				to_full.csi_queue:pop(stanza.attr.from, stanza);
+			end
 		end
 		if to_full[st_name.."_block"] == true or to_full[st_name.."_block"] == "remote" and 
 			(origin.type == "s2sin" or origin.type == "bidirectional") then
@@ -346,7 +362,7 @@ local function full_handler(event)
 					if not whitelist_message(stanza) then
 						module:log("debug", "filtering bodyless message for %s: %s", to_full.full_jid, stanza:top_tag());
 						return true;
-					elseif stanza.attr.type == "groupchat" and config.queue_all_muc_messages_but_mentions then
+					elseif t == "groupchat" and config.queue_all_muc_messages_but_mentions then
 						local muc_nick, body = to_full.directed_bare[jid_bare(stanza.attr.from)], stanza:get_child_text("body");
 						local nick = jid_section(muc_nick, "resource");
 						if not nick or (not body:find(nick) and not body:find(nick:lower())) then
@@ -365,9 +381,30 @@ module:hook("iq/full", full_handler, 100);
 module:hook("message/full", full_handler, 100);
 module:hook("presence/full", full_handler, 100);
 
+local function outbound_handler(event)
+	local session = event.origin;
+	if session.type ~= "c2s" then -- only handle clients stanzas
+		return;
+	elseif session.csi_queue then
+		-- prevent shortcircuiting of stanzas to break in order processing
+		session.csi_queue:flush(true);
+	end
+end
+
+module:hook("pre-iq/bare", outbound_handler, 100);
+module:hook("pre-iq/full", outbound_handler, 100);
+module:hook("pre-iq/host", outbound_handler, 100);
+module:hook("pre-iq/self", outbound_handler, 100);
+module:hook("pre-message/bare", outbound_handler, 100);
+module:hook("pre-message/full", outbound_handler, 100);
+module:hook("pre-message/host", outbound_handler, 100);
+module:hook("pre-presence/bare", outbound_handler, 100);
+module:hook("pre-presence/full", outbound_handler, 100);
+module:hook("pre-presence/host", outbound_handler, 100);
+
 module:hook("pre-resource-unbind", function(event)
 	local session = event.session;
-	if session.sm and session.csi == "inactive" and session.csi_queue then
+	if session.sm and session.csi_queue then
 		session.csi = nil;
 		session.csi_queue:flush();
 		session.csi_queue = nil;
