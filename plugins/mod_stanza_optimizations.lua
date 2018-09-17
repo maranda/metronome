@@ -307,6 +307,7 @@ end, 100);
 module:hook("presence/bare", function(event)
 	local stanza, origin = event.stanza, event.origin;
 	local t = stanza.attr.type;
+	if t ~= nil and t ~= "unavailable" and t ~= "error" then return; end
 
 	local to_bare = bare_sessions[stanza.attr.to];
 	if not to_bare then
@@ -315,9 +316,7 @@ module:hook("presence/bare", function(event)
 		for _, resource in pairs(to_bare.sessions or NULL) do
 			if resource.presence_block == true then
 				if resource.csi == "inactive" then
-					if t ~= nil and t ~= "unavailable" and t ~= "error" then
-						return;
-					elseif t == "error" then
+					if t == "error" then
 						resource.csi_queue:flush(true);
 						return;
 					else
