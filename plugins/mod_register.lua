@@ -20,6 +20,7 @@ local usermanager_delete_user = require "core.usermanager".delete_user;
 local ipairs, os_time, pairs, t_concat, t_insert, t_remove, tostring =
 	ipairs, os.time, pairs, table.concat, table.insert, table.remove, tostring;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
+local saslprep = require "util.encodings".stringprep.saslprep;
 local jid_bare = require "util.jid".bare;
 local new_ip = require "util.ip".new_ip;
 local parse_subnets = require "util.ip".parse_subnets;
@@ -114,6 +115,11 @@ local function validate_password(stanza, session, password)
 			tostring(max_pass_len) .. " chars"
 		));
 		return false;
+	elseif not saslprep(password) then
+		session.send(st.error_reply(stanza, "modify", "bad-request",
+			"Supplied password doesn't conform to SASLprep profile (RFC 4013)"
+		));
+		return false;	
 	end
 	return true;
 end

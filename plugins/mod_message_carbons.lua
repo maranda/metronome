@@ -13,13 +13,26 @@ local jid_section = require "util.jid".section;
 local t_remove = table.remove;
 
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
-
+local pairs, ipairs = pairs, ipairs;
 local xmlns = "urn:xmpp:carbons:2";
 
 module:add_feature(xmlns);
 
 local received = st.stanza("received", { xmlns = xmlns });
 local sent = st.stanza("sent", { xmlns = xmlns });
+
+local allowed_ns_map = module:get_option_set("allowed_inactive_csi_carbon_payloads", {
+	"urn:xmpp:eme:0",
+	"urn:xmpp:chat-markers:0"
+});
+local function allow_message_to_csi(stanza)
+	for i, tag in ipairs(stanza.tags) do
+		if tag.name == "body" or allowed_ns_map:contains(tag.attr.xmlns) then
+			return true;
+		end
+	end
+	return false;
+end
 
 local function clear_flag(session)
 	local has_carbons;
@@ -55,9 +68,11 @@ local function process_message(origin, stanza, s, t)
 		end
 			
 		if not private and not stanza:get_child("no-copy", "urn:xmpp:hints") then
+			local allow_message;
 			for resource, session in pairs(bare_session.sessions) do
 				if session.carbons and resource ~= r and (not to_muc or (to_muc and session.directed[nick])) then
-					fwd(from_bare or to_bare, session, stanza, s);
+					if session.csi == "inactive" and allow_message == nil then allow_message = allow_message_to_csi(stanza); end
+					if session.csi ~= "inactive" or allow_message then fwd(from_bare or to_bare, session, stanza, s); end
 				end
 			end
 		elseif private then -- just strip the tag;
@@ -106,13 +121,18 @@ module:hook("message/bare", function(event)
 	local bare_session = bare_sessions[stanza.attr.to];
 
 	if bare_session and stanza.attr.type == "chat" then
-		local clone = st.clone(stanza);
+		local clone, allow_message = st.clone(stanza);
 		local top_resource = bare_session.top_resources and bare_session.top_resources[1];
 		for resource, session in pairs(bare_session.sessions) do
 			if session.carbons and session ~= top_resource then
-				clone.attr.to = jid_join(session.username, session.host, resource);
-				module:log("debug", "Forking message from %s to %s", stanza.attr.from, clone.attr.to);
-				session.send(clone);
+				if session.csi == "inactive" and allow_message == nil then
+					allow_message = allow_message_to_csi(stanza);
+				end
+				if session.csi ~= "inactive" or allow_message then
+					clone.attr.to = jid_join(session.username, session.host, resource);
+					module:log("debug", "Forking message from %s to %s", stanza.attr.from, clone.attr.to);
+					session.send(clone);
+				end
 			end
 		end
 	end

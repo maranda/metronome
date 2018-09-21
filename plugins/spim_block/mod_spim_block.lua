@@ -133,8 +133,8 @@ local function http_file_get(event, type, path)
 	end
 end
 
-local function send_message(origin, to, from, token)
-	module:log("info", "requiring authentication for message directed to %s from %s", to, from);
+local function send_message(origin, name, to, from, token)
+	module:log("info", "requiring authentication for %s directed to %s from %s", name, to, from);
 	local message = st.message({ id = new_uuid(), type = "chat", from = to, to = from }, 
 		"Greetings, this is the "..module.host.." server before sending a message or presence subscription to this user, "..
 		"please visit "..base_url.." and input the following code in the form: "..token);
@@ -199,7 +199,7 @@ local function handle_incoming(event)
 		local to, from, type, name = stanza.attr.to, stanza.attr.from, stanza.attr.type, stanza.name;
 
 		if (name == "presence" and type ~= "subscribe") or type == "error" or type == "groupchat" then return; end
-		if name == "message" and stanza:child_with_name("result") and not stanza:child_with_name("body") then
+		if name == "message" and not type and #stanza.tags == 1 and stanza.tags[1].name == "result"  then
 			return; -- probable MAM archive result
 		end
 
@@ -216,6 +216,7 @@ local function handle_incoming(event)
 		if to_allow_list and to_allow_list[from_bare] then return; end
 		
 		if block_list[to_bare] and block_list[to_bare][from_bare] then
+			origin.send(st.error_reply(stanza, "auth", "not-authorized"));
 			module:log("info", "blocking unsolicited %s to %s from %s", name, to_bare, from_bare);
 			module:fire_event("call-gate-guard", { origin = origin, from = from, reason = "SPIM", ban_time = ban_time });
 			return true; 
@@ -226,7 +227,8 @@ local function handle_incoming(event)
 				local token = generate_secret(20);
 				if not token then return; end
 				set_block(token, to, from_bare);
-				return send_message(origin, to, from, token);
+				origin.send(st.error_reply(stanza, "auth", "not-authorized"));
+				return send_message(origin, name, to, from, token);
 			end
 		else
 			local full_session = full_sessions[to];
@@ -235,7 +237,8 @@ local function handle_incoming(event)
 				local token = generate_secret(20);
 				if not token then return; end
 				set_block(token, to_bare, from_bare);
-				return send_message(origin, to, from, token);
+				origin.send(st.error_reply(stanza, "auth", "not-authorized"));
+				return send_message(origin, name, to, from, token);
 			end
 		end
 		

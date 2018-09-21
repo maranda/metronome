@@ -138,7 +138,7 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 				local name = queued.name;
 				if (name == "iq" or name == "message" or name == "presence") and queued.attr.type ~= "error" then
 					local reply = st_reply(queued);
-					if reply.attr.to ~= full_jid and (has_carbons and name ~= "message" or not has_carbons) then
+					if reply.attr.to and reply.attr.to ~= full_jid and (has_carbons and name ~= "message" or not has_carbons) then
 						reply.attr.type = "error";
 						reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
 						fire_event("route/process", session, reply);
@@ -344,7 +344,7 @@ module:hook("pre-resource-unbind", function(event)
 					session.token = nil;
 					destroy(session);
 				end
-			end);
+			end, module.name, module.host);
 			return true;
 		else
 			if #session.sm_queue > 0 then
@@ -397,5 +397,6 @@ function module.unload(reload)
 		for _, session in pairs(hosts[module.host].s2sout) do
 			if session.sm and session.close then session:close(); end
 		end
+		module:remove_all_timers();
 	end
 end

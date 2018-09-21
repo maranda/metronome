@@ -468,6 +468,7 @@ local function cleanup() -- cleanup
 		bare_session.upload_timer = nil;
 	end
 	clear_shared(cache); clear_shared(throttle); clear_shared(pending_slots);
+	module:remove_all_timers();
 end
 
 module.load = cleanup;

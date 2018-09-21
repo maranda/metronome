@@ -186,7 +186,7 @@ if synchronize_to_host then module:hook_global("vcard-updated", vcard_handler) e
 local function optin_command_handler(self, data, state)
 	local optin_layout = dataforms_new{
 		title = "Signup/Optin form for the User Directory";
-		instructions = "At least the Nickname field is required.";
+		instructions = "At least the Nickname field is required";
 
 		{ name = "FORM_TYPE", type = "hidden", value = "http://jabber.org/protocol/commands" };
 		{ name = "nickname", type = "text-single", label = "Your Nickname" };
@@ -203,14 +203,14 @@ local function optin_command_handler(self, data, state)
 			if not restrict_to_hosts:contains(host) then return { status = completed, error = { message = "Signup to this directory is restricted" } } end
 		end
 		if not fields.nickname and not fields.realname and not fields.country and not fields.email then
-			return { status = "completed", error = { message = "You need to fill at least one field." } }
+			return { status = "completed", error = { message = "You need to fill at least one field" } }
 		else
 			local jid = jid_bare(data.from)
 
 			if not directory[jid] then
 				directory[jid] = { nickname = fields.nickname or "", realname = fields.realname or "", country = fields.country or "", email = fields.email or "" }
 				if datamanager.store("store", my_host, "directory", directory) then
-					return { status = "completed", info = "Success." }
+					return { status = "completed", info = "Success" }
 				else
 					return { status = "completed", error = { message = "Adding was successful but I failed to write to the directory store, please report to the admin" } }
 				end
@@ -239,9 +239,9 @@ local function optin_vcard_command_handler(self, data, state)
 	end
 	
 	if datamanager.store("store", my_host, "directory", directory) then
-		return { status = "completed", info = "Success." }
+		return { status = "completed", info = "Success" }
 	else
-		return { status = "completed", error = { message = "Adding was successful but I failed to write to the directory store, please report to the admin" } }
+		return { status = "completed", error = { message = "Adding was successful but writing to the directory store failed, please report to the admin" } }
 	end
 end
 
@@ -249,7 +249,7 @@ local function optout_command_handler(self, data, state)
 	if directory[jid_bare(data.from)] then
 		directory[jid_bare(data.from)] = nil
 		if datamanager.store("store", my_host, "directory", directory) then
-			return { status = "completed", info = "You have been removed from the user directory." }
+			return { status = "completed", info = "You have been removed from the user directory" }
 		else
 			return { status = "completed", error = { message = "Removal was successful but I failed to write to the directory store, please report to the admin" } }
 		end		

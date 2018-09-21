@@ -326,6 +326,7 @@ module.unload = function(reload)
 		else
 			datamanager.store(nil, muc_host, "redirects", nil);
 		end
+		module:remove_all_timers();
 	end
 end
 
