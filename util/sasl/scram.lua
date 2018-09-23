@@ -184,7 +184,7 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 				return "failure", "malformed-request", "Missing an attribute(p, r or c) in SASL message";
 			end
 
-			local client_header = base64.decode(channelbinding);
+			local client_header = base64.decode(_state.channelbinding);
 			local our_client_header = _state.gs2_header;
 			if supports_channel_binding then our_client_header = our_client_header .. state.profile.channel_bind_cb(); end
 			if client_header ~= our_client_header then return "failure", "malformed-request", "Channel binding value is invalid"; end
