@@ -106,95 +106,103 @@ end
 
 local function scram_gen(hash_name, H_f, HMAC_f)
 	local function scram_hash(self, message)
-		if not self.state then self["state"] = {} end
+		if not self.state then self.state = {}; end
+		local supports_channel_binding = self.profile.channel_bind_cb and true;
+		local _state = self.state;
 	
-		if type(message) ~= "string" or #message == 0 then return "failure", "malformed-request" end
-		if not self.state.name then
+		if type(message) ~= "string" or #message == 0 then return "failure", "malformed-request"; end
+		if not _state.name then
 			-- we are processing client_first_message
 			local client_first_message = message;
 			
 			-- TODO: fail if authzid is provided, since we don't support them yet
-			self.state["client_first_message"] = client_first_message;
-			self.state["gs2_cbind_flag"], self.state["authzid"], self.state["name"], self.state["clientnonce"]
-				= client_first_message:match("^(%a),(.*),n=(.*),r=([^,]*).*");
+			_state.client_first_message = client_first_message;
+			_state.gs2_header, _state.gs2_cbind_flag, _state.gs2_cbind_name, _state.authzid,
+			_state.client_first_message_bare, _state.name, _state.clientnonce
+				= client_first_message:match("^(([pny])=?([^,]*),([^,]*),)(m?=?[^,]*,?n=([^,]*),r=([^,]*),?.*)$");
 
-			-- we don't do any channel binding yet
-			if self.state.gs2_cbind_flag ~= "n" and self.state.gs2_cbind_flag ~= "y" then
-				return "failure", "malformed-request";
-			end
-
-			if not self.state.name or not self.state.clientnonce then
-				return "failure", "malformed-request", "Channel binding isn't supported at this time";
+			if not _state.gs2_cbind_flag then return "failure", "malformed-request"; end
+			if supports_channel_binding and _state.gs2_cbind_flag == "y" then return "failure", "malformed-request"; end
+			if _state.gs2_cbind_flag == "n" then supports_channel_binding = nil; end
+			if supports_channel_binding and _state.gs2_cbind_flag == "p" and _state.gs2_cbind_name ~= "tls-unique" then
+				return "failure", "malformed-request", "Only tls-unique binding method is currently supported";
+			elseif not supports_channel_binding then
+				self.profile.channel_bind_cb = nil;
 			end
 		
-			self.state.name = validate_username(self.state.name, self.profile.nodeprep);
-			if not self.state.name then
+			_state.name = validate_username(_state.name, self.profile.nodeprep);
+			if not _state.name then
 				log("debug", "Username violates either SASLprep or contains forbidden character sequences")
 				return "failure", "malformed-request", "Invalid username";
 			end
 		
-			self.state["servernonce"] = generate_uuid();
+			_state.servernonce = generate_uuid();
 			
 			-- retreive credentials
 			if self.profile.plain then
-				local password, state = self.profile.plain(self, self.state.name, self.realm)
-				if state == nil then return "failure", "not-authorized"
-				elseif state == false then return "failure", "account-disabled" end
+				local password, state = self.profile.plain(self, _state.name, self.realm)
+				if state == nil then return "failure", "not-authorized";
+				elseif state == false then return "failure", "account-disabled"; end
 				
 				password = saslprep(password);
 				if not password then
 					log("debug", "Password violates SASLprep.");
-					return "failure", "not-authorized", "Invalid password"
+					return "failure", "not-authorized", "Invalid password";
 				end
 
-				self.state.salt = generate_uuid();
-				self.state.iteration_count = default_i;
+				_state.salt = generate_uuid();
+				_state.iteration_count = default_i;
 
 				local succ = false;
-				succ, self.state.stored_key, self.state.server_key = getAuthenticationDatabaseSHA1(password, self.state.salt, default_i, self.state.iteration_count);
+				succ, _state.stored_key, _state.server_key = getAuthenticationDatabaseSHA1(password, _state.salt, default_i, _state.iteration_count);
 				if not succ then
-					log("error", "Generating authentication database failed. Reason: %s", self.state.stored_key);
+					log("error", "Generating authentication database failed. Reason: %s", _state.stored_key);
 					return "failure", "temporary-auth-failure";
 				end
 			elseif self.profile["scram_"..hashprep(hash_name)] then
-				local stored_key, server_key, iteration_count, salt, state = self.profile["scram_"..hashprep(hash_name)](self, self.state.name, self.realm);
-				if state == nil then return "failure", "not-authorized"
-				elseif state == false then return "failure", "account-disabled" end
+				local stored_key, server_key, iteration_count, salt, state = self.profile["scram_"..hashprep(hash_name)](self, _state.name, self.realm);
+				if state == nil then return "failure", "not-authorized";
+				elseif state == false then return "failure", "account-disabled"; end
 				
-				self.state.stored_key = stored_key;
-				self.state.server_key = server_key;
-				self.state.iteration_count = iteration_count;
-				self.state.salt = salt
+				_state.stored_key = stored_key;
+				_state.server_key = server_key;
+				_state.iteration_count = iteration_count;
+				_state.salt = salt;
 			end
 		
-			local server_first_message = "r="..self.state.clientnonce..self.state.servernonce..",s="..base64.encode(self.state.salt)..",i="..self.state.iteration_count;
-			self.state["server_first_message"] = server_first_message;
-			return "challenge", server_first_message
+			local server_first_message = "r=".._state.clientnonce.._state.servernonce..",s="..base64.encode(_state.salt)..",i=".._state.iteration_count;
+			_state.server_first_message = server_first_message;
+			return "challenge", server_first_message;
 		else
 			-- we are processing client_final_message
 			local client_final_message = message;
 			
-			self.state["channelbinding"], self.state["nonce"], self.state["proof"] = client_final_message:match("^c=(.*),r=(.*),.*p=(.*)");
+			_state.channelbinding, _state.nonce, _state.proof = client_final_message:match("^c=(.*),r=(.*),.*p=(.*)");
 	
-			if not self.state.proof or not self.state.nonce or not self.state.channelbinding then
+			if not _state.proof or not _state.nonce or not _state.channelbinding then
 				return "failure", "malformed-request", "Missing an attribute(p, r or c) in SASL message";
 			end
 
-			if self.state.nonce ~= self.state.clientnonce..self.state.servernonce then
+			local client_header = base64.decode(channelbinding);
+			local our_client_header = _state.gs2_header;
+			if supports_channel_binding then our_client_header = our_client_header .. state.profile.channel_bind_cb(); end
+			if client_header ~= our_client_header then return "failure", "malformed-request", "Channel binding value is invalid"; end
+
+			if _state.nonce ~= _state.clientnonce.._state.servernonce then
 				return "failure", "malformed-request", "Wrong nonce in client-final-message";
 			end
 			
-			local ServerKey = self.state.server_key;
-			local StoredKey = self.state.stored_key;
+			local ServerKey = _state.server_key;
+			local StoredKey = _state.stored_key;
 			
-			local AuthMessage = "n=" .. s_match(self.state.client_first_message,"n=(.+)") .. "," .. self.state.server_first_message .. "," .. s_match(client_final_message, "(.+),p=.+")
-			local ClientSignature = HMAC_f(StoredKey, AuthMessage)
-			local ClientKey = binaryXOR(ClientSignature, base64.decode(self.state.proof))
-			local ServerSignature = HMAC_f(ServerKey, AuthMessage)
+			local AuthMessage = "n=" .. _state.client_first_message_bare .. "," .. _state.server_first_message .. "," .. s_match(client_final_message, "(.+),p=.+");
+			local ClientSignature = HMAC_f(StoredKey, AuthMessage);
+			local ClientKey = binaryXOR(ClientSignature, base64.decode(_state.proof));
+			local ServerSignature = HMAC_f(ServerKey, AuthMessage);
 
 			if StoredKey == H_f(ClientKey) then
 				local server_final_message = "v="..base64.encode(ServerSignature);
-				self["username"] = self.state.name;
+				self.username = _state.name;
 				return "success", server_final_message;
 			else
 				return "failure", "not-authorized", "The response provided by the client doesn't match the one we calculated";
@@ -207,6 +215,7 @@ end
 function init(registerMechanism)
 	local function registerSCRAMMechanism(hash_name, hash, hmac_hash)
 		registerMechanism("SCRAM-"..hash_name, {"plain", "scram_"..(hashprep(hash_name))}, scram_gen(hash_name:lower(), hash, hmac_hash));
+		registerMechanism("SCRAM-"..hash_name.."-PLUS", {"plain", "scram_"..(hashprep(hash_name))}, scram_gen(hash_name:lower(), hash, hmac_hash), true);
 	end
 
 	registerSCRAMMechanism("SHA-1", sha1, hmac_sha1);

@@ -38,17 +38,17 @@ local function digest(self, message)
 	--TODO complete support for authzid
 
 	local function serialize(message)
-		local data = ""
+		local data = "";
 
 		-- testing all possible values
-		if message["realm"] then data = data..[[realm="]]..message.realm..[[",]] end
-		if message["nonce"] then data = data..[[nonce="]]..message.nonce..[[",]] end
-		if message["qop"] then data = data..[[qop="]]..message.qop..[[",]] end
-		if message["charset"] then data = data..[[charset=]]..message.charset.."," end
-		if message["algorithm"] then data = data..[[algorithm=]]..message.algorithm.."," end
-		if message["rspauth"] then data = data..[[rspauth=]]..message.rspauth.."," end
-		data = data:gsub(",$", "")
-		return data
+		if message["realm"] then data = data..[[realm="]]..message.realm..[[",]]; end
+		if message["nonce"] then data = data..[[nonce="]]..message.nonce..[[",]]; end
+		if message["qop"] then data = data..[[qop="]]..message.qop..[[",]]; end
+		if message["charset"] then data = data..[[charset=]]..message.charset..","; end
+		if message["algorithm"] then data = data..[[algorithm=]]..message.algorithm..","; end
+		if message["rspauth"] then data = data..[[rspauth=]]..message.rspauth..","; end
+		data = data:gsub(",$", "");
+		return data;
 	end
 
 	local function utf8tolatin1ifpossible(passwd)
@@ -99,7 +99,7 @@ local function digest(self, message)
 		return t_concat(p);
 	end
 	local function parse(data)
-		local message = {}
+		local message = {};
 		-- COMPAT: %z in the pattern to work around jwchat bug (sends "charset=utf-8\0")
 		for k, v in s_gmatch(data or "", [[([%w%-]+)="?([^",%z]*)"?,?]]) do -- FIXME The hacky regex makes me shudder
 			message[k] = v;
@@ -127,7 +127,7 @@ local function digest(self, message)
 		local response = parse(message);
 		-- check for replay attack
 		if response["nc"] then
-			if self.nonce_count[response["nc"]] then return "failure", "not-authorized" end
+			if self.nonce_count[response["nc"]] then return "failure", "not-authorized"; end
 		end
 
 		-- check for username, it's REQUIRED by RFC 2831
@@ -146,11 +146,11 @@ local function digest(self, message)
 			return "failure", "malformed-request";
 		else
 			-- check if it's the right nonce
-			if response["nonce"] ~= tostring(self.nonce) then return "failure", "malformed-request" end
+			if response["nonce"] ~= tostring(self.nonce) then return "failure", "malformed-request"; end
 		end
 
-		if not response["cnonce"] then return "failure", "malformed-request", "Missing entry for cnonce in SASL message" end
-		if not response["qop"] then response["qop"] = "auth" end
+		if not response["cnonce"] then return "failure", "malformed-request", "Missing entry for cnonce in SASL message"; end
+		if not response["qop"] then response["qop"] = "auth"; end
 
 		if response["realm"] == nil or response["realm"] == "" then
 			response["realm"] = "";
@@ -169,22 +169,22 @@ local function digest(self, message)
 		local protocol = "";
 		if response["digest-uri"] then
 			protocol, domain = response["digest-uri"]:match("(%w+)/(.*)$");
-			if protocol == nil or domain == nil then return "failure", "malformed-request" end
+			if protocol == nil or domain == nil then return "failure", "malformed-request"; end
 		else
-			return "failure", "malformed-request", "Missing entry for digest-uri in SASL message"
+			return "failure", "malformed-request", "Missing entry for digest-uri in SASL message";
 		end
 
 		--TODO maybe realm support
 		local Y, state;
 		if self.profile.plain then
-			local password, state = self.profile.plain(self, response["username"], self.realm)
-			if state == nil then return "failure", "not-authorized"
-			elseif state == false then return "failure", "account-disabled" end
+			local password, state = self.profile.plain(self, response["username"], self.realm);
+			if state == nil then return "failure", "not-authorized";
+			elseif state == false then return "failure", "account-disabled"; end
 			Y = md5(response["username"]..":"..response["realm"]..":"..password);
 		elseif self.profile["digest-md5"] then
-			Y, state = self.profile["digest-md5"](self, response["username"], self.realm, response["realm"], response["charset"])
-			if state == nil then return "failure", "not-authorized"
-			elseif state == false then return "failure", "account-disabled" end
+			Y, state = self.profile["digest-md5"](self, response["username"], self.realm, response["realm"], response["charset"]);
+			if state == nil then return "failure", "not-authorized";
+			elseif state == false then return "failure", "account-disabled"; end
 		elseif self.profile["digest-md5-test"] then
 			-- TODO
 		end
@@ -218,17 +218,17 @@ local function digest(self, message)
 			HA1 = md5(A1, true);
 			HA2 = md5(A2, true);
 
-			KD = HA1..":"..response["nonce"]..":"..response["nc"]..":"..response["cnonce"]..":"..response["qop"]..":"..HA2
+			KD = HA1..":"..response["nonce"]..":"..response["nc"]..":"..response["cnonce"]..":"..response["qop"]..":"..HA2;
 			local rspauth = md5(KD, true);
 			self.authenticated = true;
 			--TODO: considering sending the rspauth in a success node for saving one roundtrip; allowed according to http://tools.ietf.org/html/draft-saintandre-rfc3920bis-09#section-7.3.6
 			return "challenge", serialize({rspauth = rspauth});
 		else
-			return "failure", "not-authorized", "The response provided by the client doesn't match the one we calculated"
+			return "failure", "not-authorized", "The response provided by the client doesn't match the one we calculated";
 		end
 	elseif self.step == 3 then
-		if self.authenticated ~= nil then return "success"
-		else return "failure", "malformed-request" end
+		if self.authenticated ~= nil then return "success";
+		else return "failure", "malformed-request"; end
 	end
 end
 

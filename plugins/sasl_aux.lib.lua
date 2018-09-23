@@ -195,6 +195,15 @@ local function plain_backend(sasl, username, realm)
 	return password, true;
 end
 
+local function get_channel_binding_callback(session)
+	local socket = session.conn:socket();
+	if socket.getpeerfinished then
+		return function()
+			return socket:getpeerfinished();
+		end
+	end
+end
+
 return {
 	from_hex = from_hex,
 	to_hex = to_hex,
@@ -205,5 +214,6 @@ return {
 	external_backend = external_backend,
 	hashed_plain_test = hashed_plain_test,
 	hashed_scram_backend = hashed_scram_backend,
-	plain_backend = plain_backend
+	plain_backend = plain_backend,
+	get_channel_binding_callback = get_channel_binding_callback
 };

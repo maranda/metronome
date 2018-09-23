@@ -12,6 +12,7 @@ local new_sasl = require "util.sasl".new;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local plain_backend = module:require "sasl_aux".plain_backend;
 local external_backend = module:require "sasl_aux".external_backend;
+local get_channel_binding_callback = module:require "sasl_aux".get_channel_binding_callback;
 local bare_sessions = bare_sessions;
 
 local log = module._log;
@@ -97,6 +98,7 @@ function new_default_provider(host)
 			host = host
 		};
 		if session.secure then
+			getpass_authentication_profile.channel_bind_cb = get_channel_binding_callback(session);
 			getpass_authentication_profile.order = { "external", "plain" };
 		else
 			getpass_authentication_profile.order = { "plain" };
