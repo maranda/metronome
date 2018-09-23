@@ -198,7 +198,7 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			
 			local AuthMessage = _state.client_first_message_bare .. "," .. _state.server_first_message .. "," .. client_final_message_wp;
 			local ClientSignature = HMAC_f(StoredKey, AuthMessage);
-			local ClientKey = binaryXOR(ClientSignature, base64.decode(_state.proof));
+			local ClientKey = binaryXOR(ClientSignature, base64.decode(proof));
 			local ServerSignature = HMAC_f(ServerKey, AuthMessage);
 
 			if StoredKey == H_f(ClientKey) then
