@@ -91,7 +91,7 @@ end
 -- select a mechanism to use
 function method:select(mechanism)
 	local mechs, session = self.mechs, self.profile.session;
-	if (not (mechanism == "PLAIN" and not session.can_do_insecure_plain_auth and not session.secure) and
+	if (not (mechanism == "PLAIN" and not session.can_do_insecure_plain_auth and not session.secure) or
 		(mechanism == "EXTERNAL" and not session.can_do_external_auth)) and 
 		not self.selected and self.mechs[mechanism] then
 		self.selected = mechanism;
