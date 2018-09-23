@@ -116,7 +116,7 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			local client_first_message = message;
 			
 			-- TODO: fail if authzid is provided, since we don't support them yet
-			local gs2_header, gs2_cbind_flag, _state.gs2_cbind_name, authzid, client_first_message_bare, name, clientnonce =
+			local gs2_header, gs2_cbind_flag, gs2_cbind_name, authzid, client_first_message_bare, name, clientnonce =
 				client_first_message:match("^(([pny])=?([^,]*),([^,]*),)(m?=?[^,]*,?n=([^,]*),r=([^,]*),?.*)$");
 
 			if not gs2_cbind_flag then return "failure", "malformed-request"; end
