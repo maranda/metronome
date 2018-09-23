@@ -116,27 +116,26 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			local client_first_message = message;
 			
 			-- TODO: fail if authzid is provided, since we don't support them yet
-			_state.client_first_message = client_first_message;
-			_state.gs2_header, _state.gs2_cbind_flag, _state.gs2_cbind_name, _state.authzid,
-			_state.client_first_message_bare, _state.name, _state.clientnonce
-				= client_first_message:match("^(([pny])=?([^,]*),([^,]*),)(m?=?[^,]*,?n=([^,]*),r=([^,]*),?.*)$");
+			local gs2_header, gs2_cbind_flag, _state.gs2_cbind_name, authzid, client_first_message_bare, name, clientnonce =
+				client_first_message:match("^(([pny])=?([^,]*),([^,]*),)(m?=?[^,]*,?n=([^,]*),r=([^,]*),?.*)$");
 
-			if not _state.gs2_cbind_flag then return "failure", "malformed-request"; end
-			if supports_channel_binding and _state.gs2_cbind_flag == "y" then return "failure", "malformed-request"; end
-			if _state.gs2_cbind_flag == "n" then supports_channel_binding = nil; end
-			if supports_channel_binding and _state.gs2_cbind_flag == "p" and _state.gs2_cbind_name ~= "tls-unique" then
+			if not gs2_cbind_flag then return "failure", "malformed-request"; end
+			if supports_channel_binding and gs2_cbind_flag == "y" then return "failure", "malformed-request"; end
+			if gs2_cbind_flag == "n" then supports_channel_binding = nil; end
+			if supports_channel_binding and gs2_cbind_flag == "p" and gs2_cbind_name ~= "tls-unique" then
 				return "failure", "malformed-request", "Only tls-unique binding method is currently supported";
 			elseif not supports_channel_binding then
 				self.profile.channel_bind_cb = nil;
 			end
+			_state.gs2_header = gs2_header;
 		
-			_state.name = validate_username(_state.name, self.profile.nodeprep);
+			_state.name = validate_username(name, self.profile.nodeprep);
 			if not _state.name then
 				log("debug", "Username violates either SASLprep or contains forbidden character sequences")
 				return "failure", "malformed-request", "Invalid username";
 			end
 		
-			_state.servernonce = generate_uuid();
+			_state.clientnonce, _state.servernonce = clientnonce, generate_uuid();
 			
 			-- retreive credentials
 			if self.profile.plain then
@@ -170,33 +169,33 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 				_state.salt = salt;
 			end
 		
-			local server_first_message = "r=".._state.clientnonce.._state.servernonce..",s="..base64.encode(_state.salt)..",i=".._state.iteration_count;
+			local server_first_message = "r="..clientnonce.._state.servernonce..",s="..base64.encode(_state.salt)..",i=".._state.iteration_count;
 			_state.server_first_message = server_first_message;
 			return "challenge", server_first_message;
 		else
 			-- we are processing client_final_message
 			local client_final_message = message;
 			
-			_state.client_final_message_wp, _state.channelbinding, _state.nonce, _state.proof =
+			local client_final_message_wp, channelbinding, nonce, proof =
 				client_final_message:match("(c=([^,]*),r=([^,]*),?.-),p=(.*)$");
 	
-			if not _state.proof or not _state.nonce or not _state.channelbinding then
+			if not proof or not nonce or not channelbinding then
 				return "failure", "malformed-request", "Missing an attribute(p, r or c) in SASL message";
 			end
 
-			local client_header = base64.decode(_state.channelbinding);
+			local client_header = base64.decode(channelbinding);
 			local our_client_header = _state.gs2_header;
 			if supports_channel_binding then our_client_header = our_client_header .. self.profile.channel_bind_cb(); end
 			if client_header ~= our_client_header then return "failure", "malformed-request", "Channel binding value is invalid"; end
 
-			if _state.nonce ~= _state.clientnonce.._state.servernonce then
+			if nonce ~= _state.clientnonce.._state.servernonce then
 				return "failure", "malformed-request", "Wrong nonce in client-final-message";
 			end
 			
 			local ServerKey = _state.server_key;
 			local StoredKey = _state.stored_key;
 			
-			local AuthMessage = _state.client_first_message_bare .. "," .. _state.server_first_message .. "," .. _state.client_final_message_wp;
+			local AuthMessage = _state.client_first_message_bare .. "," .. _state.server_first_message .. "," .. client_final_message_wp;
 			local ClientSignature = HMAC_f(StoredKey, AuthMessage);
 			local ClientKey = binaryXOR(ClientSignature, base64.decode(_state.proof));
 			local ServerSignature = HMAC_f(ServerKey, AuthMessage);
@@ -204,8 +203,10 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			if StoredKey == H_f(ClientKey) then
 				local server_final_message = "v="..base64.encode(ServerSignature);
 				self.username = _state.name;
+				self.state = nil;
 				return "success", server_final_message;
 			else
+				self.state = nil;
 				return "failure", "not-authorized", "The response provided by the client doesn't match the one we calculated";
 			end
 		end
