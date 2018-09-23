@@ -170,6 +170,7 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			end
 		
 			local server_first_message = "r="..clientnonce.._state.servernonce..",s="..base64.encode(_state.salt)..",i=".._state.iteration_count;
+			_state.client_first_message_bare = client_first_message_bare;
 			_state.server_first_message = server_first_message;
 			return "challenge", server_first_message;
 		else
