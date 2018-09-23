@@ -196,8 +196,8 @@ local function plain_backend(sasl, username, realm)
 end
 
 local function get_channel_binding_callback(session)
-	local socket = session.conn:socket();
-	if socket.getpeerfinished then
+	local socket = session.conn.socket and session.conn:socket();
+	if socket and socket.getpeerfinished then
 		return function()
 			return socket:getpeerfinished();
 		end
