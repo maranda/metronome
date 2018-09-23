@@ -109,7 +109,7 @@ module:hook("stanza/urn:ietf:params:xml:ns:xmpp-sasl:auth", function(event)
 		session.sasl_handler = usermanager_get_sasl_handler(module.host, session);
 	end
 	local mechanism = stanza.attr.mechanism;
-	if blacklisted_mechanisms:contains(mechanism) then
+	if blacklisted_mechanisms and blacklisted_mechanisms:contains(mechanism) then
 		session.send(build_reply("failure", "invalid-mechanism"));
 		return true;
 	end
