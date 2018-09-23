@@ -177,7 +177,8 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			-- we are processing client_final_message
 			local client_final_message = message;
 			
-			_state.channelbinding, _state.nonce, _state.proof = client_final_message:match("^c=(.*),r=(.*),.*p=(.*)");
+			_state.client_final_message_wp, _state.channelbinding, _state.nonce, _state.proof =
+				client_final_message:match("(c=([^,]*),r=([^,]*),?.-),p=(.*)$");
 	
 			if not _state.proof or not _state.nonce or not _state.channelbinding then
 				return "failure", "malformed-request", "Missing an attribute(p, r or c) in SASL message";
@@ -195,7 +196,7 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			local ServerKey = _state.server_key;
 			local StoredKey = _state.stored_key;
 			
-			local AuthMessage = "n=" .. _state.client_first_message_bare .. "," .. _state.server_first_message .. "," .. s_match(client_final_message, "(.+),p=.+");
+			local AuthMessage = _state.client_first_message_bare .. "," .. _state.server_first_message .. "," .. client_final_message_wp;
 			local ClientSignature = HMAC_f(StoredKey, AuthMessage);
 			local ClientKey = binaryXOR(ClientSignature, base64.decode(_state.proof));
 			local ServerSignature = HMAC_f(ServerKey, AuthMessage);
