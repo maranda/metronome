@@ -137,7 +137,7 @@ function new_hashpass_provider(host)
 			host = host
 		};
 		if session.secure then
-			getpass_authentication_profile.channel_bind_cb = get_channel_binding_callback(session);
+			testpass_authentication_profile.channel_bind_cb = get_channel_binding_callback(session);
 			testpass_authentication_profile.order = { "external", "scram_sha_1", "plain_test" };
 		else
 			testpass_authentication_profile.order = { "scram_sha_1", "plain_test" };
