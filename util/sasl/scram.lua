@@ -5,7 +5,9 @@ local type = type
 local string = string
 local base64 = require "util.encodings".base64;
 local hmac_sha1 = require "util.hmac".sha1;
+local hmac_sha256 = require "util.hmac".sha256;
 local sha1 = require "util.hashes".sha1;
+local sha256 = require "util.hashes".sha256;
 local generate_uuid = require "util.uuid".generate;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local saslprep = require "util.encodings".stringprep.saslprep;
@@ -17,7 +19,7 @@ local byte = string.byte;
 module "sasl.scram"
 
 --=========================
---SASL SCRAM-SHA-1 according to RFC 5802
+--Implements SASL SCRAM-SHA-1 and SASL SCRAM-SHA-256
 
 --[[
 Supported Authentication Backends
@@ -91,16 +93,19 @@ local function hashprep(hashname)
 	return hashname:lower():gsub("-", "_");
 end
 
-function getAuthenticationDatabaseSHA1(password, salt, iteration_count)
+function getAuthenticationDatabase(hash_name, password, salt, iteration_count)
+	local hmac = hash_name == "sha256" and hmac_sha256 or hmac_sha1;
+	local sha = hash_name == "sha256" and sha256 or sha1;
+	
 	if type(password) ~= "string" or type(salt) ~= "string" or type(iteration_count) ~= "number" then
 		return false, "inappropriate argument types"
 	end
 	if iteration_count < 4096 then
-		log("warn", "Iteration count < 4096 which is the suggested minimum according to RFC 5802.")
+		log("warn", "Iteration count < 4096 which is the suggested minimum according to RFCs.")
 	end
-	local salted_password = Hi(hmac_sha1, password, salt, iteration_count);
-	local stored_key = sha1(hmac_sha1(salted_password, "Client Key"))
-	local server_key = hmac_sha1(salted_password, "Server Key");
+	local salted_password = Hi(hmac, password, salt, iteration_count);
+	local stored_key = sha(hmac(salted_password, "Client Key"))
+	local server_key = hmac(salted_password, "Server Key");
 	return true, stored_key, server_key
 end
 
@@ -153,13 +158,15 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 				_state.iteration_count = default_i;
 
 				local succ = false;
-				succ, _state.stored_key, _state.server_key = getAuthenticationDatabaseSHA1(password, _state.salt, default_i, _state.iteration_count);
+				succ, _state.stored_key, _state.server_key = 
+					getAuthenticationDatabase(hashprep(hash_name), password, _state.salt, default_i, _state.iteration_count);
 				if not succ then
 					log("error", "Generating authentication database failed. Reason: %s", _state.stored_key);
 					return "failure", "temporary-auth-failure";
 				end
 			elseif self.profile["scram_"..hashprep(hash_name)] then
 				local stored_key, server_key, iteration_count, salt, state = self.profile["scram_"..hashprep(hash_name)](self, _state.name, self.realm);
+				if not stored_key or not server_key then return "failure", "temporary-auth-failure", "Missing "..hash_name.." keys"; end
 				if state == nil then return "failure", "not-authorized";
 				elseif state == false then return "failure", "account-disabled"; end
 				
@@ -222,6 +229,7 @@ function init(registerMechanism)
 	end
 
 	registerSCRAMMechanism("SHA-1", sha1, hmac_sha1);
+	registerSCRAMMechanism("SHA-256", sha256, hmac_sha256);
 end
 
 return _M;
