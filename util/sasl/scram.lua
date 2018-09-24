@@ -2,6 +2,7 @@
 
 local s_match = string.match;
 local type = type;
+local tostring = tostring;
 local base64 = require "util.encodings".base64;
 local hmac_sha1 = require "util.hmac".sha1;
 local hmac_sha256 = require "util.hmac".sha256;
@@ -37,7 +38,7 @@ local function bp( b )
 	for i=1, b:len() do
 		result = result.."\\"..b:byte(i)
 	end
-	return result
+	return result;
 end
 
 local xor_map = {0;1;2;3;4;5;6;7;8;9;10;11;12;13;14;15;1;0;3;2;5;4;7;6;9;8;11;10;13;12;15;14;2;3;0;1;6;7;4;5;10;11;8;9;14;15;12;13;3;2;1;0;7;6;5;4;11;10;9;8;15;14;13;12;4;5;6;7;0;1;2;3;12;13;14;15;8;9;10;11;5;4;7;6;1;0;3;2;13;12;15;14;9;8;11;10;6;7;4;5;2;3;0;1;14;15;12;13;10;11;8;9;7;6;5;4;3;2;1;0;15;14;13;12;11;10;9;8;8;9;10;11;12;13;14;15;0;1;2;3;4;5;6;7;9;8;11;10;13;12;15;14;1;0;3;2;5;4;7;6;10;11;8;9;14;15;12;13;2;3;0;1;6;7;4;5;11;10;9;8;15;14;13;12;3;2;1;0;7;6;5;4;12;13;14;15;8;9;10;11;4;5;6;7;0;1;2;3;13;12;15;14;9;8;11;10;5;4;7;6;1;0;3;2;14;15;12;13;10;11;8;9;6;7;4;5;2;3;0;1;15;14;13;12;11;10;9;8;7;6;5;4;3;2;1;0;};
@@ -46,11 +47,15 @@ local result = {};
 local function binaryXOR( a, b )
 	for i=1, #a do
 		local x, y = byte(a, i), byte(b, i);
+		if not x or not y then
+			log("debug", "Orphaned XOR byte at offset %d! (%s, %s)", i, tostring(x), tostring(y));
+			break;
+		end
 		local lowx, lowy = x % 16, y % 16;
 		local hix, hiy = (x - lowx) / 16, (y - lowy) / 16;
 		local lowr, hir = xor_map[lowx * 16 + lowy + 1], xor_map[hix * 16 + hiy + 1];
 		local r = hir * 16 + lowr;
-		result[i] = char(r)
+		result[i] = char(r);
 	end
 	return t_concat(result);
 end
@@ -60,18 +65,18 @@ function Hi(hmac, str, salt, i)
 	local Ust = hmac(str, salt.."\0\0\0\1");
 	local res = Ust;
 	for n=1,i-1 do
-		local Und = hmac(str, Ust)
-		res = binaryXOR(res, Und)
-		Ust = Und
+		local Und = hmac(str, Ust);
+		res = binaryXOR(res, Und);
+		Ust = Und;
 	end
-	return res
+	return res;
 end
 
 local function validate_username(username, _nodeprep)
 	-- check for forbidden char sequences
 	for eq in username:gmatch("=(.?.?)") do
 		if eq ~= "2C" and eq ~= "3D" then
-			return false
+			return false;
 		end
 	end
 	
@@ -94,10 +99,10 @@ end
 
 function getAuthenticationDatabase(hash_name, password, salt, iteration_count)
 	if type(password) ~= "string" or type(salt) ~= "string" or type(iteration_count) ~= "number" then
-		return false, "inappropriate argument types"
+		return false, "inappropriate argument types";
 	end
 	if iteration_count < 4096 then
-		log("warn", "Iteration count < 4096 which is the suggested minimum according to RFCs.")
+		log("warn", "Iteration count < 4096 which is the suggested minimum according to RFCs.");
 	end
 	local salted_password, stored_key, server_key;
 	if hash_name == "sha_256" then
@@ -109,7 +114,7 @@ function getAuthenticationDatabase(hash_name, password, salt, iteration_count)
 		stored_key = sha1(hmac_sha1(salted_password, "Client Key"));
 		server_key = hmac_sha1(salted_password, "Server Key");
 	end
-	return true, stored_key, server_key
+	return true, stored_key, server_key;
 end
 
 local function scram_gen(hash_name, H_f, HMAC_f)
@@ -207,6 +212,7 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			local StoredKey = _state.stored_key;
 			
 			local AuthMessage = _state.client_first_message_bare .. "," .. _state.server_first_message .. "," .. client_final_message_wp;
+			log("debug", "Final %s - %s - %s", tostring(AuthMessage), tostring(StoredKey), tostring(proof))
 			local ClientSignature = HMAC_f(StoredKey, AuthMessage);
 			local ClientKey = binaryXOR(ClientSignature, base64.decode(proof));
 			local ServerSignature = HMAC_f(ServerKey, AuthMessage);
