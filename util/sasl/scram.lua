@@ -1,8 +1,7 @@
 -- Please see sasl.lua.license for licensing information.
 
 local s_match = string.match;
-local type = type
-local string = string
+local type = type;
 local base64 = require "util.encodings".base64;
 local hmac_sha1 = require "util.hmac".sha1;
 local hmac_sha256 = require "util.hmac".sha256;
@@ -94,18 +93,22 @@ local function hashprep(hashname)
 end
 
 function getAuthenticationDatabase(hash_name, password, salt, iteration_count)
-	local hmac = hash_name == "sha256" and hmac_sha256 or hmac_sha1;
-	local sha = hash_name == "sha256" and sha256 or sha1;
-	
 	if type(password) ~= "string" or type(salt) ~= "string" or type(iteration_count) ~= "number" then
 		return false, "inappropriate argument types"
 	end
 	if iteration_count < 4096 then
 		log("warn", "Iteration count < 4096 which is the suggested minimum according to RFCs.")
 	end
-	local salted_password = Hi(hmac, password, salt, iteration_count);
-	local stored_key = sha(hmac(salted_password, "Client Key"))
-	local server_key = hmac(salted_password, "Server Key");
+	local salted_password, stored_key, server_key;
+	if hash_name == "sha256" then
+		salted_password = Hi(hmac_sha256, password, salt, iteration_count);
+		stored_key = sha256(hmac_sha256(salted_password, "Client Key"));
+		server_key = hmac_sha256(salted_password, "Server Key");
+	else
+		salted_password = Hi(hmac_sha1, password, salt, iteration_count);
+		stored_key = sha1(hmac_sha1(salted_password, "Client Key"));
+		server_key = hmac_sha1(salted_password, "Server Key");
+	end
 	return true, stored_key, server_key
 end
 
