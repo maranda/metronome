@@ -100,7 +100,7 @@ function getAuthenticationDatabase(hash_name, password, salt, iteration_count)
 		log("warn", "Iteration count < 4096 which is the suggested minimum according to RFCs.")
 	end
 	local salted_password, stored_key, server_key;
-	if hash_name == "sha256" then
+	if hash_name == "sha_256" then
 		salted_password = Hi(hmac_sha256, password, salt, iteration_count);
 		stored_key = sha256(hmac_sha256(salted_password, "Client Key"));
 		server_key = hmac_sha256(salted_password, "Server Key");

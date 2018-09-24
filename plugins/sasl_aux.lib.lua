@@ -177,7 +177,7 @@ local function hashed_scram_backend(algorithm, sasl, username, realm)
 	end
 
 	local stored_key, server_key;
-	if algorithm == "sha256" then
+	if algorithm == "sha_256" then
 		stored_key, server_key = credentials.stored_key_256, credentials.server_key_256;
 	else
 		stored_key, server_key = credentials.stored_key, credentials.server_key;
@@ -189,7 +189,7 @@ local function hashed_scram_backend(algorithm, sasl, username, realm)
 end
 
 local function scram_sha256_backend(sasl, username, realm)
-	return hashed_scram_backend("sha256", sasl, username, realm);
+	return hashed_scram_backend("sha_256", sasl, username, realm);
 end
 
 local function scram_sha1_backend(sasl, username, realm)

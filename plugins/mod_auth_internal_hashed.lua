@@ -46,7 +46,7 @@ function new_hashpass_provider(host)
 			return nil, "Auth failed, stored salt and iteration count information is not complete";
 		end
 		
-		local valid, stored_key, server_key = getAuthenticationDatabase("sha1", password, credentials.salt, credentials.iteration_count);
+		local valid, stored_key, server_key = getAuthenticationDatabase("sha_1", password, credentials.salt, credentials.iteration_count);
 		
 		local stored_key_hex = to_hex(stored_key);
 		local server_key_hex = to_hex(server_key);
@@ -63,12 +63,12 @@ function new_hashpass_provider(host)
 		if account then
 			account.salt = account.salt or generate_uuid();
 			account.iteration_count = account.iteration_count or iteration_count;
-			local valid, stored_key, server_key = getAuthenticationDatabase("sha1", password, account.salt, account.iteration_count);
+			local valid, stored_key, server_key = getAuthenticationDatabase("sha_1", password, account.salt, account.iteration_count);
 			local stored_key_hex = to_hex(stored_key);
 			local server_key_hex = to_hex(server_key);
 			account.stored_key = stored_key_hex;
 			account.server_key = server_key_hex;
-			valid, stored_key, server_key = getAuthenticationDatabase("sha256", password, account.salt, account.iteration_count);
+			valid, stored_key, server_key = getAuthenticationDatabase("sha_256", password, account.salt, account.iteration_count);
 			stored_key_hex = to_hex(stored_key);
 			server_key_hex = to_hex(server_key);
 			account.stored_key_256 = stored_key_hex;
