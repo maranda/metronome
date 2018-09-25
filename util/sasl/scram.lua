@@ -21,10 +21,9 @@ local byte = string.byte;
 
 module "sasl.scram"
 
---=========================
---Implements SASL SCRAM-SHA-1 and SASL SCRAM-SHA-256
-
 --[[
+SASL SCRAM according to RFCs 5802 and 7677
+
 Supported Authentication Backends
 
 scram_{MECH}:

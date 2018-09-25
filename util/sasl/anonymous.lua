@@ -9,10 +9,9 @@ local log = require "util.logger".init("sasl");
 
 module "sasl.anonymous"
 
---=========================
---SASL ANONYMOUS according to RFC 4505
-
 --[[
+SASL ANONYMOUS according to RFC 4505
+
 Supported Authentication Backends
 
 anonymous:

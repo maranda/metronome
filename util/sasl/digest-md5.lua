@@ -16,10 +16,9 @@ local nodeprep = require "util.encodings".stringprep.nodeprep;
 
 module "sasl.digest-md5"
 
---=========================
---SASL DIGEST-MD5 according to RFC 2831
-
 --[[
+SASL DIGEST-MD5 according to RFC 2831
+
 Supported Authentication Backends
 
 digest_md5:

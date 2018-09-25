@@ -7,10 +7,9 @@ local log = require "util.logger".init("sasl");
 
 module "sasl.plain"
 
--- ================================
--- SASL PLAIN according to RFC 4616
-
 --[[
+SASL PLAIN according to RFC 4616
+
 Supported Authentication Backends
 
 plain:
