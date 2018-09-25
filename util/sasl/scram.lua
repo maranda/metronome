@@ -47,10 +47,6 @@ local result = {};
 local function binaryXOR( a, b )
 	for i=1, #a do
 		local x, y = byte(a, i), byte(b, i);
-		if not x or not y then
-			log("debug", "Orphaned XOR byte at offset %d! (%s, %s)", i, tostring(x), tostring(y));
-			break;
-		end
 		local lowx, lowy = x % 16, y % 16;
 		local hix, hiy = (x - lowx) / 16, (y - lowy) / 16;
 		local lowr, hir = xor_map[lowx * 16 + lowy + 1], xor_map[hix * 16 + hiy + 1];
@@ -212,8 +208,13 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			local StoredKey = _state.stored_key;
 			
 			local AuthMessage = _state.client_first_message_bare .. "," .. _state.server_first_message .. "," .. client_final_message_wp;
+
+			local DecodedProof = base64.decode(proof);
 			local ClientSignature = HMAC_f(StoredKey, AuthMessage);
-			local ClientKey = binaryXOR(ClientSignature, base64.decode(proof));
+			if ClientSignature:len() ~= DecodedProof:len() then
+				return "failure", "malformed-request", "Client Signature and Proof have different length!";
+			end
+			local ClientKey = binaryXOR(ClientSignature, DecodedProof);
 			local ServerSignature = HMAC_f(ServerKey, AuthMessage);
 
 			if StoredKey == H_f(ClientKey) then
