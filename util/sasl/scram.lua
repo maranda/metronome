@@ -2,7 +2,6 @@
 
 local s_match = string.match;
 local type = type;
-local tostring = tostring;
 local base64 = require "util.encodings".base64;
 local hmac_sha1 = require "util.hmac".sha1;
 local hmac_sha256 = require "util.hmac".sha256;
