@@ -12,7 +12,7 @@ local sm_make_authenticated = require "core.sessionmanager".make_authenticated;
 local base64 = require "util.encodings".base64;
 local usermanager_get_sasl_handler = require "core.usermanager".get_sasl_handler;
 local can_do_external = module:require "sasl_aux".can_do_external;
-local ipairs, pairs, tostring = ipairs, pairs, tostring;
+local pairs, tostring = pairs, tostring;
 local host_session = hosts[module.host];
 
 local no_encryption = metronome.no_encryption;
@@ -27,19 +27,17 @@ local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
 
 local function check_scram_blacklist()
 	if not blacklisted_mechanisms then return; end
+	local add = {};
 
 	-- blacklisting one SCRAM method needs to have 'em all banned
-	if blacklisted_mechanisms:contains("SCRAM-SHA-1") and not blacklisted_mechanisms:contains("SCRAM-SHA-1-PLUS") then
-		blacklisted_mechanisms:add("SCRAM-SHA-1-PLUS");
-	elseif blacklisted_mechanisms:contains("SCRAM-SHA-1-PLUS") and not blacklisted_mechanisms:contains("SCRAM-SHA-1") then
-		blacklisted_mechanisms:add("SCRAM-SHA-1");
+	for mechanism in pairs(blacklisted_mechanisms:items()) do
+		if mechanism:match("^SCRAM%-SHA%d+[^%-PLUS$]$") then
+			add[mechanism.."-PLUS"] = true;
+		elseif mechanism:match("^SCRAM%-SHA%d+%-PLUS$") then
+			add[mechanism] = true;
+		end
 	end
-
-	if blacklisted_mechanisms:contains("SCRAM-SHA-256") and not blacklisted_mechanisms:contains("SCRAM-SHA-256-PLUS") then
-		blacklisted_mechanisms:add("SCRAM-SHA-256-PLUS");
-	elseif blacklisted_mechanisms:contains("SCRAM-SHA-256-PLUS") and not blacklisted_mechanisms:contains("SCRAM-SHA-256") then
-		blacklisted_mechanisms:add("SCRAM-SHA-256");
-	end
+	blacklisted_mechanisms:include(add);
 end
 check_scram_blacklist();
 
