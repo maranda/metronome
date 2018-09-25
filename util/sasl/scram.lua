@@ -5,8 +5,12 @@ local type = type;
 local base64 = require "util.encodings".base64;
 local hmac_sha1 = require "util.hmac".sha1;
 local hmac_sha256 = require "util.hmac".sha256;
+local hmac_sha384 = require "util.hmac".sha384;
+local hmac_sha512 = require "util.hmac".sha512;
 local sha1 = require "util.hashes".sha1;
 local sha256 = require "util.hashes".sha256;
+local sha384 = require "util.hashes".sha384;
+local sha512 = require "util.hashes".sha512;
 local generate_uuid = require "util.uuid".generate;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local saslprep = require "util.encodings".stringprep.saslprep;
@@ -105,6 +109,14 @@ function getAuthenticationDatabase(hash_name, password, salt, iteration_count)
 		salted_password = Hi(hmac_sha256, password, salt, iteration_count);
 		stored_key = sha256(hmac_sha256(salted_password, "Client Key"));
 		server_key = hmac_sha256(salted_password, "Server Key");
+	elseif hash_name == "sha_384" then
+		salted_password = Hi(hmac_sha384, password, salt, iteration_count);
+		stored_key = sha384(hmac_sha384(salted_password, "Client Key"));
+		server_key = hmac_sha384(salted_password, "Server Key");
+	elseif hash_name == "sha_512" then
+		salted_password = Hi(hmac_sha512, password, salt, iteration_count);
+		stored_key = sha512(hmac_sha512(salted_password, "Client Key"));
+		server_key = hmac_sha512(salted_password, "Server Key");
 	else
 		salted_password = Hi(hmac_sha1, password, salt, iteration_count);
 		stored_key = sha1(hmac_sha1(salted_password, "Client Key"));
@@ -238,6 +250,8 @@ function init(registerMechanism)
 
 	registerSCRAMMechanism("SHA-1", sha1, hmac_sha1);
 	registerSCRAMMechanism("SHA-256", sha256, hmac_sha256);
+	registerSCRAMMechanism("SHA-384", sha384, hmac_sha384);
+	registerSCRAMMechanism("SHA-512", sha512, hmac_sha512);
 end
 
 return _M;

@@ -179,6 +179,10 @@ local function hashed_scram_backend(algorithm, sasl, username, realm)
 	local stored_key, server_key;
 	if algorithm == "sha_256" then
 		stored_key, server_key = credentials.stored_key_256, credentials.server_key_256;
+	elseif algorithm == "sha_384" then
+		stored_key, server_key = credentials.stored_key_384, credentials.server_key_384;
+	elseif algorithm == "sha_512" then
+		stored_key, server_key = credentials.stored_key_512, credentials.server_key_512;
 	else
 		stored_key, server_key = credentials.stored_key, credentials.server_key;
 	end
@@ -188,12 +192,20 @@ local function hashed_scram_backend(algorithm, sasl, username, realm)
 	return stored_key, server_key, credentials.iteration_count, credentials.salt, true;
 end
 
+local function scram_sha1_backend(sasl, username, realm)
+	return hashed_scram_backend(nil, sasl, username, realm);
+end
+
 local function scram_sha256_backend(sasl, username, realm)
 	return hashed_scram_backend("sha_256", sasl, username, realm);
 end
 
-local function scram_sha1_backend(sasl, username, realm)
-	return hashed_scram_backend(nil, sasl, username, realm);
+local function scram_sha384_backend(sasl, username, realm)
+	return hashed_scram_backend("sha_384", sasl, username, realm);
+end
+
+local function scram_sha512_backend(sasl, username, realm)
+	return hashed_scram_backend("sha_512", sasl, username, realm);
 end
 
 local function plain_backend(sasl, username, realm)
