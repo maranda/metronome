@@ -121,10 +121,10 @@ function new_hashpass_provider(host)
 			return datamanager.store(username, host, "accounts", {});
 		end
 		local salt = generate_uuid();
-		local valid, stored_key, server_key = getAuthenticationDatabase("sha1", password, salt, iteration_count);
+		local valid, stored_key, server_key = getAuthenticationDatabase("sha_1", password, salt, iteration_count);
 		local stored_key_hex = to_hex(stored_key);
 		local server_key_hex = to_hex(server_key);
-		valid, stored_key, server_key = getAuthenticationDatabase("sha256", password, salt, iteration_count);
+		valid, stored_key, server_key = getAuthenticationDatabase("sha_256", password, salt, iteration_count);
 		local stored_key_hex_256 = to_hex(stored_key);
 		local server_key_hex_256 = to_hex(server_key);
 		return datamanager.store(username, host, "accounts", 
