@@ -26,6 +26,8 @@ local log = module._log;
 local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
 
 local function check_scram_blacklist()
+	if not blacklisted_mechanisms then return; end
+
 	-- blacklisting one SCRAM method needs to have 'em all banned
 	if blacklisted_mechanisms:contains("SCRAM-SHA-1") and not blacklisted_mechanisms:contains("SCRAM-SHA-1-PLUS") then
 		blacklisted_mechanisms:add("SCRAM-SHA-1-PLUS");
