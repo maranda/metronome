@@ -212,7 +212,7 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			local ClientSignature = HMAC_f(StoredKey, AuthMessage);
 			local ClientKey = binaryXOR(ClientSignature, base64.decode(proof));
 			if not ClientKey then
-				return "failure", "malformed-request", "XOR failed provided signature and proof";
+				return "failure", "malformed-request", "XOR failed with provided signature and proof";
 			end
 			local ServerSignature = HMAC_f(ServerKey, AuthMessage);
 
