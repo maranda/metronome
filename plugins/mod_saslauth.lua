@@ -25,6 +25,22 @@ local log = module._log;
 
 local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
 
+local function check_scram_blacklist()
+	-- blacklisting one SCRAM method needs to have 'em all banned
+	if blacklisted_mechanisms:contains("SCRAM-SHA-1") and not blacklisted_mechanisms:contains("SCRAM-SHA-1-PLUS") then
+		blacklisted_mechanisms:add("SCRAM-SHA-1-PLUS");
+	elseif blacklisted_mechanisms:contains("SCRAM-SHA-1-PLUS") and not blacklisted_mechanisms:contains("SCRAM-SHA-1") then
+		blacklisted_mechanisms:add("SCRAM-SHA-1");
+	end
+
+	if blacklisted_mechanisms:contains("SCRAM-SHA-256") and not blacklisted_mechanisms:contains("SCRAM-SHA-256-PLUS") then
+		blacklisted_mechanisms:add("SCRAM-SHA-256-PLUS");
+	elseif blacklisted_mechanisms:contains("SCRAM-SHA-256-PLUS") and not blacklisted_mechanisms:contains("SCRAM-SHA-256") then
+		blacklisted_mechanisms:add("SCRAM-SHA-256");
+	end
+end
+check_scram_blacklist();
+
 local function reload()
 	secure_auth_only = module:get_option_boolean("c2s_require_encryption", not no_encryption);
 	allow_unencrypted_plain_auth = module:get_option_boolean("allow_unencrypted_plain_auth", false);
@@ -36,6 +52,8 @@ local function reload()
 			full_sessions.can_do_insecure_plain_auth = allow_unencrypted_plain_auth and true;
 		end
 	end
+
+	check_scram_blacklist();
 end
 module:hook_global("config-reloaded", reload);
 
