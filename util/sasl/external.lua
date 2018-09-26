@@ -11,13 +11,15 @@ local ipairs = ipairs;
 module "sasl.external"
 
 --[[
+SASL EXTERNAL according to RFC 4422
+
 Supported Authentication Backends
 
 external:
 		function(sasl, session, authid)
 			return nil (internal-server-error) or true (invalid-authzid) or false or username, err.
 		end
-]]--
+]]
 
 local function external(self, authid)
 	local username, err = self.profile.external(self, self.profile.session, authid);

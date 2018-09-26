@@ -1024,7 +1024,7 @@ function def_env.user:delete(jid)
 	end
 end
 
-function def_env.user:passwd(jid, password)
+function def_env.user:password(jid, password)
 	local username, host = jid_split(jid);
 	if not um.user_exists(username, host) then return nil, "User doesn't exist"; end
 	local ok, err = um.set_password(username, password, host);

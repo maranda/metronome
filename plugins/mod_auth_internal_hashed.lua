@@ -9,14 +9,17 @@
 
 local datamanager = require "util.datamanager";
 local log = require "util.logger".init("auth_internal_hashed");
-local getAuthenticationDatabaseSHA1 = require "util.sasl.scram".getAuthenticationDatabaseSHA1;
+local getAuthenticationDatabase = require "util.sasl.scram".getAuthenticationDatabase;
 local generate_uuid = require "util.uuid".generate;
 local new_sasl = require "util.sasl".new;
 local plain_test = module:require "sasl_aux".hashed_plain_test;
-local scram_backend = module:require "sasl_aux".hashed_scram_backend;
+local scram_sha1_backend = module:require "sasl_aux".scram_sha1_backend;
+local scram_sha256_backend = module:require "sasl_aux".scram_sha256_backend;
+local scram_sha384_backend = module:require "sasl_aux".scram_sha384_backend;
+local scram_sha512_backend = module:require "sasl_aux".scram_sha512_backend;
 local external_backend = module:require "sasl_aux".external_backend;
-local from_hex = module:require "sasl_aux".from_hex;
 local to_hex = module:require "sasl_aux".to_hex;
+local get_channel_binding_callback = module:require "sasl_aux".get_channel_binding_callback;
 local bare_sessions = bare_sessions;
 
 -- Default; can be set per-user
@@ -45,7 +48,7 @@ function new_hashpass_provider(host)
 			return nil, "Auth failed, stored salt and iteration count information is not complete";
 		end
 		
-		local valid, stored_key, server_key = getAuthenticationDatabaseSHA1(password, credentials.salt, credentials.iteration_count);
+		local valid, stored_key, server_key = getAuthenticationDatabase("sha_1", password, credentials.salt, credentials.iteration_count);
 		
 		local stored_key_hex = to_hex(stored_key);
 		local server_key_hex = to_hex(server_key);
@@ -62,12 +65,26 @@ function new_hashpass_provider(host)
 		if account then
 			account.salt = account.salt or generate_uuid();
 			account.iteration_count = account.iteration_count or iteration_count;
-			local valid, stored_key, server_key = getAuthenticationDatabaseSHA1(password, account.salt, account.iteration_count);
+			local valid, stored_key, server_key = getAuthenticationDatabase("sha_1", password, account.salt, account.iteration_count);
 			local stored_key_hex = to_hex(stored_key);
 			local server_key_hex = to_hex(server_key);
-			
-			account.stored_key = stored_key_hex
-			account.server_key = server_key_hex
+			account.stored_key = stored_key_hex;
+			account.server_key = server_key_hex;
+			valid, stored_key, server_key = getAuthenticationDatabase("sha_256", password, account.salt, account.iteration_count);
+			stored_key_hex = to_hex(stored_key);
+			server_key_hex = to_hex(server_key);
+			account.stored_key_256 = stored_key_hex;
+			account.server_key_256 = server_key_hex;
+			valid, stored_key, server_key = getAuthenticationDatabase("sha_384", password, account.salt, account.iteration_count);
+			stored_key_hex = to_hex(stored_key);
+			server_key_hex = to_hex(server_key);
+			account.stored_key_384 = stored_key_hex;
+			account.server_key_384 = server_key_hex;
+			valid, stored_key, server_key = getAuthenticationDatabase("sha_512", password, account.salt, account.iteration_count);
+			stored_key_hex = to_hex(stored_key);
+			server_key_hex = to_hex(server_key);
+			account.stored_key_512 = stored_key_hex;
+			account.server_key_512 = server_key_hex;
 
 			account.password = nil;
 			return datamanager.store(username, host, "accounts", account);
@@ -116,11 +133,27 @@ function new_hashpass_provider(host)
 			return datamanager.store(username, host, "accounts", {});
 		end
 		local salt = generate_uuid();
-		local valid, stored_key, server_key = getAuthenticationDatabaseSHA1(password, salt, iteration_count);
+		local valid, stored_key, server_key = getAuthenticationDatabase("sha_1", password, salt, iteration_count);
 		local stored_key_hex = to_hex(stored_key);
 		local server_key_hex = to_hex(server_key);
+		valid, stored_key, server_key = getAuthenticationDatabase("sha_256", password, salt, iteration_count);
+		local stored_key_hex_256 = to_hex(stored_key);
+		local server_key_hex_256 = to_hex(server_key);
+		valid, stored_key, server_key = getAuthenticationDatabase("sha_384", password, salt, iteration_count);
+		local stored_key_hex_384 = to_hex(stored_key);
+		local server_key_hex_384 = to_hex(server_key);
+		valid, stored_key, server_key = getAuthenticationDatabase("sha_512", password, salt, iteration_count);
+		local stored_key_hex_512 = to_hex(stored_key);
+		local server_key_hex_512 = to_hex(server_key);
 		return datamanager.store(username, host, "accounts", 
-			{ stored_key = stored_key_hex, server_key = server_key_hex, salt = salt, iteration_count = iteration_count, locked = locked });
+			{
+				stored_key = stored_key_hex, server_key = server_key_hex,
+				stored_key_256 = stored_key_hex_256, server_key_256 = server_key_hex_256,
+				stored_key_384 = stored_key_hex_384, server_key_384 = server_key_hex_384,
+				stored_key_512 = stored_key_hex_512, server_key_512 = server_key_hex_512,
+				salt = salt, iteration_count = iteration_count, locked = locked
+			}
+		);
 	end
 
 	function provider.delete_user(username)
@@ -130,15 +163,23 @@ function new_hashpass_provider(host)
 	function provider.get_sasl_handler(session)
 		local testpass_authentication_profile = {
 			external = session.secure and external_backend,
-			scram_sha_1 = scram_backend,
+			scram_sha_1 = scram_sha1_backend,
+			scram_sha_256 = scram_sha256_backend,
+			scram_sha_384 = scram_sha384_backend,
+			scram_sha_512 = scram_sha512_backend,
 			plain_test = plain_test,
 			session = session,
 			host = host
 		};
 		if session.secure then
-			testpass_authentication_profile.order = { "external", "scram_sha_1", "plain_test" };
+			testpass_authentication_profile.channel_bind_cb = get_channel_binding_callback(session);
+			testpass_authentication_profile.order = {
+				"external", "scram_sha_512", "scram_sha_384", "scram_sha_256", "scram_sha_1", "plain_test" 
+			};
 		else
-			testpass_authentication_profile.order = { "scram_sha_1", "plain_test" };
+			testpass_authentication_profile.order = {
+				"scram_sha_512", "scram_sha_384", "scram_sha_256", "scram_sha_1", "plain_test"
+			};
 		end
 		return new_sasl(host, testpass_authentication_profile);
 	end

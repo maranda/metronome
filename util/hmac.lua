@@ -67,4 +67,12 @@ function sha256(key, message, hex)
 	return hmac(key, message, hashes.sha256, 64, hex)
 end
 
+function sha384(key, message, hex)
+	return hmac(key, message, hashes.sha384, 64, hex)
+end
+
+function sha512(key, message, hex)
+	return hmac(key, message, hashes.sha512, 64, hex)
+end
+
 return _M

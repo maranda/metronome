@@ -1,4 +1,4 @@
--- Please see signal.lua.license for licensing information.
+-- Please see sasl.lua.license for licensing information.
 
 local pairs, ipairs = pairs, ipairs;
 local t_insert = table.insert;
@@ -20,13 +20,15 @@ state = nil : non-existant
 local method = {};
 method.__index = method;
 local mechanisms = {};
+local channelbinding_mechanisms = {};
 local backend_mechanism = {};
 
 -- register a new SASL mechanims
-function registerMechanism(name, backends, f)
+function registerMechanism(name, backends, f, cb)
 	assert(type(name) == "string", "Parameter name MUST be a string.");
 	assert(type(backends) == "string" or type(backends) == "table", "Parameter backends MUST be either a string or a table.");
 	assert(type(f) == "function", "Parameter f MUST be a function.");
+	if cb then channelbinding_mechanisms[name] = true; end
 	mechanisms[name] = f
 	for _, backend_name in ipairs(backends) do
 		if backend_mechanism[backend_name] == nil then backend_mechanism[backend_name] = {}; end
@@ -40,6 +42,8 @@ end
 -- presented by the server
 function new(realm, profile)
 	local order = profile.order;
+	local session = profile.session;
+	local cb_capable = profile.channel_bind_cb and true;
 	local mechanisms = {};
 	if type(order) == "table" and #order ~= 0 then
 		for b = 1, #order do
@@ -47,8 +51,12 @@ function new(realm, profile)
 			if backend then
 				for i = 1, #backend do
 					local sasl = backend[i];
-					t_insert(mechanisms, sasl);
-					mechanisms[sasl] = true;
+					if not cb_capable and channelbinding_mechanisms[sasl] then
+						-- don't add
+					else
+						t_insert(mechanisms, sasl);
+						mechanisms[sasl] = true;
+					end
 				end
 			end
 		end
@@ -63,12 +71,29 @@ end
 
 -- get a list of possible SASL mechanims to use
 function method:mechanisms()
-	return self.mechs;
+	local mechs, session = self.mechs, self.profile.session;
+	local i, n = 0, #mechs;
+	local function iter()
+		i = i + 1;
+		if i <= n then
+			local mechanism = mechs[i];
+			if (mechanism == "PLAIN" and not session.can_do_insecure_plain_auth and not session.secure) or
+				(mechanism == "EXTERNAL" and not session.can_do_external_auth) then
+				return iter();
+			else
+				return mechanism;
+			end
+		end
+	end
+	return iter;
 end
 
 -- select a mechanism to use
 function method:select(mechanism)
-	if not self.selected and self.mechs[mechanism] then
+	local mechs, session = self.mechs, self.profile.session;
+	if (not (mechanism == "PLAIN" and not session.can_do_insecure_plain_auth and not session.secure) or
+		(mechanism == "EXTERNAL" and not session.can_do_external_auth)) and 
+		not self.selected and self.mechs[mechanism] then
 		self.selected = mechanism;
 		return true;
 	end

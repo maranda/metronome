@@ -11,7 +11,7 @@
 
 /*
 * hashes.c
-* Lua library for sha1, sha256 and md5 hashes
+* Lua library for sha1, sha256, sha384, sha512 and md5 hashes
 */
 
 #include <string.h>

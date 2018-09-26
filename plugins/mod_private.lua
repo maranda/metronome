@@ -13,11 +13,26 @@ if hosts[module.host].anonymous_host then
 	return;
 end
 
-local st = require "util.stanza"
+local _type = type;
 
-local datamanager = require "util.datamanager"
+local st = require "util.stanza";
+local storagemanager = storagemanager;
+
+local private = storagemanager.open(module.host, "private");
 
 module:add_feature("jabber:iq:private");
+
+local function store(user, data, key, tag)
+	if not data then data = {}; end;
+	if #tag == 0 then
+		data[key] = nil;
+	else
+		data[key] = st.preserialize(tag);
+	end
+	local err;
+	data, err = private:set(user, data);
+	return data, err;
+end
 
 module:hook("iq/self/jabber:iq:private:query", function(event)
 	local origin, stanza = event.origin, event.stanza;
@@ -26,25 +41,26 @@ module:hook("iq/self/jabber:iq:private:query", function(event)
 	if #query.tags == 1 then
 		local tag = query.tags[1];
 		local key = tag.name..":"..tag.attr.xmlns;
-		local data, err = datamanager.load(origin.username, origin.host, "private");
+		local data, err = private:get(origin.username);
 		if err then
 			origin.send(st.error_reply(stanza, "wait", "internal-server-error", err));
 			return true;
 		end
 		if stanza.attr.type == "get" then
 			if data and data[key] then
-				origin.send(st.reply(stanza):tag("query", {xmlns = "jabber:iq:private"}):add_child(st.deserialize(data[key])));
+				origin.send(st.reply(stanza):tag("query", { xmlns = "jabber:iq:private" }):add_child(st.deserialize(data[key])));
 			else
 				origin.send(st.reply(stanza):add_child(stanza.tags[1]));
 			end
 		else
-			if not data then data = {}; end;
-			if #tag == 0 then
-				data[key] = nil;
-			else
-				data[key] = st.preserialize(tag);
+			local result = module:fire_event("private-storage-callbacks", { session = origin, key = key, data = tag });
+			if _type(result) == "table" and result.error then
+				local error = result.error;
+				origin.send(st.error_reply(stanza, error.type, error.condition, error.message));
+				return true;
 			end
-			data, err = datamanager.store(origin.username, origin.host, "private", data);
+
+			local data, err = store(origin.username, data, key, tag);
 			if data then
 				origin.send(st.reply(stanza));
 			else
@@ -55,4 +71,11 @@ module:hook("iq/self/jabber:iq:private:query", function(event)
 		origin.send(st.error_reply(stanza, "modify", "bad-format"));
 	end
 	return true;
+end);
+
+module:hook("private-storage-set", function(event)
+	local user, key, tag, from = event.user, event.key, event.tag, event.from;
+	local data = private:get(user);
+	module:log("debug", "setting %s storage for %s from %s", key, user, from);
+	store(user, data, key, tag);
 end);

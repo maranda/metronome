@@ -163,7 +163,7 @@ local function hashed_plain_test(sasl, username, password, realm)
 	return test_password(username, realm, password), true;
 end
 
-local function hashed_scram_backend(sasl, username, realm)
+local function hashed_scram_backend(algorithm, sasl, username, realm)
 	local host = sasl.profile.host;
 	local credentials =
 		module:fire_event("auth-hashed-proxy", sasl, username, realm)
@@ -175,13 +175,37 @@ local function hashed_scram_backend(sasl, username, realm)
 		credentials = dm_load(username, host, "accounts");
 		if not credentials then return; end
 	end
-				
-	local stored_key, server_key, iteration_count, salt =
-		credentials.stored_key, credentials.server_key, credentials.iteration_count, credentials.salt;
+
+	local stored_key, server_key;
+	if algorithm == "sha_256" then
+		stored_key, server_key = credentials.stored_key_256, credentials.server_key_256;
+	elseif algorithm == "sha_384" then
+		stored_key, server_key = credentials.stored_key_384, credentials.server_key_384;
+	elseif algorithm == "sha_512" then
+		stored_key, server_key = credentials.stored_key_512, credentials.server_key_512;
+	else
+		stored_key, server_key = credentials.stored_key, credentials.server_key;
+	end
 
 	stored_key = stored_key and from_hex(stored_key);
 	server_key = server_key and from_hex(server_key);
-	return stored_key, server_key, iteration_count, salt, true;
+	return stored_key, server_key, credentials.iteration_count, credentials.salt, true;
+end
+
+local function scram_sha1_backend(sasl, username, realm)
+	return hashed_scram_backend(nil, sasl, username, realm);
+end
+
+local function scram_sha256_backend(sasl, username, realm)
+	return hashed_scram_backend("sha_256", sasl, username, realm);
+end
+
+local function scram_sha384_backend(sasl, username, realm)
+	return hashed_scram_backend("sha_384", sasl, username, realm);
+end
+
+local function scram_sha512_backend(sasl, username, realm)
+	return hashed_scram_backend("sha_512", sasl, username, realm);
 end
 
 local function plain_backend(sasl, username, realm)
@@ -195,6 +219,15 @@ local function plain_backend(sasl, username, realm)
 	return password, true;
 end
 
+local function get_channel_binding_callback(session)
+	local socket = session.conn.socket and session.conn:socket();
+	if socket and socket.getpeerfinished then
+		return function()
+			return socket:getpeerfinished();
+		end
+	end
+end
+
 return {
 	from_hex = from_hex,
 	to_hex = to_hex,
@@ -204,6 +237,8 @@ return {
 	verify_certificate = verify_certificate,
 	external_backend = external_backend,
 	hashed_plain_test = hashed_plain_test,
-	hashed_scram_backend = hashed_scram_backend,
-	plain_backend = plain_backend
+	scram_sha1_backend = scram_sha1_backend,
+	scram_sha256_backend = scram_sha256_backend,
+	plain_backend = plain_backend,
+	get_channel_binding_callback = get_channel_binding_callback
 };

@@ -12,7 +12,7 @@ local sm_make_authenticated = require "core.sessionmanager".make_authenticated;
 local base64 = require "util.encodings".base64;
 local usermanager_get_sasl_handler = require "core.usermanager".get_sasl_handler;
 local can_do_external = module:require "sasl_aux".can_do_external;
-local ipairs, tostring = ipairs, tostring;
+local pairs, tostring = pairs, tostring;
 local host_session = hosts[module.host];
 
 local no_encryption = metronome.no_encryption;
@@ -25,11 +25,35 @@ local log = module._log;
 
 local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
 
+local function check_scram_blacklist()
+	if not blacklisted_mechanisms then return; end
+	local add = {};
+
+	-- blacklisting one SCRAM method needs to have 'em all banned
+	for mechanism in pairs(blacklisted_mechanisms:items()) do
+		if mechanism:match("^SCRAM%-SHA%d+[^%-PLUS$]$") then
+			add[mechanism.."-PLUS"] = true;
+		elseif mechanism:match("^SCRAM%-SHA%d+%-PLUS$") then
+			add[mechanism] = true;
+		end
+	end
+	blacklisted_mechanisms:include(add);
+end
+check_scram_blacklist();
+
 local function reload()
 	secure_auth_only = module:get_option_boolean("c2s_require_encryption", not no_encryption);
 	allow_unencrypted_plain_auth = module:get_option_boolean("allow_unencrypted_plain_auth", false);
 	blacklisted_mechanisms = module:get_option_set("blacklist_sasl_mechanisms");
 	auth_failures = module:get_option_number("allowed_sasl_failures", 3);
+
+	for node, bare_session in pairs(host_session.sessions) do
+		for resource, full_session in pairs(bare_session.sessions) do
+			full_sessions.can_do_insecure_plain_auth = allow_unencrypted_plain_auth and true;
+		end
+	end
+
+	check_scram_blacklist();
 end
 module:hook_global("config-reloaded", reload);
 
@@ -103,9 +127,8 @@ module:hook("stanza/urn:ietf:params:xml:ns:xmpp-sasl:auth", function(event)
 		session.sasl_handler = usermanager_get_sasl_handler(module.host, session);
 	end
 	local mechanism = stanza.attr.mechanism;
-	if not session.secure and
-	   ((secure_auth_only and host_session.ssl_ctx_in) or (mechanism == "PLAIN" and not allow_unencrypted_plain_auth)) then
-		session.send(build_reply("failure", "encryption-required"));
+	if blacklisted_mechanisms and blacklisted_mechanisms:contains(mechanism) then
+		session.send(build_reply("failure", "invalid-mechanism"));
 		return true;
 	end
 	local valid_mechanism = session.sasl_handler:select(mechanism);
@@ -144,15 +167,16 @@ module:hook("stream-features", function(event)
 		if secure_auth_only and not origin.secure and host_session.ssl_ctx_in then
 			return;
 		end
+
+		origin.can_do_insecure_plain_auth = allow_unencrypted_plain_auth and true;
+		if origin.secure then origin.can_do_external_auth = can_do_external(origin); end
+
 		origin.sasl_handler = usermanager_get_sasl_handler(module.host, origin);
 		local mechanisms = st.stanza("mechanisms", mechanisms_attr);
-		for _, mechanism in ipairs(origin.sasl_handler:mechanisms()) do
+		
+		for mechanism in origin.sasl_handler:mechanisms() do
 			if not blacklisted_mechanisms or not blacklisted_mechanisms:contains(mechanism) then
-				if ((mechanism == "PLAIN" and origin.secure) or allow_unencrypted_plain_auth)
-					or (mechanism == "EXTERNAL" and can_do_external(origin))
-					or (mechanism ~= "EXTERNAL" and mechanism ~= "PLAIN") then
-					mechanisms:tag("mechanism"):text(mechanism):up();
-				end
+				mechanisms:tag("mechanism"):text(mechanism):up();
 			end
 		end
 		if mechanisms[1] then features:add_child(mechanisms); end

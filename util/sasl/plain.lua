@@ -7,10 +7,9 @@ local log = require "util.logger".init("sasl");
 
 module "sasl.plain"
 
--- ================================
--- SASL PLAIN according to RFC 4616
-
 --[[
+SASL PLAIN according to RFC 4616
+
 Supported Authentication Backends
 
 plain:
@@ -48,7 +47,7 @@ local function plain(self, message)
 	if _nodeprep ~= false then
 		authentication = (_nodeprep or nodeprep)(authentication);
 		if not authentication or authentication == "" then
-			return "failure", "malformed-request", "Invalid username or password"
+			return "failure", "malformed-request", "Invalid username or password";
 		end
 	end
 
