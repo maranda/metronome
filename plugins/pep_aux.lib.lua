@@ -11,6 +11,7 @@ local tonumber, tostring, type, unpack =
 
 local log = require "util.logger".init("mod_pep");
 local jid_bare = require "util.jid".bare;
+local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local set_new = require "util.set".new;
 local st = require "util.stanza";
@@ -117,52 +118,14 @@ local function pep_broadcast_last(service, node, receiver)
 	end
 end
 
-local function pep_mutual_recs(source, target, interested)
-	for jid, hash in pairs(source.recipients) do
-		if jid_bare(jid) == source.name and type(hash) == "string" then
-			interested[jid] = hash;
-		end
-	end
-	for jid, hash in pairs(target.recipients) do
-		if jid_bare(jid) == target.name and type(hash) == "string" then
-			interested[jid] = hash;
-		end
-	end
-end
-
-local function mutually_sub(service, jid, hash, nodes)
-	for node, obj in pairs(nodes) do
-		if hash_map[hash] and hash_map[hash][node] and service:get_affiliation(jid, node) ~= "no_access" then
-			obj.subscribers[jid] = true; 
-		end
-	end
-end
-
 local function pep_send(recipient, user)
-	local rec_srv = services[jid_bare(recipient)];
 	local user_srv = services[user];
 	local nodes = user_srv.nodes;
 
-	if not rec_srv then
-		local rec_hash = user_srv.recipients[recipient];
-		for node, object in pairs(nodes) do
-			if hash_map[rec_hash] and hash_map[rec_hash][node] then
-				object.subscribers[recipient] = true;
-				pep_broadcast_last(user_srv, node, recipient);
-			end
-		end
-	else
-		local rec_nodes = rec_srv.nodes;
-		local interested = {};
-		pep_mutual_recs(user_srv, rec_srv, interested);
-
-		-- Mutually subscribe
-		for jid, hash in pairs(interested) do
-			mutually_sub(user_srv, jid, hash, rec_nodes);
-			mutually_sub(rec_srv, jid, hash, nodes);
-		end
-
-		for node in pairs(nodes) do
+	local rec_hash = user_srv.recipients[recipient];
+	for node, object in pairs(nodes) do
+		if hash_map[rec_hash] and hash_map[rec_hash][node] and user_srv:get_affiliation(recipient, node) ~= "no_access" then
+			object.subscribers[recipient] = true;
 			pep_broadcast_last(user_srv, node, recipient);
 		end
 	end
