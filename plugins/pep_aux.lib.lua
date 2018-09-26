@@ -11,7 +11,6 @@ local tonumber, tostring, type, unpack =
 
 local log = require "util.logger".init("mod_pep");
 local jid_bare = require "util.jid".bare;
-local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local set_new = require "util.set".new;
 local st = require "util.stanza";
