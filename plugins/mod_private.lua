@@ -53,7 +53,7 @@ module:hook("iq/self/jabber:iq:private:query", function(event)
 				origin.send(st.reply(stanza):add_child(stanza.tags[1]));
 			end
 		else
-			local result = module:fire_event("private-storage-callbacks", { session = origin, key = key, data = tag });
+			local result = module:fire_event("private-storage-callbacks", { session = origin, key = tag.attr.xmlns, data = tag });
 			if _type(result) == "table" and result.error then
 				local error = result.error;
 				origin.send(st.error_reply(stanza, error.type, error.condition, error.message));
@@ -76,6 +76,6 @@ end);
 module:hook("private-storage-set", function(event)
 	local user, key, tag, from = event.user, event.key, event.tag, event.from;
 	local data = private:get(user);
-	module:log("debug", "setting %s storage for %s from %s", key, user, from);
+	module:log("debug", "setting %s storage for %s from %s", key:match("^[^:]+:(.*)$"), user, from);
 	store(user, data, key, tag);
 end);

@@ -37,7 +37,7 @@ module:hook("pep-node-publish", function(event)
 		local data = item:get_child("storage", bookmarks_xmlns);
 		if data then
 			module:fire_event("private-storage-set", { 
-				user = section(from, "node"), key = bookmarks_xmlns, tag = data, from = from
+				user = section(from, "node"), key = "storage:"..bookmarks_xmlns, tag = data, from = from
 			});
 		end
 	end
