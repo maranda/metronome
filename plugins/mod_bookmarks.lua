@@ -6,17 +6,20 @@
 
 -- This module synchronizes XEP-0048 Bookmarks between PEP and Private Storage.
 
-local uuid = require "util.uuid".generate;
 local section = require "util.jid".section;
 
 local bookmarks_xmlns = "storage:bookmarks";
+
+module:hook("account-disco-info", function(event)
+	event.stanza:tag("feature", { var = "urn:xmpp:bookmarks-conversion:0" }):up();
+end, 44);
 
 module:hook("private-storage-callback", function(event)
 	local session, key, data = event.session, event.key, event.data;
 	if key == bookmarks_xmlns then
 		local pep_service = module:fire_event("pep-get-service", session.username, true, session.full_jid);
 		if pep_service then
-			local item = st.stanza("item", { id = uuid }):add_child(data):up();
+			local item = st.stanza("item", { id = "current" }):add_child(data):up();
 
 			if not pep_service.nodes[bookmarks_xmlns] then
 				pep_service:create(bookmarks_xmlns, from, { access_model = "whitelist", persist_items = true });
