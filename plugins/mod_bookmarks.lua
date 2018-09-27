@@ -25,7 +25,7 @@ module:hook("private-storage-callbacks", function(event)
 				pep_service:create(bookmarks_xmlns, from, { access_model = "whitelist", persist_items = true });
 				module:fire_event("pep-autosubscribe-recipients", pep_service, bookmarks_xmlns);
 			end
-			pep_service:publish(bookmarks_xmlns, from, id, data_item);
+			pep_service:publish(bookmarks_xmlns, from, id, item);
 		end
 	end
 end);
