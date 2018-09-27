@@ -6,6 +6,7 @@
 
 -- This module synchronizes XEP-0048 Bookmarks between PEP and Private Storage.
 
+local st = require "util.stanza";
 local section = require "util.jid".section;
 
 local bookmarks_xmlns = "storage:bookmarks";
