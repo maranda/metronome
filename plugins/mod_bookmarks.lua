@@ -14,7 +14,7 @@ module:hook("account-disco-info", function(event)
 	event.stanza:tag("feature", { var = "urn:xmpp:bookmarks-conversion:0" }):up();
 end, 44);
 
-module:hook("private-storage-callback", function(event)
+module:hook("private-storage-callbacks", function(event)
 	local session, key, data = event.session, event.key, event.data;
 	if key == bookmarks_xmlns then
 		local pep_service = module:fire_event("pep-get-service", session.username, true, session.full_jid);
