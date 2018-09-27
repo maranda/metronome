@@ -22,10 +22,10 @@ module:hook("private-storage-callbacks", function(event)
 			local item = st.stanza("item", { id = "current" }):add_child(data):up();
 
 			if not pep_service.nodes[bookmarks_xmlns] then
-				pep_service:create(bookmarks_xmlns, from, { access_model = "whitelist", persist_items = true });
+				pep_service:create(bookmarks_xmlns, session.full_jid, { access_model = "whitelist", persist_items = true });
 				module:fire_event("pep-autosubscribe-recipients", pep_service, bookmarks_xmlns);
 			end
-			pep_service:publish(bookmarks_xmlns, from, id, item);
+			pep_service:publish(bookmarks_xmlns, session.full_jid, id, item);
 		end
 	end
 end);
