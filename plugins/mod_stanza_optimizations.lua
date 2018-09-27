@@ -364,7 +364,7 @@ local function full_handler(event)
 					elseif t == "groupchat" and config.queue_all_muc_messages_but_mentions then
 						local muc_nick, body = to_full.directed_bare[jid_bare(stanza.attr.from)], stanza:get_child_text("body");
 						local nick = jid_section(muc_nick, "resource");
-						if not nick or (not body:find(nick) and not body:find(nick:lower())) then
+						if not body or not nick or (not body:find(nick) and not body:find(nick:lower())) then
 							to_full.csi_queue:pop(stanza.attr.from, stanza);
 							return true;
 						end
