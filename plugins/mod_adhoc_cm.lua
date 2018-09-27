@@ -28,7 +28,7 @@ local add_layout = dataforms.new{
 	{ name = "FORM_TYPE", type = "hidden", value = adhoc_xmlns };
 	{ name = "name", type = "text-single", label = "The name of the certificate" };
 	{ name = "cert", type = "text-multi", label = "Paste your certificate (in PEM format)" };
-}
+};
 
 local function list_layout(data)
 	local layout = {
