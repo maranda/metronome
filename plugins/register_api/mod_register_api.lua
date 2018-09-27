@@ -20,6 +20,9 @@ local usermanager = usermanager;
 local generate = require "util.auxiliary".generate_secret;
 local timer = require "util.timer";
 local st = require "util.stanza";
+local dataforms = require "util.dataforms";
+
+local my_host = module.host;
 
 module:depends("http");
 
@@ -28,7 +31,7 @@ module:depends("http");
 local auth_token = module:get_option_string("reg_api_auth_token");
 local secure = module:get_option_boolean("reg_api_secure", true);
 local base_path = module:get_option_string("reg_api_base", "/register_account/");
-local base_host = module:get_option_string("reg_api_urlhost", module.host);
+local base_host = module:get_option_string("reg_api_urlhost", my_host);
 local throttle_time = module:get_option_number("reg_api_ttime", nil);
 local whitelist = module:get_option_set("reg_api_wl", {});
 local blacklist = module:get_option_set("reg_api_bl", {});
@@ -79,7 +82,7 @@ if use_nameapi then
 		["icloud.com"] = true,
 		["me.com"] = true
 	};
-	whitelisted = datamanager.load("register_json", module.host, "whitelisted_md") or default_whitelist;
+	whitelisted = datamanager.load("register_json", my_host, "whitelisted_md") or default_whitelist;
 	dea_checks = {};
 end
 
@@ -109,7 +112,7 @@ function hashes_mt:remove(node, check)
 end
 
 function hashes_mt:save()
-	if not datamanager.store("register_json", module.host, "hashes", hashes) then
+	if not datamanager.store("register_json", my_host, "hashes", hashes) then
 		module:log("error", "Failed to save the mail addresses' hashes store");
 	end
 end
@@ -158,7 +161,7 @@ local function check_dea(address, username)
 			else
 				module:log("debug", "Mail domain %s is valid, whitelisting", domain);
 				whitelisted[domain] = true;
-				datamanager.store("register_json", module.host, "whitelisted_md", whitelisted);
+				datamanager.store("register_json", my_host, "whitelisted_md", whitelisted);
 			end
 		end	
 	end);
@@ -234,6 +237,56 @@ local function http_file_get(event, type, path)
 	end
 end
 
+-- Adhoc Handlers
+
+if do_mail_verification then
+	local command_xmlns = "http://metronome.im/protocol/register_api#change_pass";
+
+	module:depends("adhoc");
+	local adhoc_new = module:require "adhoc".new;
+
+	local change_password_layout = dataforms.new{
+		title = "Change associated account mail address";
+		instructions = "This command allows admins to change an associated E-Mail address hash for user accounts on this host.";
+		{ name = "FORM_TYPE", type = "hidden", value = command_xmlns };
+		{ name = "username", type = "text-single", label = "Username" };
+		{ name = "mail", type = "text-single", label = "Associated E-Mail" };
+	};
+
+	local function change_email(self, data, state, secure)
+		if state then
+			if data.action == "cancel" then return { status = "canceled" }; end
+			local fields = change_password_layout:data(data.form);
+			if fields.username and fields.mail then
+				local user = nodeprep(username);
+				if not user then
+					return { status = "completed", error = { message = "Supplied username is not valid" } };
+				end
+
+				if not check_mail(fields.mail) then
+					return { status = "completed", error = { message = "You supplied a bogus e-mail address" } };
+				end
+
+				if usermanager.user_exists(user, my_host) then
+					hashes:remove(user, true);
+					hashes:add(user, fields.mail);
+					hashes:save();
+					return { status = "completed", info = "Associated mail address successfully changed" };
+				else
+					return { status = "completed", error = { message = "User doesn't exist" } };
+				end
+			else
+				return { status = "completed", error = { message = "You need to supply both username and mail address" } };
+			end
+		else
+			return { status = "executing", form = change_password_layout }, "executing";
+		end
+	end
+
+	local descriptor = adhoc_new("Change associated account mail address for users", command_xmlns, change_email, "admin");
+	module:provides("adhoc", descriptor);
+end
+
 -- Handlers
 
 local function handle_register(data, event)
@@ -282,7 +335,7 @@ local function handle_register(data, event)
 			return http_error_reply(event, 406, "Supplied password is violating SASLprep profile.");
 		end
 
-		if not usermanager.user_exists(username, module.host) then
+		if not usermanager.user_exists(username, my_host) then
 			-- if username fails to register successive requests shouldn't be throttled until one is successful.
 			if throttle_time and to_throttle(ip) then
 				module:log("warn", "JSON Registration request from %s has been throttled", ip);
@@ -316,9 +369,9 @@ local function handle_register(data, event)
 			end)
 
 			if do_mail_verification then
-				module:log("info", "%s sent a registration request for %s, sending verification mail to %s", username, module.host, mail);
+				module:log("info", "%s sent a registration request for %s, sending verification mail to %s", username, my_host, mail);
 				os_execute(
-					module_path.."/send_mail ".."register '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..username.."@"..module.host.."' '"
+					module_path.."/send_mail ".."register '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..username.."@"..my_host.."' '"
 					..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."verify/", base_host).."' '"..id_token.."' '"
 					..(secure and "secure" or "").."' &"
 				);
@@ -337,7 +390,7 @@ local function handle_password_reset(data, event)
 	local mail, ip = data.reset, data.ip;
 
 	local node = hashes[b64_encode(sha1(mail))];
-	if node and usermanager.user_exists(node, module.host) then
+	if node and usermanager.user_exists(node, my_host) then
 		if throttle_time and to_throttle(ip) then
 			module:log("warn", "JSON Password Reset request from %s has been throttled", ip);
 			return http_error_reply(event, 503, "Request throttled, wait a bit and try again.");
@@ -357,7 +410,7 @@ local function handle_password_reset(data, event)
 		if do_mail_verification then
 			module:log("info", "%s requested password reset, sending mail to %s", node, mail);
 			os_execute(
-				module_path.."/send_mail ".."reset '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..node.."@"..module.host.."' '"
+				module_path.."/send_mail ".."reset '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..node.."@"..my_host.."' '"
 				..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."reset/", base_host).."' '"..id_token.."' '"
 				..(secure and "secure" or "").."' &"
 			);
@@ -389,7 +442,7 @@ local function handle_req(event)
 	
 	-- Check if user is an admin of said host
 	if data.auth_token ~= auth_token then
-		module:log("warn", "%s tried to retrieve a registration token for %s@%s", request.conn:ip(), username, module.host);
+		module:log("warn", "%s tried to retrieve a registration token for %s@%s", request.conn:ip(), username, my_host);
 		return http_error_reply(event, 401, "Auth token is invalid! The attempt has been logged.");
 	else
 		data.auth_token = nil;
@@ -431,12 +484,12 @@ local function handle_reset(event, path)
 							return r_template(event, "reset_password_check");
 						end
 
-						local ok, error = usermanager.set_password(node, password, module.host);
+						local ok, error = usermanager.set_password(node, password, my_host);
 						if ok then
 							module:log("info", "User %s successfully changed the account password", node);
 							module:fire_event(
 								"user-changed-password", 
-								{ username = node, host = module.host, id_token = id_token, password = password, source = "mod_register_json" }
+								{ username = node, host = my_host, id_token = id_token, password = password, source = "mod_register_json" }
 							);
 							reset_tokens[id_token] = nil;
 							return r_template(event, "reset_success");
@@ -481,20 +534,20 @@ local function handle_verify(event, path)
 					return r_template(event, "verify_fail");
 				end
 
-				if usermanager.user_exists(username, module.host) then -- Just unlock
-					module:log("info", "Account %s@%s is successfully verified and unlocked", username, module.host);
-					usermanager.unlock_user(username, module.host);
+				if usermanager.user_exists(username, my_host) then -- Just unlock
+					module:log("info", "Account %s@%s is successfully verified and unlocked", username, my_host);
+					usermanager.unlock_user(username, my_host);
 					pending[id_token] = nil; pending_node[username] = nil;
 					return r_template(event, "verify_success");
 				end
 
-				local ok, error = usermanager.create_user(username, password, module.host);
+				local ok, error = usermanager.create_user(username, password, my_host);
 				if ok then 
 					module:fire_event(
 						"user-registered", 
-						{ username = username, host = module.host, id_token = id_token, password = password, source = "mod_register_api", session = { ip = ip } }
+						{ username = username, host = my_host, id_token = id_token, password = password, source = "mod_register_api", session = { ip = ip } }
 					);
-					module:log("info", "Account %s@%s is successfully verified and activated", username, module.host);
+					module:log("info", "Account %s@%s is successfully verified and activated", username, my_host);
 					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
 					pending[id_token] = nil; pending_node[username] = nil;
 					return r_template(event, "verify_success");
@@ -511,7 +564,7 @@ end
 
 local function handle_user_deletion(event)
 	local user, hostname = event.username, event.host;
-	if hostname == module.host then hashes:remove(user); end
+	if hostname == my_host then hashes:remove(user); end
 end
 
 local function handle_user_registration(event)
@@ -573,7 +626,7 @@ end
 
 -- Set it up!
 
-hashes = datamanager.load("register_json", module.host, "hashes") or hashes; setmt(hashes, hashes_mt);
+hashes = datamanager.load("register_json", my_host, "hashes") or hashes; setmt(hashes, hashes_mt);
 
 module:provides("http", {
 	default_path = base_path,
