@@ -23,6 +23,7 @@ local datamanager = require "util.datamanager";
 local data_load, data_store, data_stores = datamanager.load, datamanager.store, datamanager.stores;
 local datastore = "muc_log";
 local error_reply = require "util.stanza".error_reply;
+local deserialize = require "util.stanza".deserialize;
 local uuid = require "util.uuid".generate;
 local os_time, ripairs, t_insert, t_remove = os.time, ripairs, table.insert, table.remove;
 
@@ -68,6 +69,7 @@ function log_if_needed(e)
 
 			if muc_from then
 				local data = data_load(node, mod_host, datastore .. "/" .. today) or {};
+				local label = stanza:get_child("securitylabel", labels_xmlns);
 				local replace = stanza:get_child("replace", lmc_xmlns);
 				local oid = stanza:get_child("origin-id", sid_xmlns);
 				local id = stanza.attr.id;
@@ -100,6 +102,12 @@ function log_if_needed(e)
 					subject = subject and subject:get_text()
 				};
 				data[#data + 1] = data_entry;
+
+				if label then
+					local tags = {};
+					t_insert(tags, deserialize(label));
+					data_entry.tags = tags;
+				end
 				
 				data_store(node, mod_host, datastore .. "/" .. today, data);
 				module:fire_event("muc-log-add-to-mamcache", room, data_entry);

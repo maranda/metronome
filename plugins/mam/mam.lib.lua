@@ -15,14 +15,15 @@ local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
 local load_roster = require "util.rostermanager".load_roster;
-local ipairs, next, now, pairs, ripairs, select, t_remove, tostring, type = 
-	ipairs, next, os.time, pairs, ripairs, select, table.remove, tostring, type;
+local ipairs, next, now, pairs, ripairs, select, t_insert, t_remove, tostring, type = 
+	ipairs, next, os.time, pairs, ripairs, select, table.insert, table.remove, tostring, type;
     
 local xmlns = "urn:xmpp:mam:2";
 local delay_xmlns = "urn:xmpp:delay";
 local e2e_xmlns = "http://www.xmpp.org/extensions/xep-0200.html#ns";
 local forward_xmlns = "urn:xmpp:forward:0";
 local hints_xmlns = "urn:xmpp:hints";
+local labels_xmlns = "urn:xmpp:sec-label:0";
 local lmc_xmlns = "urn:xmpp:message-correct:0";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 local markers_xmlns = "urn:xmpp:chat-markers:0";
@@ -50,6 +51,7 @@ if store_elements then
 	store_elements:remove("markable");
 	store_elements:remove("origin-id");
 	store_elements:remove("received");
+	store_elements:remove("securitylabel");
 	if store_elements:empty() then store_elements = nil; end
 end
 
@@ -173,11 +175,11 @@ local function append_stanzas(stanzas, entry, qid)
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
 
 	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
-	if entry.oid then to_forward:tag("origin-id", { xmlns = sid_xmlns, id = entry.oid }):up(); end
 	if entry.tags then
 		for i = 1, #entry.tags do to_forward:add_child(st.preserialize(entry.tags[i])):up(); end
 	end
 	if entry.marker then to_forward:tag(entry.marker, { xmlns = markers_xmlns, id = entry.marker_id }):up(); end
+	if entry.oid then to_forward:tag("origin-id", { xmlns = sid_xmlns, id = entry.oid }):up(); end
 	
 	stanzas[#stanzas + 1] = to_forward;
 end
@@ -488,6 +490,7 @@ local function process_message(event, outbound)
 	end
 
 	if archive and add_to_store(archive, user, outbound and bare_to or bare_from) then
+		local label = message:get_child("securitylabel", labels_xmlns);
 		local replace = message:get_child("replace", lmc_xmlns);
 		local oid = message:get_child("origin-id", sid_xmlns);
 		local id, tags;
@@ -499,6 +502,11 @@ local function process_message(event, outbound)
 				if store_elements:contains(elements[i].name) then tags[#tags + 1] = elements[i]; end
 			end
 			if not next(tags) then tags = nil; end
+		end
+
+		if label then
+			if not tags then tags = {}; end
+			t_insert(tags, label);
 		end
 
 		if replace and body then
