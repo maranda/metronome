@@ -101,6 +101,9 @@ local function handle_server_catalog_response(event)
 	
 	if server_requests[stanza.attr.id] and stanza.attr.type == "result" then
 		local catalog, id = stanza.tags[1], stanza.attr.id;
+		if catalog.name ~= "catalog" and catalog.attr.xmlns ~= label_catalog_xmlns then
+			return;
+		end
 		local server_request = server_requests[id];
 		if not server_request.session.destroyed then
 			local reply = st.reply(server_request.stanza):add_child(catalog):up();
@@ -111,12 +114,18 @@ local function handle_server_catalog_response(event)
 	end
 end
 
-local function handle_catalog_request(request)
-	local catalog_request = request.stanza.tags[1];
+local function handle_catalog_request(event)
+	local origin, stanza = event.origin, event.stanza;
+	local catalog_request = stanza.tags[1];
+	
 	if catalog_request.attr.to and catalog_request.attr.to ~= module.host then
 		local node = split(catalog_request.attr.to);
 		if node then
-			request.origin.send(st.error_reply(stanza, "cancel", "not-acceptable", "Catalogs can only be requested from hosts"));
+			origin.send(st.error_reply(stanza, "cancel", "not-acceptable", "Catalogs can only be requested from hosts"));
+			return true;
+		end
+		if origin.type ~= "c2s" then
+			origin.send(st.error_reply(stanza, "cancel", "forbidden", "Remote catalogs can't be requested by remote entities"));
 			return true;
 		end
 
@@ -124,11 +133,11 @@ local function handle_catalog_request(request)
 		local id = uuid();
 		local iq = st.iq({ from = module.host, to = catalog_request.attr.to, id = id, type = "get" }):add_child(catalog_request_clone);
 		fire_event("route/local", hosts[module.host], iq);
-		server_requests[id] = { to = request.stanza.attr.from, stanza = request.stanza, session = request.origin };
+		server_requests[id] = { to = stanza.attr.from, stanza = stanza, session = origin };
 		module:add_timer(20, function()
 			local server_request = server_requests[id];
 			if server_request and not server_request.session.destroyed then
-				server_request.session.send(st.error_reply(request.stanza, "cancel", "item-not-found", "Remote catalog not found"));
+				server_request.session.send(st.error_reply(server_request.stanza, "cancel", "item-not-found", "Remote catalog not found"));
 				server_requests[id] = nil;
 			else
 				server_requests[id] = nil;
@@ -136,7 +145,7 @@ local function handle_catalog_request(request)
 		end);
 		return true;
 	else
-		local reply = st.reply(request.stanza)
+		local reply = st.reply(stanza)
 			:tag("catalog", {
 				xmlns = catalog_request.attr.xmlns,
 				to = catalog_request.attr.to,
@@ -145,7 +154,7 @@ local function handle_catalog_request(request)
 			});
 
 		add_labels(catalog_request, reply, labels, "");
-		request.origin.send(reply);
+		origin.send(reply);
 		return true;
 	end
 end
