@@ -30,12 +30,20 @@ local default_labels = {
 	},
 	Classified = {
 		SECRET = { 
-			color = "white", bgcolor = "blue", label = "CONFIDENTIAL",
+			color = "white", bgcolor = "blue", label = "Confidential",
 			restrict = { type = "chat" }
 		},
+		CONTACTS = { 
+			color = "black", bgcolor = "cadetblue", label = "Just for contacts",
+			restrict = "roster"
+		},
 		PUBLIC = { 
-			color = "black", bgcolor = "aqua", label = "PUBLIC",
+			color = "black", bgcolor = "aqua", label = "Public",
 			restrict = "none"
+		},
+		FORUM = { 
+			color = "black", bgcolor = "cornsilk", label = "Only for groupchats",
+			restrict = { type = "groupchat" }
 		}
 	}
 };
