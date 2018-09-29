@@ -11,9 +11,11 @@ module:depends("acdf");
 
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
-local split = require "util.jid".split;
+local section = require "util.jid".section;
 local fire_event = metronome.events.fire_event;
 local ipairs, pairs, type = ipairs, pairs, type;
+
+local hosts = hosts;
 
 local label_xmlns = "urn:xmpp:sec-label:0";
 local label_catalog_xmlns = "urn:xmpp:sec-label:catalog:2";
@@ -129,13 +131,10 @@ end
 local function handle_catalog_request(event)
 	local origin, stanza = event.origin, event.stanza;
 	local catalog_request = stanza.tags[1];
+	local host = section(catalog_request.attr.to, "host");
+	local is_muc = hosts[host] and hosts[host].muc;
 	
-	if catalog_request.attr.to and catalog_request.attr.to ~= module.host then
-		local node = split(catalog_request.attr.to);
-		if node then
-			origin.send(st.error_reply(stanza, "cancel", "not-acceptable", "Catalogs can only be requested from hosts"));
-			return true;
-		end
+	if catalog_request.attr.to and catalog_request.attr.to ~= module.host and not is_muc then
 		if origin.type ~= "c2s" then
 			origin.send(st.error_reply(stanza, "cancel", "forbidden", "Remote catalogs can't be requested by remote entities"));
 			return true;
