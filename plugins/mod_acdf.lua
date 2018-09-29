@@ -8,7 +8,8 @@
 
 local type = type;
 local st = require "util.stanza";
-local bare, split = require "util.jid".bare, require "util.jid".split;
+local bare, section, split =
+	require "util.jid".bare, require "util.jid".section, require "util.jid".split;
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 
 local hosts = hosts;
@@ -21,13 +22,15 @@ local function apply_policy(label, session, stanza, actions)
 		if actions.type and stanza.attr.type ~= actions.type then
 			breaks_policy = true;
 		elseif type(actions.host) == "table" then
-			if stanza.attr.from ~= (actions.host[1] or actions.host[2]) and
-				stanza.attr.to ~= (actions.host[1] or actions.host[2]) then
+			if section(stanza.attr.from, "host") ~= (actions.host[1] or actions.host[2]) and
+				section(stanza.attr.to, "host") ~= (actions.host[1] or actions.host[2]) then
 				breaks_policy = true;
 			end
-		elseif actions.host and (actions.direction == "to" and stanza.attr.to == actions.host) then
+		elseif actions.host and
+			(actions.direction == "to" and section(stanza.attr.to, "host") == actions.host) then
 			breaks_policy = true;
-		elseif actions.host and (actions.direction == "from" and stanza.attr.from == actions.host) then
+		elseif actions.host and
+			(actions.direction == "from" and section(stanza.attr.from, "host") == actions.host) then
 			breaks_policy = true;
 		end
 	elseif actions == "roster" then
