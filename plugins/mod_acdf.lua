@@ -18,7 +18,7 @@ local labels_xmlns = "urn:xmpp:sec-label:0";
 local function apply_policy(label, session, stanza, actions)
 	local breaks_policy;
 	if type(actions) == "table" then
-		if actions.type and stanza.type ~= actions.type then
+		if actions.type and stanza.attr.type ~= actions.type then
 			breaks_policy = true;
 		elseif type(actions.host) == "table" then
 			if stanza.attr.from == (actions.host[1] or actions.host[2]) and
