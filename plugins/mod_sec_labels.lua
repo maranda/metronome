@@ -80,7 +80,7 @@ local function add_labels(request, catalog, labels, selector)
 				catalog:tag("displaymarking", {
 					fgcolor = item.color,
 					bgcolor = item.bgcolor,
-				}):text(item.display or name):up();
+				}):text(item.name or name):up();
 			end
 			if item.label == true then
 				catalog:tag("label"):text(name):up();
