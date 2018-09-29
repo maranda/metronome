@@ -28,6 +28,7 @@ local uuid = require "util.uuid".generate;
 local os_time, ripairs, t_insert, t_remove = os.time, ripairs, table.insert, table.remove;
 
 local hints_xmlns = "urn:xmpp:hints";
+local labels_xmlns = "urn:xmpp:sec-label:0";
 local lmc_xmlns = "urn:xmpp:message-correct:0";
 local sid_xmlns = "urn:xmpp:sid:0";
 
