@@ -134,7 +134,7 @@ local function handle_catalog_request(event)
 	local host = section(catalog_request.attr.to, "host");
 	local is_muc = hosts[host] and hosts[host].muc;
 	
-	if catalog_request.attr.to and catalog_request.attr.to ~= module.host and not is_muc then
+	if catalog_request.attr.to and host ~= module.host and not is_muc then
 		if origin.type ~= "c2s" then
 			origin.send(st.error_reply(stanza, "cancel", "forbidden", "Remote catalogs can't be requested by remote entities"));
 			return true;
