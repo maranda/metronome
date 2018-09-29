@@ -29,21 +29,25 @@ local default_labels = {
 		restrict = "none"
 	},
 	Classified = {
-		SECRET = { 
+		SECRET = {
 			color = "white", bgcolor = "blue", label = "Confidential",
 			restrict = { type = "chat" }
 		},
-		CONTACTS = { 
+		CONTACTS = {
 			color = "black", bgcolor = "cadetblue", label = "Just for contacts",
 			restrict = "roster"
 		},
-		PUBLIC = { 
+		PUBLIC = {
 			color = "black", bgcolor = "aqua", label = "Public",
 			restrict = "none"
 		},
-		FORUM = { 
+		FORUM = {
 			color = "black", bgcolor = "cornsilk", label = "Only for groupchats",
 			restrict = { type = "groupchat" }
+		},
+		LOCAL = {
+			color = "black", bgcolor = "aliceblue", label = "Only for "..module.host,
+			restrict = { host = { module.host } }
 		}
 	}
 };
