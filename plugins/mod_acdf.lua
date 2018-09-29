@@ -41,7 +41,9 @@ local function apply_policy(label, session, stanza, actions)
 	end
 
 	if breaks_policy then
-		origin.send(st.error_reply(stanza, "cancel", "policy-violation", "Message breaks security label "..label.." policy"));
+		module:log("warn", "%s message to %s was blocked because it breaks the provided security label policy (%s)",
+			stanza.attr.from or session.full_jid, stanza.attr.to, label);
+		session.send(st.error_reply(stanza, "cancel", "policy-violation", "Message breaks security label "..label.." policy"));
 		return true;
 	end
 end
@@ -51,8 +53,9 @@ local function incoming_message_handler(event)
 	local label = stanza:get_child("securitylabel", labels_xmlns);
 
 	if label then
-		local actions = module:fire_event("sec-labels-fetch-actions", label);
-		if actions then return apply_policy(label, session, stanza, actions); end
+		local text = label:get_child_text("displaymarking");
+		local actions = module:fire_event("sec-labels-fetch-actions", text);
+		if actions then return apply_policy(text, session, stanza, actions); end
 	end
 end
 
@@ -61,8 +64,9 @@ local function outgoing_message_handler(event)
 	local label = stanza:get_child("securitylabel", labels_xmlns);
 
 	if label then
-		local actions = module:fire_event("sec-labels-fetch-actions", label);
-		if actions then return apply_policy(label, session, stanza, actions); end
+		local text = label:get_child_text("displaymarking");
+		local actions = module:fire_event("sec-labels-fetch-actions", text);
+		if actions then return apply_policy(text, session, stanza, actions); end
 	end
 end
 
