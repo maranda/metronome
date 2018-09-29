@@ -21,8 +21,8 @@ local function apply_policy(label, session, stanza, actions)
 		if actions.type and stanza.attr.type ~= actions.type then
 			breaks_policy = true;
 		elseif type(actions.host) == "table" then
-			if stanza.attr.from == (actions.host[1] or actions.host[2]) and
-				stanza.attr.to == (actions.host[1] or actions.host[2]) then
+			if stanza.attr.from ~= (actions.host[1] or actions.host[2]) and
+				stanza.attr.to ~= (actions.host[1] or actions.host[2]) then
 				breaks_policy = true;
 			end
 		elseif actions.host and (actions.direction == "to" and stanza.attr.to == actions.host) then
