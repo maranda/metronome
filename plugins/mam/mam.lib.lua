@@ -176,7 +176,7 @@ local function append_stanzas(stanzas, entry, qid)
 
 	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
 	if entry.tags then
-		for i = 1, #entry.tags do to_forward:add_child(st.preserialize(entry.tags[i])):up(); end
+		for i = 1, #entry.tags do to_forward:add_child(st.preserialize(entry.tags[i])); end
 	end
 	if entry.marker then to_forward:tag(entry.marker, { xmlns = markers_xmlns, id = entry.marker_id }):up(); end
 	if entry.oid then to_forward:tag("origin-id", { xmlns = sid_xmlns, id = entry.oid }):up(); end
