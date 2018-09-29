@@ -58,6 +58,7 @@ modules_enabled = {
 			--"compression"; -- Allow clients to enable Stream Compression
 			--"spim_block"; -- Require authorization via OOB form for messages from non-contacts and block unsollicited messages
 			--"gate_guard"; -- Enable config-based blacklisting and hit-based auto-banning features
+			--"sec_labels"; -- Allows to use a simplified version XEP-0258 Security Labels and related ACDFs.
 			--"incidents_handling"; -- Enable Incidents Handling support (can be administered via adhoc commands)
 			--"server_presence"; -- Enables Server Buddies extension support
 			--"service_directory"; -- Enables Service Directories extension support
