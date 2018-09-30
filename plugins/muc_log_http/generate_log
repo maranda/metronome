@@ -81,7 +81,7 @@ elseif data and #data <= 3000 then
 		if label and (not actions or actions == "none" or (type(actions) == "table" and actions.type == "groupchat")) then
 			_body = entry.body;
 		elseif label then
-			_body = "You're not authorized to see this message contents"
+			_body = "[You're not authorized to see this message content]"
 		end
 		local tmp = parse_message(_body or entry.body, entry.subject, entry.time, entry.from, day_t, day_m, day_mm, day_title);
 		if tmp then ret = ret .. tmp; end

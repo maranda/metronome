@@ -186,7 +186,7 @@ local function append_stanzas(stanzas, entry, qid, check_acdf)
 			name = entry.label_name, actions = entry.label_actions, session = check_acdf,
 			dummy = { attr = { from = entry.from, to = entry.to } }
 			}) then
-			_body = "You're not authorized to see this message contents";
+			_body = "[You're not authorized to see this message content]";
 		end
 	end
 
