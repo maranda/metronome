@@ -15,6 +15,8 @@ local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
 local load_roster = require "util.rostermanager".load_roster;
+local apply_policy = module:require("acdf_aux").apply_policy;
+
 local ipairs, next, now, pairs, ripairs, select, t_insert, t_remove, tostring, type = 
 	ipairs, next, os.time, pairs, ripairs, select, table.insert, table.remove, tostring, type;
     
@@ -180,12 +182,10 @@ local function append_stanzas(stanzas, entry, qid, check_acdf)
 				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
 
-	local _body;
-	if check_acdf and entry.label_name and entry.label_actions then
-		if module:fire_event("check-acdf", { 
-			name = entry.label_name, actions = entry.label_actions, session = check_acdf,
-			dummy = { attr = { from = entry.from, to = entry.to } }
-			}) then
+	local _label, _actions, _body = entry.label_name, entry.label_actions;
+	if check_acdf and _label and _actions then
+		if (_actions == "none" or (type(_actions) == "table" and _actions.type == "groupchat")) or
+			apply_policy(_label, check_acdf, _actions, { attr = { from = entry.from, to = entry.to } }, true) then
 			_body = "[You're not authorized to see this message content]";
 		end
 	end
