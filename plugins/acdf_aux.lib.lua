@@ -81,7 +81,7 @@ local function get_actions(host, label)
 end
 
 local function check_policy(label, jid, stanza, request_stanza)
-	local host = jid_section(jid, "host");
+	local host = section(jid, "host");
 	local actions = get_actions(host, label);
 	if actions then
 		return apply_policy(label, { full_jid = jid }, stanza, actions, request_stanza or true);
