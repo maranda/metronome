@@ -21,22 +21,24 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 		if actions.type and stanza.attr.type ~= actions.type then
 			breaks_policy = true;
 		elseif type(actions.host) == "table" then
-			local _from, _to;
-			if type(check_acl) == "table" then -- assume it's a MAM ACL request,
+			local _from, _to = section(from, "host"), section(to, "host");
+			if type(check_acl) == "table" then -- assume it's a MAM ACL request
 				from = section(check_acl.attr.from or session.full_jid, "host");
+				to = section(check_acl.attr.to, "host");
 			end
-			if actions.include_subdomains then
-				if not check_acl then
-					_from = from and section(from, "host"):match("%.([^%.].*)");
-				else
-					_from = from and from:match("%.([^%.].*)");
-				end
-				_to = to and section(to, "host"):match("%.([^%.].*)");
-			else
-				if not check_acl then _from = section(from, "host"); else _from = from; end
-				_to = section(to, "host");
-			end
+			if not check_acl then _from = section(from, "host"); else _from = from; end
+			_to = section(to, "host");
 
+			if actions.include_muc_subdomains then
+				local from_host_object, to_host_object = hosts[_from], hosts[_to];
+				if from_host_object and from_host_object.muc and hosts[_from:match("%.([^%.].*)")] then
+					_from = _from:match("%.([^%.].*)");
+				end
+				if to_host_object and to_host_object.muc and hosts[_to:match("%.([^%.].*)")] then
+					_to = _to:match("%.([^%.].*)");
+				end
+			end
+			
 			if check_acl then
 				if _from ~= (actions.host[1] or actions.host[2]) or _to ~= (actions.host[1] or actions.host[2]) then
 					breaks_policy = true;
@@ -81,7 +83,15 @@ local function get_actions(host, label)
 end
 
 local function check_policy(label, jid, stanza, request_stanza)
-	local host = section(jid, "host");
+	local host, actions = section(stanza.attr.from, "host");
+	local from_host_object = hosts[host];
+	if from_host_object and from_host_object.muc then
+		local match = host:match("%.([^%.].*)");
+		if hosts[match] then host = match; end
+	else
+		host = section(jid, "host");
+	end
+	
 	local actions = get_actions(host, label);
 	if actions then
 		return apply_policy(label, { full_jid = jid }, stanza, actions, request_stanza or true);

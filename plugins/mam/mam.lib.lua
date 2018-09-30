@@ -182,11 +182,11 @@ local function append_stanzas(stanzas, entry, qid, check_acdf)
 				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
 
-	local label = entry.label_name;
+	local label, _body = entry.label_name;
 	if check_acdf and label then
 		local session, request = unpack(check_acdf);
 		local jid = session.full_jid or request.attr.from;
-		if check_policy(label, jid, { attr = { from = entry.from, to = entry.to } }, request) then
+		if check_policy(label, jid, { attr = { from = entry.from } }, request) then
 			_body = "[You're not authorized to see this message content]";
 		end
 	end
