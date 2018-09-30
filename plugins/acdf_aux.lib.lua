@@ -14,7 +14,7 @@ local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed
 
 local hosts = hosts;
 
-local function apply_policy(label, session, stanza, actions, no_reply)
+local function apply_policy(label, session, stanza, actions, check_acl)
 	local breaks_policy;
 	local from, to = stanza.attr.from, stanza.attr.to;
 	if type(actions) == "table" then
@@ -22,21 +22,30 @@ local function apply_policy(label, session, stanza, actions, no_reply)
 			breaks_policy = true;
 		elseif type(actions.host) == "table" then
 			local _from, _to;
+			if check_acl then -- assume it's a MAM ACL request,
+				from = section(check_acl.attr.from or session.full_jid, "host");
+			end
 			if actions.include_subdomains then
-				_from = from and section(from, "host"):match("%.([^%.].*)");
+				if not check_acl then
+					_from = from and section(from, "host"):match("%.([^%.].*)");
+				else
+					_from = from and from:match("%.([^%.].*)");
+				end
 				_to = to and section(to, "host"):match("%.([^%.].*)");
 			else
-				_from, _to = section(from, "host"), section(to, "host");
+				if not check_acl then _from = section(from, "host"); else _from = from; end
+				_to = section(to, "host");
 			end
+
 			if _from ~= (actions.host[1] or actions.host[2]) and _to ~= (actions.host[1] or actions.host[2]) then
 				breaks_policy = true;
+			elseif actions.host and
+				(actions.direction == "to" and section(to, "host") == actions.host) then
+				breaks_policy = true;
+			elseif actions.host and
+				(actions.direction == "from" and section(from, "host") == actions.host) then
+				breaks_policy = true;
 			end
-		elseif actions.host and
-			(actions.direction == "to" and section(to, "host") == actions.host) then
-			breaks_policy = true;
-		elseif actions.host and
-			(actions.direction == "from" and section(from, "host") == actions.host) then
-			breaks_policy = true;
 		end
 	elseif actions == "roster" then
 		local from_node, from_host = split(from);
@@ -49,7 +58,7 @@ local function apply_policy(label, session, stanza, actions, no_reply)
 	end
 
 	if breaks_policy then
-		if not no_reply then
+		if not check_acl then
 			module:log("warn", "%s message to %s was blocked because it breaks the provided security label policy (%s)",
 				from or session.full_jid, to, label);
 			session.send(error_reply(stanza, "cancel", "policy-violation", "Message breaks security label "..label.." policy"));
