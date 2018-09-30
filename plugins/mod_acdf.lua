@@ -7,6 +7,7 @@
 -- This module implements Access Control Decision Function (ACDF) for Security Labels
 
 local apply_policy = module:require("acdf_aux").apply_policy;
+local get_actions = module:require("acdf_aux").get_actions;
 
 local labels_xmlns = "urn:xmpp:sec-label:0";
 
@@ -16,7 +17,7 @@ local function incoming_message_handler(event)
 
 	if label then
 		local text = label:get_child_text("displaymarking");
-		local actions = module:fire_event("sec-labels-fetch-actions", text);
+		local actions = get_actions(module.host, text);
 		if actions then return apply_policy(text, session, stanza, actions); end
 	end
 end
@@ -27,7 +28,7 @@ local function outgoing_message_handler(event)
 
 	if label then
 		local text = label:get_child_text("displaymarking");
-		local actions = module:fire_event("sec-labels-fetch-actions", text);
+		local actions = get_actions(module.host, text);
 		if actions then return apply_policy(text, session, stanza, actions); end
 	end
 end

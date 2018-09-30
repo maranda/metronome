@@ -31,6 +31,8 @@ local queue_limit = module:get_option_number("csi_max_queued_stanzas", 300);
 local account_csi_config = {};
 local storage = storagemanager.open(module.host, "csi_config");
 
+local labels_xmlns = "urn:xmpp:sec-label:0";
+
 -- Util functions
 
 local allowed_ns_map = module:get_option_set("allowed_inactive_message_payloads", {
