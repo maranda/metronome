@@ -13,7 +13,7 @@ local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local section = require "util.jid".section;
 local fire_event = metronome.events.fire_event;
-local ipairs, pairs, type = ipairs, pairs, type;
+local ipairs, pairs, type, t_remove = ipairs, pairs, type, table.remove;
 
 local hosts = hosts;
 
@@ -23,13 +23,14 @@ local label_catalog_xmlns = "urn:xmpp:sec-label:catalog:2";
 module:add_feature(label_xmlns);
 module:add_feature(label_catalog_xmlns);
 
-local default_labels = {
-	{
+local unclassified_default = {
 		name = "Unclassified",
 		label = true,
 		default = true,
 		restrict = "none"
-	},
+};
+
+local default_labels = {
 	Classified = {
 		SECRET = {
 			color = "white", bgcolor = "blue", label = "Confidential",
@@ -55,7 +56,22 @@ local default_labels = {
 };
 local catalog_name = module:get_option_string("security_catalog_name", "Default");
 local catalog_desc = module:get_option_string("security_catalog_desc", "Default Labels");
-local labels = module:get_option_table("security_labels", default_labels);
+local config_labels = module:get_option_table("security_labels", default_labels);
+
+local labels = {};
+local has_default;
+for i, label in ipairs(config_labels) do
+	if label.default and not has_default then
+		has_default = t_remove(config_labels, i);
+	elseif label.default and has_default then
+		t_remove(config_labels, i);
+	end
+end
+labels[1] = has_default or unclassified_default;
+for i, label in ipairs(config_labels) do labels[i + 1] = label; end
+for selector, labels in pairs(config_labels) do
+	if type(selector) == "string" then labels[selector] = labels; end
+end
 
 local actions_buffer = {};
 local function actions_parser(s, loop)
