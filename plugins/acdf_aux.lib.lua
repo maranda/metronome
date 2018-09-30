@@ -22,7 +22,7 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 			breaks_policy = true;
 		elseif type(actions.host) == "table" then
 			local _from, _to;
-			if check_acl then -- assume it's a MAM ACL request,
+			if type(check_acl) == "table" then -- assume it's a MAM ACL request,
 				from = section(check_acl.attr.from or session.full_jid, "host");
 			end
 			if actions.include_subdomains then
@@ -37,14 +37,14 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 				_to = section(to, "host");
 			end
 
-			if _from ~= (actions.host[1] or actions.host[2]) and _to ~= (actions.host[1] or actions.host[2]) then
-				breaks_policy = true;
-			elseif actions.host and
-				(actions.direction == "to" and section(to, "host") == actions.host) then
-				breaks_policy = true;
-			elseif actions.host and
-				(actions.direction == "from" and section(from, "host") == actions.host) then
-				breaks_policy = true;
+			if check_acl then
+				if _from ~= (actions.host[1] or actions.host[2]) or _to ~= (actions.host[1] or actions.host[2]) then
+					breaks_policy = true;
+				end
+			else
+				if _from ~= (actions.host[1] or actions.host[2]) and _to ~= (actions.host[1] or actions.host[2]) then
+					breaks_policy = true;
+				end
 			end
 		end
 	elseif actions == "roster" then
@@ -67,4 +67,25 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 	end
 end
 
-return { apply_policy = apply_policy };
+local policy_cache = {};
+local function get_actions(host, label)
+	local host_object = hosts[host];
+	if host_object then
+		if not policy_cache[host] then policy_cache[host] = setmetatable({}, { __mode = "v" }); end
+		local cache = policy_cache[host];
+		if not cache[label] then
+			cache[label] = host_object.events.fire_event("sec-labels-fetch-actions", label);
+		end
+		return cache[label];
+	end
+end
+
+local function check_policy(label, jid, stanza, request_stanza)
+	local host = jid_section(jid, "host");
+	local actions = get_actions(host, label);
+	if actions then
+		return apply_policy(label, { full_jid = jid }, stanza, actions, request_stanza or true);
+	end
+end
+
+return { apply_policy = apply_policy, check_policy = check_policy, get_actions = get_actions };

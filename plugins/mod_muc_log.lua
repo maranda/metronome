@@ -25,6 +25,7 @@ local datastore = "muc_log";
 local error_reply = require "util.stanza".error_reply;
 local deserialize = require "util.stanza".deserialize;
 local uuid = require "util.uuid".generate;
+local get_actions = module:require("acdf_aux").get_actions;
 local os_time, ripairs, t_insert, t_remove = os.time, ripairs, table.insert, table.remove;
 
 local hints_xmlns = "urn:xmpp:hints";
@@ -108,7 +109,7 @@ function log_if_needed(e)
 					local tags, host = {}, jid_section(from_room, "host");
 					local text = label:get_child_text("displaymarking");
 					t_insert(tags, deserialize(label));
-					data_entry.label_actions = hosts[host] and hosts[host].events.fire_event("sec-labels-fetch-actions", text);
+					data_entry.label_actions = get_actions(host, text);
 					data_entry.label_name = text;
 					data_entry.tags = tags;
 				end

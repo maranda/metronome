@@ -15,10 +15,10 @@ local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local storagemanager = storagemanager;
 local load_roster = require "util.rostermanager".load_roster;
-local apply_policy = module:require("acdf_aux").apply_policy;
+local check_policy = module:require("acdf_aux").check_policy;
 
-local ipairs, next, now, pairs, ripairs, t_insert, t_remove, tostring, type = 
-	ipairs, next, os.time, pairs, ripairs, table.insert, table.remove, tostring, type;
+local ipairs, next, now, pairs, ripairs, t_insert, t_remove, tostring, type, unpack = 
+	ipairs, next, os.time, pairs, ripairs, table.insert, table.remove, tostring, type, unpack or table.unpack;
     
 local xmlns = "urn:xmpp:mam:2";
 local delay_xmlns = "urn:xmpp:delay";
@@ -182,13 +182,11 @@ local function append_stanzas(stanzas, entry, qid, check_acdf)
 				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
 
-	local _label, _actions, _body = entry.label_name, entry.label_actions;
-	if check_acdf and _label and _actions then
-		if (_actions == "none" or (type(_actions) == "table" and _actions.type == "groupchat")) or
-			apply_policy(
-				_label, check_acdf[1], { attr = { from = entry.from, to = entry.to } },
-				_actions, check_acdf[2]
-			) then
+	local label = entry.label_name;
+	if check_acdf and label then
+		local session, request = unpack(check_acdf);
+		local jid = session.full_jid or request.attr.from;
+		if check_policy(label, jid, { attr = { from = entry.from, to = entry.to } }, request) then
 			_body = "[You're not authorized to see this message content]";
 		end
 	end
