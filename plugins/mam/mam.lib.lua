@@ -185,7 +185,7 @@ local function append_stanzas(stanzas, entry, qid, check_acdf)
 	local _label, _actions, _body = entry.label_name, entry.label_actions;
 	if check_acdf and _label and _actions then
 		if (_actions == "none" or (type(_actions) == "table" and _actions.type == "groupchat")) or
-			apply_policy(_label, check_acdf, _actions, { attr = { from = entry.from, to = entry.to } }, true) then
+			apply_policy(_label, check_acdf, { attr = { from = entry.from, to = entry.to } }, _actions, true) then
 			_body = "[You're not authorized to see this message content]";
 		end
 	end
