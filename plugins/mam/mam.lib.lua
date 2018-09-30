@@ -123,7 +123,7 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, type
 	if tags then
 		for i, stanza in ipairs(tags) do
 			if stanza.name == "securitylabel" and stanza.attr.xmlns == labels_xmlns then
-				local text = label:get_child_text("displaymarking");
+				local text = stanza:get_child_text("displaymarking");
 				entry.label_name = text;
 			end
 			tags[i] = st.deserialize(stanza);
