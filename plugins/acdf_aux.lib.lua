@@ -39,14 +39,8 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 				end
 			end
 
-			if check_acl then
-				if _from ~= (actions.host[1] or actions.host[2]) or _to ~= (actions.host[1] or actions.host[2]) then
-					breaks_policy = true;
-				end
-			else
-				if _from ~= (actions.host[1] or actions.host[2]) and _to ~= (actions.host[1] or actions.host[2]) then
-					breaks_policy = true;
-				end
+			if _from ~= (actions.host[1] or actions.host[2]) or _to ~= (actions.host[1] or actions.host[2]) then
+				breaks_policy = true;
 			end
 		end
 	elseif actions == "roster" then
