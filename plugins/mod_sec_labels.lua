@@ -70,7 +70,7 @@ end
 labels[1] = has_default or unclassified_default;
 for i, label in ipairs(config_labels) do labels[i + 1] = label; end
 for selector, labels in pairs(config_labels) do
-	if type(selector) == "string" then labels[selector] = labels; end
+	if type(selector) == "string" then labels[selector] = label; end
 end
 
 local actions_buffer = {};
