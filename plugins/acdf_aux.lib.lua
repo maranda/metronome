@@ -26,7 +26,7 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 				from = section(check_acl.attr.from or session.full_jid, "host");
 				to = section(check_acl.attr.to, "host");
 			end
-			if not check_acl then _from = section(from, "host"); else _from = from; end
+			if not check_acl then _from = from; else _from = section(from, "host"); end
 			_to = section(to, "host");
 
 			if actions.include_muc_subdomains then
