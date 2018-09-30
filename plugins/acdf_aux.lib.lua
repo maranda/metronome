@@ -7,9 +7,9 @@
 -- This library contains shared code for Access Control Decision Function.
 
 local type = type;
-local error_reply = require "util.stanza".error_reply;
-local bare, section, split =
-	require "util.jid".bare, require "util.jid".section, require "util.jid".split;
+local clone, error_reply = require "util.stanza".clone, require "util.stanza".error_reply;
+local bare, section, split, t_remove =
+	require "util.jid".bare, require "util.jid".section, require "util.jid".split, table.remove;
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 
 local hosts = hosts;
@@ -88,4 +88,14 @@ local function check_policy(label, jid, stanza, request_stanza)
 	end
 end
 
-return { apply_policy = apply_policy, check_policy = check_policy, get_actions = get_actions };
+local function censor_body(stanza)
+	local _clone = clone(stanza);
+	local body = _clone:get_child("body");
+	if body then
+		t_remove(body, 1);
+		body:text("[You're not authorized to see this message content]");
+	end
+	return _clone;
+end
+
+return { apply_policy = apply_policy, censor_body = censor_body, check_policy = check_policy, get_actions = get_actions };

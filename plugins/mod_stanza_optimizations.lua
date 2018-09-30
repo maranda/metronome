@@ -15,6 +15,8 @@ local jid_join = require "util.jid".join;
 local jid_section = require "util.jid".section;
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
+local censor_body = module:require("acdf_aux").censor_body;
+local check_policy = module:require("acdf_aux").check_policy;
 
 local storagemanager = storagemanager;
 	
@@ -159,6 +161,13 @@ function queue_mt:flush(clean)
 		for i = 1, #idx do
 			local stanza = queue[idx[i]];
 			module:log("debug", "sending %s: %s", stanza.name, stanza:top_tag());
+			if stanza.name == "message" then
+				local label, text = stanza:get_child("securitylabel", labels_xmlns);
+				if label then text = label:get_child_text("displaymarking"); end
+				if text and check_policy(text, stanza.attr.to, stanza) then
+					stanza = censor_body(stanza);
+				end
+			end
 			send(stanza);
 		end
 	end

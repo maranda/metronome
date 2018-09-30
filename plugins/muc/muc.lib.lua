@@ -83,16 +83,7 @@ local function removeElem(sub, name)
 		if tag.name == name then t_remove(sub, i); end
 	end
 end
-
-local function censorBody(stanza)
-	local clone = st.clone(stanza);
-	local body = clone:get_child("body");
-	if body then
-		t_remove(body, 1);
-		body:text("[You're not authorized to see this message content]");
-	end
-	return clone;
-end
+local censorBody = module:require("acdf_aux").censor_body;
 -----------
 
 local room_mt = {};
