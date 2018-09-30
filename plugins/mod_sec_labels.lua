@@ -69,8 +69,8 @@ for i, label in ipairs(config_labels) do
 end
 labels[1] = has_default or unclassified_default;
 for i, label in ipairs(config_labels) do labels[i + 1] = label; end
-for selector, labels in pairs(config_labels) do
-	if type(selector) == "string" then labels[selector] = label; end
+for selector, _labels in pairs(config_labels) do
+	if type(selector) == "string" then labels[selector] = _labels; end
 end
 
 local actions_buffer = {};
