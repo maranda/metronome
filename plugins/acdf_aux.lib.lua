@@ -25,9 +25,8 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 			if type(check_acl) == "table" then -- assume it's a MAM ACL request
 				from = section(check_acl.attr.from or session.full_jid, "host");
 				to = section(check_acl.attr.to, "host");
+				_from, _to = from, to;
 			end
-			if not check_acl then _from = from; else _from = section(from, "host"); end
-			_to = section(to, "host");
 
 			if actions.include_muc_subdomains then
 				local from_host_object, to_host_object = hosts[_from], hosts[_to];
