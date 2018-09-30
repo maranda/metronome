@@ -70,7 +70,7 @@ end
 local policy_cache = {};
 local function get_actions(host, label)
 	local host_object = hosts[host];
-	if host_object then
+	if host_object and label then
 		if not policy_cache[host] then policy_cache[host] = setmetatable({}, { __mode = "v" }); end
 		local cache = policy_cache[host];
 		if not cache[label] then
