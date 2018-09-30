@@ -105,8 +105,11 @@ function log_if_needed(e)
 				data[#data + 1] = data_entry;
 
 				if label then
-					local tags = {};
+					local tags, host = {}, jid_section(muc_from, "host");
+					local text = label:get_child_text("displaymarking");
 					t_insert(tags, deserialize(label));
+					data_entry.label_actions = hosts[host] and hosts[host].events.fire_event("sec-labels-fetch-actions", text);
+					data_entry.label_name = text;
 					data_entry.tags = tags;
 				end
 				

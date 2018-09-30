@@ -138,7 +138,7 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 				ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.index;
 		end
 		
-		local messages, rq, count = generate_stanzas(archive, start, fin, with, max, after, before, index, qid);
+		local messages, rq, count = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, origin);
 		if not messages then
 			module:log("debug", "%s MAM query RSM parameters were out of bounds", to);
 			local rsm_error = st.error_reply(stanza, "cancel", "item-not-found");

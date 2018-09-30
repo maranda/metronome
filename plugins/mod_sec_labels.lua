@@ -55,7 +55,7 @@ local default_labels = {
 };
 local catalog_name = module:get_option_string("security_catalog_name", "Default");
 local catalog_desc = module:get_option_string("security_catalog_desc", "Default Labels");
-local labels = module:get_option("security_labels", default_labels);
+local labels = module:get_option_table("security_labels", default_labels);
 
 local actions_buffer = {};
 local function actions_parser(s, loop)

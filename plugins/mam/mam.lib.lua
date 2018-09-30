@@ -119,7 +119,13 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, type
 		uid = uid
 	};
 	if tags then
-		for i, stanza in ipairs(tags) do tags[i] = st.deserialize(stanza); end
+		for i, stanza in ipairs(tags) do
+			if stanza.name == "securitylabel" and stanza.attr.xmlns == labels_xmlns then
+				local text = label:get_child_text("displaymarking");
+				entry.label_name = text;
+			end
+			tags[i] = st.deserialize(stanza);
+		end
 		entry.tags = tags;
 	end
 
@@ -167,14 +173,24 @@ local function log_marker(session_archive, to, bare_to, from, bare_from, id, typ
 	end
 end
 
-local function append_stanzas(stanzas, entry, qid)
+local function append_stanzas(stanzas, entry, qid, check_acdf)
 	local to_forward = st.message()
 		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.uid })
 			:tag("forwarded", { xmlns = forward_xmlns })
 				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
 
-	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
+	local _body;
+	if check_acdf and entry.label_name and entry.label_actions then
+		if module:fire_event("check-acdf", { 
+			name = entry.label_name, actions = entry.label_actions, session = check_acdf,
+			dummy = { attr = { from = entry.from, to = entry.to } }
+			}) then
+			_body = "You're not authorized to see this message contents";
+		end
+	end
+
+	if entry.body then to_forward:tag("body"):text(_body or entry.body):up(); end
 	if entry.tags then
 		for i = 1, #entry.tags do to_forward:add_child(st.preserialize(entry.tags[i])); end
 	end
@@ -248,7 +264,7 @@ local function count_relevant_entries(logs, with, start, fin)
 	return count;
 end
 
-local function generate_stanzas(store, start, fin, with, max, after, before, index, qid)
+local function generate_stanzas(store, start, fin, with, max, after, before, index, qid, check_acdf)
 	local logs = store.logs;
 	local stanzas = {};
 	local query;
@@ -272,7 +288,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			local timestamp = entry.timestamp;
 			local uid = entry.uid
 			if not dont_add(entry, with, start, fin, timestamp) and i - 1 > index then
-				append_stanzas(stanzas, entry, qid);
+				append_stanzas(stanzas, entry, qid, check_acdf);
 				if at == 1 then first = uid; end
 				at = at + 1;
 				last = uid;
@@ -306,7 +322,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			local timestamp = entry.timestamp;
 			local uid = entry.uid;
 			if not dont_add(entry, with, start, fin, timestamp) then
-				append_stanzas(stanzas, entry, qid);
+				append_stanzas(stanzas, entry, qid, check_acdf);
 				if at == 1 then first = uid; end
 				at = at + 1;
 				last = uid;
@@ -332,7 +348,7 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		local timestamp = entry.timestamp;
 		local uid = entry.uid;
 		if not dont_add(entry, with, start, fin, timestamp) then
-			append_stanzas(stanzas, entry, qid);
+			append_stanzas(stanzas, entry, qid, check_acdf);
 			if at == 1 then first = uid; end
 			at = at + 1;
 			last = uid;
