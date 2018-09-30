@@ -30,7 +30,7 @@ local function apply_policy(label, session, stanza, actions, no_reply)
 			else
 				_from, _to = section(from, "host"), section(to, "host");
 			end
-			if _from ~= (actions.host[1] or actions.host[2]) or _to ~= (actions.host[1] or actions.host[2]) then
+			if _from ~= (actions.host[1] or actions.host[2]) and _to ~= (actions.host[1] or actions.host[2]) then
 				breaks_policy = true;
 			end
 		elseif actions.host and
