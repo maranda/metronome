@@ -21,11 +21,12 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 		if actions.type and stanza.attr.type ~= actions.type then
 			breaks_policy = true;
 		elseif type(actions.host) == "table" then
-			local _from, _to = section(from, "host"), section(to, "host");
+			local _from, _to;
 			if type(check_acl) == "table" then -- assume it's a MAM ACL request
-				from = section(check_acl.attr.from or session.full_jid, "host");
-				to = section(check_acl.attr.to, "host");
-				_from, _to = from, to;
+				_from = section(check_acl.attr.from or session.full_jid, "host");
+				_to = section(check_acl.attr.to, "host");
+			else
+				_from, _to = section(from, "host"), section(to, "host");
 			end
 
 			if actions.include_muc_subdomains then
