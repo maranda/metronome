@@ -49,7 +49,7 @@ local default_labels = {
 		},
 		LOCAL = {
 			color = "black", bgcolor = "aliceblue", label = "Only for "..module.host,
-			restrict = { host = { module.host } }
+			restrict = { host = { module.host }, include_subdomains = true }
 		}
 	}
 };
