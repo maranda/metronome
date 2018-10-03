@@ -28,7 +28,7 @@ local function store_load(username)
 		if bare_session.privacy_lists then
 			return bare_session.privacy_lists;
 		else
-			bare_session.privacy_lists = dm_load(username, module.host, "privacy") or { lists = {} };
+			bare_session.privacy_lists = privacy:get(username) or { lists = {} };
 			return bare_session.privacy_lists;
 		end
 	else
