@@ -84,6 +84,11 @@ function api:get_host_session(host)
 	end
 end
 
+function api:get_host_sessions(host)
+	local host_session = self:get_host_session(host);
+	if host_session then return host_session.sessions or {}; end
+end
+
 function api:host_is_component(host)
 	if not host then
 		return self:get_host_type() == "component";
@@ -98,6 +103,11 @@ function api:host_is_muc(host)
 	else
 		return hosts[host] and hosts[host].muc and true or false;
 	end
+end
+
+function api:get_host_modules(host)
+	local host_session = self:get_host_session(host);
+	if host_session then return host_session.modules; end
 end
 
 function api:set_global()
