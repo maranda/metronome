@@ -6,7 +6,7 @@
 
 -- Message Archive Management interface for mod_muc_log
 
-if not host:host_is_muc() then
+if not module:host_is_muc() then
 	module:log("error", "mod_muc_log_mam can only be loaded on a muc component!");
 	return;
 end
