@@ -9,7 +9,6 @@
 
 module:set_component_inheritable();
 
-local bare_sessions = bare_sessions;
 local hosts = hosts;
 
 local ipairs, min, now, pairs, t_insert, t_remove, tonumber, tostring =
@@ -128,7 +127,7 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 	function session.handle_unacked(session)
 		if session.type == "c2s" then
 			local full_jid, bare_jid, resource = session.full_jid, session.username.."@"..session.host, session.resource;
-			local bare_session, has_carbons = bare_sessions[bare_jid];
+			local bare_session, has_carbons = module:get_bare_session(bare_jid);
 			if bare_session.has_carbons then
 				for _resource, _session in pairs(bare_session.sessions) do
 					if _resource ~= resource and _session.carbons then has_carbons = true; break; end
@@ -337,7 +336,7 @@ module:hook("pre-resource-unbind", function(event)
 			session.halted, session.detached = _now, true;
 			module:fire_event("sm-process-queue", { username = session.username, host = session.host, queue = session.sm_queue });
 			add_timer(session.sm_timeout or timeout, function()
-				local current = full_sessions[session.full_jid];
+				local current = module:get_full_session(session.full_jid);
 				if not session.destroyed and current and (current.token == token and session.halted == _now) then
 					session.log("debug", "%s session has been halted too long, destroying", session.full_jid);
 					handled_sessions[token] = nil;
@@ -387,14 +386,14 @@ end
 
 function module.unload(reload)
 	if not reload then
-		local full_sessions, incoming_s2s = full_sessions, metronome.incoming_s2s;
-		for _, session in pairs(full_sessions) do
-			if session.host == module.host and session.sm then session:close(); end
+		local incoming_s2s = metronome.incoming_s2s;
+		for _, session in module:get_full_sessions() do
+			if session.sm then session:close(); end
 		end
 		for session in pairs(incoming_s2s) do
 			if session.to_host == module.host and session.sm then session:close(); end
 		end
-		for _, session in pairs(hosts[module.host].s2sout) do
+		for _, session in pairs(module:get_host_session().s2sout) do
 			if session.sm and session.close then session:close(); end
 		end
 		module:remove_all_timers();

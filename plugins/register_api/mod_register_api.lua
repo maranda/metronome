@@ -4,7 +4,6 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-local datamanager = datamanager;
 local b64_encode = require "util.encodings".base64.encode;
 local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
@@ -45,6 +44,9 @@ local plain_errors = module:get_option_boolean("reg_api_plain_http_errors", fals
 local mail_from = module:get_option_string("reg_api_mailfrom");
 local mail_reto = module:get_option_string("reg_api_mailreto");
 
+local _hashes = storagemanager.open(my_host, "hashes");
+local _whitelisted = storagemanager.open(my_host, "whitelisted_md");
+
 local do_mail_verification;
 if mail_from and mail_reto then
 	do_mail_verification = true;
@@ -82,7 +84,7 @@ if use_nameapi then
 		["icloud.com"] = true,
 		["me.com"] = true
 	};
-	whitelisted = datamanager.load("register_json", my_host, "whitelisted_md") or default_whitelist;
+	whitelisted = _whitelisted:get("register_api") or default_whitelist;
 	dea_checks = {};
 end
 
@@ -112,12 +114,29 @@ function hashes_mt:remove(node, check)
 end
 
 function hashes_mt:save()
-	if not datamanager.store("register_json", my_host, "hashes", hashes) then
+	if not _hashes:set("register_api", hashes) then
 		module:log("error", "Failed to save the mail addresses' hashes store");
 	end
 end
 
 -- Utility functions
+
+local function convert_legacy_storage()
+	local datamanager = require "util.datamanager";
+	local legacy_hashes = datamanager.load("register_json", my_host, "hashes");
+	local legacy_whitelisted = datamanager.load("register_json", my_host, "whitelisted_md");
+	if legacy_hashes then
+		datamanager.store("register_json", my_host, "hashes");
+		hashes = legacy_hashes;
+		setmt(hashes, hashes_mt);
+		hashes:save();
+	end
+	if legacy_whitelisted then
+		datamanager.store("register_json", my_host, "whitelisted_md");
+		whitelisted = legacy_whitelisted;
+		_whitelisted:set("register_api", whitelisted);
+	end
+end
 
 local function generate_secret(bytes)
 	local str = generate(bytes);
@@ -161,7 +180,7 @@ local function check_dea(address, username)
 			else
 				module:log("debug", "Mail domain %s is valid, whitelisting", domain);
 				whitelisted[domain] = true;
-				datamanager.store("register_json", my_host, "whitelisted_md", whitelisted);
+				_whitelisted:set("register_api", whitelisted);
 			end
 		end	
 	end);
@@ -632,7 +651,8 @@ end
 
 -- Set it up!
 
-hashes = datamanager.load("register_json", my_host, "hashes") or hashes; setmt(hashes, hashes_mt);
+hashes = _hashes:get("register_api") or hashes; setmt(hashes, hashes_mt);
+convert_legacy_storage();
 
 module:provides("http", {
 	default_path = base_path,

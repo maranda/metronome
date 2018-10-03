@@ -5,9 +5,9 @@
 -- information about copyright and licensing.
 
 local hosts = hosts;
-local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local jid_bare, jid_join, jid_section = require "util.jid".bare, require "util.jid".join, require "util.jid".section;
-local load, save = require "util.datamanager".load, require "util.datamanager".store;
+
+local gdpr = storagemanager.open(module.host, "gdpr");
 
 local st = require "util.stanza";
 local error_reply = require "util.stanza".error_reply;
@@ -90,7 +90,7 @@ local function gdpr_handle_consent(event)
 		if body:match(".*I consent.*") then
 			gdpr_signed[from] = true;
 			gdpr_agreement_sent[from] = nil;
-			save(nil, module.host, "gdpr", gdpr_signed);
+			gdpr:save(nil, gdpr_signed);
 			module:log("info", "%s signed the GDPR agreement, enabling s2s communication", from);
 			origin.send(st.message({ to = origin.full_jid, from = module.host, type = "chat" }, "Thank you."));
 			return true;
@@ -115,7 +115,7 @@ local function gdpr_handle_consent(event)
 				end
 			end
 			gdpr_signed[from] = false;
-			save(nil, module.host, "gdpr", gdpr_signed);
+			gdpr:save(nil, gdpr_signed);
 			return true;
 		end
 	end
@@ -126,7 +126,7 @@ local adhoc_new = module:require "adhoc".new;
 
 local function adhoc_send_agreement(self, data, state)
 	local from = jid_bare(data.from);
-	local session = full_sessions[data.from];
+	local session = module:get_full_session(data.from);
 
 	if not gdpr_signed[from] then
 		send_agreement(session, from);
@@ -143,7 +143,7 @@ local function revoke_signature(self, data, state)
 		return { status = "completed", error = { message = "You didn't sign the agreement yet" } };
 	else
 		gdpr_signed[from] = nil;
-		save(nil, module.host, "gdpr", gdpr_signed);
+		gdpr:save(nil, gdpr_signed);
 		return { status = "completed", info = "Revoked GDPR sign status, you'll be able to pick your choice again" };
 	end
 end
@@ -178,16 +178,16 @@ end, 100);
 module:hook("resource-unbind", function(event)
 	local username, host = event.session.username, event.session.host;
 	local jid = username.."@"..host;
-	if not bare_sessions[jid] then gdpr_agreement_sent[jid] = nil; end
+	if not module:get_bare_session(jid) then gdpr_agreement_sent[jid] = nil; end
 end);
 
 module.load = function()
 	module:log("debug", "initializing GDPR compliance module... loading signatures table");
-	gdpr_signed = load(nil, module.host, "gdpr") or {};
+	gdpr_signed = gdpr:get() or {};
 end
 module.save = function() return { gdpr_signed = gdpr_signed, gdpr_agreement_sent = gdpr_agreement_sent }; end
 module.restore = function(data) gdpr_signed = data.gdpr_signed or {}, data.gdpr_agreement_sent or {}; end
 module.unload = function()
 	module:log("debug", "unloading GDPR compliance module... saving signatures table");
-	save(nil, module.host, "gdpr", gdpr_signed);
+	gdpr:save(nil, gdpr_signed);
 end

@@ -7,7 +7,7 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Markus Kutter, Matthew Wild, Waqas Hussain
 
-if module:get_host_type() ~= "component" then
+if not module:host_is_component() then
 	error("MUC should be loaded as a component", 0);
 end
 
@@ -34,28 +34,30 @@ local jid_section = require "util.jid".section;
 local jid_bare = require "util.jid".bare;
 local st = require "util.stanza";
 local uuid_gen = require "util.uuid".generate;
-local datamanager = require "util.datamanager";
 local fire_event = metronome.events.fire_event;
 local um_is_admin = require "core.usermanager".is_admin;
-local hosts = hosts;
 local pairs, ipairs, next, now = pairs, ipairs, next, os.time;
 
+local config_store = storagemanager.open(muc_host, "config");
+local persistent_store = storagemanager.open(muc_host, "persistent");
+local redirects_store = storagemanager.open(muc_host, "redirects");
+
 rooms = {};
-local host_session = hosts[muc_host];
+local host_session = module:get_host_session();
 local rooms = rooms;
-local persistent_rooms = datamanager.load(nil, muc_host, "persistent") or {};
+local persistent_rooms = persistent_store:get() or {};
 
 -- Configurable options
 local max_history_messages = module:get_option_number("max_history_messages", 100);
 muclib.set_max_history(max_history_messages);
 if allow_destruction_redirection then
 	muclib.set_destruction_redirection(expire_destruction_redirection);
-	local redirects = datamanager.load(nil, muc_host, "redirects") or {};
+	local redirects = redirects_store:get() or {};
 	if next(redirects) then
 		for r, data in pairs(redirects) do muclib.redirects[r] = data; end
 	end
 else
-	datamanager.store(nil, muc_host, "redirects", nil);
+	redirects_store:set();
 end
 
 -- Superuser Adhoc handlers
@@ -127,21 +129,21 @@ local function room_save(room, forced)
 		if expire_inactive_rooms then
 			data._last_used = room.last_used;
 		end
-		datamanager.store(node, muc_host, "config", data);
+		config_store:set(node, data);
 		room._data.history = history;
 	elseif forced then
-		datamanager.store(node, muc_host, "config", nil);
+		config_store:set(node);
 		if not next(room._occupants) then -- Room empty
 			rooms[room.jid] = nil;
 		end
 	end
-	if forced then datamanager.store(nil, muc_host, "persistent", persistent_rooms); end
+	if forced then persistent_store:set(nil, persistent_rooms); end
 end
 
 local persistent_errors = false;
 for jid in pairs(persistent_rooms) do
 	local node = jid_section(jid, "node");
-	local data = datamanager.load(node, muc_host, "config");
+	local data = config_store:get(node);
 	if data then
 		local history_length = data._data.history_length;
 		local room = muc_new_room(jid);
@@ -164,7 +166,7 @@ for jid in pairs(persistent_rooms) do
 		persistent_errors = true;
 	end
 end
-if persistent_errors then datamanager.store(nil, muc_host, "persistent", persistent_rooms); end
+if persistent_errors then persistent_store:set(nil, persistent_rooms); end
 
 if expire_inactive_rooms then
 	module:add_timer(3600, function()
@@ -289,18 +291,18 @@ module:hook("iq/host", handle_to_domain, -1);
 module:hook("message/host", handle_to_domain, -1);
 module:hook("presence/host", handle_to_domain, -1);
 
-hosts[module.host].send = function(stanza) -- FIXME do a generic fix
+host_session.send = function(stanza) -- FIXME do a generic fix
 	if stanza.attr.type == "result" or stanza.attr.type == "error" then
 		module:send(stanza);
 	else error("component.send only supports result and error stanzas at the moment"); end
 end
 
-hosts[module:get_host()].muc = { rooms = rooms };
+host_session.muc = { rooms = rooms };
 
 local saved = false;
 module.save = function()
 	saved = true;
-	datamanager.store(nil, muc_host, "redirects", muclib.redirects);
+	redirects_store:set(nil, muclib.redirects);
 	return { rooms = rooms, admin_toggles = muclib.admin_toggles };
 end
 module.restore = function(data)
@@ -314,7 +316,7 @@ module.restore = function(data)
 		room.save = room_save;
 		rooms[jid] = room;
 	end
-	hosts[module:get_host()].muc = { rooms = rooms };
+	host_session.muc = { rooms = rooms };
 	for jid in pairs(data.admin_toggles or {}) do
 		muclib.admin_toggles[jid] = true;
 	end
@@ -322,9 +324,9 @@ end
 module.unload = function(reload)
 	if not reload then
 		if next(muclib.redirects) then
-			datamanager.store(nil, muc_host, "redirects", muclib.redirects);
+			redirects_store:set(nil, muclib.redirects);
 		else
-			datamanager.store(nil, muc_host, "redirects", nil);
+			redirects_store:set();
 		end
 		module:remove_all_timers();
 	end

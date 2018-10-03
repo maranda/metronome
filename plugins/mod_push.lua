@@ -14,7 +14,6 @@ local st = require "util.stanza";
 local jid_join = require "util.jid".join;
 local jid_split = require "util.jid".split;
 local uuid = require "util.uuid".generate;
-local dm = require "util.datamanager";
 
 local push_xmlns = "urn:xmpp:push:0";
 local df_xmlns = "jabber:x:data";
@@ -23,6 +22,9 @@ local summary_xmlns = "urn:xmpp:push:summary";
 local user_list = {};
 local store_cache = {};
 local sent_ids = setmetatable({}, { __mode = "v" });
+
+local push = storagemanager.open(module.host, "push");
+local push_account_list = storagemanager.open(module.host, "push_account_list");
 
 -- Adhoc Handlers
 
@@ -40,11 +42,11 @@ local function change_push_options(self, data, state)
 		
 	if not options.last_sender then
 		options.last_sender = true;
-		if store_cache[node] then dm.store(nil, host, "push_account_list", user_list); end
+		if store_cache[node] then push_account_list:set(nil, user_list); end
 		return { status = "completed", info = "PUSH notifications will now contain the last sender of a message/s" };
 	else
 		options.last_sender = false;
-		dm.store(nil, host, "push_account_list", user_list);
+		push_account_list:set(nil, user_list);
 		return { status = "completed", info = "PUSH notifications will now be stripped of the last sender of a message/s" };
 	end
 end
@@ -103,7 +105,7 @@ module:hook("iq-set/self/"..push_xmlns..":enable", function(event)
 	local enable = stanza.tags[1];
 
 	local user, host = origin.username, origin.host;
-	local store = store_cache[user] or dm.load(user, host, "push") or {};
+	local store = store_cache[user] or push:get(user) or {};
 
 	local form, secret = enable:get_child("x", "jabber:x:data");
 	if form.attr.type == "submit" then
@@ -132,8 +134,8 @@ module:hook("iq-set/self/"..push_xmlns..":enable", function(event)
 	end
 	store_cache[user] = store;
 	user_list[user] = { last_sender = true };
-	dm.store(nil, host, "push_account_list", user_list);
-	dm.store(user, host, "push", store);
+	push_account_list:set(nil, user_list);
+	push:set(user, store);
 
 	origin.send(st.reply(stanza));
 	return true;
@@ -144,7 +146,7 @@ module:hook_stanza("iq-set/self/"..push_xmlns..":disable", function(event)
 	local disable = stanza.tags[1];
 
 	local user, host = origin.username, origin.host;
-	local store = store_cache[user] or dm.load(user, host, "push");
+	local store = store_cache[user] or push:get(user);
 
 	local jid, node = disable.attr.jid, disable.attr.node;
 	if not jid then
@@ -166,14 +168,14 @@ module:hook_stanza("iq-set/self/"..push_xmlns..":disable", function(event)
 
 	if next(store) then
 		store_cache[user] = store;
-		dm.store(user, host, "push", store);
+		push:set(user, store);
 	else
 		if user_list[user].last_sender == true then
 			user_list[user] = nil;
 		end
 		store_cache[user] = nil;
-		dm.store(nil, host, "push_account_list", user_list);
-		dm.store(user, host, "push");
+		push_account_list:set(nil, user_list);
+		push:set(user);
 	end
 
 	origin.send(st.reply(stanza));
@@ -235,7 +237,7 @@ module:hook("iq/host", function(event)
 				module:log("debug", "Received error type %s condition %s while sending %s PUSH notification, disabling related node for %s",
 					err_type, condition, id, user);
 				store[sent_id.app_server].nodes[sent_id.node] = nil;
-				dm.store(user, module.host, "push", store);
+				push:set(user, store);
 			end
 		else
 			module:log("debug", "PUSH App Server handled %s", id);
@@ -246,9 +248,9 @@ module:hook("iq/host", function(event)
 end, 10);
 
 function module.load()
-	user_list = dm.load(nil, module.host, "push_account_list") or {};
+	user_list = push_account_list:get() or {};
 	for user in pairs(user_list) do
-		store_cache[user] = dm.load(user, module.host, "push");
+		store_cache[user] = push:get(user);
 	end
 end
 
@@ -263,8 +265,8 @@ end
 
 function module.unload()
 	local host = module.host;
-	dm.store(nil, host, "push_account_list", user_list);
+	push_account_list:set(nil, user_list);
 	for user, store in pairs(store_cache) do
-		dm.store(user, host, "push", store);
+		push:set(user, store);
 	end
 end

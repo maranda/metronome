@@ -16,7 +16,6 @@ local sessionmanager = require "core.sessionmanager";
 local st = require "util.stanza";
 local sm_new_session, sm_destroy_session = sessionmanager.new_session, sessionmanager.destroy_session;
 local uuid_generate = require "util.uuid".generate;
-local hosts = metronome.hosts;
 local fire_event = metronome.events.fire_event;
 
 local xpcall, tostring, type = xpcall, tostring, type;
@@ -55,7 +54,7 @@ function stream_callbacks.streamopened(session, attr)
 		return;
 	end
 
-	local session_host = hosts[session.host];
+	local session_host = module:get_host_session(session.host);
 	session.version = tonumber(attr.version) or 0;
 	session.streamid = uuid_generate();
 	(session.log or session)("debug", "Client sent opening <stream:stream> to %s", session.host);
@@ -88,7 +87,7 @@ function stream_callbacks.streamopened(session, attr)
 	end
 
 	local features = st.stanza("stream:features");
-	hosts[session.host].events.fire_event("stream-features", { origin = session, features = features });
+	session_host.events.fire_event("stream-features", { origin = session, features = features });
 	module:fire_event("stream-features", session, features);
 
 	send(features);
@@ -263,7 +262,8 @@ end
 
 local function handle_deletion(event)
 	local session, node, host = event.session, event.username, event.host;
-	local user = (session and session) or (hosts[host] and hosts[host].sessions and hosts[host].sessions[node]);
+	local host_session = module:get_host_session(host);
+	local user = (session and session) or (host_session and host_session.sessions and host_session.sessions[node]);
 	if not user then return; end
 	for _, session in pairs(user.sessions) do
 		session:close{ condition = "not-authorized", text = "Account deleted" };

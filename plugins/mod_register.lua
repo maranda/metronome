@@ -11,7 +11,6 @@
 
 local hosts = _G.hosts;
 local st = require "util.stanza";
-local datamanager = require "util.datamanager";
 local dataform_new = require "util.dataforms".new;
 local usermanager_user_exists = require "core.usermanager".user_exists;
 local usermanager_create_user = require "core.usermanager".create_user;
@@ -25,6 +24,8 @@ local jid_bare = require "util.jid".bare;
 local new_ip = require "util.ip".new_ip;
 local parse_subnets = require "util.ip".parse_subnets;
 local match_subnet = require "util.ip".match_subnet;
+
+local account_details = storagemanager.open(module.host, "account_details");
 
 local compat = module:get_option_boolean("registration_compat", true);
 local allow_registration = module:get_option_boolean("allow_registration", false);
@@ -299,7 +300,7 @@ module:hook("stanza/iq/jabber:iq:register:query", function(event)
 
 						local error_reply = st.error_reply(stanza, "wait", "internal-server-error", "Failed to write data to disk");
 						if usermanager_create_user(username, password, host, require_verification and true) then
-							if next(data) and not datamanager.store(username, host, "account_details", data) then
+							if next(data) and not account_details:set(username, data) then
 								usermanager_delete_user(username, host, "mod_register");
 								session.send(error_reply);
 								return true;

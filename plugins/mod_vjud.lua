@@ -4,7 +4,6 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-local datamanager = require "util.datamanager"
 local dataforms_new = require "util.dataforms".new
 local escape_magic = require "util.auxiliary".escape_magic_chars
 local jid_split = require "util.jid".split
@@ -22,12 +21,11 @@ local metronome = metronome
 
 module:depends("adhoc")
 
-directory = {}
+local directory
 local my_host = module:get_host()
+local vjud = storagemanager.open(my_host, "directory")
 
-if datamanager.load("store", my_host, "directory") then
-	directory = datamanager.load("store", module:get_host(), "directory")
-end
+directory = vjud:get("store") or {}
 local function search_form_layout()
 	return dataforms_new{
 		title = "Directory Search";
@@ -56,7 +54,7 @@ local function vcard_handler(event)
 	
 	if directory[jid] then
 		directory[jid] = vcard_parse(vcard)
-		datamanager.store("store", my_host, "directory", directory)
+		vjud:set("store", directory)
 	end
 end
 
@@ -163,7 +161,7 @@ local function oncreate_handler(event)
 	if host == auto_optin_host then
 		module:log("debug", "Auto-optin in %s@%s to the user directory", username, host)
 		directory[jid_join(username, host)] = { nickname = "", realname = "", country = "", email = "" }
-		datamanager.store("store", my_host, "directory", directory)
+		vjud:set("store", directory)
 	end
 end
 
@@ -171,7 +169,7 @@ local function ondelete_handler(event)
 	local username, host = event.username, event.host
 	
 	directory[jid_join(username, host)] = nil
-	datamanager.store("store", my_host, "directory", directory)
+	vjud:set("store", directory)
 end
 
 module:hook("iq-get/host/jabber:iq:search:query", search_get_handler)
@@ -209,7 +207,7 @@ local function optin_command_handler(self, data, state)
 
 			if not directory[jid] then
 				directory[jid] = { nickname = fields.nickname or "", realname = fields.realname or "", country = fields.country or "", email = fields.email or "" }
-				if datamanager.store("store", my_host, "directory", directory) then
+				if vjud:set("store", directory) then
 					return { status = "completed", info = "Success" }
 				else
 					return { status = "completed", error = { message = "Adding was successful but I failed to write to the directory store, please report to the admin" } }
@@ -238,7 +236,7 @@ local function optin_vcard_command_handler(self, data, state)
 		directory[jid] = { nickname = "", realname = "", country = "", email = "" }
 	end
 	
-	if datamanager.store("store", my_host, "directory", directory) then
+	if vjud:set("store", directory) then
 		return { status = "completed", info = "Success" }
 	else
 		return { status = "completed", error = { message = "Adding was successful but writing to the directory store failed, please report to the admin" } }
@@ -248,7 +246,7 @@ end
 local function optout_command_handler(self, data, state)
 	if directory[jid_bare(data.from)] then
 		directory[jid_bare(data.from)] = nil
-		if datamanager.store("store", my_host, "directory", directory) then
+		if vjud:set("store", directory) then
 			return { status = "completed", info = "You have been removed from the user directory" }
 		else
 			return { status = "completed", error = { message = "Removal was successful but I failed to write to the directory store, please report to the admin" } }
@@ -268,6 +266,3 @@ end
 local optout_descriptor = adhoc_new("Optout for the user search directory", "http://metronome.im/protocol/vjud#optout", optout_command_handler)
 module:provides("adhoc", optin_descriptor)
 module:provides("adhoc", optout_descriptor)
-
-module.save = function() return { directory = directory } end
-module.restore = function(data) directory = data.directory or {} end

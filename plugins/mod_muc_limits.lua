@@ -7,10 +7,8 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2012, Matthew Wild
 
-local modulemanager = modulemanager;
-if not modulemanager.is_loaded(module.host, "muc") then
+if not module:host_is_muc() then
 	module:log("error", "mod_muc_limits can only be loaded on a muc component!");
-	modulemanager.unload(module.host, "muc_limits");
 	return;
 end
 

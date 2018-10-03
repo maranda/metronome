@@ -7,16 +7,13 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2012, Matthew Wild, Robert Hoelz, Waqas Hussain
 
-local full_sessions = full_sessions;
-local bare_sessions = bare_sessions;
-
 local st = require "util.stanza";
 local jid_bare = require "util.jid".bare;
 local jid_split = require "util.jid".split;
 local user_exists = require "core.usermanager".user_exists;
 
 local function process_to_bare(bare, origin, stanza)
-	local user = bare_sessions[bare];
+	local user = module:get_bare_session(bare);
 	
 	local t = stanza.attr.type;
 	if t == "error" then
@@ -67,7 +64,7 @@ end
 module:hook("message/full", function(data)
 	local origin, stanza = data.origin, data.stanza;
 	
-	local session = full_sessions[stanza.attr.to];
+	local session = module:get_full_session(stanza.attr.to);
 	if session and session.send(stanza) then
 		return true;
 	else -- resource not online

@@ -6,10 +6,8 @@
 
 -- Message Archive Management interface for mod_muc_log
 
-local modulemanager = modulemanager;
-if not modulemanager.is_loaded(module.host, "muc") then
+if not host:host_is_muc() then
 	module:log("error", "mod_muc_log_mam can only be loaded on a muc component!");
-	modulemanager.unload(module.host, "muc_log_mam");
 	return;
 end
 
@@ -19,13 +17,12 @@ local jid_bare = require "util.jid".bare;
 local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local datetime = require "util.datetime";
-local datamanager = require "util.datamanager";
 local st = require "util.stanza";
-local data_load = datamanager.load;
+local data_load = require "util.datamanager".load;
 local datastore = "muc_log";
 local error_reply = require "util.stanza".error_reply;
 
-local host_object = hosts[module.host];
+local host_object = module:get_host_session();
 
 local xmlns = "urn:xmpp:mam:2";
 local delay_xmlns = "urn:xmpp:delay";

@@ -4,9 +4,8 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-if hosts[module.host].anonymous_host then
+if module:get_host_session().anonymous_host then
 	module:log("error", "Personal Eventing Protocol won't be available on anonymous hosts as storage is explicitly disabled");
-	modulemanager.unload(module.host, "pep");
 	return;
 end
 
@@ -21,10 +20,9 @@ local jid_join = require "util.jid".join;
 local jid_split = require "util.jid".split;
 local uuid_generate = require "util.uuid".generate;
 local calculate_hash = require "util.caps".calculate_hash;
-local encode_node = datamanager.path_encode;
-local get_path = datamanager.getpath;
+local encode_node = require "util.datamanager".path_encode;
+local get_path = require "util.datamanager".getpath;
 local um_user_exists = usermanager.user_exists;
-local bare_sessions = bare_sessions;
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
@@ -60,7 +58,7 @@ local check_service_inactivity = module:get_option_number("pep_check_service_ina
 module:add_timer(check_service_inactivity, function()
 	module:log("debug", "Checking for idle PEP Services...");
 	for name, service in pairs(services) do
-		if not bare_sessions[name] then
+		if not module:get_bare_session(name) then
 			module:log("debug", "Deactivated inactive PEP Service -- %s", name);
 			services[name] = nil;
 		end
@@ -446,7 +444,7 @@ function presence_handler(event)
 	local t = stanza.attr.type;
 	local self = not stanza.attr.to;
 	local service = services[user];
-	local user_bare_session = bare_sessions[user];
+	local user_bare_session = module:get_bare_session(user);
 	
 	if not service then return nil; end -- User Service doesn't exist
 	local nodes = service.nodes;
@@ -594,7 +592,7 @@ end, -1);
 module:hook("resource-unbind", function(event)
 	local session = event.session;
 	local user = jid_join(session.username, session.host);
-	local has_sessions = bare_sessions[user];
+	local has_sessions = module:get_bare_session(user);
 	local service = services[user];
 
 	if not has_sessions and service then -- wipe recipients

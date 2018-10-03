@@ -10,18 +10,17 @@ module:depends("adhoc");
 
 local st = require "util.stanza";
 local dataforms = require "util.dataforms";
-local datamanager = require "util.datamanager";
 local jid_split = require "util.jid".split;
 local my_host = module.host;
 local NULL = {};
 
 local ipairs, pairs, t_insert = ipairs, pairs, table.insert;
 
-module:add_feature("urn:xmpp:server-presence")
+local server_presence = storagemanager.open(my_host, "server_presence");
 
-local outbound = {};
-local pending = {};
-local subscribed = {};
+module:add_feature("urn:xmpp:server-presence");
+
+local outbound, pending, subscribed;
 
 local s_xmlns = "http://jabber.org/protocol/admin#server-buddy";
 local p_xmlns = "http://metronome.im/protocol/admin#server-buddy-pending";
@@ -101,7 +100,7 @@ local function subscribe_command_handler(self, data, state)
 			local subscribe = st.presence({ to = peer, from = my_host, type = "subscribe" });
 			outbound[peer] = true;
 			module:send(subscribe);
-			datamanager.store("outbound", my_host, "server_presence", outbound);
+			server_presence:set("outbound", outbound);
 			return { status = "completed", info = "Subscription request sent" };
 		end
 	else
@@ -132,8 +131,8 @@ local function pending_command_handler(self, data, state)
 			end
 		end
 		
-		if _changed then datamanager.store("subscribed", my_host, "server_presence", subscribed); end
-		datamanager.store("pending", my_host, "server_presence", pending);
+		if _changed then server_presence:set("subscribed", subscribed); end
+		server_presence:set("pending", pending);
 		return { status = "completed", info = "Done." };
 	else
 		return { status = "executing", form = layout }, "executing"
@@ -158,7 +157,7 @@ local function remove_command_handler(self, data, state)
 			end
 		end
 
-		if _changed then datamanager.store("subscribed", my_host, "server_presence", subscribed); end
+		if _changed then server_presence:set("subscribed", subscribed); end
 		return { status = "completed", info = "Done" };
 	else
 		return { status = "executing", form = layout }, "executing"
@@ -191,7 +190,7 @@ module:hook("presence/host", function(event)
 			module:send(st_subscribed);
 		else
 			pending[host] = true;
-			datamanager.store("pending", my_host, "server_presence", pending);
+			server_presence:set("pending", pending);
 		end
 	elseif t == "subscribed" then
 		if outbound[host] then
@@ -200,8 +199,8 @@ module:hook("presence/host", function(event)
 			module:send(st_subscribe);
 			outbound[host] = nil;
 			subscribed[host] = true;
-			datamanager.store("outbound", my_host, "server_presence", outbound);
-			datamanager.store("subscribed", my_host, "server_presence", subscribed);
+			server_presence:set("outbound", outbound);
+			server_presence:set("subscribed", subscribed);
 			module:fire_event("peer-subscription-completed", host);
 		end
 	elseif t == "unsubscribe" or t == "unsubscribed" then
@@ -214,8 +213,8 @@ module:hook("presence/host", function(event)
 				st_unsubscribed.attr.to = host;
 				module:send(st_unsubscribed);
 			end
-			if _pending then datamanager.store("pending", my_host, "server_presence", pending); end
-			if _subscribed then datamanager.store("subscribed", my_host, "server_presence", subscribed); end
+			if _pending then server_presence:set("pending", pending); end
+			if _subscribed then server_presence:set("subscribed", subscribed); end
 			module:fire_event("peer-subscription-removed", host);
 		end
 	end
@@ -230,17 +229,7 @@ end);
 -- Module Methods
 
 module.load = function()
-	if datamanager.load("outbound", my_host, "server_presence") then outbound = datamanager.load("outbound", my_host, "server_presence"); end
-	if datamanager.load("pending", my_host, "server_presence") then pending = datamanager.load("pending", my_host, "server_presence"); end
-	if datamanager.load("subscribed", my_host, "server_presence") then subscribed = datamanager.load("subscribed", my_host, "server_presence"); end
-end
-
-module.save = function()
-	return { outbound = outbound, pending = pending, subscribed = subscribed };
-end
-
-module.restore = function(data)
-	outbound = data.outbound or {};
-	pending = data.pending or {};
-	subscribed = data.subscribed or {};		
+	outbound = server_presence:get("outbound") or {};
+	pending = server_presence:get("pending") or {};
+	subscribed = server_presence:get("subscribed") or {};
 end

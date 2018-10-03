@@ -7,12 +7,11 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Florian Zeitz, Marco Cirillo, Matthew Wild, Paul Aurich, Waqas Hussain
 
-local is_component = module:get_host_type() == "component";
-if is_component and not hosts[module.host].muc then
+if not module:host_is_muc() then
 	error("mod_pastebin can't be loaded on non muc components", 0);
 end
 
-local host_object = hosts[module.host];
+local host_object = module:get_host_session();
 
 local st = require "util.stanza";
 module:depends("http");
@@ -49,6 +48,8 @@ local html_preview = module:get_option_boolean("pastebin_html_preview", true);
 local base_path = module:get_option_string("pastebin_path", "/pastebin/");
 if not base_path:find("/$") then base_path = base_path.."/" end
 local base_url = module:get_option_string("pastebin_url", module:http_url(nil, base_path));
+
+local pastebin = storagemanager.open(module.host, "pastebin");
 
 -- Seconds a paste should live for in seconds (config is in hours), default 24 hours
 local expire_after = math.floor(module:get_option_number("pastebin_expire_after", 24) * 3600);
@@ -160,16 +161,15 @@ module:provides("http", {
 
 local function set_pastes_metatable()
 	if expire_after == 0 then
-		local dm = require "util.datamanager";
 		setmetatable(pastes, {
 			__index = function (pastes, id)
 				if type(id) == "string" then
-					return dm.load(id, module.host, "pastebin");
+					return pastebin:get(id);
 				end
 			end;
 			__newindex = function (pastes, id, data)
 				if type(id) == "string" then
-					dm.store(id, module.host, "pastebin", data);
+					pastebin:set(id, data);
 				end
 			end;
 		});

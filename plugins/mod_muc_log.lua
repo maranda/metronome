@@ -8,8 +8,7 @@
 
 -- Imported from prosody-modules, mod_muc_log
 
-local modulemanager = modulemanager;
-if not modulemanager.is_loaded(module.host, "muc") then
+if not module:host_is_muc() then
 	module:log("error", "mod_muc_log can only be loaded on a muc component!")
 	return;
 end
@@ -34,7 +33,7 @@ local lmc_xmlns = "urn:xmpp:message-correct:0";
 local sid_xmlns = "urn:xmpp:sid:0";
 
 local mod_host = module:get_host();
-local host_object = hosts[mod_host];
+local host_object = module:get_host_session();
 
 -- Module Definitions
 

@@ -7,7 +7,6 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2010-2013, Kim Alvefur, Matthew Wild, Tobias Markmann, Waqas Hussain
 
-local datamanager = require "util.datamanager";
 local log = require "util.logger".init("auth_internal_hashed");
 local getAuthenticationDatabase = require "util.sasl.scram".getAuthenticationDatabase;
 local generate_uuid = require "util.uuid".generate;
@@ -20,7 +19,8 @@ local scram_sha512_backend = module:require "sasl_aux".scram_sha512_backend;
 local external_backend = module:require "sasl_aux".external_backend;
 local to_hex = module:require "sasl_aux".to_hex;
 local get_channel_binding_callback = module:require "sasl_aux".get_channel_binding_callback;
-local bare_sessions = bare_sessions;
+
+local accounts = storagemanager.open(module.host, "accounts");
 
 -- Default; can be set per-user
 local iteration_count = 4096;
@@ -30,7 +30,7 @@ function new_hashpass_provider(host)
 	log("debug", "initializing internal_hashed authentication provider for host '%s'", host);
 
 	function provider.test_password(username, password)
-		local credentials = datamanager.load(username, host, "accounts") or {};
+		local credentials = accounts:get(username) or {};
 	
 		if credentials.password ~= nil and string.len(credentials.password) ~= 0 then
 			if credentials.password ~= password then
@@ -61,7 +61,7 @@ function new_hashpass_provider(host)
 	end
 
 	function provider.set_password(username, password)
-		local account = datamanager.load(username, host, "accounts");
+		local account = accounts:get(username);
 		if account then
 			account.salt = account.salt or generate_uuid();
 			account.iteration_count = account.iteration_count or iteration_count;
@@ -87,13 +87,13 @@ function new_hashpass_provider(host)
 			account.server_key_512 = server_key_hex;
 
 			account.password = nil;
-			return datamanager.store(username, host, "accounts", account);
+			return accounts:set(username, account);
 		end
 		return nil, "Account not available";
 	end
 
 	function provider.user_exists(username)
-		local account = datamanager.load(username, host, "accounts");
+		local account = accounts:get(username);
 		if not account then
 			log("debug", "account not found for username '%s' at host '%s'", username, module.host);
 			return nil, "Auth failed, invalid username";
@@ -102,7 +102,7 @@ function new_hashpass_provider(host)
 	end
 
 	function provider.is_locked(username)
-		local account = datamanager.load(username, host, "accounts");
+		local account = accounts:get(username);
 		if not account then
 			return nil, "Auth failed, invalid username";
 		elseif account and account.locked then
@@ -112,25 +112,25 @@ function new_hashpass_provider(host)
 	end
 
 	function provider.unlock_user(username)
-		local account = datamanager.load(username, host, "accounts");
+		local account = accounts:get(username);
 		if not account then
 			return nil, "Auth failed, invalid username";
 		elseif account and account.locked then
 			account.locked = nil;
-			local bare_session = bare_sessions[username.."@"..host];
+			local bare_session = module:get_bare_session(username.."@"..host);
 			if bare_session then
 				for _, session in pairs(bare_session.sessions) do
 					session.locked = nil;
 				end
 			end
-			return datamanager.store(username, host, "accounts", account);
+			return accounts:set(username, account);
 		end
 		return nil, "User isn't locked";
 	end
 
 	function provider.create_user(username, password, locked)
 		if password == nil then
-			return datamanager.store(username, host, "accounts", {});
+			return accounts:set(username, {});
 		end
 		local salt = generate_uuid();
 		local valid, stored_key, server_key = getAuthenticationDatabase("sha_1", password, salt, iteration_count);
@@ -145,7 +145,7 @@ function new_hashpass_provider(host)
 		valid, stored_key, server_key = getAuthenticationDatabase("sha_512", password, salt, iteration_count);
 		local stored_key_hex_512 = to_hex(stored_key);
 		local server_key_hex_512 = to_hex(server_key);
-		return datamanager.store(username, host, "accounts", 
+		return accounts:set(username, 
 			{
 				stored_key = stored_key_hex, server_key = server_key_hex,
 				stored_key_256 = stored_key_hex_256, server_key_256 = server_key_hex_256,
@@ -157,7 +157,7 @@ function new_hashpass_provider(host)
 	end
 
 	function provider.delete_user(username)
-		return datamanager.store(username, host, "accounts", nil);
+		return accounts:set(username, nil);
 	end
 
 	function provider.get_sasl_handler(session)

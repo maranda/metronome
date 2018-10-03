@@ -4,21 +4,20 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-local modulemanager = modulemanager;
-if not modulemanager.is_loaded(module.host, "muc") then
+if not module:host_is_muc() then
 	module:log("error", "mod_muc_vcard can only be loaded on a muc component!");
-	modulemanager.unload(module.host, "muc_vcard");
 	return;
 end
 
-local host_object = hosts[module.host];
+local host_object = module:get_host_session();
 
 local ipairs, tostring, t_remove = ipairs, tostring, table.remove;
 local st = require "util.stanza";
 local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
-local load, store = require "util.datamanager".load, require "util.datamanager".store;
 local sha1 = require "util.hashes".sha1;
 local debase64 = require "util.encodings".base64.decode;
+
+local room_icons = storagemanager.open(module.host, "room_icons");
 
 local vcard_max = module:get_option_number("vcard_max_size");
 
@@ -28,13 +27,13 @@ end, -101);
 
 module:hook("muc-room-destroyed", function(event)
 	local node, host = jid_split(event.room.jid);
-	store(node, host, "room_icons", nil);
+	room_icons:set(node);
 end);
 
 module:hook("muc-occupant-list-sent", function(room, from, nick, origin)
 	if room.vcard_hash == nil then -- load and cache
 		local node, host = jid_split(room.jid);
-		local stored_vcard = load(node, host, "room_icons");
+		local stored_vcard = room_icons:get(node);
 		if stored_vcard and stored_vcard.hash then
 			room.vcard_hash = stored_vcard.hash or false;
 		else
@@ -62,7 +61,7 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 	end
 
 	if stanza.attr.type == "get" then
-		local stored_vcard = load(node, host, "room_icons");
+		local stored_vcard = room_icons:get(node);
 		if stored_vcard then
 			session.send(st.reply(stanza):add_child(st.deserialize(stored_vcard.photo)));
 		else
@@ -82,7 +81,7 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 			end
 
 			if #vCard.tags == 0 then
-				if store(node, host, "room_icons", nil) then
+				if room_icons:set(node) then
 					session.send(st.reply(stanza));
 				else
 					session.send(st.error_reply(stanza, "wait", "internal-server-error", "Failed to remove room icon"));
@@ -100,7 +99,7 @@ module:hook("iq/bare/vcard-temp:vCard", function(event)
 
 			local hash = sha1(debase64(vCard.tags[1]:child_with_name("BINVAL"):get_text()), true);
 			
-			if store(node, host, "room_icons", { photo = st.preserialize(vCard), hash = hash }) then
+			if room_icons:set(node, { photo = st.preserialize(vCard), hash = hash }) then
 				session.send(st.reply(stanza));
 				room.vcard_hash = hash;
 				local pr = st.presence({ id = "room-avatar", from = room.jid })

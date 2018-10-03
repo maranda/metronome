@@ -13,7 +13,6 @@ local jid_join = require "util.jid".join;
 local jid_section = require "util.jid".section;
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
-local storagemanager = storagemanager;
 local load_roster = require "util.rostermanager".load_roster;
 local check_policy = module:require("acdf_aux").check_policy;
 
@@ -39,8 +38,8 @@ local unload_cache_time = module:get_option_number("mam_unload_cache_time", 3600
 
 local session_stores = {};
 local offline_stores = {};
-local storage = {};
 local to_save = now();
+local storage;
 
 local valid_markers = {
 	markable = "markable", received = "received",

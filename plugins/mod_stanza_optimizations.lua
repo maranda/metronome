@@ -302,7 +302,7 @@ end);
 module:hook("message/bare", function(event)
 	local stanza, origin = event.stanza, event.origin;
 
-	local to_bare = bare_sessions[stanza.attr.to];
+	local to_bare = module:get_bare_session(stanza.attr.to);
 	if not to_bare then
 		return;
 	else
@@ -320,7 +320,7 @@ module:hook("presence/bare", function(event)
 	local t = stanza.attr.type;
 	if t ~= nil and t ~= "unavailable" and t ~= "error" then return; end
 
-	local to_bare = bare_sessions[stanza.attr.to];
+	local to_bare = module:get_bare_session(stanza.attr.to);
 	if not to_bare then
 		return;
 	else
@@ -347,7 +347,7 @@ local function full_handler(event)
 	local t = stanza.attr.type;
 	local st_name = stanza.name;
 	
-	local to_full = full_sessions[stanza.attr.to];
+	local to_full = module:get_full_session(stanza.attr.to);
 	if to_full then
 		local csi_state = to_full.csi;
 		if csi_state == "inactive" and st_name == "presence" then
@@ -440,7 +440,7 @@ end, 40);
 module:hook("resource-unbind", function(event)
 	local user = event.session.username;
 	local bare_jid = jid_join(user, event.session.host);
-	local bare_session = bare_sessions[bare_jid];
+	local bare_session = module:get_bare_session(bare_jid);
 	local config = account_csi_config[bare_jid];
 	if not bare_session and config then
 		storage:set(user, config);
@@ -464,7 +464,7 @@ end
 
 function module.unload(reload)
 	if not reload then 
-		for _, full_session in pairs(full_sessions) do 
+		for _, full_session in module:get_full_sessions() do 
 			full_session.csi = nil;
 			if full_session.csi_queue then
 				full_session.csi_queue:flush();

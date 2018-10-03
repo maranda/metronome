@@ -7,13 +7,13 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2010-2013, Kim Alvefur, Matthew Wild, Waqas Hussain
 
-local datamanager = require "util.datamanager";
 local new_sasl = require "util.sasl".new;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local plain_backend = module:require "sasl_aux".plain_backend;
 local external_backend = module:require "sasl_aux".external_backend;
 local get_channel_binding_callback = module:require "sasl_aux".get_channel_binding_callback;
-local bare_sessions = bare_sessions;
+
+local accounts = storagemanager.open(module.host, "accounts");
 
 local log = module._log;
 
@@ -23,7 +23,7 @@ function new_default_provider(host)
 
 	function provider.test_password(username, password)
 		log("debug", "test password '%s' for user %s at host %s", password, username, module.host);
-		local credentials = datamanager.load(username, host, "accounts") or {};
+		local credentials = accounts:get(username) or {};
 	
 		if password == credentials.password then
 			return true;
@@ -34,20 +34,20 @@ function new_default_provider(host)
 
 	function provider.get_password(username)
 		log("debug", "get_password for username '%s' at host '%s'", username, module.host);
-		return (datamanager.load(username, host, "accounts") or {}).password;
+		return (accounts:get(username) or {}).password;
 	end
 	
 	function provider.set_password(username, password)
-		local account = datamanager.load(username, host, "accounts");
+		local account = accounts:get(username);
 		if account then
 			account.password = password;
-			return datamanager.store(username, host, "accounts", account);
+			return accounts:set(username, account);
 		end
 		return nil, "Account not available";
 	end
 
 	function provider.user_exists(username)
-		local account = datamanager.load(username, host, "accounts");
+		local account = accounts:get(username);
 		if not account then
 			log("debug", "account not found for username '%s' at host '%s'", username, module.host);
 			return nil, "Auth failed, invalid username";
@@ -56,7 +56,7 @@ function new_default_provider(host)
 	end
 
 	function provider.is_locked(username)
-		local account = datamanager.load(username, host, "accounts");
+		local account = accounts:get(username);
 		if not account then
 			return nil, "Auth failed, invalid username";
 		elseif account and account.locked then
@@ -66,28 +66,28 @@ function new_default_provider(host)
 	end
 
 	function provider.unlock_user(username)
-		local account = datamanager.load(username, host, "accounts");
+		local account = accounts:get(username);
 		if not account then
 			return nil, "Auth failed, invalid username";
 		elseif account and account.locked then
 			account.locked = nil;
-			local bare_session = bare_sessions[username.."@"..host];
+			local bare_session = module:get_bare_session(username.."@"..host);
 			if bare_session then
 				for _, session in pairs(bare_session.sessions) do
 					session.locked = nil;
 				end
 			end
-			return datamanager.store(username, host, "accounts", account);
+			return accounts:set(username, account);
 		end
 		return nil, "User isn't locked";
 	end
 
 	function provider.create_user(username, password, locked)
-		return datamanager.store(username, host, "accounts", { password = password, locked = locked });
+		return accounts:set(username, { password = password, locked = locked });
 	end
 	
 	function provider.delete_user(username)
-		return datamanager.store(username, host, "accounts", nil);
+		return accounts:set(username, nil);
 	end
 
 	function provider.get_sasl_handler(session)
