@@ -39,7 +39,7 @@ local function utf8_length(str)
 	return count;
 end
 
-local pastebin_private_messages = module:get_option_boolean("pastebin_private_messages", not is_component);
+local pastebin_private_messages = module:get_option_boolean("pastebin_private_messages", not module:host_is_component());
 local length_threshold = module:get_option_number("pastebin_threshold", 500);
 local line_threshold = module:get_option_number("pastebin_line_threshold", 4);
 local max_summary_length = module:get_option_number("pastebin_summary_length", 150);
