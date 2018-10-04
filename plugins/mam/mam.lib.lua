@@ -185,7 +185,7 @@ local function append_stanzas(stanzas, entry, qid, check_acdf)
 	if check_acdf and label then
 		local session, request = unpack(check_acdf);
 		local jid = session.full_jid or request.attr.from;
-		if check_policy(label, jid, { attr = { from = entry.from } }, request) then
+		if check_policy(label, jid, { attr = { from = entry.from, resource = entry.resource } }, request) then
 			_body = "[You're not authorized to see this message content]";
 		end
 	end

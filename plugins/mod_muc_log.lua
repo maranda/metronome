@@ -105,10 +105,10 @@ function log_if_needed(e)
 				data[#data + 1] = data_entry;
 
 				if label then
-					local tags, host = {}, jid_section(from_room, "host");
+					local tags = {};
 					local text = label:get_child_text("displaymarking");
 					t_insert(tags, deserialize(label));
-					data_entry.label_actions = get_actions(host, text);
+					data_entry.label_actions = get_actions(mod_host, text);
 					data_entry.label_name = text;
 					data_entry.tags = tags;
 				end
