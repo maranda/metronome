@@ -22,14 +22,21 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 	local breaks_policy;
 	local from, to = stanza.attr.from, stanza.attr.to;
 	if type(actions) == "table" then
+		local _from, _to;
+		if type(check_acl) == "table" then -- assume it's a MAM ACL request
+			_from = section(check_acl.attr.from or session.full_jid, "host");
+			_to = section(check_acl.attr.to, "host");
+			if not to then to = check_acl.attr.from or session.full_jid; end
+		else
+			_from, _to = section(from, "host"), section(to, "host");
+		end
 		if actions.type and stanza.attr.type ~= actions.type then
 			breaks_policy = true;
 		elseif actions.muc_callback == "affiliation" then
-			local to_host, from_host = section(to, "host"), section(from, "host")
 			local muc_to, muc_from;
-			if module:host_is_muc(to_host) then
+			if module:host_is_muc(_to) then
 				muc_to = true; 
-			elseif module:host_is_muc(from_host) then
+			elseif module:host_is_muc(_from) then
 				muc_from = true;
 			end
 
@@ -66,14 +73,6 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 				end
 			end
 		elseif type(actions.host) == "table" then
-			local _from, _to;
-			if type(check_acl) == "table" then -- assume it's a MAM ACL request
-				_from = section(check_acl.attr.from or session.full_jid, "host");
-				_to = section(check_acl.attr.to, "host");
-			else
-				_from, _to = section(from, "host"), section(to, "host");
-			end
-
 			if actions.include_muc_subdomains then
 				if module:host_is_muc(_from) and module:get_host_session(_from:match("%.([^%.].*)")) then
 					_from = _from:match("%.([^%.].*)");
