@@ -199,11 +199,11 @@ function module.add_host(module)
 		Classified = {
 			MODERATORS = {
 				color = "black", bgcolor = "skyblue", label = "Just for moderators",
-				restrict = { muc_callback = "affiliation", response = { "admin", "owner" } }
+				restrict = { muc_affiliation = true, response = { "admin", "owner" } }
 			},
 			MEMBERS = {
 				color = "black", bgcolor = "aliceblue", label = "Just for members",
-				restrict = { muc_callback = "affiliation", response = { "admin", "owner", "member" } }
+				restrict = { muc_affiliation = true, response = { "admin", "owner", "member" } }
 			},
 			PRIVATE = {
 				color = "black", bgcolor = "turquoise", label = "Only for groupchats",

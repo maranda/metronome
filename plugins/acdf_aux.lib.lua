@@ -12,9 +12,15 @@ local bare, section, split, t_remove =
 	require "util.jid".bare, require "util.jid".section, require "util.jid".split, table.remove;
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 
-local function get_match(affiliation, responses)
+local function match_affiliation(affiliation, responses)
 	for _, response in ipairs(responses) do
 		if response == affiliation then return true; end
+	end
+end
+
+local function match_jid(jid, list)
+	for _, listed_jid in ipairs(list) do
+		if jid == listed_jid then return true; end
 	end
 end
 
@@ -30,7 +36,7 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 		_from, _to = section(from, "host"), section(to, "host");
 		if actions.type and stanza.attr.type ~= actions.type then
 			breaks_policy = true;
-		elseif actions.muc_callback == "affiliation" then
+		elseif actions.muc_affiliation then
 			local muc_to, muc_from;
 			if module:host_is_muc(_to) then
 				muc_to = true; 
@@ -85,6 +91,11 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 			end
 
 			if _from ~= (actions.host[1] or actions.host[2]) or _to ~= (actions.host[1] or actions.host[2]) then
+				breaks_policy = true;
+			end
+		elseif type(actions.whitelist) == "table" and #actions.whitelist > 0 then
+			local bare_from, bare_to = bare(from or session.full_jid), bare(to);
+			if not (match_jid(bare_from, actions.whitelist) and match_jid(bare_to, actions.whitelist)) then
 				breaks_policy = true;
 			end
 		end
