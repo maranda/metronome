@@ -4,8 +4,9 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
--- This module is a simplified port of mod_seclabels from Prosody Modules
--- and implements the server catalog for Security Labels (XEP-0258).
+-- This module is based on mod_seclabels from Prosody Modules and implements
+-- both the server catalogs and local / remote query handling facilities for
+-- Security Labels in XMPP (XEP-0258).
 
 module:set_global();
 
