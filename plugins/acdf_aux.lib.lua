@@ -6,13 +6,17 @@
 
 -- This library contains shared code for Access Control Decision Function.
 
-local type = type;
+local ipairs, type = ipairs, type;
 local clone, error_reply = require "util.stanza".clone, require "util.stanza".error_reply;
 local bare, section, split, t_remove =
 	require "util.jid".bare, require "util.jid".section, require "util.jid".split, table.remove;
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 
-local hosts = hosts;
+local function get_match(affiliation, responses)
+	for _, response in ipairs(responses) do
+		if response == affiliation then return true; end
+	end
+end
 
 local function apply_policy(label, session, stanza, actions, check_acl)
 	local breaks_policy;
@@ -20,6 +24,47 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 	if type(actions) == "table" then
 		if actions.type and stanza.attr.type ~= actions.type then
 			breaks_policy = true;
+		elseif actions.muc_callback == "affiliation" then
+			local to_host, from_host = section(to, "host"), section(from, "host")
+			local muc_to, muc_from;
+			if module:host_is_muc(to_host) then
+				muc_to = true; 
+			elseif module:host_is_muc(from_host) then
+				muc_from = true;
+			end
+
+			local rooms;
+			if muc_to then
+				rooms = module:get_host_session(to_host).muc.rooms;
+				local room = rooms[bare(to)];
+				if stanza.attr.type == "groupchat" then
+					local affiliation, match = room:get_affiliation(from);
+					match = get_match(affiliation, actions.response);
+					if not match then breaks_policy = true; end
+				else
+					local affiliation_from, match_from, affiliation_to, match_to;
+					affiliation_from = room:get_affiliation(from);
+					match_from = get_match(affiliation_from, actions.response);
+					affiliation_to = room:get_affiliation(room._occupants[to].jid);
+					match_to = get_match(affiliation_to, actions.response);
+					if not (match_to and match_from) then breaks_policy = true; end
+				end
+			elseif muc_from then
+				rooms = module:get_host_session(from_host).muc.rooms;
+				local room = rooms[bare(from)];
+				if stanza.attr.type == "groupchat" then
+					local affiliation, match = room:get_affiliation(to);
+					match = get_match(affiliation, actions.response);
+					if not match then breaks_policy = true; end
+				else
+					local affiliation_from, match_from, affiliation_to, match_to;
+					affiliation_from = room:get_affiliation(room._occupants[from].jid);
+					match_from = get_match(affiliation_from, actions.response);
+					affiliation_to = room:get_affiliation(to);
+					match_to = get_match(affiliation_to, actions.response);
+					if not (match_to and match_from) then breaks_policy = true; end
+				end
+			end
 		elseif type(actions.host) == "table" then
 			local _from, _to;
 			if type(check_acl) == "table" then -- assume it's a MAM ACL request
@@ -30,11 +75,10 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 			end
 
 			if actions.include_muc_subdomains then
-				local from_host_object, to_host_object = hosts[_from], hosts[_to];
-				if from_host_object and from_host_object.muc and hosts[_from:match("%.([^%.].*)")] then
+				if module:host_is_muc(_from) and module:get_host_session(_from:match("%.([^%.].*)")) then
 					_from = _from:match("%.([^%.].*)");
 				end
-				if to_host_object and to_host_object.muc and hosts[_to:match("%.([^%.].*)")] then
+				if module:host_is_muc(_to) and module:get_host_session(_to:match("%.([^%.].*)")) then
 					_to = _to:match("%.([^%.].*)");
 				end
 			end
@@ -46,9 +90,9 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 	elseif actions == "roster" then
 		local from_node, from_host = split(from);
 		local to_node, to_host = split(to);
-		if from_node and hosts[from_host] then
+		if from_node and module:get_host_session(from_host) then
 			if not is_contact_subscribed(from_node, from_host, bare(to)) then breaks_policy = true; end
-		elseif to_node and hosts[to_host] then
+		elseif to_node and module:get_host_session(to_host) then
 			if not is_contact_subscribed(to_node, to_host, bare(from)) then breaks_policy = true; end
 		end
 	end
@@ -65,7 +109,7 @@ end
 
 local policy_cache = {};
 local function get_actions(host, label)
-	local host_object = hosts[host];
+	local host_object = module:get_host_session(host);
 	if host_object and label then
 		if not policy_cache[host] then policy_cache[host] = setmetatable({}, { __mode = "v" }); end
 		local cache = policy_cache[host];
@@ -78,14 +122,7 @@ end
 
 local function check_policy(label, jid, stanza, request_stanza)
 	local host, actions = section(stanza.attr.from, "host");
-	local from_host_object = hosts[host];
-	if from_host_object and from_host_object.muc then
-		local match = host:match("%.([^%.].*)");
-		if hosts[match] then host = match; end
-	else
-		host = section(jid, "host");
-	end
-	
+
 	local actions = get_actions(host, label);
 	if actions then
 		return apply_policy(label, { full_jid = jid }, stanza, actions, request_stanza or true);
