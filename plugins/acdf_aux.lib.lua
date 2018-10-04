@@ -24,13 +24,10 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 	if type(actions) == "table" then
 		local _from, _to, _resource_jid;
 		if type(check_acl) == "table" then -- assume it's a MAM ACL request
-			_from = section(check_acl.attr.from or session.full_jid, "host");
-			_to = section(check_acl.attr.to, "host");
 			if not to then to = check_acl.attr.from or session.full_jid; end
 			_resource_jid = stanza.attr.resource;
-		else
-			_from, _to = section(from, "host"), section(to, "host");
 		end
+		_from, _to = section(from, "host"), section(to, "host");
 		if actions.type and stanza.attr.type ~= actions.type then
 			breaks_policy = true;
 		elseif actions.muc_callback == "affiliation" then
@@ -53,7 +50,9 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 					local affiliation_from, match_from, affiliation_to, match_to;
 					affiliation_from = room:get_affiliation(from);
 					match_from = get_match(affiliation_from, actions.response);
-					affiliation_to = room:get_affiliation(room._occupants[to].jid);
+					affiliation_to = room:get_affiliation(
+						room._occupants[to] and room._occupants[to].jid or nil
+					);
 					match_to = get_match(affiliation_to, actions.response);
 					if not (match_to and match_from) then breaks_policy = true; end
 				end
