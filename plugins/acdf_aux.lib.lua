@@ -42,7 +42,7 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 
 			local rooms;
 			if muc_to then
-				rooms = module:get_host_session(to_host).muc.rooms;
+				rooms = module:get_host_session(_to).muc.rooms;
 				local room = rooms[bare(to)];
 				if stanza.attr.type == "groupchat" then
 					local affiliation, match = room:get_affiliation(from);
@@ -57,7 +57,7 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 					if not (match_to and match_from) then breaks_policy = true; end
 				end
 			elseif muc_from then
-				rooms = module:get_host_session(from_host).muc.rooms;
+				rooms = module:get_host_session(_from).muc.rooms;
 				local room = rooms[bare(from)];
 				if stanza.attr.type == "groupchat" then
 					local affiliation, match = room:get_affiliation(to);
