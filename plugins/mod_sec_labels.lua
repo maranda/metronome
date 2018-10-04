@@ -216,8 +216,10 @@ function module.add_host(module)
 		}
 	};
 
-	local catalog_name = module:get_option_string("security_catalog_name", "Default");
-	local catalog_desc = module:get_option_string("security_catalog_desc", "Default Labels");
+	local catalog_name = module:get_option_string("security_catalog_name", "Metronome");
+	local catalog_desc = module:get_option_string("security_catalog_desc",
+		host_object.muc and "MUC" or "Instant messaging".." service security labels catalog"
+	);
 	local config_labels = module:get_option_table("security_labels",
 		host_object.muc and default_muc_labels or default_labels
 	);
