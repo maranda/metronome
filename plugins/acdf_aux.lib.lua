@@ -50,16 +50,16 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 				local room = rooms[bare(to)];
 				if stanza.attr.type == "groupchat" then
 					local affiliation, match = room:get_affiliation(from);
-					match = get_match(affiliation, actions.response);
+					match = match_affiliation(affiliation, actions.response);
 					if not match then breaks_policy = true; end
 				else
 					local affiliation_from, match_from, affiliation_to, match_to;
 					affiliation_from = room:get_affiliation(from);
-					match_from = get_match(affiliation_from, actions.response);
+					match_from = match_affiliation(affiliation_from, actions.response);
 					affiliation_to = room:get_affiliation(
 						room._occupants[to] and room._occupants[to].jid or nil
 					);
-					match_to = get_match(affiliation_to, actions.response);
+					match_to = match_affiliation(affiliation_to, actions.response);
 					if not (match_to and match_from) then breaks_policy = true; end
 				end
 			elseif muc_from then
@@ -67,16 +67,16 @@ local function apply_policy(label, session, stanza, actions, check_acl)
 				local room = rooms[bare(from)];
 				if stanza.attr.type == "groupchat" then
 					local affiliation, match = room:get_affiliation(to);
-					match = get_match(affiliation, actions.response);
+					match = match_affiliation(affiliation, actions.response);
 					if not match then breaks_policy = true; end
 				else
 					local affiliation_from, match_from, affiliation_to, match_to;
 					affiliation_from = room:get_affiliation(
 						_resource_jid or (room._occupants[from] and room._occupants[from].jid or nil)
 					);
-					match_from = get_match(affiliation_from, actions.response);
+					match_from = match_affiliation(affiliation_from, actions.response);
 					affiliation_to = room:get_affiliation(to);
-					match_to = get_match(affiliation_to, actions.response);
+					match_to = match_affiliation(affiliation_to, actions.response);
 					if not (match_to and match_from) then breaks_policy = true; end
 				end
 			end
