@@ -5,8 +5,7 @@
 -- information about copyright and licensing.
 
 if not module:host_is_muc() then
-	module:log("error", "mod_muc_vcard can only be loaded on a muc component!");
-	return;
+	error("mod_muc_vcard can only be loaded on a muc component!", 0);
 end
 
 local host_object = module:get_host_session();

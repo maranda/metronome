@@ -7,10 +7,6 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2013, Kim Alvefur, Florian Zeitz, Marco Cirillo, Matthew Wild, Paul Aurich, Waqas Hussain
 
-if not module:host_is_muc() then
-	error("mod_pastebin can't be loaded on non muc components", 0);
-end
-
 local host_object = module:get_host_session();
 
 local st = require "util.stanza";

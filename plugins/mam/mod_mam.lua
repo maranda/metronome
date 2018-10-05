@@ -7,9 +7,9 @@
 -- Message Archiving Management for Metronome,
 -- This implements XEP-313.
 
-if hosts[module.host].anonymous_host then
+if module:get_host_session().anonymous_host then
 	module:log("error", "Message Archive Management won't be available on anonymous hosts as storage is explicitly disabled");
-	modulemanager.unload(module.host, "mam");
+	modulemanager.unload(module.host, module.name);
 	return;
 end
 

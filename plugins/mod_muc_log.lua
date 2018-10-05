@@ -9,8 +9,7 @@
 -- Imported from prosody-modules, mod_muc_log
 
 if not module:host_is_muc() then
-	module:log("error", "mod_muc_log can only be loaded on a muc component!")
-	return;
+	error("mod_muc_log can only be loaded on a muc component!", 0)
 end
 
 local metronome = metronome;

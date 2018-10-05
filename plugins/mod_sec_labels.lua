@@ -10,6 +10,7 @@
 
 module:set_global();
 
+local modulemanager = require "core.modulemanager";
 local clone = require "util.auxiliary".clone_table;
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
@@ -163,7 +164,7 @@ function module.add_host(module)
 	module:depends("acdf");
 
 	if module:host_is_component() and not module:host_is_muc() then
-		modulemanager.unload(module.host, "sec_labels");
+		modulemanager.unload(module.host, module.name);
 		modulemanager.unload(module.host, "acdf");
 	end
 

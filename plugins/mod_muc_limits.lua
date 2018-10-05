@@ -8,8 +8,7 @@
 -- ** Copyright (c) 2012, Matthew Wild
 
 if not module:host_is_muc() then
-	module:log("error", "mod_muc_limits can only be loaded on a muc component!");
-	return;
+	error("mod_muc_limits can only be loaded on a muc component!", 0);
 end
 
 local st = require "util.stanza";

@@ -6,6 +6,7 @@
 
 if module:get_host_session().anonymous_host then
 	module:log("error", "vCards won't be available on anonymous hosts as storage is explicitly disabled");
+	modulemanager.unload(module.host, module.name);
 	return;
 end
 

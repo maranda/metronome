@@ -7,8 +7,7 @@
 -- Message Archive Management interface for mod_muc_log
 
 if not module:host_is_muc() then
-	module:log("error", "mod_muc_log_mam can only be loaded on a muc component!");
-	return;
+	error("mod_muc_log_mam can only be loaded on a muc component!", 0);
 end
 
 local ipairs, ripairs, tonumber, t_remove, tostring, os_date, os_time = 
