@@ -175,12 +175,6 @@ local function log_marker(session_archive, to, bare_to, from, bare_from, id, typ
 end
 
 local function append_stanzas(stanzas, entry, qid, check_acdf)
-	local to_forward = st.message()
-		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.uid })
-			:tag("forwarded", { xmlns = forward_xmlns })
-				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
-				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
-
 	local label = entry.label_name;
 	if check_acdf and label then
 		local session, request = unpack(check_acdf);
@@ -189,6 +183,12 @@ local function append_stanzas(stanzas, entry, qid, check_acdf)
 			return false;
 		end
 	end
+
+	local to_forward = st.message()
+		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.uid })
+			:tag("forwarded", { xmlns = forward_xmlns })
+				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
+				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
 
 	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
 	if entry.tags then
