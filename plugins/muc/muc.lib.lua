@@ -83,7 +83,6 @@ local function removeElem(sub, name)
 		if tag.name == name then t_remove(sub, i); end
 	end
 end
-local censorBody = module:require("acdf_aux").censor_body;
 -----------
 
 local room_mt = {};
@@ -136,7 +135,7 @@ function room_mt:broadcast_message(stanza, historic, from)
 		for jid in pairs(o_data.sessions) do
 			stanza.attr.to = jid;
 			if text and jid_bare(jid) ~= jid_bare(from) and check_policy(text, jid, stanza) then
-				self:_route_stanza(censorBody(stanza));
+				-- don't route message
 			else
 				self:_route_stanza(stanza);
 			end
@@ -237,7 +236,7 @@ function room_mt:send_history(to, stanza)
 			local label, text = msg:get_child("securitylabel", labels_xmlns);
 			if label then text = label:get_child_text("displaymarking"); end
 			if text and check_policy(text, to, msg) then
-				self:_route_stanza(censorBody(msg));
+				-- don't route message
 			else
 				self:_route_stanza(msg);
 			end

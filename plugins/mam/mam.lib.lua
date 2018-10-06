@@ -181,16 +181,16 @@ local function append_stanzas(stanzas, entry, qid, check_acdf)
 				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
 
-	local label, _body = entry.label_name;
+	local label = entry.label_name;
 	if check_acdf and label then
 		local session, request = unpack(check_acdf);
 		local jid = session.full_jid or request.attr.from;
 		if check_policy(label, jid, { attr = { from = entry.from, resource = entry.resource } }, request) then
-			_body = "[You're not authorized to see this message content]";
+			return false;
 		end
 	end
 
-	if entry.body then to_forward:tag("body"):text(_body or entry.body):up(); end
+	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
 	if entry.tags then
 		for i = 1, #entry.tags do to_forward:add_child(st.preserialize(entry.tags[i])); end
 	end
@@ -198,6 +198,7 @@ local function append_stanzas(stanzas, entry, qid, check_acdf)
 	if entry.oid then to_forward:tag("origin-id", { xmlns = sid_xmlns, id = entry.oid }):up(); end
 	
 	stanzas[#stanzas + 1] = to_forward;
+	return true;
 end
 
 local function generate_set(stanza, first, last, count, index)
@@ -288,10 +289,12 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			local timestamp = entry.timestamp;
 			local uid = entry.uid
 			if not dont_add(entry, with, start, fin, timestamp) and i - 1 > index then
-				append_stanzas(stanzas, entry, qid, check_acdf);
-				if at == 1 then first = uid; end
-				at = at + 1;
-				last = uid;
+				local add = append_stanzas(stanzas, entry, qid, check_acdf);
+				if add then
+					if at == 1 then first = uid; end
+					at = at + 1;
+					last = uid;
+				end
 			end
 			if at ~= 1 and at > max then break; end
 		end
@@ -322,10 +325,12 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			local timestamp = entry.timestamp;
 			local uid = entry.uid;
 			if not dont_add(entry, with, start, fin, timestamp) then
-				append_stanzas(stanzas, entry, qid, check_acdf);
-				if at == 1 then first = uid; end
-				at = at + 1;
-				last = uid;
+				local add = append_stanzas(stanzas, entry, qid, check_acdf);
+				if add then
+					if at == 1 then first = uid; end
+					at = at + 1;
+					last = uid;
+				end
 			end
 			if at ~= 1 and at > max then break; end
 		end
@@ -348,10 +353,12 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		local timestamp = entry.timestamp;
 		local uid = entry.uid;
 		if not dont_add(entry, with, start, fin, timestamp) then
-			append_stanzas(stanzas, entry, qid, check_acdf);
-			if at == 1 then first = uid; end
-			at = at + 1;
-			last = uid;
+			local add = append_stanzas(stanzas, entry, qid, check_acdf);
+			if add then
+				if at == 1 then first = uid; end
+				at = at + 1;
+				last = uid;
+			end
 		end
 		if at ~= 1 and at > max then break; end
 	end

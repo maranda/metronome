@@ -141,14 +141,4 @@ local function check_policy(label, jid, stanza, request_stanza)
 	end
 end
 
-local function censor_body(stanza)
-	local _clone = clone(stanza);
-	local body = _clone:get_child("body");
-	if body then
-		t_remove(body, 1);
-		body:text("[You're not authorized to see this message content]");
-	end
-	return _clone;
-end
-
-return { apply_policy = apply_policy, censor_body = censor_body, check_policy = check_policy, get_actions = get_actions };
+return { apply_policy = apply_policy, check_policy = check_policy, get_actions = get_actions };
