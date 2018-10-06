@@ -22,6 +22,7 @@ local hosts = hosts;
 
 local label_xmlns = "urn:xmpp:sec-label:0";
 local label_catalog_xmlns = "urn:xmpp:sec-label:catalog:2";
+local label_ess_xmlns = "urn:xmpp:sec-label:ess:0";
 
 local function actions_parser(buffer, s, loop)
 	if not loop then
@@ -74,7 +75,11 @@ local function add_labels(request, catalog, labels, selector)
 					bgcolor = item.bgcolor,
 				}):text(item.name or name):up();
 			end
-			if item.label == true then
+			if type(item.ess_mime) == "string" then
+				catalog:tag("label")
+					:tag("esssecuritylabel", { xmlns = label_ess_xmlns })
+						:text(item.ess_mime):up():up();
+			elseif item.label == true then
 				catalog:tag("label"):text(name):up();
 			elseif type(item.label) == "string" then
 				catalog:tag("label"):text(item.label):up();
