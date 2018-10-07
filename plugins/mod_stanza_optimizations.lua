@@ -8,7 +8,7 @@
 -- incoming presences and messages, particularly useful for mobile clients.
 
 local NULL = {};
-local pairs, t_insert, t_remove = pairs, table.insert, table.remove;
+local pairs, ipairs, t_insert, t_remove = pairs, ipairs, table.insert, table.remove;
 local dataforms_new = require "util.dataforms".new;
 local jid_bare = require "util.jid".bare;
 local jid_join = require "util.jid".join;
