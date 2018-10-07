@@ -32,6 +32,7 @@ local pubsub_errors = {
 	["feature-not-implemented"] = { "cancel", "feature-not-implemented" };
 	["forbidden"] = { "cancel", "forbidden" };
 	["bad-request"] = { "cancel", "bad-request" };
+	["precondition-not-met"] = { "cancel", "conflict", nil, "precondition-not-met"};
 };
 
 local function pubsub_error_reply(stanza, error)
@@ -180,6 +181,90 @@ local function process_config_form(service, name, form, new)
 	return true;
 end
 
+local function options_form_layout(service, name)
+	local c_name = "Node publish options for "..name;
+	local node = service.nodes[name];
+
+	return dataforms.new({
+		title = c_name,
+		instructions = c_name,
+		{
+			name = "FORM_TYPE",
+			type = "hidden",
+			value = "http://jabber.org/protocol/pubsub#publish-options"
+		},
+		{
+			name = "pubsub#max_items",
+			type = "text-single",
+			label = "Precondition: Max number of items to persist",
+			value = type(node.config.max_items) == "number" and tostring(node.config.max_items) or "0"
+		},
+		{
+			name = "pubsub#persist_items",
+			type = "boolean",
+			label = "Precondition: Whether to persist items to storage or not",
+			value = node.config.persist_items or false
+		},
+		{
+			name = "pubsub#access_model",
+			type = "list-single",
+			label = "Precondition: Access Model for the node, currently supported models are presence, open and whitelist",
+			value = {
+				{ value = "open", default = (node.config.access_model == "open" or node.config.access_model == nil) and true },
+				{ value = "whitelist", default = node.config.access_model == "whitelist" and true }
+			}
+		},
+		{
+			name = "pubsub#publish_model",
+			type = "list-single",
+			label = "Precondition: Publisher Model for the node, currently supported models are publishers and open",
+			value = {
+				{ value = "publishers", default = (node.config.publish_model == "publishers" or node.config.publish_model == nil) and true },
+				{ value = "open", default = node.config.publish_model == "open" and true },
+				{ value = "subscribers", default = node.config.publish_model == "subscribers" and true }
+			}
+		}
+	});
+end
+
+local function send_options_form(service, name, origin, stanza)
+	return origin.send(st.reply(stanza)
+		:tag("pubsub", { xmlns = "http://jabber.org/protocol/pubsub" })
+			:tag("publish-options", { node = name })
+				:add_child(options_form_layout(service, name):form()):up()
+	);
+end
+
+local function process_options_form(service, name, form)
+	local node_config, node;
+	node_config = {};
+	node = service.nodes[name];
+
+	if not form or form.attr.type ~= "submit" or #form.tags == 0 then return false, "bad-request"; end
+
+	for _, field in ipairs(form.tags) do
+		local value = field:get_child_text("value");
+		if field.attr.var == "pubsub#max_items" then
+			node_config.max_items = tonumber(value) or 20;
+		elseif field.attr.var == "pubsub#persist_items" then
+			node_config.persist_items = ((value == 0 or value == "false") and false) or ((value == "1" or value == "true") and true);
+		elseif field.attr.var == "pubsub#access_model" then
+			if value == "open" or value == "whitelist" then node_config.access_model = value; end
+		elseif field.attr.var == "pubsub#publish_model" then
+			if value == "publishers" or value == "open" or value == "subscribers" then node_config.publish_model = value; end
+		end
+	end
+
+	if node then -- just compare that publish-options match configuration
+		local config = node.config;
+		for option, value in pairs(node_config) do
+			if config[option] ~= value then return false, "precondition-not-met"; end
+		end
+	end
+	
+	return true, node_config;
+end
+
 -- handlers start
 
 local handlers = {};
@@ -269,6 +354,24 @@ end
 
 function handlers.get_affiliations(origin, stanza, action) return _get_affiliations(origin, stanza, action, false); end
 
+handlers["get_publish-options"] = function(service, origin, stanza, action)
+	local node = action.attr.node;
+	if not node then
+		return origin.send(pubsub_error_reply(stanza, "feature-not-implemented"));
+	end
+
+	local node_obj = service.nodes[node];
+	if not node_obj then
+		return origin.send(pubsub_error_reply(stanza, "item-not-found"));
+	end
+
+	if node_obj.config.publish_model == "open" or service:may(node, from, "publish") then
+		return send_options_form(service, node, origin, stanza);
+	else
+		return origin.send(pubsub_error_reply(stanza, "forbidden"));
+	end
+end
+
 function handlers.set_create(origin, stanza, create, config)
 	local node = create.attr.node;
 	local ok, ret, reply;
@@ -352,12 +455,18 @@ function handlers.set_unsubscribe(origin, stanza, unsubscribe)
 	return origin.send(reply);
 end
 
-function handlers.set_publish(origin, stanza, publish)
+function handlers.set_publish(origin, stanza, publish, config)
 	local node = publish.attr.node;
 	local item = publish:get_child("item");
 	local id = (item and item.attr.id) or uuid_generate();
 	if item and not item.attr.id then item.attr.id = id; end
-	local ok, ret = service:publish(node, stanza.attr.from, id, item);
+	local ok, ret;
+	if config
+		local form = config:get_child("x", "jabber:x:data");
+		ok, ret = process_options_form(service, node, form);
+		if not ok then return origin.send(pubsub_error_reply(stanza, ret)); end
+	end
+	ok, ret = service:publish(node, stanza.attr.from, id, item, config);
 	local reply;
 	if ok then
 		reply = st.reply(stanza)

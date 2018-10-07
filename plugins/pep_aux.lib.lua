@@ -40,7 +40,9 @@ local features = {
 	"http://jabber.org/protocol/pubsub#publish",
 	"http://jabber.org/protocol/pubsub#publish-options",
 	"http://jabber.org/protocol/pubsub#purge-nodes",
-	"http://jabber.org/protocol/pubsub#retrieve-items"
+	"http://jabber.org/protocol/pubsub#retrieve-items",
+	"http://jabber.org/protocol/pubsub#manage-affiliations",
+	"http://jabber.org/protocol/pubsub#retrieve-affiliations"
 };
 
 local singleton_nodes = set_new{ 
@@ -64,7 +66,7 @@ local pep_errors = {
 	["forbidden"] = { "cancel", "forbidden" };
 	["not-subscribed"] = { "modify", "unexpected-request", nil, "not-subscribed" };
 	["bad-request"] = { "cancel", "bad-request" };
-	["precondition-not-met"] = { "cancel", "conflict", nil, "precondition-not-met"}
+	["precondition-not-met"] = { "cancel", "conflict", nil, "precondition-not-met" };
 };
 
 -- Functions
@@ -386,6 +388,7 @@ local function get_affiliation(self, jid, node)
 			local user, host = jid_split(self.name);
 			if not is_contact_subscribed(user, host, bare_jid) then return "no_access"; end
 		elseif node and access_model == "whitelist" then
+			if node.affiliations[bare_jid] then return node.affiliations[bare_jid]; end
 			return "no_access";
 		end
 			
@@ -446,6 +449,7 @@ local function pep_new(node)
 					be_subscribed = true;
 					be_unsubscribed = true;
 
+					get_affiliations = true;
 					set_affiliation = false;
 				};
 				publisher = {
@@ -470,6 +474,7 @@ local function pep_new(node)
 					be_subscribed = true;
 					be_unsubscribed = true;
 
+					get_affiliations = true;
 					set_affiliation = false;
 				};
 				owner = {
@@ -494,6 +499,7 @@ local function pep_new(node)
 					be_subscribed = true;
 					be_unsubscribed = true;
 
+					get_affiliations = true;
 					set_affiliation = true;
 				};
 			};

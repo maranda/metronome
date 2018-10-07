@@ -416,7 +416,7 @@ function service:delete(node, actor)
 	end
 end
 
-function service:publish(node, actor, id, item, jid)
+function service:publish(node, actor, id, item, jid, config)
 	local node_obj = self.nodes[node];
 
 	if not node_obj and self.config.autocreate_on_publish then
@@ -425,7 +425,7 @@ function service:publish(node, actor, id, item, jid)
 		end
 
 		local _actor = jid and jid or actor;
-		local ok, err = self:create(node, true, nil, _actor);
+		local ok, err = self:create(node, true, config, _actor);
 		if not ok then
 			return ok, err;
 		end
