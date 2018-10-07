@@ -136,7 +136,7 @@ end
 
 -- Pubsub handlers
 
-function handlers.get_affiliation(service, origin, stanza, action)
+function handlers.get_affiliations(service, origin, stanza, action)
 	local node = action.attr.node;
 	local ok, ret, reply;
 	reply = st.reply(stanza)
@@ -313,7 +313,7 @@ end
 
 -- Pubsub owner handlers
 
-function handlers_owner.get_affiliation(service, origin, stanza, action)
+function handlers_owner.get_affiliations(service, origin, stanza, action)
 	local node = action.attr.node;
 	local ok, ret, reply;
 	reply = st.reply(stanza)
