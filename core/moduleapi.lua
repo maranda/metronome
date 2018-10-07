@@ -34,15 +34,16 @@ local NULL = {};
 local api = {};
 
 local function sessions_iter(host)
-	return function(t, jid)
+	local function iter(t, jid)
 		local session;
 		jid, session = next(t, jid);
 		if session and section(jid, "host") == host then
 			return jid, session;
 		elseif session and section(jid, "host") ~= host then
-			return sessions_iter(t, jid);
+			return iter(t, jid);
 		end
 	end
+	return iter;
 end
 
 function api:get_name()
