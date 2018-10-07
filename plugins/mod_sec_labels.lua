@@ -11,6 +11,7 @@
 module:set_global();
 
 local modulemanager = require "core.modulemanager";
+local b64_decode = require "util.encodings".base64.decode;
 local clone = require "util.auxiliary".clone_table;
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
@@ -24,11 +25,23 @@ local label_xmlns = "urn:xmpp:sec-label:0";
 local label_catalog_xmlns = "urn:xmpp:sec-label:catalog:2";
 local label_ess_xmlns = "urn:xmpp:sec-label:ess:0";
 
-local function actions_parser(buffer, s, loop)
+local function ess_digest_check(s, name)
+	-- this only checks that the Base64 digest is sane nothing else
+	if s.ess_mime and not b64_decode(s.ess_mime) then
+		module:log("warn", "Supplied S/MIME ESS Base 64 digest for label %s is bogus", s.name or name or "with no name");
+		s.ess_mime = nil;
+	end
+end
+
+local function buffer_parser(buffer, s, loop)
 	if not loop then
+		ess_digest_check(s);
 		buffer[s.name] = s.restrict;
 	else
-		for name, label in pairs(s) do buffer[name] = label.restrict; end
+		for name, label in pairs(s) do
+			ess_digest_check(label, name);
+			buffer[name] = label.restrict;
+		end
 	end
 	return buffer;
 end
@@ -51,9 +64,9 @@ local function boot_module(config, unclassified_default)
 	end
 
 	local buffer = {};
-	for k, label in ipairs(labels) do actions_parser(buffer, label); end
+	for k, label in ipairs(labels) do buffer_parser(buffer, label); end
 	for k, selector in pairs(labels) do
-		if type(k) == "string" then actions_parser(buffer, selector, true); end
+		if type(k) == "string" then buffer_parser(buffer, selector, true); end
 	end
 
 	return labels, buffer;
