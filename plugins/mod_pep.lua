@@ -139,6 +139,9 @@ end
 function handlers.get_affiliations(service, origin, stanza, action)
 	local node = action.attr.node;
 	local ok, ret, reply;
+	if not node then
+		return origin.send(pep_error_reply(stanza, "no-node-affiliations"));
+	end
 	reply = st.reply(stanza)
 		:tag("pubsub", { xmlns = xmlns_pubsub })
 			:tag("affiliations");
@@ -316,6 +319,9 @@ end
 function handlers_owner.get_affiliations(service, origin, stanza, action)
 	local node = action.attr.node;
 	local ok, ret, reply;
+	if not node then
+		return origin.send(pep_error_reply(stanza, "no-node-affiliations"));
+	end
 	reply = st.reply(stanza)
 		:tag("pubsub", { xmlns = xmlns_pubsub_owner })
 			:tag("affiliations");

@@ -33,6 +33,8 @@ local pubsub_errors = {
 	["forbidden"] = { "cancel", "forbidden" };
 	["bad-request"] = { "cancel", "bad-request" };
 	["precondition-not-met"] = { "cancel", "conflict", nil, "precondition-not-met"};
+	["no-node-affiliations"] = { "cancel", "feature-not-implemented", 
+		"Global service affiliations are not supported, please supply the node name" };
 };
 
 local function pubsub_error_reply(stanza, error)
@@ -274,10 +276,14 @@ local function _get_affiliations(origin, stanza, action, owner)
 	local node = action.attr.node;
 	local ok, ret, reply;
 
+	if not node then
+		return origin.send(pubsub_error_reply(stanza, "no-node-affiliations"));
+	end
+
 	if owner then -- this is node owner request
 		reply = st.reply(stanza)
-				:tag("pubsub", { xmlns = xmlns_pubsub_owner })
-					:tag("affiliations");
+			:tag("pubsub", { xmlns = xmlns_pubsub_owner })
+				:tag("affiliations");
 
 		ok, ret = service:get_affiliations(node, stanza.attr.from, true);
 		if ok and ret then

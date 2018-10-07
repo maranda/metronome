@@ -67,6 +67,8 @@ local pep_errors = {
 	["not-subscribed"] = { "modify", "unexpected-request", nil, "not-subscribed" };
 	["bad-request"] = { "cancel", "bad-request" };
 	["precondition-not-met"] = { "cancel", "conflict", nil, "precondition-not-met" };
+	["no-node-affiliations"] = { "cancel", "feature-not-implemented", 
+		"Global service affiliations are not supported, please supply the node name" };
 };
 
 -- Functions
