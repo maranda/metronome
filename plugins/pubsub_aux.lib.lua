@@ -467,7 +467,7 @@ function handlers.set_publish(origin, stanza, publish, config)
 	local id = (item and item.attr.id) or uuid_generate();
 	if item and not item.attr.id then item.attr.id = id; end
 	local ok, ret;
-	if config
+	if config then
 		local form = config:get_child("x", "jabber:x:data");
 		ok, ret = process_options_form(service, node, form);
 		if not ok then return origin.send(pubsub_error_reply(stanza, ret)); end

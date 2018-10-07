@@ -40,7 +40,7 @@ local function sessions_iter(host)
 		if session and section(jid, "host") == host then
 			return jid, session;
 		elseif session and section(jid, "host") ~= host then
-			return iter(t, jid);
+			return sessions_iter(t, jid);
 		end
 	end
 end
