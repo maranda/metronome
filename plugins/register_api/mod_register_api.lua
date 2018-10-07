@@ -277,7 +277,7 @@ if do_mail_verification then
 			if data.action == "cancel" then return { status = "canceled" }; end
 			local fields = change_password_layout:data(data.form);
 			if fields.username and fields.mail then
-				local user = nodeprep(username);
+				local user = nodeprep(fields.username);
 				if not user then
 					return { status = "completed", error = { message = "Supplied username is not valid" } };
 				end
