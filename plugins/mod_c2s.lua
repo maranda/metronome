@@ -35,7 +35,7 @@ local stream_callbacks = { default_ns = "jabber:client" };
 local listener = {};
 
 --- Stream events handlers
-local stream_xmlns_attr = {xmlns = "urn:ietf:params:xml:ns:xmpp-streams"};
+local stream_xmlns_attr = { xmlns = "urn:ietf:params:xml:ns:xmpp-streams" };
 local default_stream_attr = { ["xmlns:stream"] = "http://etherx.jabber.org/streams", xmlns = stream_callbacks.default_ns, version = "1.0", id = "" };
 
 function stream_callbacks.streamopened(session, attr)
@@ -73,9 +73,13 @@ function stream_callbacks.streamopened(session, attr)
 
 	session.user_language = attr["xml:lang"]; -- user has a language preference, maybe we should check for sanity
 
-	send("<?xml version='1.0'?>"..st.stanza("stream:stream", {
-		xmlns = "jabber:client", ["xmlns:stream"] = "http://etherx.jabber.org/streams";
-		id = session.streamid, from = session.host, version = "1.0", ["xml:lang"] = "en" }):top_tag());
+	if session.open_stream then
+		session:open_stream();
+	else
+		send("<?xml version='1.0'?>"..st.stanza("stream:stream", {
+			xmlns = "jabber:client", ["xmlns:stream"] = "http://etherx.jabber.org/streams";
+			id = session.streamid, from = session.host, version = "1.0", ["xml:lang"] = "en" }):top_tag());
+	end
 
 	(session.log or log)("debug", "Sent reply <stream:stream> to client");
 	session.notopen = nil;
@@ -295,6 +299,7 @@ module:add_item("net-provider", {
 	listener = listener,
 	default_port = 5222,
 	encryption = "starttls",
+	stream_callbacks = stream_callbacks,
 	multiplex = {
 		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:client%1.*>"
 	}

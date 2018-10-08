@@ -195,6 +195,8 @@ function ws:handle(frame)
 		frame.opcode = 0xA;
 		conn:write(self:build(frame));
 		return "";
+	elseif opcode == 0xA then -- Pong frame, probable keepalive
+		return "";
 	else
 		log("warn", "Received frame with unsupported opcode %i", opcode);
 		return "";
