@@ -15,8 +15,8 @@ local softreq = require "util.dependencies".softreq;
 
 local bit;
 do
-	pcall(function() bit = require"bit"; end);
-	bit = bit or softreq"bit32";
+	pcall(function() bit = require "bit"; end);
+	bit = bit or softreq "bit32";
 end
 if not bit then error("This library requires either LuaJIT 2, lua-bitop or Lua 5.2"); end
 local band = bit.band;

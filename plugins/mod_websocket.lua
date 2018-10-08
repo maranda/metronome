@@ -161,7 +161,7 @@ local function handle_request(event, path)
 			buffer = buffer:sub(length + 1);
 			local result = ws:handle(frame);
 			if not result then return; end
-			cache[#cache+1] = filter_stream_tag(result);
+			cache[#cache + 1] = filter_stream_tag(result);
 			frame, length = ws:parse(buffer);
 		end
 		return t_concat(cache, "");
