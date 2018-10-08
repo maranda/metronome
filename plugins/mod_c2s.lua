@@ -299,7 +299,6 @@ module:add_item("net-provider", {
 	listener = listener,
 	default_port = 5222,
 	encryption = "starttls",
-	stream_callbacks = stream_callbacks,
 	multiplex = {
 		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:client%1.*>"
 	}
