@@ -489,5 +489,6 @@ _M.simple_push_entries = simple_push_entries;
 _M.simple_reorder_list = simple_reorder_list;
 _M.stanza_check_incoming = stanza_check_incoming;
 _M.stanza_check_outgoing = stanza_check_outgoing;
+_M.store_load = store_load;
 
 return _M;
