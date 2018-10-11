@@ -90,7 +90,7 @@ local function gdpr_handle_consent(event)
 		if body:match(".*I consent.*") then
 			gdpr_signed[from] = true;
 			gdpr_agreement_sent[from] = nil;
-			gdpr:save(nil, gdpr_signed);
+			gdpr:set(nil, gdpr_signed);
 			module:log("info", "%s signed the GDPR agreement, enabling s2s communication", from);
 			origin.send(st.message({ to = origin.full_jid, from = module.host, type = "chat" }, "Thank you."));
 			return true;
@@ -115,7 +115,7 @@ local function gdpr_handle_consent(event)
 				end
 			end
 			gdpr_signed[from] = false;
-			gdpr:save(nil, gdpr_signed);
+			gdpr:set(nil, gdpr_signed);
 			return true;
 		end
 	end
@@ -143,7 +143,7 @@ local function revoke_signature(self, data, state)
 		return { status = "completed", error = { message = "You didn't sign the agreement yet" } };
 	else
 		gdpr_signed[from] = nil;
-		gdpr:save(nil, gdpr_signed);
+		gdpr:set(nil, gdpr_signed);
 		return { status = "completed", info = "Revoked GDPR sign status, you'll be able to pick your choice again" };
 	end
 end
@@ -189,5 +189,5 @@ module.save = function() return { gdpr_signed = gdpr_signed, gdpr_agreement_sent
 module.restore = function(data) gdpr_signed = data.gdpr_signed or {}, data.gdpr_agreement_sent or {}; end
 module.unload = function()
 	module:log("debug", "unloading GDPR compliance module... saving signatures table");
-	gdpr:save(nil, gdpr_signed);
+	gdpr:set(nil, gdpr_signed);
 end
