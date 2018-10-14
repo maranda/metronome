@@ -66,12 +66,16 @@ end
 local function initialize_session_store(user)
 	local bare_jid = jid_join(user, module_host);
 	local bare_session = bare_sessions[bare_jid];
-	if offline_stores[bare_jid] then offline_stores[bare_jid] = nil; end
+	if offline_stores[bare_jid] then
+		session_stores[bare_jid] = offline_stores[bare_jid];
+		bare_session.archiving = session_stores[bare_jid];
+		offline_stores[bare_jid] = nil;
+	end
 	if bare_session and not bare_session.archiving then
 		session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = "never" } };
-		session_stores[bare_jid].last_used = now();
 		bare_session.archiving = session_stores[bare_jid];
 	end
+	session_stores[bare_jid].last_used = now();
 	module:add_timer(60, function()
 		if session_stores[bare_jid] then
 			local store = session_stores[bare_jid];
