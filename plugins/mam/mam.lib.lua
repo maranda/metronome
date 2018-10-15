@@ -107,6 +107,14 @@ local function save_stores()
 	end	
 end
 
+local function make_placemarker(entry)
+	entry.body = nil;
+	entry.marker = nil;
+	entry.marker_id = nil;
+	entry.oid = nil;
+	entry.tags = nil;
+end
+
 local function log_entry(session_archive, to, bare_to, from, bare_from, id, type, body, marker, marker_id, oid, tags)
 	local uid = uuid();
 	local entry = {
@@ -153,7 +161,7 @@ local function log_entry_with_replace(session_archive, to, bare_to, from, bare_f
 		for i, entry in ripairs(logs) do
 			count = count + 1;
 			if count < 1000 and entry.to == to and entry.from == from and entry.id == rid then 
-				t_remove(logs, i); break;
+				make_placemarker(entry); break;
 			end
 		end
 	end
@@ -563,11 +571,11 @@ local function process_message(event, outbound)
 end
 
 local function pop_entry(logs, i, jid)
+	local entry = logs[i];
 	if jid then
-		local entry = logs[i];
-		if (entry.bare_from == jid) or (entry.bare_to == jid) then t_remove(logs, i); end
+		if (entry.bare_from == jid) or (entry.bare_to == jid) then make_placemarker(entry); end
 	else
-		t_remove(logs, i);
+		make_placemarker(entry);
 	end
 end
 
@@ -580,7 +588,7 @@ local function purge_messages(archive, id, jid, start, fin)
 	local logs = archive.logs;
 	if id then
 		for i, entry in ipairs(logs) do
-			if entry.uid == id then t_remove(logs, i); break; end
+			if entry.uid == id then make_placemarker(entry); break; end
 		end
 	elseif jid or start or fin then
 		for i, entry in ipairs(logs) do
