@@ -91,9 +91,13 @@ module:hook("muc-log-remove-from-mamcache", function(room, from, rid)
 		local count = 0;
 		for i, entry in ripairs(cache) do
 			count = count + 1;
-			if count < 100 and entry.resource == from and entry.id == rid then
-				t_remove(cache, i); break;
+			if count <= 100 and entry.resource == from and entry.id == rid then
+				data.oid = nil;
+				data.body = nil;
+				data.tags = nil;
+				break; 
 			end
+			if count == 100 then break; end
 		end
 	end
 end, -100);
