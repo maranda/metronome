@@ -80,12 +80,13 @@ function log_if_needed(e)
 					if rid and id ~= rid then
 						for i, entry in ripairs(data) do
 							count = count + 1; -- don't go back more then 100 entries, *sorry*.
-							if count < 100 and entry.resource == from_room and entry.id == rid then
+							if count <= 100 and entry.resource == from_room and entry.id == rid then
 								data.oid = nil;
 								data.body = nil;
 								data.tags = nil;
 								break; 
 							end
+							if count == 100 then break; end
 						end
 						module:fire_event("muc-log-remove-from-mamcache", room, from_room, rid);
 					end
