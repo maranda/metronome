@@ -50,6 +50,7 @@ modules_enabled = {
 			"adhoc_cm"; -- Allow to set client certificates to login through SASL External via adhoc
 			"admin_adhoc"; -- administration adhoc commands
 			"bookmarks"; -- XEP-0048 Bookmarks synchronization between PEP and Private Storage
+			"privacy"; -- Implements XEP-0016 Privacy Lists and XEP-0191 Blocking Command
 			"sec_labels"; -- Allows to use a simplified version XEP-0258 Security Labels and related ACDFs.
 
 			-- Other specific functionality
