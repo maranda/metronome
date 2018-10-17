@@ -8,10 +8,8 @@
 
 -- Ported from prosody's http muc log module (into prosody modules).
 
-local modulemanager = modulemanager;
-if not modulemanager.is_loaded(module.host, "muc") then
+if not module:host_is_muc() then
 	module:log("error", "mod_muc_log_http can only be loaded on a muc component!");
-	modulemanager.unload(module.host, "muc_log_http");
 	return;
 end
 

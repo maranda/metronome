@@ -8,7 +8,7 @@
 -- incoming presences and messages, particularly useful for mobile clients.
 
 local NULL = {};
-local pairs, t_insert, t_remove = pairs, table.insert, table.remove;
+local pairs, ipairs, t_insert, t_remove = pairs, ipairs, table.insert, table.remove;
 local dataforms_new = require "util.dataforms".new;
 local jid_bare = require "util.jid".bare;
 local jid_join = require "util.jid".join;
@@ -28,6 +28,8 @@ local queue_limit = module:get_option_number("csi_max_queued_stanzas", 300);
 
 local account_csi_config = {};
 local storage = storagemanager.open(module.host, "csi_config");
+
+local labels_xmlns = "urn:xmpp:sec-label:0";
 
 -- Util functions
 
@@ -291,7 +293,7 @@ end);
 module:hook("message/bare", function(event)
 	local stanza, origin = event.stanza, event.origin;
 
-	local to_bare = bare_sessions[stanza.attr.to];
+	local to_bare = module:get_bare_session(stanza.attr.to);
 	if not to_bare then
 		return;
 	else
@@ -309,7 +311,7 @@ module:hook("presence/bare", function(event)
 	local t = stanza.attr.type;
 	if t ~= nil and t ~= "unavailable" and t ~= "error" then return; end
 
-	local to_bare = bare_sessions[stanza.attr.to];
+	local to_bare = module:get_bare_session(stanza.attr.to);
 	if not to_bare then
 		return;
 	else
@@ -336,7 +338,7 @@ local function full_handler(event)
 	local t = stanza.attr.type;
 	local st_name = stanza.name;
 	
-	local to_full = full_sessions[stanza.attr.to];
+	local to_full = module:get_full_session(stanza.attr.to);
 	if to_full then
 		local csi_state = to_full.csi;
 		if csi_state == "inactive" and st_name == "presence" then
@@ -364,7 +366,7 @@ local function full_handler(event)
 					elseif t == "groupchat" and config.queue_all_muc_messages_but_mentions then
 						local muc_nick, body = to_full.directed_bare[jid_bare(stanza.attr.from)], stanza:get_child_text("body");
 						local nick = jid_section(muc_nick, "resource");
-						if not nick or (not body:find(nick) and not body:find(nick:lower())) then
+						if not body or not nick or (not body:find(nick) and not body:find(nick:lower())) then
 							to_full.csi_queue:pop(stanza.attr.from, stanza);
 							return true;
 						end
@@ -429,7 +431,7 @@ end, 40);
 module:hook("resource-unbind", function(event)
 	local user = event.session.username;
 	local bare_jid = jid_join(user, event.session.host);
-	local bare_session = bare_sessions[bare_jid];
+	local bare_session = module:get_bare_session(bare_jid);
 	local config = account_csi_config[bare_jid];
 	if not bare_session and config then
 		storage:set(user, config);
@@ -453,7 +455,7 @@ end
 
 function module.unload(reload)
 	if not reload then 
-		for _, full_session in pairs(full_sessions) do 
+		for _, full_session in module:get_full_sessions() do 
 			full_session.csi = nil;
 			if full_session.csi_queue then
 				full_session.csi_queue:flush();

@@ -4,22 +4,23 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-if hosts[module.host].anonymous_host then
+if module:get_host_session().anonymous_host then
 	module:log("error", "vCards won't be available on anonymous hosts as storage is explicitly disabled");
-	modulemanager.unload(module.host, "vcard");
+	modulemanager.unload(module.host, module.name);
 	return;
 end
 
 local ipairs, pairs, tostring = ipairs, pairs, tostring;
-local bare_sessions = bare_sessions;
 
 local st = require "util.stanza";
 local jid_split = require "util.jid".split;
-local datamanager = require "util.datamanager";
 local sha1 = require "util.hashes".sha1;
 local b64_decode = require "util.encodings".base64.decode;
 local t_remove = table.remove;
 local metronome = metronome;
+
+local vcard_store = storagemanager.open(module.host, "vcard");
+local hash_store = storagemanager.open(module.host, "vcard_hash");
 
 local data_xmlns, metadata_xmlns = "urn:xmpp:avatar:data", "urn:xmpp:avatar:metadata";
 
@@ -47,9 +48,9 @@ local function handle_vcard(event)
 		local vCard;
 		if to then
 			local node, host = jid_split(to);
-			vCard = st.deserialize(datamanager.load(node, host, "vcard")); -- load vCard for user or server
+			vCard = st.deserialize(vcard_store:get(node)); -- load vCard for user or server
 		else
-			vCard = st.deserialize(datamanager.load(session.username, session.host, "vcard")); -- load user's own vCard
+			vCard = st.deserialize(vcard_store:get(session.username)); -- load user's own vCard
 		end
 		if vCard then
 			session.send(st.reply(stanza):add_child(vCard));
@@ -72,7 +73,7 @@ local function handle_vcard(event)
 				return session.send(st.error_reply(stanza, "modify", "policy-violation", "vCards with multiple PHOTO elements are not supported"));
 			end
 			
-			local ok, err = datamanager.store(session.username, session.host, "vcard", st.preserialize(vCard));
+			local ok, err = vcard_store:set(session.username, st.preserialize(vCard));
 			if ok then
 				session.send(st.reply(stanza));
 				metronome.events.fire_event("vcard-updated", { node = session.username, host = session.host, vcard = vCard });
@@ -89,8 +90,8 @@ local function handle_vcard(event)
 						data, type = data:get_text(), type:get_text();
 						local bytes, id = data:len(), sha1(b64_decode(data), true);
 
-						bare_sessions[session.username.."@"..session.host].avatar_hash = id;
-						ok, err = datamanager.store(session.username, session.host, "vcard_hash", { hash = id });
+						module:get_bare_session(session.username.."@"..session.host).avatar_hash = id;
+						ok, err = hash_store:set(session.username, { hash = id });
 						if not ok then
 							module:log("warn", "Failed to save %s's avatar hash: %s", session.username.."@"..session.host, err);
 						end
@@ -160,10 +161,10 @@ local function handle_user_avatar(event)
 			end
 
 			module:log("debug", "Converting User Avatar to vCard-based Avatar...");
-			local ok, err = datamanager.store(user, host, "vcard", st.preserialize(vCard));
+			local ok, err = vcard_store:set(user, st.preserialize(vCard));
 			if not ok then module:log("warn", "Failed to save %s's vCard: %s", user.."@"..host, err); end
-			bare_sessions[event.origin.username.."@"..event.origin.host].avatar_hash = info.attr.id;
-			ok, err = datamanager.store(user, host, "vcard_hash", { hash = info.attr.id });
+			module:get_bare_session(event.origin.username.."@"..event.origin.host).avatar_hash = info.attr.id;
+			ok, err = hash_store:set(user, { hash = info.attr.id });
 			if not ok then module:log("warn", "Failed to save %s's avatar hash: %s", user.."@"..host, err); end
 		end
 	elseif node == data_xmlns then
@@ -176,15 +177,15 @@ local function handle_presence_inject(event)
 	local session, stanza = event.origin, event.stanza;
 	if session.type == "c2s" and not stanza.attr.type then
 		local bare_from = session.username.."@"..session.host;
-		local has_avatar = bare_sessions[bare_from].avatar_hash;
+		local has_avatar = module:get_bare_session(bare_from).avatar_hash;
 		if has_avatar == nil then
 			module:log("debug", "Caching Avatar hash of %s...", bare_from);
-			local vc = datamanager.load(session.username, session.host, "vcard_hash");
+			local vc = hash_store:get(session.username);
 			if vc then
-				bare_sessions[bare_from].avatar_hash = vc.hash;
+				module:get_bare_session(bare_from).avatar_hash = vc.hash;
 				has_avatar = vc.hash;
 			else
-				bare_sessions[bare_from].avatar_hash = false;
+				module:get_bare_session(bare_from).avatar_hash = false;
 				return;
 			end
 		elseif has_avatar == false then
@@ -221,6 +222,6 @@ module:hook("pep-node-publish", handle_user_avatar);
 
 module.unload = function(reload)
 	if not reload then
-		for jid, session in pairs(bare_sessions) do session.avatar_hash = nil; end
+		for jid, session in module:get_bare_sessions() do session.avatar_hash = nil; end
 	end
 end

@@ -11,9 +11,9 @@ local st = require "util.stanza";
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 local jid_bare = require "util.jid".bare;
 local jid_section = require "util.jid".section;
-local dm_load = require "util.datamanager".load;
-local dm_store = require "util.datamanager".store;
 local module_host = module.host;
+
+local lastactivity = storagemanager.open(module_host, "last_activity");
 
 local os_difftime, os_time, tostring = os.difftime, os.time, tostring;
 
@@ -25,7 +25,7 @@ module:hook("pre-presence/bare", function(event)
 		local t = os_time();
 		local s = stanza:child_with_name("status");
 		s = s and #s.tags == 0 and s[1] or "";
-		dm_store(origin.username, origin.host, "last_activity", { status = s, time = t });
+		lastactivity:set(origin.username, { status = s, time = t });
 	end
 end, 10);
 
@@ -34,7 +34,7 @@ module:hook("iq/bare/jabber:iq:last:query", function(event)
 	if stanza.attr.type == "get" then
 		local username = jid_section(stanza.attr.to, "node") or origin.username;
 		if not stanza.attr.to or is_contact_subscribed(username, module_host, jid_bare(stanza.attr.from)) then
-			local seconds, text, data = "0", "", dm_load(username, module_host, "last_activity");
+			local seconds, text, data = "0", "", lastactivity:get(username);
 			if data then
 				seconds = tostring(os_difftime(os_time(), data.time));
 				text = data.status;

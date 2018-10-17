@@ -8,10 +8,8 @@
 
 -- Imported from prosody-modules, mod_muc_log
 
-local modulemanager = modulemanager;
-if not modulemanager.is_loaded(module.host, "muc") then
-	module:log("error", "mod_muc_log can only be loaded on a muc component!")
-	return;
+if not module:host_is_muc() then
+	error("mod_muc_log can only be loaded on a muc component!", 0)
 end
 
 local metronome = metronome;
@@ -23,15 +21,18 @@ local datamanager = require "util.datamanager";
 local data_load, data_store, data_stores = datamanager.load, datamanager.store, datamanager.stores;
 local datastore = "muc_log";
 local error_reply = require "util.stanza".error_reply;
+local deserialize = require "util.stanza".deserialize;
 local uuid = require "util.uuid".generate;
+local get_actions = module:require("acdf_aux").get_actions;
 local os_time, ripairs, t_insert, t_remove = os.time, ripairs, table.insert, table.remove;
 
 local hints_xmlns = "urn:xmpp:hints";
+local labels_xmlns = "urn:xmpp:sec-label:0";
 local lmc_xmlns = "urn:xmpp:message-correct:0";
 local sid_xmlns = "urn:xmpp:sid:0";
 
 local mod_host = module:get_host();
-local host_object = hosts[mod_host];
+local host_object = module:get_host_session();
 
 -- Module Definitions
 
@@ -68,6 +69,7 @@ function log_if_needed(e)
 
 			if muc_from then
 				local data = data_load(node, mod_host, datastore .. "/" .. today) or {};
+				local label = stanza:get_child("securitylabel", labels_xmlns);
 				local replace = stanza:get_child("replace", lmc_xmlns);
 				local oid = stanza:get_child("origin-id", sid_xmlns);
 				local id = stanza.attr.id;
@@ -78,9 +80,13 @@ function log_if_needed(e)
 					if rid and id ~= rid then
 						for i, entry in ripairs(data) do
 							count = count + 1; -- don't go back more then 100 entries, *sorry*.
-							if count < 100 and entry.resource == from_room and entry.id == rid then
-								t_remove(data, i); break; 
+							if count <= 100 and entry.resource == from_room and entry.id == rid then
+								entry.oid = nil;
+								entry.body = nil;
+								entry.tags = nil;
+								break; 
 							end
+							if count == 100 then break; end
 						end
 						module:fire_event("muc-log-remove-from-mamcache", room, from_room, rid);
 					end
@@ -100,6 +106,15 @@ function log_if_needed(e)
 					subject = subject and subject:get_text()
 				};
 				data[#data + 1] = data_entry;
+
+				if label then
+					local tags = {};
+					local text = label:get_child_text("displaymarking");
+					t_insert(tags, deserialize(label));
+					data_entry.label_actions = get_actions(mod_host, text);
+					data_entry.label_name = text;
+					data_entry.tags = tags;
+				end
 				
 				data_store(node, mod_host, datastore .. "/" .. today, data);
 				module:fire_event("muc-log-add-to-mamcache", room, data_entry);

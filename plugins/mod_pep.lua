@@ -4,9 +4,9 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-if hosts[module.host].anonymous_host then
+if module:get_host_session().anonymous_host then
 	module:log("error", "Personal Eventing Protocol won't be available on anonymous hosts as storage is explicitly disabled");
-	modulemanager.unload(module.host, "pep");
+	modulemanager.unload(module.host, module.name);
 	return;
 end
 
@@ -21,10 +21,9 @@ local jid_join = require "util.jid".join;
 local jid_split = require "util.jid".split;
 local uuid_generate = require "util.uuid".generate;
 local calculate_hash = require "util.caps".calculate_hash;
-local encode_node = datamanager.path_encode;
-local get_path = datamanager.getpath;
+local encode_node = require "util.datamanager".path_encode;
+local get_path = require "util.datamanager".getpath;
 local um_user_exists = usermanager.user_exists;
-local bare_sessions = bare_sessions;
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
@@ -35,7 +34,7 @@ local handlers = {};
 local handlers_owner = {};
 local NULL = {};
 
--- Define aux library imports.
+-- Define aux library imports
 
 local pep_lib = module:require "pep_aux";
 pep_lib.set_closures(services, hash_map);
@@ -52,7 +51,7 @@ local send_options_form = pep_lib.send_options_form;
 local process_options_form = pep_lib.process_options_form;
 local pep_new = pep_lib.pep_new;
 
--- Helpers.
+-- Helpers
 
 singleton_nodes:add_list(module:get_option("pep_custom_singleton_nodes"));
 
@@ -60,7 +59,7 @@ local check_service_inactivity = module:get_option_number("pep_check_service_ina
 module:add_timer(check_service_inactivity, function()
 	module:log("debug", "Checking for idle PEP Services...");
 	for name, service in pairs(services) do
-		if not bare_sessions[name] then
+		if not module:get_bare_session(name) then
 			module:log("debug", "Deactivated inactive PEP Service -- %s", name);
 			services[name] = nil;
 		end
@@ -82,7 +81,7 @@ local function probe_jid(from, to)
 	module:log("debug", "Sending trigger probe to: %s", to);
 end
 
--- Module Definitions.
+-- Module definitions
 
 function handle_pubsub_iq(event)
 	local origin, stanza = event.origin, event.stanza;
@@ -135,7 +134,29 @@ function handle_pubsub_iq(event)
 	end
 end
 
--- pubsub ns handlers
+-- Pubsub handlers
+
+function handlers.get_affiliations(service, origin, stanza, action)
+	local node = action.attr.node;
+	local ok, ret, reply;
+	if not node then
+		return origin.send(pep_error_reply(stanza, "no-node-affiliations"));
+	end
+	reply = st.reply(stanza)
+		:tag("pubsub", { xmlns = xmlns_pubsub })
+			:tag("affiliations");
+	ok, ret = service:get_affiliations(node, stanza.attr.from);
+	if ok and ret then
+		for n, affiliation in pairs(ret) do
+			if affiliation ~= "none" then
+				reply:tag("affiliation", { node = n, affiliation = affiliation }):up();
+			end
+		end
+	elseif not ok then
+		reply = pep_error_reply(stanza, ret);
+	end
+	return origin.send(reply);
+end
 
 function handlers.get_items(service, origin, stanza, items)
 	local node = items.attr.node;
@@ -160,6 +181,24 @@ function handlers.get_items(service, origin, stanza, items)
 			:add_child(data);
 
 	return origin.send(reply);
+end
+
+handlers["get_publish-options"] = function(service, origin, stanza, action)
+	local node = action.attr.node;
+	if not node then
+		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
+	end
+
+	local node_obj = service.nodes[node];
+	if not node_obj then
+		return origin.send(pep_error_reply(stanza, "item-not-found"));
+	end
+
+	if node_obj.config.publish_model == "open" or service:may(node, from, "publish") then
+		return send_options_form(service, node, origin, stanza);
+	else
+		return origin.send(pep_error_reply(stanza, "forbidden"));
+	end
 end
 
 function handlers.set_create(service, origin, stanza, create, config)
@@ -256,24 +295,6 @@ function handlers.set_publish(service, origin, stanza, publish, config)
 	return origin.send(reply);
 end
 
-handlers["get_publish-options"] = function(service, origin, stanza, action)
-	local node = action.attr.node;
-	if not node then
-		return origin.send(pep_error_reply(stanza, "feature-not-implemented"));
-	end
-
-	local node_obj = service.nodes[node];
-	if not node_obj then
-		return origin.send(pep_error_reply(stanza, "item-not-found"));
-	end
-
-	if node_obj.config.publish_model == "open" or service:may(node, from, "publish") then
-		return send_options_form(service, node, origin, stanza);
-	else
-		return origin.send(pep_error_reply(stanza, "forbidden"));
-	end
-end
-
 function handlers.set_retract(service, origin, stanza, retract)
 	local node, notify = retract.attr.node, retract.attr.notify;
 	notify = (notify == "1") or (notify == "true");
@@ -293,7 +314,29 @@ function handlers.set_retract(service, origin, stanza, retract)
 	return origin.send(reply);
 end
 
--- pubsub#owner ns handlers
+-- Pubsub owner handlers
+
+function handlers_owner.get_affiliations(service, origin, stanza, action)
+	local node = action.attr.node;
+	local ok, ret, reply;
+	if not node then
+		return origin.send(pep_error_reply(stanza, "no-node-affiliations"));
+	end
+	reply = st.reply(stanza)
+		:tag("pubsub", { xmlns = xmlns_pubsub_owner })
+			:tag("affiliations");
+	ok, ret = service:get_affiliations(node, stanza.attr.from, true);
+	if ok and ret then
+		for jid, affiliation in pairs(ret) do
+			if affiliation ~= "none" then
+				reply:tag("affiliation", { jid = jid, affiliation = affiliation }):up();
+			end
+		end
+	elseif not ok then
+		reply = pep_error_reply(stanza, ret);
+	end
+	return origin.send(reply);
+end
 
 function handlers_owner.get_configure(service, origin, stanza, action)
 	local node = action.attr.node;
@@ -312,6 +355,37 @@ function handlers_owner.get_configure(service, origin, stanza, action)
 	else
 		return origin.send(pep_error_reply(stanza, "forbidden"));
 	end
+end
+
+function handlers_owner.set_affiliations(service, origin, stanza, action)
+	local node = action.attr.node;
+	if not service.nodes[node] then
+		return origin.send(pep_error_reply(stanza, "item-not-found"));
+	end
+
+	if not service:may(node, stanza.attr.from, "set_affiliation") then
+		return origin.send(pep_error_reply(stanza, "forbidden"));
+	end	
+
+	local _to_change = {};
+	for _, tag in ipairs(action.tags) do
+		if tag.attr.jid and tag.attr.affiliation then
+			if tag.attr.jid == service.name and tag.attr.affiliation == "none" then
+				return origin.send(pep_error_reply(stanza, "forbidden"));
+			end
+			_to_change[tag.attr.jid] = tag.attr.affiliation;
+		end
+	end
+	
+	local ok, err;
+	for jid, affiliation in pairs(_to_change) do
+		ok, err = service:set_affiliation(node, true, jid, affiliation);
+		if not ok then
+			return origin.send(pep_error_reply(stanza, err));
+		end
+	end
+
+	return origin.send(st.reply(stanza));
 end
 
 function handlers_owner.set_configure(service, origin, stanza, action)
@@ -375,7 +449,7 @@ function handlers_owner.set_purge(service, origin, stanza, purge)
 	return origin.send(reply);
 end
 
--- handlers end
+-- Handlers end
 
 module:hook("iq/bare/http://jabber.org/protocol/pubsub:pubsub", handle_pubsub_iq);
 module:hook("iq/bare/http://jabber.org/protocol/pubsub#owner:pubsub", handle_pubsub_iq);
@@ -446,7 +520,7 @@ function presence_handler(event)
 	local t = stanza.attr.type;
 	local self = not stanza.attr.to;
 	local service = services[user];
-	local user_bare_session = bare_sessions[user];
+	local user_bare_session = module:get_bare_session(user);
 	
 	if not service then return nil; end -- User Service doesn't exist
 	local nodes = service.nodes;
@@ -594,7 +668,7 @@ end, -1);
 module:hook("resource-unbind", function(event)
 	local session = event.session;
 	local user = jid_join(session.username, session.host);
-	local has_sessions = bare_sessions[user];
+	local has_sessions = module:get_bare_session(user);
 	local service = services[user];
 
 	if not has_sessions and service then -- wipe recipients

@@ -8,13 +8,14 @@
 -- ** Copyright (c) 2009-2011, Florian Zeitz, Matthew Wild, Waqas Hussain
 
 local st = require "util.stanza";
-local dm_load = require "util.datamanager".load;
 local rostermanager = require "util.rostermanager";
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local ipairs, pairs, tonumber, tostring, t_insert, t_remove, t_sort = 
 	ipairs, pairs, tonumber, tostring, table.insert, table.remove, table.sort;
 local jid_bare, jid_join, jid_split =
 	require "util.jid".bare, require "util.jid".join, require "util.jid".split;
+
+local privacy = storagemanager.open(module.host, "privacy");
 
 local privacy_xmlns = "jabber:iq:privacy";
 local blocking_xmlns = "urn:xmpp:blocking";
@@ -27,11 +28,11 @@ local function store_load(username)
 		if bare_session.privacy_lists then
 			return bare_session.privacy_lists;
 		else
-			bare_session.privacy_lists = dm_load(username, module.host, "privacy") or { lists = {} };
+			bare_session.privacy_lists = privacy:get(username) or { lists = {} };
 			return bare_session.privacy_lists;
 		end
 	else
-		return dm_load(username, module.host, "privacy") or { lists = {} };
+		return privacy:get(username) or { lists = {} };
 	end
 end
 
@@ -472,7 +473,7 @@ local function stanza_check_outgoing(e)
 end
 
 local _M = {};
-_M.store_load = store_load;
+_M.privacy = privacy;
 _M.priv_decline_list = priv_decline_list;
 _M.priv_activate_list = priv_activate_list;
 _M.priv_delete_list = priv_delete_list;
@@ -488,5 +489,6 @@ _M.simple_push_entries = simple_push_entries;
 _M.simple_reorder_list = simple_reorder_list;
 _M.stanza_check_incoming = stanza_check_incoming;
 _M.stanza_check_outgoing = stanza_check_outgoing;
+_M.store_load = store_load;
 
 return _M;

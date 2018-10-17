@@ -6,7 +6,6 @@
 
 -- Exportable SASL backends.
 
-local dm_load = require "util.datamanager".load;
 local user_exists = require "core.usermanager".user_exists;
 local get_password = require "core.usermanager".get_password;
 local set_password = require "core.usermanager".set_password;
@@ -15,6 +14,8 @@ local jid_compare = require "util.jid".compare;
 local jid_split = require "util.jid".prepped_split;
 local log = require "util.logger".init("sasl");
 local get_time, ipairs, t_concat, unpack = os.time, ipairs, table.concat, table.unpack or unpack;
+
+local accounts = storagemanager.open(module.host, "accounts");
 
 -- Util functions
 
@@ -167,12 +168,12 @@ local function hashed_scram_backend(algorithm, sasl, username, realm)
 	local host = sasl.profile.host;
 	local credentials =
 		module:fire_event("auth-hashed-proxy", sasl, username, realm)
-		or dm_load(username, host, "accounts");
+		or accounts:get(username);
 
 	if not credentials then return; end
 	if credentials.password then
 		set_password(username, credentials.password, host);
-		credentials = dm_load(username, host, "accounts");
+		credentials = accounts:get(username);
 		if not credentials then return; end
 	end
 

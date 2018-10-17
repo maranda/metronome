@@ -13,13 +13,13 @@ local xmlns_legacy = "urn:ietf:params:xml:ns:xmpp-session";
 local bind_attr = { xmlns = xmlns_bind };
 local legacy_attr = { xmlns = xmlns_legacy };
 
-local bare_sessions, next = bare_sessions, next;
+local next = next;
 
 local legacy = module:get_option_boolean("legacy_session_support", true);
 local resources_limit = module:get_option_number("max_client_resources", 9);
 
 local function limit_binds(session)
-	local sessions = bare_sessions[join(session.username, session.host)];
+	local sessions = module:get_bare_session(join(session.username, session.host));
 	if sessions then
 		sessions = sessions.sessions;
 	else return; end

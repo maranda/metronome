@@ -7,9 +7,9 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2012, Kim Alvefur, Matthew Wild, Tobias Markmann, Waqas Hussain
 
-if hosts[module.host].anonymous_host then
+if module:get_host_session().anonymous_host then
 	module:log("error", "Rosters won't be available on anonymous hosts as storage is explicitly disabled");
-	modulemanager.unload(module.host, "roster");
+	modulemanager.unload(module.host, module.name);
 	return;
 end
 

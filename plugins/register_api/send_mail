@@ -19,7 +19,7 @@ secure = arg[8];
 CFG_SOURCEDIR=os.getenv("METRONOME_SRCDIR");
 CFG_CONFIGDIR=os.getenv("METRONOME_CFGDIR");
 
-metronome = { events = {}, platform = "posix", serialization = s or "internal" };
+metronome = { events = {}, platform = "posix", serialization = "internal" };
 package.path = CFG_SOURCEDIR.."/?.lua;"..package.path;
 package.cpath = CFG_SOURCEDIR.."/?.so;"..package.cpath;
 config = require "core.configmanager";

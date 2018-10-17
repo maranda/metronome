@@ -26,7 +26,7 @@ local compression_level = module:get_option_number("compression_level", 7);
 local size_limit = module:get_option_number("compressed_data_max_size", 131072);
 local ssl_compression = config_get("*", "ssl_compression");
 
-local host_session = hosts[module.host];
+local host_session = module:get_host_session();
 
 if ssl_compression then
 	module:log("error", "TLS compression is enabled, mod_compression won't work with this setting on");

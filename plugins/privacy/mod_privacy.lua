@@ -7,14 +7,13 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2011, Florian Zeitz, Matthew Wild, Waqas Hussain
 
-if hosts[module.host].anonymous_host then
+if module:get_host_session().anonymous_host then
 	module:log("error", "Privacy Lists/Blocking Command won't be available on anonymous hosts as storage is explicitly disabled");
-	modulemanager.unload(module.host, "privacy");
+	modulemanager.unload(module.host, module.name);
 	return;
 end
 
 local st = require "util.stanza";
-local store_save = require "util.datamanager".store;
 local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local jid_bare, jid_join, jid_section = require "util.jid".bare, require "util.jid".join, require "util.jid".section;
 local ipairs, pairs, tonumber, t_insert, t_sort = ipairs, pairs, tonumber, table.insert, table.sort;
@@ -22,6 +21,7 @@ local ipairs, pairs, tonumber, t_insert, t_sort = ipairs, pairs, tonumber, table
 local lib = module:require("privacy");
 
 -- Storage functions
+local privacy = lib.privacy;
 local store_load = lib.store_load;
 
 -- Privacy List functions
@@ -94,7 +94,7 @@ module:hook("iq/self/"..privacy_xmlns..":query", function(data)
 		end
 		origin.send(st.error_reply(stanza, valid[1], valid[2], valid[3]));
 	else
-		store_save(origin.username, origin.host, "privacy", privacy_lists);
+		privacy:set(origin.username, privacy_lists);
 	end
 
 	return true;
@@ -124,7 +124,7 @@ module:hook("iq-set/self/"..blocking_xmlns..":block", function(data)
 		origin.send(st.error_reply(stanza, "modify", "bad-request", "You need to specify at least one item to add"));
 	end
 	
-	store_save(origin.username, origin.host, "privacy", privacy_lists);
+	privacy:set(origin.username, privacy_lists);
 	return true;
 end);
 
@@ -161,7 +161,7 @@ module:hook("iq-set/self/"..blocking_xmlns..":unblock", function(data)
 		simple_push_entries(self_bare, self_resource, "unblock");
 	end
 	
-	store_save(origin.username, origin.host, "privacy", privacy_lists);
+	privacy:set(origin.username, privacy_lists);
 	origin.send(st.reply(stanza));
 	return true;
 end);
@@ -182,7 +182,7 @@ module:hook("iq-get/self/"..blocking_xmlns..":blocklist", function(data)
 		origin.send(st.reply(stanza):tag("blocklist", { xmlns = blocking_xmlns }));
 	end
 	
-	store_save(origin.username, origin.host, "privacy", privacy_lists);
+	privacy:set(origin.username, privacy_lists);
 	return true;
 end);
 

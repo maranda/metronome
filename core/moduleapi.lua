@@ -14,14 +14,17 @@ local set = require "util.set";
 local logger = require "util.logger";
 local pluginloader = require "util.pluginloader";
 local timer = require "util.timer";
+local section = require "util.jid".section;
 
 local t_insert, t_remove, t_concat = table.insert, table.remove, table.concat;
 local error, setmetatable, type = error, setmetatable, type;
-local ipairs, pairs, select, unpack = ipairs, pairs, select, table.unpack or unpack;
+local ipairs, next, pairs, select, unpack = ipairs, next, pairs, select, table.unpack or unpack;
 local tonumber, tostring = tonumber, tostring;
 
 local metronome = metronome;
 local hosts = metronome.hosts;
+local bare_sessions = metronome.bare_sessions;
+local full_sessions = metronome.full_sessions;
 local fire_global_event = metronome.events.fire_event;
 
 local shared_data = setmetatable({}, { __mode = "v" });
@@ -29,6 +32,19 @@ local shared_data = setmetatable({}, { __mode = "v" });
 local NULL = {};
 
 local api = {};
+
+local function sessions_iter(host)
+	local function iter(t, jid)
+		local session;
+		jid, session = next(t, jid);
+		if session and section(jid, "host") == host then
+			return jid, session;
+		elseif session and section(jid, "host") ~= host then
+			return iter(t, jid);
+		end
+	end
+	return iter;
+end
 
 function api:get_name()
 	return self.name;
@@ -38,8 +54,61 @@ function api:get_host()
 	return self.host;
 end
 
-function api:get_host_type()
-	return self.host ~= "*" and hosts[self.host].type or nil;
+function api:get_host_type(host)
+	if not host then
+		return self.host ~= "*" and hosts[self.host].type or nil;
+	else 
+		return hosts[host] and hosts[host].type or nil;
+	end
+end
+
+function api:get_bare_session(jid)
+	return bare_sessions[jid];
+end
+
+function api:get_full_session(jid)
+	return full_sessions[jid];
+end
+
+function api:get_bare_sessions(host)
+	return sessions_iter(host or self.host), bare_sessions, nil;
+end
+function api:get_full_sessions(host)
+	return sessions_iter(host or self.host), full_sessions, nil;
+end
+
+function api:get_host_session(host)
+	if not host then
+		return self.host ~= "*" and hosts[self.host] or nil;
+	else
+		return hosts[host];
+	end
+end
+
+function api:get_host_sessions(host)
+	local host_session = self:get_host_session(host);
+	if host_session then return host_session.sessions or {}; end
+end
+
+function api:host_is_component(host)
+	if not host then
+		return self:get_host_type() == "component";
+	else
+		return self:get_host_type(host) == "component";
+	end
+end
+
+function api:host_is_muc(host)
+	if not host then
+		return self.host ~= "*" and hosts[self.host].muc and true or false;
+	else
+		return hosts[host] and hosts[host].muc and true or false;
+	end
+end
+
+function api:get_host_modules(host)
+	local host_session = self:get_host_session(host);
+	if host_session then return host_session.modules; end
 end
 
 function api:set_global()
@@ -57,18 +126,22 @@ end
 function api:add_feature(xmlns)
 	self:add_item("feature", xmlns);
 end
+
 function api:add_identity(category, type, name)
 	self:add_item("identity", {category = category, type = type, name = name});
 end
+
 function api:add_extension(data)
 	self:add_item("extension", data);
 end
+
 function api:has_feature(xmlns, host)
 	for _, feature in ipairs(self:get_items("feature", host)) do
 		if feature == xmlns then return true; end
 	end
 	return false;
 end
+
 function api:has_identity(category, type, name, host)
 	for _, id in ipairs(self:get_items("identity", host)) do
 		if id.category == category and id.type == type and id.name == name then
@@ -292,6 +365,7 @@ function api:add_item(key, value)
 	t_insert(self.items[key], value);
 	self:fire_event("item-added/"..key, {source = self, item = value});
 end
+
 function api:remove_item(key, value)
 	local t = self.items and self.items[key] or NULL;
 	for i = #t,1,-1 do

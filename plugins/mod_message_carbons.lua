@@ -12,7 +12,6 @@ local jid_join = require "util.jid".join;
 local jid_section = require "util.jid".section;
 local t_remove = table.remove;
 
-local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local pairs, ipairs = pairs, ipairs;
 local xmlns = "urn:xmpp:carbons:2";
 
@@ -141,7 +140,7 @@ end, 1);
 module:hook("message/full", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local bare_from = jid_bare(stanza.attr.from);
-	local full_session = full_sessions[stanza.attr.to];
+	local full_session = module:get_full_session(stanza.attr.to);
 	if full_session and not (full_session.joined_mucs[bare_from] or full_session.directed_bare[bare_from]) then
 		process_message(origin, stanza);
 	end
@@ -157,7 +156,7 @@ module:hook("resource-unbind", function(event) clear_flag(event.session); end);
 function module.unload(reload)
 	if not reload then 
 		-- cleanup
-		for _, full_session in pairs(full_sessions) do full_session.carbons = nil; end
-		for _, bare_session in pairs(bare_sessions) do bare_session.has_carbons = nil; end
+		for _, full_session in module:get_full_sessions() do full_session.carbons = nil; end
+		for _, bare_session in module:get_bare_sessions() do bare_session.has_carbons = nil; end
 	end
 end

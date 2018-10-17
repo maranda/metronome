@@ -22,10 +22,13 @@ local setmetatable = setmetatable;
 local base64 = require "util.encodings".base64;
 local md5 = require "util.hashes".md5;
 local clone_table = require "util.auxiliary".clone_table;
+local check_policy = module:require("acdf_aux").check_policy;
 
 local muc_domain = nil; --module:get_host();
 local default_history_length = 20;
 local max_history_length, redirects_expire_time;
+
+local labels_xmlns = "urn:xmpp:sec-label:0";
 
 ------------
 local filters = {["http://jabber.org/protocol/muc"]=true;["http://jabber.org/protocol/muc#user"]=true};
@@ -126,10 +129,16 @@ function room_mt:broadcast_presence(stanza, sid, code, nick, reason)
 end
 function room_mt:broadcast_message(stanza, historic, from)
 	local to = stanza.attr.to;
+	local label, text = stanza:get_child("securitylabel", labels_xmlns);
+	if label then text = label:get_child_text("displaymarking"); end
 	for occupant, o_data in pairs(self._occupants) do
 		for jid in pairs(o_data.sessions) do
 			stanza.attr.to = jid;
-			self:_route_stanza(stanza);
+			if text and jid_bare(jid) ~= jid_bare(from) and check_policy(text, jid, stanza) then
+				-- don't route message
+			else
+				self:_route_stanza(stanza);
+			end
 		end
 	end
 	stanza.attr.to = to;
@@ -156,7 +165,7 @@ function room_mt:broadcast_message(stanza, historic, from)
 			removeElem(stanza.tags, "replace");
 		end
 		t_insert(history, entry);
-		while #history > self._data.history_length do t_remove(history, 1) end
+		while #history > self._data.history_length do t_remove(history, 1); end
 	end
 end
 function room_mt:broadcast_except_nick(stanza, nick)
@@ -224,7 +233,13 @@ function room_mt:send_history(to, stanza)
 		for i=#history-n+1,#history do
 			local msg = history[i].stanza;
 			msg.attr.to = to;
-			self:_route_stanza(msg);
+			local label, text = msg:get_child("securitylabel", labels_xmlns);
+			if label then text = label:get_child_text("displaymarking"); end
+			if text and check_policy(text, to, msg) then
+				-- don't route message
+			else
+				self:_route_stanza(msg);
+			end
 		end
 	end
 	self:_route_stanza(st.message({type = "groupchat", from = self._data["subject_from"] or self.jid, to = to}):tag("subject"):text(self._data["subject"] or ""));
@@ -891,7 +906,7 @@ function room_mt:handle_to_room(origin, stanza) -- presence changes and groupcha
 			if subject then
 				if occupant.role == "moderator" or
 					( self._data.changesubject and occupant.role == "participant" ) then -- and participant
-					self:set_subject(current_nick, subject); -- TODO use broadcast_message_stanza
+					self:set_subject(current_nick, subject);
 				else
 					stanza.attr.from = from;
 					origin.send(st.error_reply(stanza, "auth", "forbidden"));

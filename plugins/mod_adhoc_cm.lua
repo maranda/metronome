@@ -7,13 +7,13 @@
 module:depends("adhoc");
 
 local dataforms = require "util.dataforms";
-local datamanager = require "util.datamanager";
 local jid_compare = require "util.jid".compare;
 local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".prepped_split;
 local extract_data = module:require("sasl_aux").extract_data;
 local get_address = module:require("sasl_aux").get_address;
 local user_exists = require "core.usermanager".user_exists;
+
 local t_insert, time = table.insert, os.time;
 
 local adhoc_xmlns = "http://jabber.org/protocol/commands";
@@ -21,6 +21,8 @@ local add_xmlns = "http://metronome.im/protocol/certificates#add";
 local list_xmlns = "http://metronome.im/protocol/certificates#list";
 
 local my_host = module.host;
+
+local certificates = storagemanager.open(my_host, "certificates");
 
 local add_layout = dataforms.new{
 	title = "Associate a new client certificate";
@@ -68,12 +70,12 @@ local function add_cert(self, data, state, secure)
 		local fields = add_layout:data(data.form);
 		if fields.name and fields.cert then
 			local from, name, cert = jid_section(data.from, "node"), fields.name, fields.cert;
-			local store = datamanager.load(from, my_host, "certificates") or {};
+			local store = certificates:get(from) or {};
 			local replacing = store[name] and true;
 
 			store[name] = { cert = cert };
 
-			if datamanager.store(from, my_host, "certificates", store) then
+			if certificates:set(from, store) then
 				return { status = "completed", 
 					 info = ("Certificate %s, has been successfully %s"):format(
 						name, replacing and "replaced" or "added") };
@@ -102,13 +104,13 @@ local function list_certs(self, data, state, secure)
 			if action == "remove" then store[name] = nil; end
 		end
 
-		if datamanager.store(jid_section(data.from, "node"), my_host, "certificates", store) then
+		if certificates:set(jid_section(data.from, "node"), store) then
 			return { status = "completed", info = "Done" };
 		else
 			return save_failed;
 		end
 	else
-		local store = datamanager.load(jid_section(data.from, "node"), my_host, "certificates");
+		local store = certificates:get(jid_section(data.from, "node"));
 		if not store then
 			return { status = "complete", error = { message = "You have no certificates" } };
 		else
@@ -149,7 +151,7 @@ module:hook("auth-external-proxy", function(sasl, session, socket)
 		return { false, "Couldn't find a valid address which could be associated with a xmpp account" };
 	end
 
-	local certificates = datamanager.load(node, my_host, "certificates");
+	local certificates = certificates:get(node);
 	if not certificates then return { false, "No associated certificates with this account" }; end
 	for name, data in pairs(certificates) do
 		local _cert = data.cert;

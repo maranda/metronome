@@ -6,11 +6,8 @@
 
 -- Message Archive Management interface for mod_muc_log
 
-local modulemanager = modulemanager;
-if not modulemanager.is_loaded(module.host, "muc") then
-	module:log("error", "mod_muc_log_mam can only be loaded on a muc component!");
-	modulemanager.unload(module.host, "muc_log_mam");
-	return;
+if not module:host_is_muc() then
+	error("mod_muc_log_mam can only be loaded on a muc component!", 0);
 end
 
 local ipairs, ripairs, tonumber, t_remove, tostring, os_date, os_time = 
@@ -19,13 +16,12 @@ local jid_bare = require "util.jid".bare;
 local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".split;
 local datetime = require "util.datetime";
-local datamanager = require "util.datamanager";
 local st = require "util.stanza";
-local data_load = datamanager.load;
+local data_load = require "util.datamanager".load;
 local datastore = "muc_log";
 local error_reply = require "util.stanza".error_reply;
 
-local host_object = hosts[module.host];
+local host_object = module:get_host_session();
 
 local xmlns = "urn:xmpp:mam:2";
 local delay_xmlns = "urn:xmpp:delay";
@@ -95,9 +91,13 @@ module:hook("muc-log-remove-from-mamcache", function(room, from, rid)
 		local count = 0;
 		for i, entry in ripairs(cache) do
 			count = count + 1;
-			if count < 100 and entry.resource == from and entry.id == rid then
-				t_remove(cache, i); break;
+			if count <= 100 and entry.resource == from and entry.id == rid then
+				entry.oid = nil;
+				entry.body = nil;
+				entry.tags = nil;
+				break; 
 			end
+			if count == 100 then break; end
 		end
 	end
 end, -100);
@@ -138,7 +138,7 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 				ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.index;
 		end
 		
-		local messages, rq, count = generate_stanzas(archive, start, fin, with, max, after, before, index, qid);
+		local messages, rq, count = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, { origin, stanza });
 		if not messages then
 			module:log("debug", "%s MAM query RSM parameters were out of bounds", to);
 			local rsm_error = st.error_reply(stanza, "cancel", "item-not-found");

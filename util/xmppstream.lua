@@ -64,7 +64,7 @@ function new_sax_handlers(session, stream_callbacks)
 	session.stream_declared_ns = {};
 	function xml_handlers:StartNamespaceDecl(prefix, uri)
 		if session.notopen then
-			if prefix and prefix ~= "stream" then 
+			if prefix and prefix ~= stream_tag then 
 				session.stream_declared_ns[prefix] = uri; 
 			end
 		else
@@ -81,7 +81,7 @@ function new_sax_handlers(session, stream_callbacks)
 			t_insert(stanza, t_concat(chardata));
 			chardata = {};
 		end
-		local curr_ns,name = tagname:match(ns_pattern);
+		local curr_ns, name = tagname:match(ns_pattern);
 		if name == "" then
 			curr_ns, name = "", curr_ns;
 		end

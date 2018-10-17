@@ -15,7 +15,7 @@ local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
 local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
 
-local autocreate_on_publish = module:get_option_boolean("autocreate_on_publish", false);
+local autocreate_on_publish = module:get_option_boolean("autocreate_on_publish", true);
 local autocreate_on_subscribe = module:get_option_boolean("autocreate_on_subscribe", false);
 local unrestricted_node_creation = module:get_option_boolean("unrestricted_node_creation", false);
 

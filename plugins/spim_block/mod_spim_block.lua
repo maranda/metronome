@@ -313,8 +313,10 @@ local function handle_spim(event, path)
 							allow_list[to] = nil;
 						end);
 					end
-					if block_list[to] then block_list[to][from] = nil; end
-					if not next(block_list[to]) then block_list[to] = nil; end
+					if block_list[to] then
+						block_list[to][from] = nil;
+						if not next(block_list[to]) then block_list[to] = nil; end
+					end
 					auth_list[spim_token] = nil;
 					has_auth = nil;
 					module:log("info", "%s (%s) is now allowed to send messages to %s", from, ip, to);

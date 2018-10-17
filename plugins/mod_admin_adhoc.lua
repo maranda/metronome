@@ -192,9 +192,8 @@ end
 
 function disconnect_user(match_jid)
 	local node, hostname, givenResource = jid.split(match_jid);
-	local host = hosts[hostname];
-	local sessions = host.sessions[node] and host.sessions[node].sessions;
-	for resource, session in pairs(sessions or {}) do
+	local bare_session = module:get_bare_session(jid.join(node, hostname));
+	for resource, session in pairs(bare_session.sessions or {}) do
 		if not givenResource or (resource == givenResource) then
 			module:log("debug", "Disconnecting %s@%s/%s", node, hostname, resource);
 			session:close();
@@ -389,12 +388,13 @@ function get_user_stats_handler(self, data, state)
 				rostersize = rostersize + 1;
 			end
 		end
-		for resource, session in pairs((hosts[host].sessions[user] and hosts[host].sessions[user].sessions) or {}) do
+		local bare_session = module:get_bare_session(jid.join(user, host));
+		for resource, session in pairs(bare_session.sessions or {}) do
 			resources = resources .. "\n" .. resource;
 			IPs = IPs .. "\n" .. session.ip;
 		end
-		return { status = "completed", result = {layout = get_user_stats_result_layout, values = {ipaddresses = IPs, rostersize = tostring(rostersize),
-			onlineresources = resources}} };
+		return { status = "completed", result = { layout = get_user_stats_result_layout, values = { ipaddresses = IPs, rostersize = tostring(rostersize),
+			onlineresources = resources} } };
 	else
 		return { status = "executing", actions = {"next", "complete", default = "complete"}, form = get_user_stats_layout }, "executing";
 	end
@@ -433,7 +433,8 @@ function get_online_users_command_handler(self, data, state)
 		end
 		local count = 0;
 		local users = {};
-		for username, user in pairs(hosts[data.to].sessions or {}) do
+
+		for username, user in pairs(module:get_host_sessions(data.to)) do
 			if (max_items ~= nil) and (count >= max_items) then
 				break;
 			end
@@ -454,7 +455,7 @@ function get_online_users_command_handler(self, data, state)
 				end
 			end
 		end
-		return { status = "completed", result = {layout = get_online_users_result_layout, values = {onlineuserjids=t_concat(users, "\n")}} };
+		return { status = "completed", result = { layout = get_online_users_result_layout, values = { onlineuserjids = t_concat(users, "\n") } } };
 	else
 		return { status = "executing", actions = {"next", "complete", default = "complete"}, form = get_online_users_layout }, "executing";
 	end
@@ -468,7 +469,8 @@ function list_modules_handler(self, data, state)
 		{ name = "modules", type = "text-multi", label = "The following modules are loaded:" };
 	};
 
-	local modules = array.collect(keys(hosts[data.to].modules)):sort():concat("\n");
+	local host_session = module
+	local modules = array.collect(keys(module:get_host_modules(data.to))):sort():concat("\n");
 
 	return { status = "completed", result = { layout = result; values = { modules = modules } } };
 end
@@ -533,7 +535,7 @@ function reload_modules_handler(self, data, state)
 			(#err_list > 0 and ("Failed to reload the following modules on host "..data.to..":\n"..t_concat(err_list, "\n")) or "");
 		return { status = "completed", info = info };
 	else
-		local modules = array.collect(keys(hosts[data.to].modules)):sort();
+		local modules = array.collect(keys(module:get_host_modules(data.to))):sort();
 		return { status = "executing", actions = {"next", "complete", default = "complete"}, form = { layout = layout; values = { modules = modules } } }, "executing";
 	end
 end
@@ -631,7 +633,7 @@ function unload_modules_handler(self, data, state)
 			(#err_list > 0 and ("Failed to unload the following modules on host "..data.to..":\n"..t_concat(err_list, "\n")) or "");
 		return { status = "completed", info = info };
 	else
-		local modules = array.collect(keys(hosts[data.to].modules)):sort();
+		local modules = array.collect(keys(module:get_host_modules(data.to))):sort();
 		return { status = "executing", actions = {"next", "complete", default = "complete"}, form = { layout = layout; values = { modules = modules } } }, "executing";
 	end
 end

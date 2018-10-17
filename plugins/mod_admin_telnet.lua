@@ -342,7 +342,7 @@ function def_env.module:load(name, hosts)
 	
 	local ok, err, count, mod = true, nil, 0, nil;
 	for host in _hosts do
-		local _host = metronome.hosts[host];
+		local _host = module:get_host_session(host);
 		if not _host then
 			ok, err = false, "Host doesn't exists";
 		end
@@ -434,7 +434,7 @@ function def_env.module:list(hosts)
 		print((host == "*" and "Global" or host)..":");
 		local modules = array.collect(keys(modulemanager.get_modules(host) or {})):sort();
 		if #modules == 0 then
-			if metronome.hosts[host] then
+			if module:get_host_session(host) then
 				print("    No modules loaded");
 			else
 				print("    Host not found");
@@ -537,7 +537,7 @@ end
 def_env.c2s = {};
 
 local function show_c2s(callback)
-	for jid, session in pairs(full_sessions or {}) do callback(jid, session); end
+	for jid, session in pairs(full_sessions) do callback(jid, session); end
 end
 
 function def_env.c2s:count(match_jid)
@@ -989,12 +989,11 @@ local console_room_mt = {
 
 function def_env.muc:room(room_jid)
 	local room_name, host = jid_split(room_jid);
-	if not hosts[host] then
-		return nil, "No such host: "..host;
-	elseif not hosts[host].modules.muc then
-		return nil, "Host '"..host.."' is not a MUC service";
+	if not module:host_is_muc(host) then
+		return nil, "Host '"..host.."' doesn't exist or is not a MUC service";
 	end
-	local room_obj = hosts[host].modules.muc.rooms[room_jid];
+	local muc = module:get_host_session(host).muc;
+	local room_obj = muc.rooms[room_jid];
 	if not room_obj then
 		return nil, "No such room: "..room_jid;
 	end

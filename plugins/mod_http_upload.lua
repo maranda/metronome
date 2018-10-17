@@ -9,7 +9,7 @@
 
 -- This module has been back ported from Prosody Modules
 
-if module:get_host_type() ~= "component" then
+if not module:host_is_component() then
 	error("HTTP Upload should be loaded as a component", 0);
 end
 
@@ -59,8 +59,6 @@ local default_mime_types = {
 
 local cache = module:shared("upload_file_cache")
 local throttle = module:shared("upload_throttles");
-
-local bare_sessions = bare_sessions;
 
 -- config
 local mime_types = module:get_option_table("http_file_allowed_mime_types", default_mime_types);
@@ -369,12 +367,13 @@ local function upload_data(event, path)
 
 	local bare_user = join(user, host);
 	throttle[bare_user] = (throttle[bare_user] and throttle[bare_user] + size) or size;
-	local bare_session = bare_sessions[bare_user];
+	local bare_session = module:get_bare_session(bare_user);
 	if not bare_session.upload_timer then
 		bare_session.upload_timer = true;
 		module:add_timer(throttle_time, function()
+			local bare_session = bare_sessions[bare_user];
 			throttle[bare_user] = nil;
-			if bare_sessions[bare_user] then bare_sessions[bare_user].upload_timer = nil; end
+			if bare_session then bare_session.upload_timer = nil; end
 		end);
 	end
 
@@ -464,6 +463,7 @@ local function clear_shared(shared)
 	for k in pairs(shared) do shared[k] = nil; end
 end
 local function cleanup() -- cleanup
+	local bare_sessions = bare_sessions;
 	for jid, bare_session in pairs(bare_sessions) do
 		bare_session.upload_timer = nil;
 	end

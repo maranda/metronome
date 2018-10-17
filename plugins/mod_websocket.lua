@@ -16,6 +16,7 @@ local add_filter = require "util.filters".add_filter;
 local sha1 = require "util.hashes".sha1;
 local base64 = require "util.encodings".base64.encode;
 local portmanager = require "core.portmanager";
+local sm_destroy_session = require "core.sessionmanager".destroy_session;
 local websocket = require "util.websocket";
 local st = require "util.stanza";
 
@@ -42,13 +43,13 @@ local c2s_listener = portmanager.get_service("c2s")[1].listener;
 local xmlns_framing = "urn:ietf:params:xml:ns:xmpp-framing";
 local xmlns_streams = "http://etherx.jabber.org/streams";
 local xmlns_client = "jabber:client";
-local stream_xmlns_attr = {xmlns='urn:ietf:params:xml:ns:xmpp-streams'};
+local stream_xmlns_attr = { xmlns='urn:ietf:params:xml:ns:xmpp-streams' };
 
-local function open(session, from, to)
+local function open(session)
 	local attr = {
 		xmlns = xmlns_framing, ["xml:lang"] = "en",
 		version = "1.0", id = session.streamid or "",
-		from = from or session.host, to = to
+		from = session.host
 	};
 
 	session.send(st.stanza("open", attr));
@@ -101,7 +102,25 @@ local function close(session, reason) -- Basically duplicated from mod_c2s, shou
 	end
 end
 
-function handle_request(event, path)
+local function filter_stream_tag(result)
+	if result:find(xmlns_framing, 1, true) then
+		if result:find("<open", 1, true) then
+			local to = result:match(".*%sto=[\'\"]([%w%p]+)[\'\"]");
+			local version = result:match(".*%sto=[\'\"]([%w%p]+)[\'\"]");
+			local lang = result:match(".*%sxml:lang=[\'\"]([%w%p]+)[\'\"]");
+			if to then
+				return st.stanza("stream:stream", {
+					["xmlns:stream"] = xmlns_streams, to = to, version = version, lang = lang
+				}):top_tag();
+			end
+		elseif result:find("<close", 1, true) then
+			return "</stream:stream>";
+		end
+	end
+	return result;
+end
+
+local function handle_request(event, path)
 	local request, response = event.request, event.response;
 	local conn = response.conn;
 
@@ -142,7 +161,7 @@ function handle_request(event, path)
 			buffer = buffer:sub(length + 1);
 			local result = ws:handle(frame);
 			if not result then return; end
-			cache[#cache+1] = result;
+			cache[#cache + 1] = filter_stream_tag(result);
 			frame, length = ws:parse(buffer);
 		end
 		return t_concat(cache, "");

@@ -6,7 +6,6 @@
 
 module:depends("adhoc")
 
-local datamanager = require "util.datamanager"
 local dataforms_new = require "util.dataforms".new
 local st = require "util.stanza"
 local id_gen = require "util.uuid".generate
@@ -18,8 +17,9 @@ local xmlns_iodef = "urn:ietf:params:xml:ns:iodef-1.0"
 
 local my_host = module:get_host()
 local ih_lib = module:require("incidents_handling")
+local incidents_store = storagemanager.open(my_host, "incidents_store")
 ih_lib.set_my_host(my_host)
-incidents = {}
+local incidents
 
 local expire_time = module:get_option_number("incidents_expire_time", 0)
 
@@ -42,7 +42,7 @@ function _inc_mt:clean()
 end
 
 function _inc_mt:save()
-	if not datamanager.store("incidents", my_host, "incidents_store", incidents) then
+	if not incidents_store:set("incidents", incidents) then
 		module:log("error", "Failed to save the incidents store!")
 	end
 end
@@ -339,15 +339,6 @@ module:hook("iq-result/host/urn:xmpp:incident:2", results_handler)
 -- // Module Methods //
 
 module.load = function()
-	if datamanager.load("incidents", my_host, "incidents_store") then incidents = datamanager.load("incidents", my_host, "incidents_store") end
-	setmetatable(incidents, _inc_mt) ; incidents:init()
-end
-
-module.save = function()
-	return { incidents = incidents }
-end
-
-module.restore = function(data)
-	incidents = data.incidents or {}
+	incidents = incidents_store:get("incidents") or {}
 	setmetatable(incidents, _inc_mt) ; incidents:init()
 end

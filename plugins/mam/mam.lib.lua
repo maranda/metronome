@@ -13,16 +13,18 @@ local jid_join = require "util.jid".join;
 local jid_section = require "util.jid".section;
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
-local storagemanager = storagemanager;
 local load_roster = require "util.rostermanager".load_roster;
-local ipairs, next, now, pairs, ripairs, select, t_remove, tostring, type = 
-	ipairs, next, os.time, pairs, ripairs, select, table.remove, tostring, type;
+local check_policy = module:require("acdf_aux").check_policy;
+
+local ipairs, next, now, pairs, ripairs, t_insert, t_remove, tostring, type, unpack = 
+	ipairs, next, os.time, pairs, ripairs, table.insert, table.remove, tostring, type, unpack or table.unpack;
     
 local xmlns = "urn:xmpp:mam:2";
 local delay_xmlns = "urn:xmpp:delay";
 local e2e_xmlns = "http://www.xmpp.org/extensions/xep-0200.html#ns";
 local forward_xmlns = "urn:xmpp:forward:0";
 local hints_xmlns = "urn:xmpp:hints";
+local labels_xmlns = "urn:xmpp:sec-label:0";
 local lmc_xmlns = "urn:xmpp:message-correct:0";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 local markers_xmlns = "urn:xmpp:chat-markers:0";
@@ -36,8 +38,8 @@ local unload_cache_time = module:get_option_number("mam_unload_cache_time", 3600
 
 local session_stores = {};
 local offline_stores = {};
-local storage = {};
 local to_save = now();
+local storage;
 
 local valid_markers = {
 	markable = "markable", received = "received",
@@ -50,6 +52,7 @@ if store_elements then
 	store_elements:remove("markable");
 	store_elements:remove("origin-id");
 	store_elements:remove("received");
+	store_elements:remove("securitylabel");
 	if store_elements:empty() then store_elements = nil; end
 end
 
@@ -63,12 +66,16 @@ end
 local function initialize_session_store(user)
 	local bare_jid = jid_join(user, module_host);
 	local bare_session = bare_sessions[bare_jid];
-	if offline_stores[bare_jid] then offline_stores[bare_jid] = nil; end
-	if bare_session and not bare_session.archiving then
+	if offline_stores[bare_jid] then
+		session_stores[bare_jid] = offline_stores[bare_jid];
+		bare_session.archiving = session_stores[bare_jid];
+		offline_stores[bare_jid] = nil;
+	end
+	if not bare_session.archiving then
 		session_stores[bare_jid] = storage:get(user) or { logs = {}, prefs = { default = "never" } };
-		session_stores[bare_jid].last_used = now();
 		bare_session.archiving = session_stores[bare_jid];
 	end
+	session_stores[bare_jid].last_used = now();
 	module:add_timer(60, function()
 		if session_stores[bare_jid] then
 			local store = session_stores[bare_jid];
@@ -100,6 +107,14 @@ local function save_stores()
 	end	
 end
 
+local function make_placemarker(entry)
+	entry.body = nil;
+	entry.marker = nil;
+	entry.marker_id = nil;
+	entry.oid = nil;
+	entry.tags = nil;
+end
+
 local function log_entry(session_archive, to, bare_to, from, bare_from, id, type, body, marker, marker_id, oid, tags)
 	local uid = uuid();
 	local entry = {
@@ -117,7 +132,13 @@ local function log_entry(session_archive, to, bare_to, from, bare_from, id, type
 		uid = uid
 	};
 	if tags then
-		for i, stanza in ipairs(tags) do tags[i] = st.deserialize(stanza); end
+		for i, stanza in ipairs(tags) do
+			if stanza.name == "securitylabel" and stanza.attr.xmlns == labels_xmlns then
+				local text = stanza:get_child_text("displaymarking");
+				entry.label_name = text;
+			end
+			tags[i] = st.deserialize(stanza);
+		end
 		entry.tags = tags;
 	end
 
@@ -139,9 +160,10 @@ local function log_entry_with_replace(session_archive, to, bare_to, from, bare_f
 	if rid and rid ~= id then
 		for i, entry in ripairs(logs) do
 			count = count + 1;
-			if count < 1000 and entry.to == to and entry.from == from and entry.id == rid then 
-				t_remove(logs, i); break;
+			if count <= 1000 and entry.to == to and entry.from == from and entry.id == rid then 
+				make_placemarker(entry); break;
 			end
+			if count == 1000 then break; end
 		end
 	end
 	
@@ -155,17 +177,27 @@ local function log_marker(session_archive, to, bare_to, from, bare_from, id, typ
 		count = count + 1;
 		local entry_marker, entry_from, entry_to = entry.marker, entry.bare_from, entry.bare_to;
 
-		if count < 1000 and entry.id == marker_id and
+		if count <= 1000 and entry.id == marker_id and
 		   (entry_from == bare_from or entry_from == bare_to) and
 		   (entry_to == bare_to or entry_to == bare_from) and
 		   (entry_marker == "markable" or entry_marker == "received") and
 		   entry_marker ~= marker then
 			return log_entry(session_archive, to, bare_to, from, bare_from, id, type, nil, marker, marker_id, oid, tags);
 		end
+		if count == 1000 then break; end
 	end
 end
 
-local function append_stanzas(stanzas, entry, qid)
+local function append_stanzas(stanzas, entry, qid, check_acdf)
+	local label = entry.label_name;
+	if check_acdf and label then
+		local session, request = unpack(check_acdf);
+		local jid = session.full_jid or request.attr.from;
+		if check_policy(label, jid, { attr = { from = entry.from, resource = entry.resource } }, request) then
+			return false;
+		end
+	end
+
 	local to_forward = st.message()
 		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.uid })
 			:tag("forwarded", { xmlns = forward_xmlns })
@@ -173,13 +205,14 @@ local function append_stanzas(stanzas, entry, qid)
 				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
 
 	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
-	if entry.oid then to_forward:tag("origin-id", { xmlns = sid_xmlns, id = entry.oid }):up(); end
 	if entry.tags then
-		for i = 1, #entry.tags do to_forward:add_child(st.preserialize(entry.tags[i])):up(); end
+		for i = 1, #entry.tags do to_forward:add_child(st.preserialize(entry.tags[i])); end
 	end
 	if entry.marker then to_forward:tag(entry.marker, { xmlns = markers_xmlns, id = entry.marker_id }):up(); end
+	if entry.oid then to_forward:tag("origin-id", { xmlns = sid_xmlns, id = entry.oid }):up(); end
 	
 	stanzas[#stanzas + 1] = to_forward;
+	return true;
 end
 
 local function generate_set(stanza, first, last, count, index)
@@ -246,7 +279,7 @@ local function count_relevant_entries(logs, with, start, fin)
 	return count;
 end
 
-local function generate_stanzas(store, start, fin, with, max, after, before, index, qid)
+local function generate_stanzas(store, start, fin, with, max, after, before, index, qid, check_acdf)
 	local logs = store.logs;
 	local stanzas = {};
 	local query;
@@ -270,10 +303,12 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			local timestamp = entry.timestamp;
 			local uid = entry.uid
 			if not dont_add(entry, with, start, fin, timestamp) and i - 1 > index then
-				append_stanzas(stanzas, entry, qid);
-				if at == 1 then first = uid; end
-				at = at + 1;
-				last = uid;
+				local add = append_stanzas(stanzas, entry, qid, check_acdf);
+				if add then
+					if at == 1 then first = uid; end
+					at = at + 1;
+					last = uid;
+				end
 			end
 			if at ~= 1 and at > max then break; end
 		end
@@ -304,10 +339,12 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			local timestamp = entry.timestamp;
 			local uid = entry.uid;
 			if not dont_add(entry, with, start, fin, timestamp) then
-				append_stanzas(stanzas, entry, qid);
-				if at == 1 then first = uid; end
-				at = at + 1;
-				last = uid;
+				local add = append_stanzas(stanzas, entry, qid, check_acdf);
+				if add then
+					if at == 1 then first = uid; end
+					at = at + 1;
+					last = uid;
+				end
 			end
 			if at ~= 1 and at > max then break; end
 		end
@@ -330,10 +367,12 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 		local timestamp = entry.timestamp;
 		local uid = entry.uid;
 		if not dont_add(entry, with, start, fin, timestamp) then
-			append_stanzas(stanzas, entry, qid);
-			if at == 1 then first = uid; end
-			at = at + 1;
-			last = uid;
+			local add = append_stanzas(stanzas, entry, qid, check_acdf);
+			if add then
+				if at == 1 then first = uid; end
+				at = at + 1;
+				last = uid;
+			end
 		end
 		if at ~= 1 and at > max then break; end
 	end
@@ -488,6 +527,7 @@ local function process_message(event, outbound)
 	end
 
 	if archive and add_to_store(archive, user, outbound and bare_to or bare_from) then
+		local label = message:get_child("securitylabel", labels_xmlns);
 		local replace = message:get_child("replace", lmc_xmlns);
 		local oid = message:get_child("origin-id", sid_xmlns);
 		local id, tags;
@@ -499,6 +539,11 @@ local function process_message(event, outbound)
 				if store_elements:contains(elements[i].name) then tags[#tags + 1] = elements[i]; end
 			end
 			if not next(tags) then tags = nil; end
+		end
+
+		if label then
+			if not tags then tags = {}; end
+			t_insert(tags, label);
 		end
 
 		if replace and body then
@@ -528,11 +573,11 @@ local function process_message(event, outbound)
 end
 
 local function pop_entry(logs, i, jid)
+	local entry = logs[i];
 	if jid then
-		local entry = logs[i];
-		if (entry.bare_from == jid) or (entry.bare_to == jid) then t_remove(logs, i); end
+		if (entry.bare_from == jid) or (entry.bare_to == jid) then make_placemarker(entry); end
 	else
-		t_remove(logs, i);
+		make_placemarker(entry);
 	end
 end
 
@@ -545,7 +590,7 @@ local function purge_messages(archive, id, jid, start, fin)
 	local logs = archive.logs;
 	if id then
 		for i, entry in ipairs(logs) do
-			if entry.uid == id then t_remove(logs, i); break; end
+			if entry.uid == id then make_placemarker(entry); break; end
 		end
 	elseif jid or start or fin then
 		for i, entry in ipairs(logs) do
