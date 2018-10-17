@@ -110,7 +110,7 @@ local function list_certs(self, data, state, secure)
 			return save_failed;
 		end
 	else
-		local store = certificates:set(jid_section(data.from, "node"));
+		local store = certificates:get(jid_section(data.from, "node"));
 		if not store then
 			return { status = "complete", error = { message = "You have no certificates" } };
 		else
