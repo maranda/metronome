@@ -24,6 +24,7 @@ local os_time, t_insert, t_remove = os.time, table.insert, table.remove;
 -- config
 local file_size_limit = module:get_option_number("http_file_size_limit", 100 * 1024 * 1024); -- 100 MB
 local base_url = assert(module:get_option_string("http_file_external_url"), "http_file_external_url is a required option");
+local delete_base_url = module:get_option_string("http_file_external_delete_url");
 local secret = assert(module:get_option_string("http_file_secret"), "http_file_secret is a required option");
 local delete_secret = assert(module:get_option_string("http_file_delete_secret"), "http_file_delete_secret is a required option");
 
@@ -92,15 +93,17 @@ local function generate_directory()
 end
 
 local function magic_crypto_dust(random, filename, value, filetype)
-	local message;
+	local message, url;
 	if type(value) == "string" then
+		url = delete_base_url;
 		message = string.format("%s/%s\0%s\0%s", random, filename, value, filetype);
 	else
+		url = base_url;
 		message = string.format("%s/%s\0%d\0%s", random, filename, value, filetype);
 	end
 	local digest = HMAC(secret, message, true);
 	random, filename = http.urlencode(random), http.urlencode(filename);
-	return base_url .. random .. "/" .. filename, "?token=" .. digest;
+	return url .. random .. "/" .. filename, "?token=" .. digest;
 end
 
 local function handle_request(origin, stanza, xmlns, filename, filesize, filetype)
@@ -129,12 +132,14 @@ local function handle_request(origin, stanza, xmlns, filename, filesize, filetyp
 	end
 	local random = generate_directory();
 	local get_url, verify = magic_crypto_dust(random, filename, filesize, filetype);
-	local _, delete_verify = magic_crypto_dust(random, filename, delete_secret, filetype);
 	local put_url = get_url .. verify;
 
-	local url_list = datamanager.load(origin.username, origin.host, "http_upload_external") or {};
-	t_insert(url_list, get_url .. delete_verify);
-	datamanager.store(origin.username, origin.host, "http_upload_external", url_list);
+	if delete_base_url then
+		local _, delete_verify = magic_crypto_dust(random, filename, delete_secret, filetype);
+		local url_list = datamanager.load(origin.username, origin.host, "http_upload_external") or {};
+		t_insert(url_list, get_url .. delete_verify);
+		datamanager.store(origin.username, origin.host, "http_upload_external", url_list);
+	end
 
 	module:log("debug", "Handing out upload slot %s to %s@%s [%d %s]", get_url, origin.username, origin.host, filesize, filetype);
 
@@ -170,16 +175,18 @@ local function handle_iq(event)
 end
 
 -- adhoc handler
-local adhoc_new = module:require "adhoc".new;
+if delete_base_url then
+	local adhoc_new = module:require "adhoc".new;
 
-local function purge_uploads(self, data, state)
-	local user, host = jid.split(data.from);
-	purge_files(user, host);
-	return { status = "completed", info = "Sent purge request to the upstream file server" };
+	local function purge_uploads(self, data, state)
+		local user, host = jid.split(data.from);
+		purge_files(user, host);
+		return { status = "completed", info = "Sent purge request to the upstream file server" };
+	end
+
+	local purge_uploads_descriptor = adhoc_new("Purge HTTP Upload Files", "http_upload_purge", purge_uploads, "server_user");
+	module:provides("adhoc", purge_uploads_descriptor);
 end
-
-local purge_uploads_descriptor = adhoc_new("Purge HTTP Upload Files", "http_upload_purge", purge_uploads, "server_user");
-module:provides("adhoc", purge_uploads_descriptor);
 
 -- hooks
 module:hook("iq/host/"..legacy_namespace..":request", handle_iq);

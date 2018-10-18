@@ -11,6 +11,7 @@
 
     http_file_external_url = "https://your.example.com/path/to/share.php/"
     http_file_secret = "this is your secret string"
+	http_file_delete_secret = "this is your secret string"
 
   ** Metronome's License
 
