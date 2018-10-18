@@ -91,8 +91,13 @@ local function generate_directory()
 	return bits and bits:gsub("/", ""):gsub("%+", "") .. tostring(os_time()):match("%d%d%d%d$");
 end
 
-local function magic_crypto_dust(random, filename, filesize, filetype)
-	local message = string.format("%s/%s\0%d\0%s", random, filename, filesize, filetype);
+local function magic_crypto_dust(random, filename, value, filetype)
+	local message;
+	if type(filesize) == "string" then
+		message = string.format("%s/%s\0%s\0%s", random, filename, value, filetype);
+	else
+		message = string.format("%s/%s\0%d\0%s", random, filename, value, filetype);
+	end
 	local digest = HMAC(secret, message, true);
 	random, filename = http.urlencode(random), http.urlencode(filename);
 	return base_url .. random .. "/" .. filename, "?token=" .. digest;
