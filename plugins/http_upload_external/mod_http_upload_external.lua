@@ -232,7 +232,11 @@ local function delete_uploads(self, data, state)
 			if action == "remove" then to_remove[name] = true; end
 		end
 		for i, url_data in ipairs(url_list) do
-			if to_remove[url_data[2]] then t_remove(url_list, i); end
+			local delete_url, get_url = unpack(url_data);
+			if to_remove[get_url] then
+				delete_file(user, host, delete_url, get_url);
+				t_remove(url_list, i);
+			end
 		end
 
 		if #url_list == 0 then
