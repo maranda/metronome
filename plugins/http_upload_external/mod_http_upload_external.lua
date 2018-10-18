@@ -135,9 +135,9 @@ local function handle_request(origin, stanza, xmlns, filename, filesize, filetyp
 	local put_url = get_url .. verify;
 
 	if delete_base_url then
-		local _, delete_verify = magic_crypto_dust(random, filename, delete_secret);
+		local delete_url, delete_verify = magic_crypto_dust(random, filename, delete_secret);
 		local url_list = datamanager.load(origin.username, origin.host, "http_upload_external") or {};
-		t_insert(url_list, get_url .. delete_verify);
+		t_insert(url_list, delete_url .. delete_verify);
 		datamanager.store(origin.username, origin.host, "http_upload_external", url_list);
 	end
 
