@@ -13,13 +13,15 @@ end
 
 -- imports
 local datamanager = require "util.datamanager";
+local dataforms = require "util.dataforms";
 local st = require "util.stanza";
 local http = require "net.http";
 local dataform = require "util.dataforms".new;
 local HMAC = require "util.hmac".sha256;
 local seed = require "util.auxiliary".generate_secret;
 local jid = require "util.jid";
-local os_time, unpack, t_insert, t_remove = os.time, unpack or table.unpack, table.insert, table.remove;
+local ipairs, pairs, os_time, select, unpack, t_insert, t_remove = 
+	ipairs, pairs, os.time, select, unpack or table.unpack, table.insert, table.remove;
 
 -- config
 local file_size_limit = module:get_option_number("http_file_size_limit", 100 * 1024 * 1024); -- 100 MB
@@ -57,6 +59,26 @@ module:hook("iq/host/http://jabber.org/protocol/disco#info:query", function(even
 	return true;
 end);
 
+local function delete_file(user, host, delete_url, get_url)
+	http.request(delete_url, { method = "DELETE" },
+		function(data, code, req)
+			if code == 204 then
+				module:log("debug", "Successfully deleted uploaded file for %s [%s]", user .."@".. host, get_url);
+				t_remove(url_list, i);
+			else
+				module:log("error", "Failed to delete uploaded file for %s [%s]", user .."@".. host, get_url);
+				module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
+					"The upstream HTTP file service reported to have failed to remove your file located at " .. get_url
+					.. ", if the problem persists please contact an administrator, thank you."
+				));
+				local url_list = datamanager.load(user, host, "http_upload_external") or {};
+				t_insert(url_list, { delete_url, get_url });
+				datamanager.store(user, host, "http_upload_external", url_list);
+			end
+		end
+	);
+end
+
 local function purge_files(user, host)
 	local url_list = datamanager.load(user, host, "http_upload_external");
 	if url_list then
@@ -71,7 +93,7 @@ local function purge_files(user, host)
 					else
 						module:log("error", "Failed to delete uploaded file for %s [%s]", user .."@".. host, url);
 						module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
-							"The upstream HTTP file service reported to have failed to remove your file located at ".. url
+							"The upstream HTTP file service reported to have failed to remove your file located at " .. url
 							.. ", if the problem persists please contact an administrator, thank you."
 						));
 					end
@@ -175,17 +197,73 @@ local function handle_iq(event)
 	return true;
 end
 
--- adhoc handler
+-- adhoc handlers
+local function list_layout(data)
+	local layout = {
+		title = "List uploaded files";
+		instructions = "Select which uploads to delete from the upstream sharing service.";
+		{ name = "FORM_TYPE", type = "hidden", value = "http://jabber.org/protocol/commands" };
+	}
+
+	for i, url_data in ipairs(data) do
+		local url = select(data, 2);
+		t_insert(layout, {
+			name = url,
+			type = "list-single",
+			label = url,
+			value = {
+				{ value = "none", default = true },
+				{ value = "remove" }
+			}
+		});
+	end
+	
+	return dataforms.new(layout);
+end
+
+local function delete_uploads(self, data, state)
+	local user, host = jid.split(data.from);
+
+	if state then
+		local layout, url_list = state.layout, state.url_list;
+		local fields = layout:data(data.form);
+		fields["FORM_TYPE"] = nil;
+	
+		local to_remove = {};
+		for name, action in pairs(fields) do
+			if action == "remove" then to_remove[name] = true; end
+		end
+			for i, url_data in ipairs(url_list) do
+			if to_remove[select(2, url_data)] then t_remove(url_list, i); end
+		end
+			if #url_list == 0 then
+			datamanager.store(user, host, "http_upload_external");
+		else
+			datamanager.store(user, host, "http_upload_external", url_list);
+		end
+		return { status = "completed", info = "Done" };
+	else
+		local url_list = datamanager.load(user, host, "http_upload_external")
+		if not url_list then
+			return { status = "complete", error = { message = "You have no uploads" } };
+		else
+			local layout = list_layout(url_list);
+			return { status = "executing", form = layout }, { store = url_list, layout = layout };
+		end
+	end
+end
+
+local function purge_uploads(self, data, state)
+	local user, host = jid.split(data.from);
+	purge_files(user, host);
+	return { status = "completed", info = "Sent purge request to the upstream file server" };
+end
+
 if delete_base_url then
 	local adhoc_new = module:require "adhoc".new;
-
-	local function purge_uploads(self, data, state)
-		local user, host = jid.split(data.from);
-		purge_files(user, host);
-		return { status = "completed", info = "Sent purge request to the upstream file server" };
-	end
-
-	local purge_uploads_descriptor = adhoc_new("Purge HTTP Upload Files", "http_upload_purge", purge_uploads, "server_user");
+	local delete_uploads_descriptor = adhoc_new("Delete Single Files", "http_upload_delete", delete_uploads, "server_user");
+	local purge_uploads_descriptor = adhoc_new("Purge All Uploaded Files", "http_upload_purge", purge_uploads, "server_user");
+	module:provides("adhoc", delete_uploads_descriptor);
 	module:provides("adhoc", purge_uploads_descriptor);
 end
 
