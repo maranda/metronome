@@ -58,7 +58,7 @@
 /* Change this to a directory that is writable by your web server, but is outside your web root */
 $CONFIG_STORE_DIR = '/tmp';
 
-/* This must be the same as 'http_upload_external_secret' that you set in Prosody's config file */
+/* This must be the same as 'http_upload_external_secret' that you set in Metronome's config file */
 $CONFIG_SECRET = 'this is your secret string';
 
 /* For people who need options to tweak that they don't understand... here you are */
