@@ -75,7 +75,11 @@ local function delete_file(user, host, delete_url, get_url)
 					.. ", if the problem persists please contact an administrator, thank you."
 				));
 			end
-			datamanager.store(user, host, "http_upload_external", url_list);
+			if #url_list == 0 then
+				datamanager.store(user, host, "http_upload_external");
+			else
+				datamanager.store(user, host, "http_upload_external", url_list);
+			end
 		end
 	);
 end
@@ -99,7 +103,7 @@ local function purge_files(user, host)
 						));
 					end
 					if url == last then
-						if not next(url_list) then
+						if #url_list == 0 then
 							datamanager.store(user, host, "http_upload_external");
 						else
 							datamanager.store(user, host, "http_upload_external", url_list);
