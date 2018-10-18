@@ -137,7 +137,7 @@ if(array_key_exists('token', $_GET) === TRUE && ($request_method === 'PUT' || $r
 		file_put_contents($store_file_name.'-type', $upload_file_type);
 		header('HTTP/1.0 201 Created');
 	} else {
-		$calculated_token = hash_hmac('sha256', "$upload_file_name\0$DELETE_SECRET\0$upload_file_type", $CONFIG_SECRET);
+		$calculated_token = hash_hmac('sha256', "$upload_file_name\0$DELETE_SECRET", $CONFIG_SECRET);
 		if(function_exists('hash_equals')) {
 			if(hash_equals($calculated_token, $upload_token) !== TRUE) {
 				error_log("Token mismatch: calculated $calculated_token got $upload_token");

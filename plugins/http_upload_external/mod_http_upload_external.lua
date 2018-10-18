@@ -96,7 +96,7 @@ local function magic_crypto_dust(random, filename, value, filetype)
 	local message, url;
 	if type(value) == "string" then
 		url = delete_base_url;
-		message = string.format("%s/%s\0%s\0%s", random, filename, value, filetype);
+		message = string.format("%s/%s\0%s", random, filename, value);
 	else
 		url = base_url;
 		message = string.format("%s/%s\0%d\0%s", random, filename, value, filetype);
@@ -135,7 +135,7 @@ local function handle_request(origin, stanza, xmlns, filename, filesize, filetyp
 	local put_url = get_url .. verify;
 
 	if delete_base_url then
-		local _, delete_verify = magic_crypto_dust(random, filename, delete_secret, filetype);
+		local _, delete_verify = magic_crypto_dust(random, filename, delete_secret);
 		local url_list = datamanager.load(origin.username, origin.host, "http_upload_external") or {};
 		t_insert(url_list, get_url .. delete_verify);
 		datamanager.store(origin.username, origin.host, "http_upload_external", url_list);
