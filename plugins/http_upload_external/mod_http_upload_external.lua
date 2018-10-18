@@ -16,7 +16,7 @@ local st = require"util.stanza";
 local uuid = require"util.uuid".generate;
 local http = require "net.http";
 local dataform = require "util.dataforms".new;
-local HMAC = require "util.hashes".hmac_sha256;
+local HMAC = require "util.hmac".sha256;
 
 -- config
 local file_size_limit = module:get_option_number("http_file_size_limit", 100 * 1024 * 1024); -- 100 MB
