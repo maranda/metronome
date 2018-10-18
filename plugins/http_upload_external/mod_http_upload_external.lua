@@ -84,7 +84,7 @@ local function delete_file(user, host, delete_url, get_url)
 	);
 end
 
-local function purge_files(user, host)
+local function purge_files(user, host, account_deletion)
 	local url_list = datamanager.load(user, host, "http_upload_external");
 	if url_list then
 		local last = url_list[#url_list];
@@ -97,13 +97,15 @@ local function purge_files(user, host)
 						t_remove(url_list, i);
 					else
 						module:log("error", "Failed to delete uploaded file for %s [%s]", user .."@".. host, url);
-						module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
-							"The upstream HTTP file service reported to have failed to remove your file located at " .. url
-							.. ", if the problem persists please contact an administrator, thank you."
-						));
+						if not account_deletion then
+							module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
+								"The upstream HTTP file service reported to have failed to remove your file located at " .. url
+								.. ", if the problem persists please contact an administrator, thank you."
+							));
+						end
 					end
 					if url == last then
-						if #url_list == 0 then
+						if #url_list == 0 or account_deletion then
 							datamanager.store(user, host, "http_upload_external");
 						else
 							datamanager.store(user, host, "http_upload_external", url_list);
@@ -202,7 +204,7 @@ local function handle_iq(event)
 	return true;
 end
 
--- adhoc handlers
+-- adhoc functions
 local function list_layout(data)
 	local layout = {
 		title = "List uploaded files";
@@ -262,14 +264,15 @@ local function purge_uploads(self, data, state)
 	return { status = "completed", info = "Sent purge request to the upstream file server" };
 end
 
+-- handlers and hooks
 if delete_base_url then
 	local adhoc_new = module:require "adhoc".new;
 	local delete_uploads_descriptor = adhoc_new("Delete Single Files", "http_upload_delete", delete_uploads, "server_user");
 	local purge_uploads_descriptor = adhoc_new("Purge All Uploaded Files", "http_upload_purge", purge_uploads, "server_user");
 	module:provides("adhoc", delete_uploads_descriptor);
 	module:provides("adhoc", purge_uploads_descriptor);
+	module:hook_global("user-deleted", function(event) purge_files(event.username, event.host, true); end, 20);
 end
 
--- hooks
 module:hook("iq/host/"..legacy_namespace..":request", handle_iq);
 module:hook("iq/host/"..namespace..":request", handle_iq);
