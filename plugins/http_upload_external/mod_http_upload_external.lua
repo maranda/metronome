@@ -205,7 +205,7 @@ local function list_layout(data)
 	}
 
 	for i, url_data in ipairs(data) do
-		local url = select(data, 2);
+		local url = select(2, url_data);
 		t_insert(layout, {
 			name = url,
 			type = "list-single",
