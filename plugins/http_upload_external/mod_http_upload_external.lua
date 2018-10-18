@@ -244,7 +244,7 @@ local function delete_uploads(self, data, state)
 			end
 		end
 
-		return { status = "completed", info = "Sent deletion request/s" };
+		return { status = "completed", info = "Done" };
 	else
 		local url_list = datamanager.load(user, host, "http_upload_external")
 		if not url_list then
