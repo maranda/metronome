@@ -19,7 +19,7 @@ local dataform = require "util.dataforms".new;
 local HMAC = require "util.hmac".sha256;
 local seed = require "util.auxiliary".generate_secret;
 local jid = require "util.jid";
-local os_time, t_insert, t_remove = os.time, table.insert, table.remove;
+local os_time, unpack, t_insert, t_remove = os.time, unpack or table.unpack, table.insert, table.remove;
 
 -- config
 local file_size_limit = module:get_option_number("http_file_size_limit", 100 * 1024 * 1024); -- 100 MB
@@ -61,8 +61,9 @@ local function purge_files(user, host)
 	local url_list = datamanager.load(user, host, "http_upload_external");
 	if url_list then
 		local last = url_list[#url_list];
-		for i, url in ipairs(url_list) do
-			http.request(url, { method = "DELETE" },
+		for i, url_data in ipairs(url_list) do
+			local delete_url, url = unpack(url_data);
+			http.request(delete_url, { method = "DELETE" },
 				function(data, code, req)
 					if code == 204 then
 						module:log("debug", "Successfully deleted uploaded file for %s [%s]", user .."@".. host, url);
@@ -137,7 +138,7 @@ local function handle_request(origin, stanza, xmlns, filename, filesize, filetyp
 	if delete_base_url then
 		local delete_url, delete_verify = magic_crypto_dust(random, filename, delete_secret);
 		local url_list = datamanager.load(origin.username, origin.host, "http_upload_external") or {};
-		t_insert(url_list, delete_url .. delete_verify);
+		t_insert(url_list, { delete_url .. delete_verify, get_url });
 		datamanager.store(origin.username, origin.host, "http_upload_external", url_list);
 	end
 
