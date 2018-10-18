@@ -233,10 +233,11 @@ local function delete_uploads(self, data, state)
 		for name, action in pairs(fields) do
 			if action == "remove" then to_remove[name] = true; end
 		end
-			for i, url_data in ipairs(url_list) do
+		for i, url_data in ipairs(url_list) do
 			if to_remove[select(2, url_data)] then t_remove(url_list, i); end
 		end
-			if #url_list == 0 then
+
+		if #url_list == 0 then
 			datamanager.store(user, host, "http_upload_external");
 		else
 			datamanager.store(user, host, "http_upload_external", url_list);
