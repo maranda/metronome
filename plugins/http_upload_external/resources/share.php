@@ -3,8 +3,6 @@
 /*
   PHP script to handle file uploads and downloads for mod_http_upload_external imported from Prosody Modules
 
-  Tested with Apache 2.2+ and PHP 5.3+
-
   ** How to use?
 
   Drop this file somewhere it will be served by your web server. Edit the config options below.
@@ -57,8 +55,11 @@
 /* Change this to a directory that is writable by your web server, but is outside your web root */
 $CONFIG_STORE_DIR = '/tmp';
 
-/* This must be the same as 'http_upload_external_secret' that you set in Metronome's config file */
+/* This must be the same as 'http_file_secret' that you set in Metronome's config file */
 $CONFIG_SECRET = 'this is your secret string';
+
+/* This must be the same as 'http_file_delete_secret' that you set in Metronome's config file */
+$DELETE_SECRET = 'this is your secret string';
 
 /* For people who need options to tweak that they don't understand... here you are */
 $CONFIG_CHUNK_SIZE = 4096;
@@ -96,23 +97,23 @@ if(array_key_exists('token', $_GET) === TRUE && ($request_method === 'PUT' || $r
 		exit;
 	}
 
-	$calculated_token = hash_hmac('sha256', "$upload_file_name\0$upload_file_size\0$upload_file_type", $CONFIG_SECRET);
-	if(function_exists('hash_equals')) {
-		if(hash_equals($calculated_token, $upload_token) !== TRUE) {
-			error_log("Token mismatch: calculated $calculated_token got $upload_token");
-			header('HTTP/1.0 403 Forbidden');
-			exit;
-		}
-	}
-	else {
-		if($upload_token !== $calculated_token) {
-			error_log("Token mismatch: calculated $calculated_token got $upload_token");
-			header('HTTP/1.0 403 Forbidden');
-			exit;
-		}
-	}
-
 	if($request_method === 'PUT') {
+		$calculated_token = hash_hmac('sha256', "$upload_file_name\0$upload_file_size\0$upload_file_type", $CONFIG_SECRET);
+		if(function_exists('hash_equals')) {
+			if(hash_equals($calculated_token, $upload_token) !== TRUE) {
+				error_log("Token mismatch: calculated $calculated_token got $upload_token");
+				header('HTTP/1.0 403 Forbidden');
+				exit;
+			}
+		}
+		else {
+			if($upload_token !== $calculated_token) {
+				error_log("Token mismatch: calculated $calculated_token got $upload_token");
+				header('HTTP/1.0 403 Forbidden');
+				exit;
+			}
+		}
+	
 		/* Open a file for writing */
 		$store_file = fopen($store_file_name, 'x');
 
@@ -135,6 +136,22 @@ if(array_key_exists('token', $_GET) === TRUE && ($request_method === 'PUT' || $r
 		file_put_contents($store_file_name.'-type', $upload_file_type);
 		header('HTTP/1.0 201 Created');
 	} else {
+		$calculated_token = hash_hmac('sha256', "$upload_file_name\0$DELETE_SECRET\0$upload_file_type", $CONFIG_SECRET);
+		if(function_exists('hash_equals')) {
+			if(hash_equals($calculated_token, $upload_token) !== TRUE) {
+				error_log("Token mismatch: calculated $calculated_token got $upload_token");
+				header('HTTP/1.0 403 Forbidden');
+				exit;
+			}
+		}
+		else {
+			if($upload_token !== $calculated_token) {
+				error_log("Token mismatch: calculated $calculated_token got $upload_token");
+				header('HTTP/1.0 403 Forbidden');
+				exit;
+			}
+		}
+
 		$deleted_file = unlink($store_file_name);
 		$deleted_data = unlink($store_file_name.'-type');
 

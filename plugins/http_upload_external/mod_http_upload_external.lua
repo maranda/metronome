@@ -25,6 +25,7 @@ local os_time, t_insert, t_remove = os.time, table.insert, table.remove;
 local file_size_limit = module:get_option_number("http_file_size_limit", 100 * 1024 * 1024); -- 100 MB
 local base_url = assert(module:get_option_string("http_file_external_url"), "http_file_external_url is a required option");
 local secret = assert(module:get_option_string("http_file_secret"), "http_file_secret is a required option");
+local delete_secret = assert(module:get_option_string("http_file_delete_secret"), "http_file_delete_secret is a required option");
 
 -- namespace
 local legacy_namespace = "urn:xmpp:http:upload";
@@ -123,10 +124,11 @@ local function handle_request(origin, stanza, xmlns, filename, filesize, filetyp
 	end
 	local random = generate_directory();
 	local get_url, verify = magic_crypto_dust(random, filename, filesize, filetype);
+	local _, delete_verify = magic_crypto_dust(random, filename, delete_secret, filetype);
 	local put_url = get_url .. verify;
 
 	local url_list = datamanager.load(origin.username, origin.host, "http_upload_external") or {};
-	t_insert(url_list, put_url);
+	t_insert(url_list, get_url .. delete_verify);
 	datamanager.store(origin.username, origin.host, "http_upload_external", url_list);
 
 	module:log("debug", "Handing out upload slot %s to %s@%s [%d %s]", get_url, origin.username, origin.host, filesize, filetype);
