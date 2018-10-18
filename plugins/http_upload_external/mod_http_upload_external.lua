@@ -62,18 +62,20 @@ end);
 local function delete_file(user, host, delete_url, get_url)
 	http.request(delete_url, { method = "DELETE" },
 		function(data, code, req)
+			local url_list = datamanager.load(user, host, "http_upload_external") or {};
 			if code == 204 then
 				module:log("debug", "Successfully deleted uploaded file for %s [%s]", user .."@".. host, get_url);
+				for i, url_data in ipairs(url_list) do
+					if url_data[2] == get_url then t_remove(url_list, i); break; end
+				end
 			else
 				module:log("error", "Failed to delete uploaded file for %s [%s]", user .."@".. host, get_url);
 				module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
 					"The upstream HTTP file service reported to have failed to remove your file located at " .. get_url
 					.. ", if the problem persists please contact an administrator, thank you."
 				));
-				local url_list = datamanager.load(user, host, "http_upload_external") or {};
-				t_insert(url_list, { delete_url, get_url });
-				datamanager.store(user, host, "http_upload_external", url_list);
 			end
+			datamanager.store(user, host, "http_upload_external", url_list);
 		end
 	);
 end
@@ -235,16 +237,10 @@ local function delete_uploads(self, data, state)
 			local delete_url, get_url = unpack(url_data);
 			if to_remove[get_url] then
 				delete_file(user, host, delete_url, get_url);
-				t_remove(url_list, i);
 			end
 		end
 
-		if #url_list == 0 then
-			datamanager.store(user, host, "http_upload_external");
-		else
-			datamanager.store(user, host, "http_upload_external", url_list);
-		end
-		return { status = "completed", info = "Done" };
+		return { status = "completed", info = "Sent deletion request/s" };
 	else
 		local url_list = datamanager.load(user, host, "http_upload_external")
 		if not url_list then
