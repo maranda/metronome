@@ -13,10 +13,10 @@ end
 
 -- imports
 local st = require"util.stanza";
-local uuid = require"util.uuid".generate;
 local http = require "net.http";
 local dataform = require "util.dataforms".new;
 local HMAC = require "util.hmac".sha256;
+local seed = require "util.auxiliary".generate_secret;
 
 -- config
 local file_size_limit = module:get_option_number("http_file_size_limit", 100 * 1024 * 1024); -- 100 MB
@@ -52,6 +52,11 @@ module:hook("iq/host/http://jabber.org/protocol/disco#info:query", function(even
 	origin.send(reply);
 	return true;
 end);
+
+local function generate_directory()
+	local bits = seed(9);
+	return bits and bits:gsub("/", ""):gsub("%+", "") .. tostring(os_time()):match("%d%d%d%d$");
+end
 
 local function magic_crypto_dust(random, filename, filesize, filetype)
 	local param, message;
@@ -89,7 +94,7 @@ local function handle_request(origin, stanza, xmlns, filename, filesize, filetyp
 				:tag("max-size"):text(tostring(file_size_limit))));
 		return;
 	end
-	local random = uuid();
+	local random = generate_directory();
 	local get_url, verify = magic_crypto_dust(random, filename, filesize, filetype);
 	local put_url = get_url .. verify;
 
