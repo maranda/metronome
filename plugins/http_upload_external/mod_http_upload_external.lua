@@ -247,7 +247,7 @@ local function delete_uploads(self, data, state)
 			return { status = "complete", error = { message = "You have no uploads" } };
 		else
 			local layout = list_layout(url_list);
-			return { status = "executing", form = layout }, { store = url_list, layout = layout };
+			return { status = "executing", form = layout }, { url_list = url_list, layout = layout };
 		end
 	end
 end
