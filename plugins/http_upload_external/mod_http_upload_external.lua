@@ -64,7 +64,6 @@ local function delete_file(user, host, delete_url, get_url)
 		function(data, code, req)
 			if code == 204 then
 				module:log("debug", "Successfully deleted uploaded file for %s [%s]", user .."@".. host, get_url);
-				t_remove(url_list, i);
 			else
 				module:log("error", "Failed to delete uploaded file for %s [%s]", user .."@".. host, get_url);
 				module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
