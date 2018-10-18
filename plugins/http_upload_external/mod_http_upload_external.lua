@@ -20,8 +20,8 @@ local dataform = require "util.dataforms".new;
 local HMAC = require "util.hmac".sha256;
 local seed = require "util.auxiliary".generate_secret;
 local jid = require "util.jid";
-local ipairs, pairs, os_time, select, unpack, t_insert, t_remove = 
-	ipairs, pairs, os.time, select, unpack or table.unpack, table.insert, table.remove;
+local ipairs, pairs, os_time, unpack, t_insert, t_remove = 
+	ipairs, pairs, os.time, unpack or table.unpack, table.insert, table.remove;
 
 -- config
 local file_size_limit = module:get_option_number("http_file_size_limit", 100 * 1024 * 1024); -- 100 MB
@@ -205,11 +205,10 @@ local function list_layout(data)
 	}
 
 	for i, url_data in ipairs(data) do
-		local url = select(2, url_data);
 		t_insert(layout, {
-			name = url,
+			name = url_data[2],
 			type = "list-single",
-			label = url,
+			label = url_data[2],
 			value = {
 				{ value = "none", default = true },
 				{ value = "remove" }
@@ -233,7 +232,7 @@ local function delete_uploads(self, data, state)
 			if action == "remove" then to_remove[name] = true; end
 		end
 		for i, url_data in ipairs(url_list) do
-			if to_remove[select(2, url_data)] then t_remove(url_list, i); end
+			if to_remove[url_data[2]] then t_remove(url_list, i); end
 		end
 
 		if #url_list == 0 then
