@@ -17,6 +17,7 @@ local http = require "net.http";
 local dataform = require "util.dataforms".new;
 local HMAC = require "util.hmac".sha256;
 local seed = require "util.auxiliary".generate_secret;
+local os_time = os.time;
 
 -- config
 local file_size_limit = module:get_option_number("http_file_size_limit", 100 * 1024 * 1024); -- 100 MB
