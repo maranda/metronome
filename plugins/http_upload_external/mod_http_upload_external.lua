@@ -12,19 +12,19 @@ if not module:host_is_component() then
 end
 
 -- imports
-local st = require"util.stanza";
+local datamanager = require "util.datamanager";
+local st = require "util.stanza";
 local http = require "net.http";
 local dataform = require "util.dataforms".new;
 local HMAC = require "util.hmac".sha256;
 local seed = require "util.auxiliary".generate_secret;
-local os_time = os.time;
+local jid = require "util.jid";
+local os_time, t_insert, t_remove = os.time, table.insert, table.remove;
 
 -- config
 local file_size_limit = module:get_option_number("http_file_size_limit", 100 * 1024 * 1024); -- 100 MB
 local base_url = assert(module:get_option_string("http_file_external_url"), "http_file_external_url is a required option");
 local secret = assert(module:get_option_string("http_file_secret"), "http_file_secret is a required option");
-
-local token_protocol = module:get_option_string("http_file_token_protocol", "v2");
 
 -- namespace
 local legacy_namespace = "urn:xmpp:http:upload";
@@ -37,6 +37,7 @@ module:hook("iq/host/http://jabber.org/protocol/disco#info:query", function(even
 	local reply = st.iq({ type = "result", id = stanza.attr.id, from = module.host, to = stanza.attr.from })
 		:query("http://jabber.org/protocol/disco#info")
 			:tag("identity", { category = "store", type = "file", name = disco_name }):up()
+			:tag("feature", { var = "http://jabber.org/protocol/commands" }):up()
 			:tag("feature", { var = "http://jabber.org/protocol/disco#info" }):up()
 			:tag("feature", { var = namespace }):up()
 			:tag("feature", { var = legacy_namespace }):up();
@@ -54,21 +55,46 @@ module:hook("iq/host/http://jabber.org/protocol/disco#info:query", function(even
 	return true;
 end);
 
+local function purge_files(user, host)
+	local url_list = datamanager.load(user, host, "http_upload_external");
+	if url_list then
+		local last = url_list[#url_list];
+		for i, url in ipairs(url_list) do
+			http.request(url, { method = "DELETE" },
+				function(data, code, req)
+					if code == 204 then
+						module:log("debug", "Successfully deleted uploaded file for %s [%s]", user .."@".. host, url);
+						t_remove(url_list, i);
+					else
+						module:log("error", "Failed to delete uploaded file for %s [%s]", user .."@".. host, url);
+						module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
+							"The upstream HTTP file service reported to have failed to remove your file located at ".. url
+							.. ", if the problem persists please contact an administrator, thank you."
+						));
+					end
+					if url == last then
+						if not next(url_list) then
+							datamanager.store(user, host, "http_upload_external");
+						else
+							datamanager.store(user, host, "http_upload_external", url_list);
+						end
+					end
+				end
+			);
+		end
+	end
+end
+
 local function generate_directory()
 	local bits = seed(9);
 	return bits and bits:gsub("/", ""):gsub("%+", "") .. tostring(os_time()):match("%d%d%d%d$");
 end
 
 local function magic_crypto_dust(random, filename, filesize, filetype)
-	local param, message;
-	if token_protocol == "v1" then
-		param, message = "v", string.format("%s/%s %d", random, filename, filesize);
-	else
-		param, message = "v2", string.format("%s/%s\0%d\0%s", random, filename, filesize, filetype);
-	end
+	local message = string.format("%s/%s\0%d\0%s", random, filename, filesize, filetype);
 	local digest = HMAC(secret, message, true);
 	random, filename = http.urlencode(random), http.urlencode(filename);
-	return base_url .. random .. "/" .. filename, "?"..param.."=" .. digest;
+	return base_url .. random .. "/" .. filename, "?token=" .. digest;
 end
 
 local function handle_request(origin, stanza, xmlns, filename, filesize, filetype)
@@ -98,6 +124,10 @@ local function handle_request(origin, stanza, xmlns, filename, filesize, filetyp
 	local random = generate_directory();
 	local get_url, verify = magic_crypto_dust(random, filename, filesize, filetype);
 	local put_url = get_url .. verify;
+
+	local url_list = datamanager.load(origin.username, origin.host, "http_upload_external") or {};
+	t_insert(url_list, put_url);
+	datamanager.store(origin.username, origin.host, "http_upload_external", url_list);
 
 	module:log("debug", "Handing out upload slot %s to %s@%s [%d %s]", get_url, origin.username, origin.host, filesize, filetype);
 
@@ -131,6 +161,18 @@ local function handle_iq(event)
 	origin.send(reply);
 	return true;
 end
+
+-- adhoc handler
+local adhoc_new = module:require "adhoc".new;
+
+local function purge_uploads(self, data, state)
+	local user, host = jid.split(data.from);
+	purge_files(user, host);
+	return { status = "completed", info = "Sent purge request to the upstream file server" };
+end
+
+local purge_uploads_descriptor = adhoc_new("Purge HTTP Upload Files", "http_upload_purge", purge_uploads, "server_user");
+module:provides("adhoc", purge_uploads_descriptor);
 
 -- hooks
 module:hook("iq/host/"..legacy_namespace..":request", handle_iq);

@@ -13,7 +13,6 @@
 
     http_file_external_url = "https://your.example.com/path/to/share.php/"
     http_file_secret = "this is your secret string"
-    http_file_token_protocol = "v2";
 
   ** Metronome's License
 
@@ -76,14 +75,14 @@ $store_file_name = $CONFIG_STORE_DIR . '/store-' . hash('sha256', $upload_file_n
 $request_method = $_SERVER['REQUEST_METHOD'];
 
 /* Set CORS headers */
-header('Access-Control-Allow-Methods: GET, HEAD, OPTIONS, PUT');
+header('Access-Control-Allow-Methods: DELETE, GET, HEAD, OPTIONS, PUT');
 header('Access-Control-Allow-Headers: Content-Type, Origin, X-Requested-With');
 header('Access-Control-Allow-Origin: *');
 
-if(array_key_exists('v2', $_GET) === TRUE && $request_method === 'PUT') {
+if(array_key_exists('token', $_GET) === TRUE && ($request_method === 'PUT' || $request_method === 'DELETE')) {
 //	error_log(var_export($_SERVER, TRUE));
 	$upload_file_size = $_SERVER['CONTENT_LENGTH'];
-	$upload_token = $_GET['v2'];
+	$upload_token = $_GET['token'];
 
 	if(array_key_exists('CONTENT_TYPE', $_SERVER) === TRUE) {
 		$upload_file_type = $_SERVER['CONTENT_TYPE'];
@@ -112,26 +111,39 @@ if(array_key_exists('v2', $_GET) === TRUE && $request_method === 'PUT') {
 			exit;
 		}
 	}
-	/* Open a file for writing */
-	$store_file = fopen($store_file_name, 'x');
 
-	if($store_file === FALSE) {
-		header('HTTP/1.0 409 Conflict');
-		exit;
+	if($request_method === 'PUT') {
+		/* Open a file for writing */
+		$store_file = fopen($store_file_name, 'x');
+
+		if($store_file === FALSE) {
+			header('HTTP/1.0 409 Conflict');
+			exit;
+		}
+
+		/* PUT data comes in on the stdin stream */
+		$incoming_data = fopen('php://input', 'r');
+
+		/* Read the data a chunk at a time and write to the file */
+		while ($data = fread($incoming_data, $CONFIG_CHUNK_SIZE)) {
+  			fwrite($store_file, $data);
+		}
+
+		/* Close the streams */
+		fclose($incoming_data);
+		fclose($store_file);
+		file_put_contents($store_file_name.'-type', $upload_file_type);
+		header('HTTP/1.0 201 Created');
+	} else {
+		$deleted_file = unlink($store_file_name);
+		$deleted_data = unlink($store_file_name.'-type');
+
+		if($deleted_file === TRUE and $deleted_data === TRUE) {
+			header('HTTP/1.0 204 No Content');
+		} else {
+			header('HTTP/1.0 202 Accepted');
+		}
 	}
-
-	/* PUT data comes in on the stdin stream */
-	$incoming_data = fopen('php://input', 'r');
-
-	/* Read the data a chunk at a time and write to the file */
-	while ($data = fread($incoming_data, $CONFIG_CHUNK_SIZE)) {
-  		fwrite($store_file, $data);
-	}
-
-	/* Close the streams */
-	fclose($incoming_data);
-	fclose($store_file);
-	file_put_contents($store_file_name.'-type', $upload_file_type);
 } else if($request_method === 'GET' || $request_method === 'HEAD') {
 	// Send file (using X-Sendfile would be nice here...)
 	if(file_exists($store_file_name)) {
