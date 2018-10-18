@@ -93,7 +93,7 @@ end
 
 local function magic_crypto_dust(random, filename, value, filetype)
 	local message;
-	if type(filesize) == "string" then
+	if type(value) == "string" then
 		message = string.format("%s/%s\0%s\0%s", random, filename, value, filetype);
 	else
 		message = string.format("%s/%s\0%d\0%s", random, filename, value, filetype);
