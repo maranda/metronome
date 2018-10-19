@@ -233,6 +233,7 @@ local function delete_uploads(self, data, state)
 	local user, host = jid.split(data.from);
 
 	if state then
+		if data.action == "cancel" then return { status = "canceled" }; end
 		local layout, url_list = state.layout, state.url_list;
 		local fields = layout:data(data.form);
 		fields["FORM_TYPE"] = nil;
