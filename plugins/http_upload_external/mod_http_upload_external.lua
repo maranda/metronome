@@ -40,17 +40,19 @@ module:hook("iq/host/http://jabber.org/protocol/disco#info:query", function(even
 	local origin, stanza = event.origin, event.stanza;
 	local reply = st.iq({ type = "result", id = stanza.attr.id, from = module.host, to = stanza.attr.from })
 		:query("http://jabber.org/protocol/disco#info")
-			:tag("identity", { category = "store", type = "file", name = disco_name }):up()
-			:tag("feature", { var = "http://jabber.org/protocol/commands" }):up()
-			:tag("feature", { var = "http://jabber.org/protocol/disco#info" }):up()
-			:tag("feature", { var = namespace }):up()
-			:tag("feature", { var = legacy_namespace }):up();
+			:tag("identity", { category = "store", type = "file", name = disco_name }):up();
 
-	reply.tags[1]:add_child(dataform {
+	local query = reply.tags[1];
+	if delete_base_url then query:tag("feature", { var = "http://jabber.org/protocol/commands" }):up(); end
+	query:tag("feature", { var = "http://jabber.org/protocol/disco#info" }):up();
+	query:tag("feature", { var = namespace }):up();
+	query:tag("feature", { var = legacy_namespace }):up();
+
+	query:add_child(dataform {
 		{ name = "FORM_TYPE", type = "hidden", value = namespace },
 		{ name = "max-file-size", type = "text-single" }
 	}:form({ ["max-file-size"] = tostring(file_size_limit) })):up();
-	reply.tags[1]:add_child(dataform {
+	query:add_child(dataform {
 		{ name = "FORM_TYPE", type = "hidden", value = legacy_namespace },
 		{ name = "max-file-size", type = "text-single" }
 	}:form({ ["max-file-size"] = tostring(file_size_limit) })):up();
