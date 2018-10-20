@@ -215,7 +215,7 @@ end
 function destroy_request(request)
 	if request.conn then
 		request.conn = nil;
-		request.handler:close()
+		request.handler:close();
 	end
 end
 
