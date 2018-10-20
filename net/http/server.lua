@@ -297,6 +297,7 @@ function _M.fire_server_event(event, ...)
 	return events.fire_event(event, ...); 
 end
 
+_M.sessions = sessions;
 _M.listener = listener;
 _M.codes = codes;
 _M._events = events;
