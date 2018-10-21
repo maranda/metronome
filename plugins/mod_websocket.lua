@@ -92,18 +92,15 @@ local function close(session, reason) -- Basically duplicated from mod_c2s, shou
 		if reason == nil and not session.notopen and session.type == "c2s" then
 			add_task(stream_close_timeout, function ()
 				if not session.destroyed then
-					local conn = session.conn;
 					session.log("warn", "Failed to receive a stream close response, closing connection anyway...");
 					sm_destroy_session(session, reason);
 					ws:close(1000, "Stream closed");
-					httpserver_sessions[conn] = nil;
 				end
 			end);
 		else
 			local conn = session.conn;
 			sm_destroy_session(session, reason);
 			ws:close(1000, "Stream closed");
-			httpserver_sessions[conn] = nil;
 		end
 	end
 end
@@ -205,3 +202,8 @@ function module.add_host(module)
 		}
 	});
 end
+
+module:hook("c2s-destroyed", function(event)
+	local conn = event.conn;
+	if httpserver_sessions[conn] then httpserver_sessions[conn] = nil; end
+end);
