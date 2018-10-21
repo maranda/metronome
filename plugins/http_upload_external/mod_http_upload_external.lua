@@ -297,7 +297,7 @@ local function purge_others_uploads(self, data, state)
 			return { status = "completed", error = { message = "You need to supply the User JID" } };
 		end
 	else
-		return { status = "executing", form = change_password_layout }, "executing";
+		return { status = "executing", form = purge_others_layout }, "executing";
 	end
 end
 
