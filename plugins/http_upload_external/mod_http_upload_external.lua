@@ -263,7 +263,7 @@ local function delete_uploads(self, data, state)
 end
 
 local purge_others_layout = dataforms.new{
-	title = "Purge uploads for a given user ";
+	title = "Purge uploads for a given user";
 	instructions = "This command allows global admins to signal the upstream server to purge downloads for a given user.";
 	{ name = "FORM_TYPE", type = "hidden", value = command_xmlns };
 	{ name = "jid", type = "text-single", label = "User Jid" };
