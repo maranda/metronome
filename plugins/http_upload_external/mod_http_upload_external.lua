@@ -70,8 +70,8 @@ local function delete_file(user, host, delete_url, get_url)
 			else
 				module:log("error", "Failed to delete uploaded file for %s [%s]", user .."@".. host, get_url);
 				module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
-					"The upstream HTTP file service reported to have failed to remove your file located at " .. get_url
-					.. ", if the problem persists please contact an administrator, thank you."
+					"The upstream HTTP file service reported it couldn't remove your file located at " .. get_url
+					.. ", it's possible the file was removed already or the upload failed."
 				));
 			end
 			for i, url_data in ipairs(url_list) do
@@ -100,8 +100,8 @@ local function purge_files(user, host, account_deletion)
 						module:log("error", "Failed to delete uploaded file for %s [%s]", user .."@".. host, url);
 						if not account_deletion then
 							module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
-								"The upstream HTTP file service reported to have failed to remove your file located at " .. url
-								.. ", if the problem persists please contact an administrator, thank you."
+								"The upstream HTTP file service reported it couldn't remove your file located at " .. url
+								.. ", it's possible the file was removed already or the upload failed."
 							));
 						end
 					end
@@ -209,8 +209,8 @@ end
 -- adhoc functions
 local function list_layout(data)
 	local layout = {
-		title = "List uploaded files";
-		instructions = "Select which uploads to delete from the upstream sharing service.";
+		title = "List requested upload slots";
+		instructions = "Select which uploads to attempt to delete from the upstream sharing service.";
 		{ name = "FORM_TYPE", type = "hidden", value = "http://jabber.org/protocol/commands" };
 	}
 
