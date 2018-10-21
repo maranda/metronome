@@ -20,6 +20,7 @@ local dataform = require "util.dataforms".new;
 local HMAC = require "util.hmac".sha256;
 local seed = require "util.auxiliary".generate_secret;
 local jid = require "util.jid";
+local user_exists = require "core.usermanager".user_exists;
 local ipairs, pairs, os_time, unpack, t_insert, t_remove = 
 	ipairs, pairs, os.time, unpack or table.unpack, table.insert, table.remove;
 
@@ -261,10 +262,43 @@ local function delete_uploads(self, data, state)
 	end
 end
 
+local purge_others_layout = dataforms.new{
+	title = "Purge uploads for a given user ";
+	instructions = "This command allows global admins to signal the upstream server to purge downloads for a given user.";
+	{ name = "FORM_TYPE", type = "hidden", value = command_xmlns };
+	{ name = "jid", type = "text-single", label = "User Jid" };
+};
+
 local function purge_uploads(self, data, state)
 	local user, host = jid.split(data.from);
 	purge_files(user, host);
-	return { status = "completed", info = "Sent purge request to the upstream file server" };
+	return { status = "completed", info = "Purge request sent to the upstream file server" };
+end
+
+local function purge_others_uploads(self, data, state)
+	if state then
+		if data.action == "cancel" then return { status = "canceled" }; end
+		local fields = purge_others_layout:data(data.form);
+
+		if fields.jid then
+			local user, host = jid.split(jid.prep(fields.jid));
+
+			if not user or not host then
+				return { status = "completed", error = { message = "Supplied JID is not valid" } };
+			end
+
+			if user_exists(user, host) then
+				purge_files(user, host);
+				return { status = "completed", info = "Purge request sent to the upstream file server" };
+			else
+				return { status = "completed", error = { message = "User doesn't exist" } };
+			end
+		else
+			return { status = "completed", error = { message = "You need to supply the User JID" } };
+		end
+	else
+		return { status = "executing", form = change_password_layout }, "executing";
+	end
 end
 
 -- handlers and hooks
@@ -272,8 +306,11 @@ if delete_base_url then
 	local adhoc_new = module:require "adhoc".new;
 	local delete_uploads_descriptor = adhoc_new("Delete Single Files", "http_upload_delete", delete_uploads, "server_user");
 	local purge_uploads_descriptor = adhoc_new("Purge All Uploaded Files", "http_upload_purge", purge_uploads, "server_user");
+	local purge_others_uploads_descriptor = adhoc_new("Issue Purge for Another User's Uploaded Files", "http_upload_purge_others", 
+		purge_others_uploads, "global_admin");
 	module:provides("adhoc", delete_uploads_descriptor);
 	module:provides("adhoc", purge_uploads_descriptor);
+	module:provides("adhoc", purge_others_uploads_descriptor);
 	module:hook_global("user-deleted", function(event) purge_files(event.username, event.host, true); end, 20);
 end
 
