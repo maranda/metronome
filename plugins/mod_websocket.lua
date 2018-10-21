@@ -20,6 +20,8 @@ local sm_destroy_session = require "core.sessionmanager".destroy_session;
 local websocket = require "util.websocket";
 local st = require "util.stanza";
 
+local httpserver_sessions = require "net.http.server".sessions;
+
 local t_concat = table.concat;
 
 local raw_log = module:get_option_boolean("websocket_no_raw_requests_logging", true) ~= true and true or nil;
@@ -90,14 +92,18 @@ local function close(session, reason) -- Basically duplicated from mod_c2s, shou
 		if reason == nil and not session.notopen and session.type == "c2s" then
 			add_task(stream_close_timeout, function ()
 				if not session.destroyed then
+					local conn = session.conn;
 					session.log("warn", "Failed to receive a stream close response, closing connection anyway...");
 					sm_destroy_session(session, reason);
 					ws:close(1000, "Stream closed");
+					httpserver_sessions[conn] = nil;
 				end
 			end);
 		else
+			local conn = session.conn;
 			sm_destroy_session(session, reason);
 			ws:close(1000, "Stream closed");
+			httpserver_sessions[conn] = nil;
 		end
 	end
 end
