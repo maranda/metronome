@@ -101,12 +101,12 @@ local function auto_cleanup(user, host, url_list)
 	end	
 end
 
-local function purge_files(user, host, account_deletion)
+local function purge_files(user, host, no_notify)
 	local url_list = datamanager.load(user, host, "http_upload_external");
 	if url_list then
 		for _, url_data in ipairs(url_list) do
 			local delete_url, get_url = unpack(url_data);
-			delete_file(user, host, delete_url, get_url, account_deletion);
+			delete_file(user, host, delete_url, get_url, no_notify);
 		end
 	end
 end
@@ -281,7 +281,7 @@ local function purge_others_uploads(self, data, state)
 			end
 
 			if user_exists(user, host) then
-				purge_files(user, host);
+				purge_files(user, host, true);
 				return { status = "completed", info = "Purge request sent to the upstream file server" };
 			else
 				return { status = "completed", error = { message = "User doesn't exist" } };
