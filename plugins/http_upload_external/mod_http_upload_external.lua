@@ -26,6 +26,8 @@ local ipairs, pairs, os_time, unpack, t_insert, t_remove =
 
 -- config
 local file_size_limit = module:get_option_number("http_file_size_limit", 100 * 1024 * 1024); -- 100 MB
+local file_auto_cleanup = module:get_option_numer("http_file_auto_cleanup", 2592000); -- 30 Days
+local file_cleanup_whitelist = module:get_option_set("http_file_no_cleanup_whitelist", {});
 local base_url = assert(module:get_option_string("http_file_external_url"), "http_file_external_url is a required option");
 local delete_base_url = module:get_option_string("http_file_external_delete_url");
 local secret = assert(module:get_option_string("http_file_secret"), "http_file_secret is a required option");
@@ -62,7 +64,7 @@ module:hook("iq/host/http://jabber.org/protocol/disco#info:query", function(even
 	return true;
 end);
 
-local function delete_file(user, host, delete_url, get_url)
+local function delete_file(user, host, delete_url, get_url, no_notify)
 	http.request(delete_url, { method = "DELETE" },
 		function(data, code, req)
 			local url_list = datamanager.load(user, host, "http_upload_external") or {};
@@ -70,10 +72,12 @@ local function delete_file(user, host, delete_url, get_url)
 				module:log("debug", "Successfully deleted uploaded file for %s [%s]", user .."@".. host, get_url);
 			else
 				module:log("error", "Failed to delete uploaded file for %s [%s]", user .."@".. host, get_url);
-				module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
-					"The upstream HTTP file service reported it couldn't remove your file located at " .. get_url
-					.. ", it's possible the file was removed already or the upload failed."
-				));
+				if not no_notify then
+					module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
+						"The upstream HTTP file service reported it couldn't remove your file located at " .. get_url
+						.. ", it's possible the file was removed already or the upload failed."
+					));
+				end
 			end
 			for i, url_data in ipairs(url_list) do
 				if url_data[2] == get_url then t_remove(url_list, i); break; end
@@ -85,6 +89,16 @@ local function delete_file(user, host, delete_url, get_url)
 			end
 		end
 	);
+end
+
+local function auto_cleanup(user, host, url_list)
+	for _, url_data in ipairs(url_list) do
+		local delete_url, get_url, created_time = unpack(url_data);
+		if created_time and os_time() - created_time > file_auto_cleanup then
+			module:log("debug", "Expiring file %s", get_url);
+			delete_file(user, host, delete_url, get_url, true);
+		end
+	end	
 end
 
 local function purge_files(user, host, account_deletion)
@@ -170,8 +184,10 @@ local function handle_request(origin, stanza, xmlns, filename, filesize, filetyp
 	if delete_base_url then
 		local delete_url, delete_verify = magic_crypto_dust(random, filename, delete_secret);
 		local url_list = datamanager.load(origin.username, origin.host, "http_upload_external") or {};
-		t_insert(url_list, { delete_url .. delete_verify, get_url });
+		t_insert(url_list, { delete_url .. delete_verify, get_url,
+			not file_cleanup_whitelist:contains(jid.bare(origin.full_jid)) and os_time() or nil });
 		datamanager.store(origin.username, origin.host, "http_upload_external", url_list);
+		auto_cleanup(origin.username, origin.host, url_list);
 	end
 
 	module:log("debug", "Handing out upload slot %s to %s@%s [%d %s]", get_url, origin.username, origin.host, filesize, filetype);
