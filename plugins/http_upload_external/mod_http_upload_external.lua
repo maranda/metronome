@@ -104,32 +104,9 @@ end
 local function purge_files(user, host, account_deletion)
 	local url_list = datamanager.load(user, host, "http_upload_external");
 	if url_list then
-		local last = url_list[#url_list];
-		for i, url_data in ipairs(url_list) do
-			local delete_url, url = unpack(url_data);
-			http.request(delete_url, { method = "DELETE" },
-				function(data, code, req)
-					if code == 204 then
-						module:log("debug", "Successfully deleted uploaded file for %s [%s]", user .."@".. host, url);
-					else
-						module:log("error", "Failed to delete uploaded file for %s [%s]", user .."@".. host, url);
-						if not account_deletion then
-							module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
-								"The upstream HTTP file service reported it couldn't remove your file located at " .. url
-								.. ", it's possible the file was removed already or the upload failed."
-							));
-						end
-					end
-					t_remove(url_list, i);
-					if url == last then
-						if #url_list == 0 or account_deletion then
-							datamanager.store(user, host, "http_upload_external");
-						else
-							datamanager.store(user, host, "http_upload_external", url_list);
-						end
-					end
-				end
-			);
+		for _, url_data in ipairs(url_list) do
+			local delete_url, get_url = unpack(url_data);
+			delete_file(user, host, delete_url, get_url, account_deletion);
 		end
 	end
 end
