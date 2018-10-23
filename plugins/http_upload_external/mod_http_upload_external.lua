@@ -26,7 +26,7 @@ local ipairs, pairs, os_time, unpack, t_insert, t_remove =
 
 -- config
 local file_size_limit = module:get_option_number("http_file_size_limit", 100 * 1024 * 1024); -- 100 MB
-local file_auto_cleanup = module:get_option_numer("http_file_expire_after", 172800);
+local file_auto_cleanup = module:get_option_number("http_file_expire_after", 172800);
 local file_cleanup_whitelist = module:get_option_set("http_file_no_expire_whitelist", {});
 local base_url = assert(module:get_option_string("http_file_external_url"), "http_file_external_url is a required option");
 local delete_base_url = module:get_option_string("http_file_external_delete_url");
