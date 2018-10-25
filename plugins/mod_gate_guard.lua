@@ -114,14 +114,14 @@ function module.add_host(module)
 	end
 
 	module:hook("call-gate-guard", function(event)
-		local from, reason, ban_time = event.from, event.reason, event.ban_time;
+		local from, reason, ban_time, hits = event.from, event.reason, event.ban_time, event.hits;
 		local host = section(from, "host");
 
 		if not guard_banned[host] then
 			if guard_hits[host] then
 				guard_hits[host] = guard_hits[host] + 1;
 				module:log("debug", "%s triggered gate guard, reason: %s - hits: %d", from, reason, guard_hits[host]);
-				if guard_hits[host] >= guard_max_hits then
+				if guard_hits[host] >= (hits or guard_max_hits) then
 					module:log("info", "%s exceeded number of offenses, closing streams and banning for %d seconds (%s)", 
 						host, ban_time or guard_expire, reason);
 					guard_hits[host] = nil;
