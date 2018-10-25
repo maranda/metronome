@@ -125,7 +125,7 @@ function module.add_host(module)
 					module:log("info", "%s exceeded number of offenses, closing streams and banning for %d seconds (%s)", 
 						host, ban_time or guard_expire, reason);
 					guard_hits[host] = nil;
-					guard_banned[host] = { expire = now() + ban_time or guard_expire, reason = reason };
+					guard_banned[host] = { expire = now() + (ban_time or guard_expire), reason = reason };
 					for i, _host in pairs(hosts) do
 						for name, session in pairs(_host.s2sout) do
 							if session.close and name == host then session:close(); end
