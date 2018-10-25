@@ -26,8 +26,8 @@ local exclusion_list = module:get_option_set("muc_throttle_host_exclusion");
 local parent_host = module:get_option_boolean("muc_whitelist_parent_peers") == true and module.host:match("%.(.*)");
 local disconnect_after = module:get_option_number("muc_disconnect_after_throttles", 20);
 local use_gate_guard = module:get_option_boolean("muc_use_gate_guard", true);
-local gate_guard_hits = module:get_option_boolean("muc_gate_guard_max_hits", 150);
-local gate_guard_time = module:get_option_boolean("muc_gate_guard_ban_time", 3600);
+local gate_guard_hits = module:get_option_number("muc_gate_guard_max_hits", 150);
+local gate_guard_time = module:get_option_number("muc_gate_guard_ban_time", 3600);
 
 local hosts = metronome.hosts;
 local host_object = hosts[module.host];
