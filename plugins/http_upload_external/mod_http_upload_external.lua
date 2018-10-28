@@ -31,7 +31,8 @@ local file_cleanup_whitelist = module:get_option_set("http_file_no_expire_whitel
 local base_url = assert(module:get_option_string("http_file_external_url"), "http_file_external_url is a required option");
 local delete_base_url = module:get_option_string("http_file_external_delete_url");
 local secret = assert(module:get_option_string("http_file_secret"), "http_file_secret is a required option");
-local delete_secret = assert(module:get_option_string("http_file_delete_secret"), "http_file_delete_secret is a required option");
+local delete_secret = delete_base_url and assert(
+	module:get_option_string("http_file_delete_secret"), "http_file_delete_secret is a required option if deletion is enabled");
 
 -- namespace
 local legacy_namespace = "urn:xmpp:http:upload";
