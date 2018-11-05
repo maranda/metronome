@@ -37,7 +37,7 @@ local function filter(origin, from_host, to_host)
 	if blacklisted or guard_protect:contains(to_host) and not guard_whitelist:contains(from_host) then
 		module:log("info", "remote service %s is by configuration blocked from accessing host %s", from_host, to_host);
 		if blacklisted then
-			if not guard_banned[from_host] then	guard_banned[from_host] = { expire = now() + guard_expire, reason = reason }; end
+			if not guard_banned[from_host] then	guard_banned[from_host] = { expire = now() + guard_expire, reason = "Blacklisted" }; end
 			guard_banned_filtered[origin.conn:ip()] = from_host;
 		end
 		origin.blocked = true;
