@@ -10,7 +10,6 @@
 module:set_global();
 
 local hostmanager = require "core.hostmanager";
-local modulemanager = require "core.modulemanager";
 local s2smanager = require "util.s2smanager";
 local portmanager = require "core.portmanager";
 
@@ -33,9 +32,9 @@ local envload = require "util.envload".envload;
 local envloadfile = require "util.envload".envloadfile;
 local dns = require "net.dns";
 local st = require "util.stanza";
-local cm = configmanager;
-local mm = modulemanager;
-local um = usermanager;
+local cm = require "core.configmanager";
+local mm = require "core.modulemanager";
+local um = require "core.usermanager";
 local read_version = read_version;
 
 local commands = module:shared("commands")
@@ -432,7 +431,7 @@ function def_env.module:list(hosts)
 	local print = self.session.print;
 	for _, host in ipairs(hosts) do
 		print((host == "*" and "Global" or host)..":");
-		local modules = array.collect(keys(modulemanager.get_modules(host) or {})):sort();
+		local modules = array.collect(keys(mm.get_modules(host) or {})):sort();
 		if #modules == 0 then
 			if module:get_host_session(host) then
 				print("    No modules loaded");
