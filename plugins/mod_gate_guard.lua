@@ -9,6 +9,7 @@ module:set_global();
 
 local hosts = hosts;
 local incoming_s2s = metronome.incoming_s2s;
+local modulemanager = modulemanager;
 local set_new = require "util.set".new;
 local now, pairs, section = os.time, pairs, require "util.jid".section;
 
@@ -146,6 +147,10 @@ function module.add_host(module)
 			end
 		end
 	end);
+
+	module:hook("config-reloaded", function()
+		modulemanager.reload(module.host, module.name);
+	end);
 end
 
 local function close_filtered()
@@ -174,12 +179,9 @@ local function reload()
 	guard_whitelist = module:get_option_set("gate_whitelist", {});
 	guard_expire = module:get_option_number("gate_expiretime", 172800);
 	guard_max_hits = module:get_option_number("gate_max_hits", 50);
-
+	guard_banned, guard_banned_filtered, guard_hits = {}, {}, {};
 	close_filtered();
 end
-
-module.save = function() return { guard_banned = guard_banned, guard_hits = guard_hits }; end
-module.restore = function(data) guard_banned, guard_hits = data.guard_banned or {}, data.guard_hits or {}; end
 
 module:log("debug", "initializing Metronome's gate guard...");
 module:hook("config-reloaded", reload);
