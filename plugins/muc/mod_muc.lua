@@ -231,7 +231,7 @@ local function handle_to_domain(event)
 		   if can_create_room(origin, stanza) then
 				local uuid = uuid_gen();
 				unique_reservations[uuid.."@"..muc_host] = jid_bare(stanza.attr.from or origin.full_jid);
-				module:add_timer(expire_unique_room_reservations, function()
+				module:add_timer(expire_unique_reservations, function()
 					unique_reservations[uuid.."@"..muc_host] = nil;
 				end);
 				origin.send(st.reply(stanza):tag("unique", { xmlns = xmlns }):text(uuid));
