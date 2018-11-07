@@ -28,6 +28,7 @@ local expire_destruction_redirection = module:get_option_number("expire_destruct
 local expire_inactive_rooms = module:get_option_boolean("expire_inactive_rooms", false);
 local expire_inactive_rooms_time = module:get_option_number("expire_inactive_rooms_time", 2592000);
 local expire_inactive_rooms_whitelist = module:get_option_set("expire_inactive_rooms_whitelist", {});
+local expire_unique_reservations = module:get_option_number("expire_unique_room_reservations", 180);
 local muclib = module:require "muc";
 local muc_new_room = muclib.new_room;
 local jid_section = require "util.jid".section;
@@ -46,6 +47,7 @@ rooms = {};
 local host_session = module:get_host_session();
 local rooms = rooms;
 local persistent_rooms = persistent_store:get() or {};
+local unique_reservations = {};
 
 -- Configurable options
 local max_history_messages = module:get_option_number("max_history_messages", 100);
@@ -95,6 +97,7 @@ module:provides("adhoc", toggle_muc_su_descriptor);
 module:add_feature("http://jabber.org/protocol/disco#info");
 module:add_feature("http://jabber.org/protocol/disco#items");
 module:add_feature("http://jabber.org/protocol/muc");
+module:add_feature("http://jabber.org/protocol/muc#unique")
 
 local function is_admin(jid)
 	return um_is_admin(jid, module.host);
@@ -206,6 +209,14 @@ local function get_disco_items(stanza)
 	return reply; -- TODO cache disco reply
 end
 
+local function can_create_room(origin, stanza)
+	if (allow_anonymous_creation or not origin.is_anonymous) and
+		(not restrict_room_creation or (restrict_room_creation == "admin" and is_admin(stanza.attr.from)) or
+		(restrict_room_creation == "local" and jid_section(stanza.attr.from or origin.full_jid, "host") == module.host:gsub("^[^%.]+%.", ""))) then
+			return true;
+	end
+end
+
 local function handle_to_domain(event)
 	local origin, stanza = event.origin, event.stanza;
 	local type = stanza.attr.type;
@@ -217,7 +228,16 @@ local function handle_to_domain(event)
 		elseif xmlns == "http://jabber.org/protocol/disco#items" then
 			origin.send(get_disco_items(stanza));
 		elseif xmlns == "http://jabber.org/protocol/muc#unique" then
-			origin.send(st.reply(stanza):tag("unique", {xmlns = xmlns}):text(uuid_gen()));
+		   if can_create_room(origin, stanza) then
+				local uuid = uuid_gen();
+				unique_reservations[uuid.."@"..muc_host] = jid_bare(stanza.attr.from or origin.full_jid);
+				module:add_timer(expire_unique_room_reservations, function()
+					unique_reservations[uuid.."@"..muc_host] = nil;
+				end);
+				origin.send(st.reply(stanza):tag("unique", { xmlns = xmlns }):text(uuid));
+			else
+				origin.send(st.error_reply(stanza, "cancel", "not-allowed"));
+			end
 		else
 			origin.send(st.error_reply(stanza, "cancel", "service-unavailable"));
 		end
@@ -236,6 +256,11 @@ function stanza_handler(event)
 			origin.send(st.error_reply(stanza, "cancel", "item-not-found"));
 			return true;
 		end
+		local reserved = unique_reservations[bare];
+		if reserved and reserved ~= jid_bare(stanza.attr.from or origin.full_jid) then
+			origin.send(st.error_reply(stanza, "auth", "forbidden", "Room name is reserved"));
+			return true;
+		end
 		if allow_destruction_redirection and muclib.redirects[bare] then
 			local redirect = muclib.redirects[bare];
 			if redirect and (not is_admin(stanza.attr.from) and now() - redirect.added < expire_destruction_redirection) then
@@ -245,9 +270,7 @@ function stanza_handler(event)
 			muclib.redirects[bare] = nil;
 		end
 		local from_host = jid_section(stanza.attr.from, "host");
-		if (allow_anonymous_creation or not origin.is_anonymous) and
-		   (not restrict_room_creation or (restrict_room_creation == "admin" and is_admin(stanza.attr.from)) or
-		   (restrict_room_creation == "local" and from_host == module.host:gsub("^[^%.]+%.", ""))) then
+		if can_create_room(origin, stanza) then
 			room = muc_new_room(bare);
 			room.just_created = stanza:get_child("x", "http://jabber.org/protocol/muc") and true or nil;
 			room.route_stanza = room_route_stanza;
