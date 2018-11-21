@@ -387,7 +387,7 @@ local function outbound_handler(event)
 	if session.type ~= "c2s" then -- only handle clients stanzas
 		return;
 	elseif session.csi_queue then
-		-- prevent shortcircuiting of stanzas to break in order processing
+		-- prevent shortcircuiting of IQ stanzas to break in order processing
 		session.csi_queue:flush(true);
 	end
 end
@@ -396,12 +396,6 @@ module:hook("pre-iq/bare", outbound_handler, 100);
 module:hook("pre-iq/full", outbound_handler, 100);
 module:hook("pre-iq/host", outbound_handler, 100);
 module:hook("pre-iq/self", outbound_handler, 100);
-module:hook("pre-message/bare", outbound_handler, 100);
-module:hook("pre-message/full", outbound_handler, 100);
-module:hook("pre-message/host", outbound_handler, 100);
-module:hook("pre-presence/bare", outbound_handler, 100);
-module:hook("pre-presence/full", outbound_handler, 100);
-module:hook("pre-presence/host", outbound_handler, 100);
 
 module:hook("pre-resource-unbind", function(event)
 	local session = event.session;
