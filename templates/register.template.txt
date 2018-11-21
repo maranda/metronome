@@ -1,5 +1,5 @@
 This is an automated message from the registration system, to activate your account please visit %URL% within 5 minutes.
-And input the following token in the presented web form: %TOKEN%
+And input (copy and paste) the following token in the presented web form: %TOKEN%
 
 Regards.
 

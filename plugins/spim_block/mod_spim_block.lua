@@ -137,7 +137,7 @@ local function send_message(origin, name, to, from, token)
 	module:log("info", "requiring authentication for %s directed to %s from %s", name, to, from);
 	local message = st.message({ id = new_uuid(), type = "chat", from = to, to = from }, 
 		"Greetings, this is the "..module.host.." server before sending a message or presence subscription to this user, "..
-		"please visit "..base_url.." and input the following code in the form: "..token);
+		"please visit "..base_url.." and input (copy and paste) the following code in the form: "..token);
 	origin.send(message);
 	return true;
 end
