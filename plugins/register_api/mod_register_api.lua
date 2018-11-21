@@ -138,18 +138,18 @@ local function convert_legacy_storage()
 	end
 end
 
-local function generate_secret(bytes)
-	local str = generate(bytes);
+local function generate_secret()
+	local str = generate(9);
 	
-	if not str or str:len() < 20 then
-		repeat str = generate(bytes); until not str or str:len() >= 20
+	if not str or str:len() < 9 then
+		repeat str = generate(9); until not str or str:len() >= 9
 	end
 	
 	if not str then -- System issue just abort it
 		return nil;
 	end
 
-	return str;
+	return str:upper();
 end
 
 local function check_mail(address)
@@ -366,7 +366,7 @@ local function handle_register(data, event)
 				return http_error_reply(event, 409, "The E-Mail Address provided matches the hash associated to an existing account.");
 			end
 
-			local id_token = generate_secret(20);
+			local id_token = generate_secret();
 			if not id_token then
 				module:log("error", "Failed to pipe from /dev/urandom to generate the account registration token");
 				return http_error_reply(event, 500, "The xmpp server encountered an error trying to fullfil your request, please try again later.");
@@ -415,7 +415,7 @@ local function handle_password_reset(data, event)
 			return http_error_reply(event, 503, "Request throttled, wait a bit and try again.");
 		end
 
-		local id_token = generate_secret(20);
+		local id_token = generate_secret();
 		if not id_token then
 			module:log("error", "Failed to pipe from /dev/urandom to generate the password reset token");
 			return http_error_reply(event, 500, "The xmpp server encountered an error trying to fullfil your request, please try again later.");
@@ -605,7 +605,7 @@ local function handle_user_registration(event)
 			return;
 		end
 
-		local id_token = generate_secret(20);
+		local id_token = generate_secret();
 		if not id_token or not check_mail(mail) then
 			module:log("warn", "%s, invalidating %s registration and deleting account",
 				not id_token and "Failed to generate token" or "Supplied mail address is bogus or forbidden", user);
