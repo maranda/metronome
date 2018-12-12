@@ -548,8 +548,8 @@ function presence_handler(event)
 			if not hash_map[hash] then
 				if current ~= false then disco_info_query(user, recipient); end
 			else
-				recipients[recipient] = hash;
-				pep_send(recipient, user);
+				if not origin.sent_initial_pep_notifications then pep_send(recipient, user); end
+				if self and not origin.sent_initial_pep_notifications then origin.sent_initial_pep_notifications = true; end
 			end
 			if self and not user_bare_session.initial_pep_broadcast then -- re-broadcast to all interested contacts on connect, shall we?
 				local our_jid = origin.full_jid;
