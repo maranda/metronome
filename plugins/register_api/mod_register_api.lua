@@ -139,17 +139,8 @@ local function convert_legacy_storage()
 end
 
 local function generate_secret()
-	local str = generate(9);
-	
-	if not str or str:len() < 9 then
-		repeat str = generate(9); until not str or str:len() >= 9
-	end
-	
-	if not str then -- System issue just abort it
-		return nil;
-	end
-
-	return str:upper();
+	local str = generate(9);	
+	return str and str:upper() or nil;
 end
 
 local function check_mail(address)
