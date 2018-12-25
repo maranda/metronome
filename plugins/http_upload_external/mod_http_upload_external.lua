@@ -21,7 +21,8 @@ local HMAC = require "util.hmac".sha256;
 local seed = require "util.auxiliary".generate_secret;
 local jid = require "util.jid";
 local user_exists = require "core.usermanager".user_exists;
-local ipairs, pairs, os_time, unpack, t_insert, t_remove = 
+local generate_directory = require "util.auxiliary".generate_shortid;
+local ipairs, pairs, os_time, unpack, t_insert, t_remove =
 	ipairs, pairs, os.time, unpack or table.unpack, table.insert, table.remove;
 
 -- config
@@ -110,11 +111,6 @@ local function purge_files(user, host, no_notify)
 			delete_file(user, host, delete_url, get_url, no_notify);
 		end
 	end
-end
-
-local function generate_directory()
-	local bits = seed(9);
-	return bits and bits:gsub("/", ""):gsub("%+", "") .. tostring(os_time()):match("%d%d%d%d$");
 end
 
 local function magic_crypto_dust(random, filename, value, filetype)

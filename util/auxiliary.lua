@@ -9,7 +9,7 @@
 local CFG_SOURCEDIR, metronome = _G.CFG_SOURCEDIR, _G.metronome;
 local open, popen = io.open, io.popen;
 local base64 = require "util.encodings".base64.encode;
-local char, next, pairs, tonumber, tostring, type = string.char, next, pairs, tonumber, tostring, type;
+local char, next, os_time, pairs, tonumber, tostring, type = string.char, next, pairs, os.time, tonumber, tostring, type;
 
 module "auxiliary"
 
@@ -125,6 +125,11 @@ function generate_secret(bytes)
 	until urandom ~= nil or n == 30;
 
 	return (urandom and base64(urandom)) or nil;
+end
+
+function generate_shortid()
+	local bits = generate_secret(9);
+	return bits and bits:gsub("/", ""):gsub("%+", "") .. tostring(os_time()):match("%d%d%d%d$");
 end
 
 return _M;

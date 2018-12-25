@@ -20,7 +20,7 @@ local url = require "socket.url";
 local dataform = require "util.dataforms".new;
 local datamanager = require "util.datamanager";
 local array = require "util.array";
-local seed = require "util.auxiliary".generate_secret;
+local generate_directory = require "util.auxiliary".generate_shortid;
 local join, split = require "util.jid".join, require "util.jid".split;
 local gc, ipairs, pairs, open, os_remove, os_time, s_upper, t_concat, t_insert, tostring =
 	collectgarbage, ipairs, pairs, io.open, os.remove, os.time, string.upper, table.concat, table.insert, tostring;
@@ -29,11 +29,6 @@ local hosts = hosts;
 
 local function join_path(...)
 	return table.concat({ ... }, package.config:sub(1,1));
-end
-
-local function generate_directory()
-	local bits = seed(9);
-	return bits and bits:gsub("/", ""):gsub("%+", "") .. tostring(os_time()):match("%d%d%d%d$");
 end
 
 local default_mime_types = {

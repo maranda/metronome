@@ -34,7 +34,7 @@ local muc_new_room = muclib.new_room;
 local jid_section = require "util.jid".section;
 local jid_bare = require "util.jid".bare;
 local st = require "util.stanza";
-local uuid_gen = require "util.uuid".generate;
+local id_gen = require "util.auxiliary".generate_shortid;
 local fire_event = metronome.events.fire_event;
 local um_is_admin = require "core.usermanager".is_admin;
 local pairs, ipairs, next, now = pairs, ipairs, next, os.time;
@@ -229,12 +229,12 @@ local function handle_to_domain(event)
 			origin.send(get_disco_items(stanza));
 		elseif xmlns == "http://jabber.org/protocol/muc#unique" then
 		   if can_create_room(origin, stanza) then
-				local uuid = uuid_gen();
-				unique_reservations[uuid.."@"..muc_host] = jid_bare(stanza.attr.from or origin.full_jid);
+				local id = id_gen();
+				unique_reservations[id.."@"..muc_host] = jid_bare(stanza.attr.from or origin.full_jid);
 				module:add_timer(expire_unique_reservations, function()
-					unique_reservations[uuid.."@"..muc_host] = nil;
+					unique_reservations[id.."@"..muc_host] = nil;
 				end);
-				origin.send(st.reply(stanza):tag("unique", { xmlns = xmlns }):text(uuid));
+				origin.send(st.reply(stanza):tag("unique", { xmlns = xmlns }):text(id));
 			else
 				origin.send(st.error_reply(stanza, "cancel", "not-allowed"));
 			end
