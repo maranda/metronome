@@ -190,7 +190,8 @@ module:hook("sm-push-message", function(event)
 	local user, stanza = event.username, event.stanza;
 	local store = store_cache[user];
 
-	if store and stanza.name == "message" and stanza.attr.type == "chat" and stanza:get_child_text("body") then
+	if store and stanza.name == "message" and (stanza.attr.type == "chat" or stanza.attr.type == "groupchat") and
+		stanza:get_child_text("body") then
 		push_notify(user, store, stanza.attr.from, 1);
 	end
 end);
