@@ -9,7 +9,7 @@
 local CFG_SOURCEDIR, metronome = _G.CFG_SOURCEDIR, _G.metronome;
 local open, popen = io.open, io.popen;
 local base64 = require "util.encodings".base64.encode;
-local char, next, os_time, pairs, tonumber, tostring, type = string.char, next, pairs, os.time, tonumber, tostring, type;
+local char, next, os_time, pairs, tonumber, tostring, type = string.char, next, os.time, pairs, tonumber, tostring, type;
 
 module "auxiliary"
 
