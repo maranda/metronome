@@ -332,16 +332,16 @@ local function handle_register(data, event)
 		end
 
 		if not ((password:find("%d+") or password:find("%p+")) and password:find("%u+")) then
-			module:log("debug", "%s submitted password doesn't contain at least one uppercase letter, one number or symbol characters", ip);
+			module:log("warn", "%s submitted password doesn't contain at least one uppercase letter, one number or symbol characters", ip);
 			return http_error_reply(event, 406, "Supplied password needs to contain at least one uppercase letter and one symbol or digit.");			
 		elseif password:len() < min_pass_len then
-			module:log("debug", "%s submitted password is not long enough minimun is %d characters", ip, min_pass_len);
+			module:log("warn", "%s submitted password is not long enough minimun is %d characters", ip, min_pass_len);
 			return http_error_reply(event, 406, "Supplied password is not long enough minimum is " .. tostring(min_pass_len) .. " characters.");
 		elseif password:len() > max_pass_len then
-			module:log("debug", "%s submitted password is exceeding max length (%d characters)", ip, max_pass_len);
+			module:log("warn", "%s submitted password is exceeding max length (%d characters)", ip, max_pass_len);
 			return http_error_reply(event, 406, "Supplied password is exceeding max length (" .. tostring(max_pass_len) .. " characters).");
 		elseif not saslprep(password) then
-			module:log("debug", "%s submitted password is violating SASLprep profile", ip);
+			module:log("warn", "%s submitted password is violating SASLprep profile", ip);
 			return http_error_reply(event, 406, "Supplied password is violating SASLprep profile.");
 		end
 
@@ -390,7 +390,7 @@ local function handle_register(data, event)
 			module:log("info", "%s (%s) submitted a registration request and is awaiting final verification", username, id_token);
 			return id_token;
 		else
-			module:log("debug", "%s registration data submission failed (user already exists)", username);
+			module:log("info", "%s registration data submission failed (user already exists)", username);
 			return http_error_reply(event, 409, "User already exists.");
 		end
 	end
