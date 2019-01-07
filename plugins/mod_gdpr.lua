@@ -12,16 +12,16 @@ local gdpr = storagemanager.open(module.host, "gdpr");
 local st = require "util.stanza";
 local error_reply = require "util.stanza".error_reply;
 local ipairs, pairs, tostring = ipairs, pairs, tostring;
-local rostermanager = require "util.rostermanager";
 
 local gdpr_signed = {};
 local gdpr_agreement_sent = {};
+local gdpr_warned = {};
 
 local gdpr_addendum = module:get_option_string("gdpr_addendum");
 
 local header = st.message({ from = module.host, type = "chat" },
-		"Greetings, to comply with EU's General Data Protection Regulation (GDPR) before enabling server-to-server communication " ..
-		"with remote entities the "..module.host.." instant messaging service requires you the following:"
+		"Greetings, to comply with EU's General Data Protection Regulation (GDPR) before using server-to-server communication " ..
+		"with remote entities the "..module.host.." instant messaging service requires to inform you of the following:"
 );
 local a = st.message({ from = module.host, type = "chat" },
 		"A) That you're hereby aware that whenever _any data or meta-data pertaining_ to you (the user) leaves this service (formally "..module.host..") boundaries, " ..
@@ -35,8 +35,10 @@ local c = st.message({ from = module.host, type = "chat" },
 		"C) Should you accept this agreement, you fully legally disclaim this service operator for what is mentioned above. Just reply these messages with: I consent"
 );
 local d = st.message({ from = module.host, type = "chat" },
-		"D) Should you not accept this agreement, server-to-server communication will be disabled and any current remote contact you have in your roster removed and unsubscribed. " ..
-		"Just reply these messages with: I don't consent"
+		"D) Should you not accept this agreement, you should remove any roster contact not pertaining to this service and not use any Multi-User Chat, each time you" ..
+		"will send a stanza or join a groupchat room you will be appropriately warned at least once. This is just an informative provision, for how currently XMPP is" ..
+		"concepted and it's decentralised nature it's impossible to guarantee perfect compliance to GDPR. If you aren't fine with that feel free to deregister your" ..
+		"account, that will cause all your data on this service to be removed accordingly, at least."
 );
 local agreement = {
 	header, a, b, c, d
@@ -56,26 +58,28 @@ local function gdpr_s2s_check(event)
 	local origin, stanza = event.origin, event.stanza;
 	if origin and origin.type == "c2s" then
 		local from = jid_join(origin.username, origin.host);
+		local full_from = origin.full_jid;
 		local name, type = stanza.name, stanza.attr.type;
 
 		if name == "presence" and (type == "unsubscribe" or type == "unsubscribed") then
 			return;
 		end
 
-		if gdpr_signed[from] == nil then
-			module:log("debug", "blocked stanza %s (type: %s) from %s, agreement not yet accepted", name, type or "absent", from);
-			origin.send(error_reply(stanza, "cancel", "policy-violation", 
-				"GDPR agreement needs to be accepted before communicating with a remote server"));
-			if not gdpr_agreement_sent[from] and not origin.halted then send_agreement(origin, from); end
-			return true;
-		elseif gdpr_signed[from] == false then
-			module:log("debug", "blocked stanza %s (type: %s) from %s, agreement refused", name, type or "absent", from);
-			origin.send(error_reply(stanza, "cancel", "policy-violation", 
-				"You refused the GDPR agreement, therefore s2s communication is disabled... " ..
-				"should you decide to enable it, send a message directly to "..module.host.." " ..
-				"with wrote: I consent"
-			));
-			return true;
+		if not gdpr_signed[from] then
+			if not gdpr_agreement_sent[from] and not origin.halted then
+				module:log("info", "sending gdpr agreement to %s", from);
+				send_agreement(origin, from);
+			elseif not gdpr_warned[full_from] and not origin.halted then
+				module:log("info", "sending gdpr stanza warn to %s", from);
+				origin.send(st.message({ from = module.host, to = full_from, type = "chat" }, 
+					"*Privacy Warn* you're sending stanzas to "..jid_bare(to).." this entity's third party service host (be it a real " ..
+					"user or component entity like a groupchat) is beyond the boundaries of this service and will be now processing " ..
+					"the data you sent 'em. Should you not be willing to allow that again just stop sending adding contacts or joining " ..
+					"don't end by *\""..module.host.."\"*, should you be fine with that and remove these warnings just accept the GDPR " ..
+					"agreement by replying to this message with: I consent"
+				));
+				gdpr_warned[full_from] = true;
+			end
 		end
 	end
 end
@@ -83,39 +87,16 @@ end
 local function gdpr_handle_consent(event)
 	local origin, stanza = event.origin, event.stanza;
 
-	local from = jid_bare(stanza.attr.from) or jid_join(origin.username, origin.host);
-	local body = stanza:get_child_text("body");
+	if origin and origin.type == "c2s" and stanza.name == "message" then
+		local from = jid_bare(stanza.attr.from) or jid_join(origin.username, origin.host);
+		local body = stanza:get_child_text("body");
 
-	if origin and origin.type == "c2s" and body and gdpr_agreement_sent[from] then
-		if body:match(".*I consent.*") then
+		if body and not gdpr_signed[from] and body:match(".*I consent.*") then
 			gdpr_signed[from] = true;
 			gdpr_agreement_sent[from] = nil;
 			gdpr:set(nil, gdpr_signed);
-			module:log("info", "%s signed the GDPR agreement, enabling s2s communication", from);
+			module:log("info", "%s signed the GDPR agreement", from);
 			origin.send(st.message({ to = origin.full_jid, from = module.host, type = "chat" }, "Thank you."));
-			return true;
-		elseif body:match(".*I don't consent.*") then
-			module:log("info", "%s refused the GDPR agreement, disabling s2s communication and clearing eventual remote contacts", from);
-			origin.send(st.message({ to = origin.full_jid, from = module.host, type = "chat" },
-				"Acknowledged, disabling s2s and removing remote contact entries, " ..
-				"remember you can consent by sending \"I consent\" to the service host anytime."));
-			local roster = origin.roster;
-			if roster then
-				for jid, item in pairs(roster) do
-					if jid ~= false and jid ~= "pending" and not hosts[jid_section(jid, "host")] then
-						if item.subscription == "both" or item.subscription == "from" or (roster.pending and roster.pending[jid]) then
-							module:fire_global_event("route/post", origin, st.presence({ type = "unsubscribed", from = origin.full_jid, to = jid }));
-						end
-						if item.subscription == "both" or item.subscription == "to" or item.ask then
-							module:fire_global_event("route/post", origin, st.presence({ type = "unsubscribe", from = origin.full_jid, to = jid }));
-						end
-						local success = rostermanager.remove_from_roster(origin, jid);
-						if success then rostermanager.roster_push(origin.username, origin.host, jid); end
-					end
-				end
-			end
-			gdpr_signed[from] = false;
-			gdpr:set(nil, gdpr_signed);
 			return true;
 		end
 	end
@@ -139,7 +120,7 @@ end
 local function revoke_signature(self, data, state)
 	local from = jid_bare(data.from);
 		
-	if gdpr_signed[from] == nil then
+	if not gdpr_signed[from] then
 		return { status = "completed", error = { message = "You didn't sign the agreement yet" } };
 	else
 		gdpr_signed[from] = nil;
@@ -178,6 +159,7 @@ end, 100);
 module:hook("resource-unbind", function(event)
 	local username, host = event.session.username, event.session.host;
 	local jid = username.."@"..host;
+	gdpr_warned[event.session.full_jid] = nil;
 	if not module:get_bare_session(jid) then gdpr_agreement_sent[jid] = nil; end
 end);
 
@@ -185,8 +167,8 @@ module.load = function()
 	module:log("debug", "initializing GDPR compliance module... loading signatures table");
 	gdpr_signed = gdpr:get() or {};
 end
-module.save = function() return { gdpr_signed = gdpr_signed, gdpr_agreement_sent = gdpr_agreement_sent }; end
-module.restore = function(data) gdpr_signed = data.gdpr_signed or {}, data.gdpr_agreement_sent or {}; end
+module.save = function() return { gdpr_signed = gdpr_signed }; end
+module.restore = function(data) gdpr_signed = data.gdpr_signed or {}; end
 module.unload = function()
 	module:log("debug", "unloading GDPR compliance module... saving signatures table");
 	gdpr:set(nil, gdpr_signed);
