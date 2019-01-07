@@ -70,7 +70,7 @@ local function gdpr_s2s_check(event)
 				module:log("info", "sending gdpr agreement to %s", from);
 				send_agreement(origin, from);
 			elseif not gdpr_warned[full_from] and not origin.halted then
-				module:log("info", "sending gdpr stanza warn to %s", from);
+				module:log("info", "sending gdpr stanza warn to %s", full_from);
 				origin.send(st.message({ from = module.host, to = full_from, type = "chat" }, 
 					"*Privacy Warn* you're sending stanzas to "..jid_bare(to).." this entity's third party service host (be it a real " ..
 					"user or component entity like a groupchat) is beyond the boundaries of this service and will be now processing " ..
