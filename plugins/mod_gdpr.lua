@@ -72,11 +72,11 @@ local function gdpr_s2s_check(event)
 			elseif not gdpr_warned[full_from] and not origin.halted then
 				module:log("info", "sending gdpr stanza warn to %s", full_from);
 				origin.send(st.message({ from = module.host, to = full_from, type = "chat" }, 
-					"*Privacy Warn* you're sending stanzas to "..jid_bare(to).." this entity's third party service host (be it a real " ..
-					"user or component entity like a groupchat) is beyond the boundaries of this service and will be now processing " ..
-					"the data you sent 'em. Should you not be willing to allow that again just stop sending adding contacts or joining " ..
-					"don't end by *\""..module.host.."\"*, should you be fine with that and remove these warnings just accept the GDPR " ..
-					"agreement by replying to this message with: I consent"
+					"*Privacy Warn* you're sending stanzas to "..jid_bare(stanza.attr.to).." this entity's third party service host " ..
+					"(be it a real user or component entity like a groupchat) is beyond the boundaries of this service and will be now " ..
+					"processing the data you sent 'em. Should you not be willing to allow that again just stop sending adding contacts " ..
+					"or joining rooms that don't end by *\""..module.host.."\"*, should you be fine with that and remove these warnings " ..
+					"just accept the GDPR agreement by replying to this message with: I consent"
 				));
 				gdpr_warned[full_from] = true;
 			end
