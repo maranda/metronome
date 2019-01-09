@@ -240,6 +240,8 @@ return {
 	hashed_plain_test = hashed_plain_test,
 	scram_sha1_backend = scram_sha1_backend,
 	scram_sha256_backend = scram_sha256_backend,
+	scram_sha384_backend = scram_sha384_backend,
+	scram_sha512_backend = scram_sha512_backend,
 	plain_backend = plain_backend,
 	get_channel_binding_callback = get_channel_binding_callback
 };
