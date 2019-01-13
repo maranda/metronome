@@ -35,9 +35,9 @@ local c = st.message({ from = module.host, type = "chat" },
 		"C) Should you accept this agreement, you fully legally disclaim this service operator for what is mentioned above. Just reply these messages with: I consent"
 );
 local d = st.message({ from = module.host, type = "chat" },
-		"D) Should you not accept this agreement, you should remove any roster contact not pertaining to this service and not use any Multi-User Chat, each time you" ..
-		"will send a stanza or join a groupchat room you will be appropriately warned at least once. This is just an informative provision, for how currently XMPP is" ..
-		"concepted and it's decentralised nature it's impossible to guarantee perfect compliance to GDPR. If you aren't fine with that feel free to deregister your" ..
+		"D) Should you not accept this agreement, you should remove any roster contact not pertaining to this service and not use any Multi-User Chat, each time you " ..
+		"will send a stanza or join a groupchat room you will be appropriately warned at least once. This is just an informative provision, for how currently XMPP is " ..
+		"concepted and it's decentralised nature it's impossible to guarantee perfect compliance to GDPR. If you aren't fine with that feel free to deregister your " ..
 		"account, that will cause all your data on this service to be removed accordingly, at least."
 );
 local e = st.message({ from = module.host, type = "chat" },
