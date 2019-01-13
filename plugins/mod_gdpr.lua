@@ -40,8 +40,11 @@ local d = st.message({ from = module.host, type = "chat" },
 		"concepted and it's decentralised nature it's impossible to guarantee perfect compliance to GDPR. If you aren't fine with that feel free to deregister your" ..
 		"account, that will cause all your data on this service to be removed accordingly, at least."
 );
+local e = st.message({ from = module.host, type = "chat" },
+		"E) If you're not an EU citizen you can simply invoke non appliance by replying: Not from EU"
+);
 local agreement = {
-	header, a, b, c, d
+	header, a, b, c, d, e
 };
 if gdpr_addendum then agreement[#agreement + 1] = st.message({ from = module.host, type = "chat" }, gdpr_addendum); end
 
@@ -65,7 +68,7 @@ local function gdpr_s2s_check(event)
 			return;
 		end
 
-		if not gdpr_signed[from] then
+		if gdpr_signed[from] == nil then
 			if not gdpr_agreement_sent[from] and not origin.halted then
 				module:log("info", "sending gdpr agreement to %s", from);
 				send_agreement(origin, from);
@@ -76,7 +79,8 @@ local function gdpr_s2s_check(event)
 					"(be it a real user or component entity like a groupchat) is beyond the boundaries of this service and will be now " ..
 					"processing the data you sent 'em. Should you not be willing to allow that again just stop sending adding contacts " ..
 					"or joining rooms that don't end by *\""..module.host.."\"*, should you be fine with that and remove these warnings " ..
-					"just accept the GDPR agreement by replying to this message with: I consent"
+					"just accept the GDPR agreement by replying to this message with: I consent\n" ..
+					"Alternatively if you're not an european citizen, you can signal non-appliance by replying with: Not from EU"
 				));
 				gdpr_warned[full_from] = true;
 			end
@@ -91,11 +95,17 @@ local function gdpr_handle_consent(event)
 		local from = jid_bare(stanza.attr.from) or jid_join(origin.username, origin.host);
 		local body = stanza:get_child_text("body");
 
-		if body and not gdpr_signed[from] and body:match(".*I consent.*") then
-			gdpr_signed[from] = true;
+		if body and gdpr_signed[from] == nil then
+			if body:match(".*I consent.*") then
+				gdpr_signed[from] = true;
+			elseif body:match(".*Not from EU.*") then
+				gdpr_signed[from] = false;
+			else
+				return;
+			end
 			gdpr_agreement_sent[from] = nil;
 			gdpr:set(nil, gdpr_signed);
-			module:log("info", "%s signed the GDPR agreement", from);
+			module:log("info", "%s signed the GDPR agreement (%s)", from, gdpr_signed[from] and "consensual" or "unapplicable");
 			origin.send(st.message({ to = origin.full_jid, from = module.host, type = "chat" }, "Thank you."));
 			return true;
 		end
@@ -120,7 +130,7 @@ end
 local function revoke_signature(self, data, state)
 	local from = jid_bare(data.from);
 		
-	if not gdpr_signed[from] then
+	if gdpr_signed[from] == nil then
 		return { status = "completed", error = { message = "You didn't sign the agreement yet" } };
 	else
 		gdpr_signed[from] = nil;
@@ -144,7 +154,7 @@ module:hook("pre-presence/full", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local to = stanza.attr.to;
 	
-	if origin.type == "c2s" and not stanza.attr.type and not gdpr_signed[jid_join(origin.username, origin.host)] and 
+	if origin.type == "c2s" and not stanza.attr.type and gdpr_signed[jid_join(origin.username, origin.host)] == nil and 
 		not origin.directed_bare[jid_bare(to)] then
 		local host = hosts[jid_section(to, "host")];
 		if host and host.muc then
