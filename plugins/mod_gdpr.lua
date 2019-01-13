@@ -80,7 +80,7 @@ local function gdpr_s2s_check(event)
 					"processing the data you sent 'em. Should you not be willing to allow that again just stop sending adding contacts " ..
 					"or joining rooms that don't end by *\""..module.host.."\"*, should you be fine with that and remove these warnings " ..
 					"just accept the GDPR agreement by replying to this message with: I consent\n" ..
-					"Alternatively if you're not an european citizen, you can signal non-appliance by replying with: Not from EU"
+					"Alternatively if you're not an european citizen, you can invoke non appliance by replying with: Not from EU"
 				));
 				gdpr_warned[full_from] = true;
 			end
