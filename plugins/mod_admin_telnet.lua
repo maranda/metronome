@@ -10,7 +10,6 @@
 module:set_global();
 
 local hostmanager = require "core.hostmanager";
-local modulemanager = require "core.modulemanager";
 local s2smanager = require "util.s2smanager";
 local portmanager = require "core.portmanager";
 
@@ -33,9 +32,9 @@ local envload = require "util.envload".envload;
 local envloadfile = require "util.envload".envloadfile;
 local dns = require "net.dns";
 local st = require "util.stanza";
-local cm = configmanager;
-local mm = modulemanager;
-local um = usermanager;
+local cm = require "core.configmanager";
+local mm = require "core.modulemanager";
+local um = require "core.usermanager";
 local read_version = read_version;
 
 local commands = module:shared("commands")
@@ -211,6 +210,7 @@ function commands.help(session, data)
 		print [[host - Commands to activate, deactivate and list virtual hosts]]
 		print [[muc - Commands to retrieve and manage MUC room objects]]
 		print [[user - Commands to create and delete users, and change their passwords]]
+		print [[port - Commands to manage server listening port interfaces]]
 		print [[server - Uptime, version, shutting down, etc.]]
 		print [[config - Reloading the configuration, etc.]]
 		print [[console - Help regarding the console itself]]
@@ -247,6 +247,9 @@ function commands.help(session, data)
 		print [[user:create(jid, password) - Create the specified user account]]
 		print [[user:password(jid, password) - Set the password for the specified user account]]
 		print [[user:delete(jid) - Permanently remove the specified user account]]
+	elseif section == "port" then
+		print [[port:list() - Show an ordered by service list of ports and interfaces they're listening on]]
+		print [[port:close(port, address) - Close the specified port on all ip addresses or only on the specified interface]]
 	elseif section == "server" then
 		print [[server:meminfo() - Show the server's memory usage]]
 		print [[server:version() - Show the server's version number]]
@@ -274,6 +277,7 @@ end
 -- Session environment --
 -- Anything in def_env will be accessible within the session as a global variable
 
+def_env.st = st; -- expose util.stanza
 def_env.server = {};
 
 function def_env.server:meminfo()
@@ -432,7 +436,7 @@ function def_env.module:list(hosts)
 	local print = self.session.print;
 	for _, host in ipairs(hosts) do
 		print((host == "*" and "Global" or host)..":");
-		local modules = array.collect(keys(modulemanager.get_modules(host) or {})):sort();
+		local modules = array.collect(keys(mm.get_modules(host) or {})):sort();
 		if #modules == 0 then
 			if module:get_host_session(host) then
 				print("    No modules loaded");

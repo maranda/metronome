@@ -189,8 +189,10 @@ end, 40);
 module:hook("sm-push-message", function(event)
 	local user, stanza = event.username, event.stanza;
 	local store = store_cache[user];
+	local type = stanza.attr.type;
 
-	if store and stanza.name == "message" and stanza.attr.type == "chat" and stanza:get_child_text("body") then
+	if store and stanza.name == "message" and (type == "chat" or type == "groupchat" or type == "normal") and
+		stanza:get_child_text("body") then
 		push_notify(user, store, stanza.attr.from, 1);
 	end
 end);
@@ -202,7 +204,9 @@ module:hook("sm-process-queue", function(event)
 	if store then
 		local count, last_from = 0;
 		for i, stanza in ipairs(queue) do
-			if stanza.name == "message" and stanza.attr.type == "chat" and stanza:get_child_text("body") then
+			local type = stanza.attr.type;
+			if stanza.name == "message" and (type == "chat" or type == "groupchat" or type == "normal") and
+				stanza:get_child_text("body") then
 				count = count + 1;
 				last_from = stanza.attr.from;
 			end
@@ -217,7 +221,7 @@ module:hook("message/offline/handle", function(event)
 	local stanza = event.stanza;
 	local user = jid_split(stanza.attr.to);
 	local store = store_cache[user];
-	if store and stanza.attr.type == "chat" and stanza:get_child_text("body") then
+	if store and stanza:get_child_text("body") then
 		push_notify(user, store, stanza.attr.from, 1);
 	end
 end, 1);

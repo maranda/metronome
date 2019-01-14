@@ -26,7 +26,7 @@ local st, jid, uuid = require "util.stanza", require "util.jid", require "util.u
 local timer_add_task = require "util.timer".add_task;
 local dataforms_new = require "util.dataforms".new;
 local array = require "util.array";
-local modulemanager = require "modulemanager";
+local modulemanager = require "core.modulemanager";
 local tonumber, tostring = tonumber, tostring;
 
 local min_pass_len = module:get_option_number("register_min_pass_length", 8);

@@ -56,10 +56,10 @@ local mime_types = {
 
 -- Utility functions
 
-local function generate_secret(bytes)
-	local secret = generate(bytes);
+local function generate_secret()
+	local secret = generate(9);
 	if secret then
-		return secret;
+		return secret:upper();
 	else
 		module:log("warn", "Failed to generate secret for SPIM token, the stanza will be allowed through");
 		return nil;
@@ -137,7 +137,7 @@ local function send_message(origin, name, to, from, token)
 	module:log("info", "requiring authentication for %s directed to %s from %s", name, to, from);
 	local message = st.message({ id = new_uuid(), type = "chat", from = to, to = from }, 
 		"Greetings, this is the "..module.host.." server before sending a message or presence subscription to this user, "..
-		"please visit "..base_url.." and input the following code in the form: "..token);
+		"please visit "..base_url.." and input (copy and paste) the following code in the form: "..token);
 	origin.send(message);
 	return true;
 end
@@ -224,7 +224,7 @@ local function handle_incoming(event)
 
 		if not resource then
 			if user_exists(user, host) then
-				local token = generate_secret(20);
+				local token = generate_secret(9);
 				if not token then return; end
 				set_block(token, to, from_bare);
 				origin.send(st.error_reply(stanza, "auth", "not-authorized"));
@@ -234,7 +234,7 @@ local function handle_incoming(event)
 			local full_session = full_sessions[to];
 			if full_session then
 				if full_session.directed_bare[from_bare] then return; end
-				local token = generate_secret(20);
+				local token = generate_secret(9);
 				if not token then return; end
 				set_block(token, to_bare, from_bare);
 				origin.send(st.error_reply(stanza, "auth", "not-authorized"));

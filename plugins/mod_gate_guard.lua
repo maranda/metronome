@@ -9,6 +9,7 @@ module:set_global();
 
 local hosts = hosts;
 local incoming_s2s = metronome.incoming_s2s;
+local modulemanager = modulemanager;
 local set_new = require "util.set".new;
 local now, pairs, section = os.time, pairs, require "util.jid".section;
 
@@ -33,8 +34,13 @@ end
 local function filter(origin, from_host, to_host)
 	if not from_host or not to_host then return; end
 
-	if guard_blacklist:contains(from_host) or guard_protect:contains(to_host) and not guard_whitelist:contains(from_host) then
+	local blacklisted = guard_blacklist:contains(from_host);
+	if blacklisted or guard_protect:contains(to_host) and not guard_whitelist:contains(from_host) then
 		module:log("info", "remote service %s is by configuration blocked from accessing host %s", from_host, to_host);
+		if blacklisted then
+			if not guard_banned[from_host] then	guard_banned[from_host] = { expire = now() + guard_expire, reason = "Blacklisted" }; end
+			guard_banned_filtered[origin.conn:ip()] = from_host;
+		end
 		origin.blocked = true;
 		return;
 	end
@@ -114,18 +120,18 @@ function module.add_host(module)
 	end
 
 	module:hook("call-gate-guard", function(event)
-		local from, reason, ban_time = event.from, event.reason, event.ban_time;
+		local from, reason, ban_time, hits = event.from, event.reason, event.ban_time, event.hits;
 		local host = section(from, "host");
 
 		if not guard_banned[host] then
 			if guard_hits[host] then
 				guard_hits[host] = guard_hits[host] + 1;
-				module:log("debug", "%s triggered gate guard, reason: %s - hits: %d", from, reason, guard_hits[host]);
-				if guard_hits[host] >= guard_max_hits then
+				module:log("info", "%s triggered gate guard, reason: %s - hits: %d", from, reason, guard_hits[host]);
+				if guard_hits[host] >= (hits or guard_max_hits) then
 					module:log("info", "%s exceeded number of offenses, closing streams and banning for %d seconds (%s)", 
 						host, ban_time or guard_expire, reason);
 					guard_hits[host] = nil;
-					guard_banned[host] = { expire = now() + ban_time or guard_expire, reason = reason };
+					guard_banned[host] = { expire = now() + (ban_time or guard_expire), reason = reason };
 					for i, _host in pairs(hosts) do
 						for name, session in pairs(_host.s2sout) do
 							if session.close and name == host then session:close(); end
@@ -136,10 +142,14 @@ function module.add_host(module)
 					end
 				end
 			else
-				module:log("debug", "%s triggered gate guard, reason: %s - creating record for %s", from, reason, host);
+				module:log("info", "%s triggered gate guard, reason: %s - creating record for %s", from, reason, host);
 				guard_hits[host] = 1;
 			end
 		end
+	end);
+
+	module:hook("config-reloaded", function()
+		modulemanager.reload(module.host, module.name);
 	end);
 end
 
@@ -169,12 +179,9 @@ local function reload()
 	guard_whitelist = module:get_option_set("gate_whitelist", {});
 	guard_expire = module:get_option_number("gate_expiretime", 172800);
 	guard_max_hits = module:get_option_number("gate_max_hits", 50);
-
+	guard_banned, guard_banned_filtered, guard_hits = {}, {}, {};
 	close_filtered();
 end
-
-module.save = function() return { guard_banned = guard_banned, guard_hits = guard_hits }; end
-module.restore = function(data) guard_banned, guard_hits = data.guard_banned or {}, data.guard_hits or {}; end
 
 module:log("debug", "initializing Metronome's gate guard...");
 module:hook("config-reloaded", reload);

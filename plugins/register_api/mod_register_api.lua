@@ -138,22 +138,15 @@ local function convert_legacy_storage()
 	end
 end
 
-local function generate_secret(bytes)
-	local str = generate(bytes);
-	
-	if not str or str:len() < 20 then
-		repeat str = generate(bytes); until not str or str:len() >= 20
-	end
-	
-	if not str then -- System issue just abort it
-		return nil;
-	end
-
-	return str;
+local function generate_secret()
+	local str = generate(9);	
+	return str and str:upper() or nil;
 end
 
 local function check_mail(address)
-	if not address:match("^[^.]+[%w!#$%%&'*+-/=?^_`{|}~]+[^..]+@[%w.]+%.%w+$") then return false; end
+	if not address:match("^[^.]+[%w!#$%%&'*+-/=?^_`{|}~]+[^..]+@[%w.]+%.%w+$") and not address:match("^%w+@[%w.]+%.%w+$") then
+		return false;
+	end
 	for _, pattern in ipairs(fm_patterns) do 
 		if address:match(pattern) then return false; end
 	end
@@ -341,16 +334,16 @@ local function handle_register(data, event)
 		end
 
 		if not ((password:find("%d+") or password:find("%p+")) and password:find("%u+")) then
-			module:log("debug", "%s submitted password doesn't contain at least one uppercase letter, one number or symbol characters", ip);
+			module:log("warn", "%s submitted password doesn't contain at least one uppercase letter, one number or symbol characters", ip);
 			return http_error_reply(event, 406, "Supplied password needs to contain at least one uppercase letter and one symbol or digit.");			
 		elseif password:len() < min_pass_len then
-			module:log("debug", "%s submitted password is not long enough minimun is %d characters", ip, min_pass_len);
+			module:log("warn", "%s submitted password is not long enough minimun is %d characters", ip, min_pass_len);
 			return http_error_reply(event, 406, "Supplied password is not long enough minimum is " .. tostring(min_pass_len) .. " characters.");
 		elseif password:len() > max_pass_len then
-			module:log("debug", "%s submitted password is exceeding max length (%d characters)", ip, max_pass_len);
+			module:log("warn", "%s submitted password is exceeding max length (%d characters)", ip, max_pass_len);
 			return http_error_reply(event, 406, "Supplied password is exceeding max length (" .. tostring(max_pass_len) .. " characters).");
 		elseif not saslprep(password) then
-			module:log("debug", "%s submitted password is violating SASLprep profile", ip);
+			module:log("warn", "%s submitted password is violating SASLprep profile", ip);
 			return http_error_reply(event, 406, "Supplied password is violating SASLprep profile.");
 		end
 
@@ -366,7 +359,7 @@ local function handle_register(data, event)
 				return http_error_reply(event, 409, "The E-Mail Address provided matches the hash associated to an existing account.");
 			end
 
-			local id_token = generate_secret(20);
+			local id_token = generate_secret();
 			if not id_token then
 				module:log("error", "Failed to pipe from /dev/urandom to generate the account registration token");
 				return http_error_reply(event, 500, "The xmpp server encountered an error trying to fullfil your request, please try again later.");
@@ -399,7 +392,7 @@ local function handle_register(data, event)
 			module:log("info", "%s (%s) submitted a registration request and is awaiting final verification", username, id_token);
 			return id_token;
 		else
-			module:log("debug", "%s registration data submission failed (user already exists)", username);
+			module:log("info", "%s registration data submission failed (user already exists)", username);
 			return http_error_reply(event, 409, "User already exists.");
 		end
 	end
@@ -415,7 +408,7 @@ local function handle_password_reset(data, event)
 			return http_error_reply(event, 503, "Request throttled, wait a bit and try again.");
 		end
 
-		local id_token = generate_secret(20);
+		local id_token = generate_secret();
 		if not id_token then
 			module:log("error", "Failed to pipe from /dev/urandom to generate the password reset token");
 			return http_error_reply(event, 500, "The xmpp server encountered an error trying to fullfil your request, please try again later.");
@@ -453,8 +446,10 @@ local function handle_req(event)
 	end
 	
 	local data
+	pcall(function() data = json_decode(request.body) end)
+
 	-- We check that what we have is valid JSON wise else we throw an error...
-	if not pcall(function() data = json_decode(request.body) end) then
+	if not data then
 		module:log("debug", "Data submitted by %s failed to Decode", user);
 		return http_error_reply(event, 400, "Decoding failed.");
 	end
@@ -603,7 +598,7 @@ local function handle_user_registration(event)
 			return;
 		end
 
-		local id_token = generate_secret(20);
+		local id_token = generate_secret();
 		if not id_token or not check_mail(mail) then
 			module:log("warn", "%s, invalidating %s registration and deleting account",
 				not id_token and "Failed to generate token" or "Supplied mail address is bogus or forbidden", user);

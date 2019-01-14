@@ -1,5 +1,5 @@
 This is an automated message from the account system, to reset your account password please visit %URL% within 5 minutes.
-And fill in the form with the following token: %TOKEN%
+And fill in the form with the following token (copy and paste it): %TOKEN%
 
 Regards.
 

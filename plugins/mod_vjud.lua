@@ -29,7 +29,7 @@ directory = vjud:get("store") or {}
 local function search_form_layout()
 	return dataforms_new{
 		title = "Directory Search";
-		instructions = "This form lets you browse the directory, please provide at least one of the following information";
+		instructions = "This form lets you browse the directory, please provide at least one of the following information:";
 
 		{ name = "FORM_TYPE", type = "hidden", value = "jabber:iq:search" };
 		{ name = "nickname", type = "text-single", label = "Nickname" };
@@ -62,7 +62,7 @@ local function search_get_handler(event)
 	local origin, stanza = event.origin, event.stanza
 	local reply = st.reply(stanza)
 	reply:query("jabber:iq:search")
-		:tag("instructions"):text("To use this User Directory, your client is required to support Data Forms (XEP-0004)"):up()
+		:tag("instructions"):text("To use this User Directory, your client is required to support Data Forms (XEP-0004)."):up()
 		:add_child(search_form_layout():form())
 	
 	origin.send(reply) ; return true
@@ -184,7 +184,7 @@ if synchronize_to_host then module:hook_global("vcard-updated", vcard_handler) e
 local function optin_command_handler(self, data, state)
 	local optin_layout = dataforms_new{
 		title = "Signup/Optin form for the User Directory";
-		instructions = "At least the Nickname field is required";
+		instructions = "At least the Nickname field is required.";
 
 		{ name = "FORM_TYPE", type = "hidden", value = "http://jabber.org/protocol/commands" };
 		{ name = "nickname", type = "text-single", label = "Your Nickname" };

@@ -256,7 +256,8 @@ function listener.ondisconnect(conn, err)
 	if session then
 		(session.log or log)("info", "Client disconnected: %s", err or "connection closed");
 		sm_destroy_session(session, err);
-		sessions[conn]  = nil;
+		sessions[conn] = nil;
+		module:fire_event("c2s-destroyed", { session = session, reason = err, conn = conn });
 	end
 end
 

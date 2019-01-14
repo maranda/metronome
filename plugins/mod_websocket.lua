@@ -20,6 +20,8 @@ local sm_destroy_session = require "core.sessionmanager".destroy_session;
 local websocket = require "util.websocket";
 local st = require "util.stanza";
 
+local httpserver_sessions = require "net.http.server".sessions;
+
 local t_concat = table.concat;
 
 local raw_log = module:get_option_boolean("websocket_no_raw_requests_logging", true) ~= true and true or nil;
@@ -96,6 +98,7 @@ local function close(session, reason) -- Basically duplicated from mod_c2s, shou
 				end
 			end);
 		else
+			local conn = session.conn;
 			sm_destroy_session(session, reason);
 			ws:close(1000, "Stream closed");
 		end
@@ -199,3 +202,8 @@ function module.add_host(module)
 		}
 	});
 end
+
+module:hook("c2s-destroyed", function(event)
+	local conn = event.conn;
+	if httpserver_sessions[conn] then httpserver_sessions[conn] = nil; end
+end);

@@ -23,9 +23,11 @@ local xmlns_muc = "http://jabber.org/protocol/muc";
 local period = math.max(module:get_option_number("muc_event_rate", 0.5), 0);
 local burst = math.max(module:get_option_number("muc_burst_factor", 6), 1);
 local exclusion_list = module:get_option_set("muc_throttle_host_exclusion");
-local parent_host = module:get_option_boolean("muc_whitelist_parent_peers") == true and module.host:match("%.(.*)");
+local parent_host = module:get_option_boolean("muc_whitelist_parent_peers") == true and module.host:match("%.([^%.].*)");
 local disconnect_after = module:get_option_number("muc_disconnect_after_throttles", 20);
 local use_gate_guard = module:get_option_boolean("muc_use_gate_guard", true);
+local gate_guard_hits = module:get_option_number("muc_gate_guard_max_hits", 150);
+local gate_guard_time = module:get_option_number("muc_gate_guard_ban_time", 3600);
 
 local hosts = metronome.hosts;
 local host_object = hosts[module.host];
@@ -82,7 +84,11 @@ local function handle_stanza(event)
 		end
 
 		origin.muc_limits_trigger = (not trigger and 1) or trigger + 1;
-		if use_gate_guard then module:fire_event("call-gate-guard", { origin = origin, from = from_jid, reason = "MUC Flooding/DoS" }); end
+		if use_gate_guard then
+			module:fire_event("call-gate-guard", 
+				{ origin = origin, from = from_jid, reason = "MUC Flooding/DoS", ban_time = gate_guard_time, hits = gate_guard_hits }
+			);
+		end
 		local reply = st.error_reply(stanza, "wait", "policy-violation", "The room is currently overactive, please try again later");
 		local body = stanza:get_child_text("body");
 		if body then
