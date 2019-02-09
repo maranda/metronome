@@ -133,7 +133,12 @@ local function room_save(room, forced, save_occupants)
 			data._last_used = room.last_used;
 		end
 		if save_occupants then
+			local preserialized_sessions = {};
+			for from, pr in pairs(room._occupants.sessions) do
+				preserialized_sessions[from] = st.preserialize(pr);
+			end
 			data._occupants = room._occupants;
+			data._occupants.sessions = preserialized_sessions;
 			data._jid_nick = room._jid_nick;
 		end
 		config_store:set(node, data);
@@ -156,7 +161,14 @@ for jid in pairs(persistent_rooms) do
 		local room = muc_new_room(jid);
 		room._data = data._data;
 		room._affiliations = data._affiliations;
-		if data._occupants then room._occupants = data._occupants; end
+		if data._occupants then
+			local deserialized_sessions = {};
+			for from, pr in pairs(data._occupants.sessions) do
+				deserialized_sessions[from] = st.deserialize(pr);
+			end
+			room._occupants = data._occupants;
+			room._occupants.sessions = deserialized_sessions;
+		end
 		if data._jid_nick then room._jid_nick = data._jid_nick; end
 		if expire_inactive_rooms then
 			local _last_used = room._data._last_used;
