@@ -307,6 +307,7 @@ local function handle_spim(event, path)
 			if spim_token and challenge then
 				if os_time() - challenge_time[ip] < 0 then
 					module:log("warn", "%s attempted resolving a SPIM challenge too fast", ip);
+					challenge_list[ip] = nil;
 					return r_template(event, "wait");
 				else
 					challenge_time[ip] = nil;
