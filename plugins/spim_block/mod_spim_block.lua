@@ -304,7 +304,7 @@ local function handle_spim(event, path)
 		if path == "" then
 			if not body then return http_error_reply(event, 400, "Bad Request."); end
 			local spim_token, challenge = body:match("^spim_token=(.*)&math_challenge=(.*)$");
-			if spim_token and challenge then
+			if spim_token and challenge and challenge_time[ip] then
 				if os_time() - challenge_time[ip] < 0 then
 					module:log("warn", "%s attempted resolving a SPIM challenge too fast", ip);
 					challenge_list[ip] = nil;
