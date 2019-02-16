@@ -276,6 +276,7 @@ end
 
 module:hook("pre-message/bare", handle_outgoing, 100);
 module:hook("pre-message/full", handle_outgoing, 100);
+module:hook("pre-presence/bare", handle_outgoing, 100);
 module:hook("message/bare", handle_incoming, 100);
 module:hook("message/full", handle_incoming, 100);
 module:hook("presence/bare", handle_incoming, 100);
