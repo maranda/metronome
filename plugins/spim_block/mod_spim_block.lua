@@ -252,7 +252,7 @@ end
 local function handle_outgoing(event)
 	local origin, stanza = event.origin, event.stanza;
 	
-	if origin.type == "c2s" and stanza.attr.type == "chat" then
+	if origin.type == "c2s" and (stanza.attr.type == "chat" or stanza.attr.type == "subscribe") then
 		local to_bare = jid_bare(stanza.attr.to);
 		local host = to_bare and jid_section(to_bare, "host");
 		if not to_bare or origin.directed_bare[to_bare] or hosts[host] or exceptions:contains(host) then
@@ -267,7 +267,7 @@ local function handle_outgoing(event)
 		
 		if not is_contact_subscribed(user, host, to_bare) or not is_contact_pending_out(user, host, to_bare) then
 			if not from_allow_list then allow_list[from_bare] = {}; end
-			module:log("debug", "adding exception for %s to message %s, since conversation was started locally",
+			module:log("debug", "adding exception for %s to send stanzas to %s, since exchange was started locally",
 				to_bare, from_bare);
 			allow_list[from_bare][to_bare] = true;
 		end
