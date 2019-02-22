@@ -332,7 +332,7 @@ local function handle_spim(event, path)
 		if path == "" then
 			if not body then return http_error_reply(event, 400, "Bad Request."); end
 			local spim_token, challenge = body:match("^spim_token=(.*)&g%-recaptcha%-response=(.*)$");
-			if spim_token and challenge then
+			if spim_token and challenge and challenge ~= "" then
 				local has_auth = auth_list[urldecode(spim_token)];
 				if has_auth and challenge_requests[ip] then
 					local to = has_auth.user;
