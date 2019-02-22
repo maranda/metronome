@@ -6,19 +6,21 @@
 
 local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
-local pairs, next, open, os_time, random, tonumber, tostring =
-	pairs, next, io.open, os.time, math.random, tonumber, tostring;
+local json_decode = require "util.json".decode;
+local pairs, next, open, os_time, t_concat, tonumber, tostring =
+	pairs, next, io.open, os.time, table.concat, tonumber, tostring;
 local jid_bare, jid_join, jid_section, jid_split =
 	require "util.jid".bare, require "util.jid".join,
 	require "util.jid".section, require "util.jid".split;
 local urldecode = http.urldecode;
+local urlencode = http.urlencode;
 local is_contact_pending_out = require "util.rostermanager".is_contact_pending_out;
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 local generate = require "util.auxiliary".generate_secret;
 local new_uuid = require "util.uuid".generate;
 local st = require "util.stanza";
-local timer = require "util.timer";
-local user_exists = usermanager.user_exists;
+local user_exists = require "core.usermanager".user_exists;
+local module_unload = require "core.modulemanager".module_unload;
 
 module:depends("http");
 
@@ -26,13 +28,19 @@ disabled_list = {};
 auth_list = {};
 block_list = {};
 allow_list = {};
-challenge_list = setmetatable({}, { __mode = "v" });
-challenge_time = setmetatable({}, { __mode = "v" });
+challenge_requests = setmetatable({}, { __mode = "v" });
 count = 0;
 
 local bare_sessions = bare_sessions;
 local full_sessions = full_sessions;
 local hosts = metronome.hosts;
+
+local recaptcha_key = module:get_option_string("spim_recaptcha_client_key");
+local recaptcha_secret = module:get_option_string("spim_recaptcha_server_key");
+if not recaptcha_key or not recaptcha_secret then
+	module:log("error", "spim_recaptcha_client_key and spim_recaptcha_server_key are required options!");
+	module_unload(module.host, "spim_block");
+end
 
 local exceptions = module:get_option_set("spim_exceptions", {});
 local secure = module:get_option_boolean("spim_secure", true);
@@ -88,32 +96,15 @@ local function http_error_reply(event, code, message, headers)
 	return true;
 end
 
-local operands = { "plus", "minus", "multiplicated by" };
-local function generate_challenge()
-	local operand_string = operands[random(3)];
-	local first, second, result = random(30), random(30);
-	if operand_string == "plus" then
-		result = first + second;
-	elseif operand_string == "minus" then
-		result = first - second;
-	elseif operand_string == "multiplicated by" then
-		result = first * second;
-	end
-
-	return tostring(first).." "..operand_string.." "..tostring(second), result;
-end
-
 local function r_template(event, type, jid)
 	local data = open_file(files_base..type..".html");
 	if data then
-		event.response.headers["Content-Type"] = "application/xhtml+xml";
+		event.response.headers["Content-Type"] = "text/html";
 		if type == "form" then
 			data = data:gsub("%%REG%-URL", not base_path:find("^/") and "/"..base_path or base_path);
-			local challenge, result = generate_challenge();
 			local ip = event.request.conn:ip();
-			data = data:gsub("%%MATH%-CHALLENGE", challenge);
-			challenge_list[ip] = result;
-			if not challenge_time[ip] then challenge_time[ip] = os_time() + random(30,random(30,90)); end
+			data = data:gsub("%%RECAPTCHA%-KEY", recaptcha_key);
+			challenge_requests[ip] = true;
 		end
 		if jid then data = data:gsub("%%USER%%", jid); end
 		return data;
@@ -134,6 +125,42 @@ local function http_file_get(event, type, path)
 			return http_error_reply(event, 404, "Not found.");
 		end
 	end
+end
+
+local api_url = "https://www.google.com/recaptcha/api/siteverify?secret=%s&response=%s&remoteip=%s"
+local function check_recaptcha(response, ip, to, from, token)
+	secret, response, ip = urlencode(recaptcha_secret), urlencode(response), urlencode(ip);
+	http_request(api_url:format(secret, response, ip), { body = "" },
+		function(data)
+			if data then
+				local ret = json_decode(data);
+				if ret.success then
+					local bare_session = bare_sessions[to];
+					if not allow_list[to] then allow_list[to] = {}; end
+					allow_list[to][from] = true;
+					if not bare_session then
+						module:add_timer(180, function()
+							allow_list[to] = nil;
+						end);
+					end
+					if block_list[to] then
+						block_list[to][from] = nil;
+						if not next(block_list[to]) then block_list[to] = nil; end
+					end
+					auth_list[token] = nil;
+					challenge_requests[ip] = nil;
+					module:log("info", "%s (%s) is now allowed to send messages to %s", from, ip, to);
+					module:send(st.message({ id = new_uuid(), type = "chat", from = to, to = from },
+						"You're now allowed to send messages and presence subscriptions to "..to
+					));
+				elseif ret["error-codes"] then
+					module:log("warn", "reCAPTCHA verification for %s (%s) failed with the following condition(s): %s", 
+						ip, from, t_concat(ret["error-codes"], ", ")
+					);
+				end
+			end
+		end
+	);
 end
 
 local function send_message(origin, name, to, from, token)
@@ -304,38 +331,19 @@ local function handle_spim(event, path)
 	elseif request.method == "POST" then
 		if path == "" then
 			if not body then return http_error_reply(event, 400, "Bad Request."); end
-			local spim_token, challenge = body:match("^spim_token=(.*)&math_challenge=(.*)$");
-			if spim_token and challenge and challenge_time[ip] then
-				if os_time() - challenge_time[ip] < 0 then
-					module:log("warn", "%s attempted resolving a SPIM challenge too fast", ip);
-					challenge_list[ip] = nil;
-					return r_template(event, "wait");
-				else
-					challenge_time[ip] = nil;
-				end
+			local spim_token, challenge = body:match("^spim_token=(.*)&g%-recaptcha%-response=(.*)$");
+			if spim_token and challenge then
 				local has_auth = auth_list[urldecode(spim_token)];
-				if has_auth and challenge_list[ip] == tonumber(challenge) then
-					local from, to = has_auth.from, has_auth.user;
-					local bare_session = bare_sessions[to];
-					if not allow_list[to] then allow_list[to] = {}; end
-					allow_list[to][from] = true;
-					if not bare_session then
-						timer.add_task(180, function()
-							allow_list[to] = nil;
-						end);
-					end
-					if block_list[to] then
-						block_list[to][from] = nil;
-						if not next(block_list[to]) then block_list[to] = nil; end
-					end
-					auth_list[spim_token] = nil;
+				if has_auth and challenge_requests[ip] then
+					local to = has_auth.user;
+					check_recaptcha(challenge, ip, to, has_auth.from, spim_token);
 					has_auth = nil;
-					module:log("info", "%s (%s) is now allowed to send messages to %s", from, ip, to);
-					return r_template(event, "success", to);
+					return r_template(event, "verify", to);
 				else
 					return r_template(event, "fail");
 				end
 			else
+				module:log("debug", "%s", body)
 				return http_error_reply(event, 400, "Invalid Request.");
 			end
 		end
