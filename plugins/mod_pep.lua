@@ -590,11 +590,14 @@ module:hook("presence/full", presence_handler, 110);
 
 module:hook("pep-boot-service", function(event)
 	local service, from = event.service, event.from;
+	local user = service.name;
 	service.starting = true;
-	service.recipients[from] = "";
-	services[service.name] = service;
-	module:log("debug", "Delaying broadcasts as %s service is being booted...", service.name);
-	disco_info_query(service.name, from);
+	services[user] = service;
+	module:log("debug", "Delaying broadcasts as %s service is being booted...", user);
+	if subscription_presence(user, from) then
+		service.recipients[from] = "";
+		disco_info_query(user, from);
+	end
 	return true;
 end, 100);
 
