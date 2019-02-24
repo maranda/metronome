@@ -34,6 +34,7 @@ local muc_new_room = muclib.new_room;
 local jid_section = require "util.jid".section;
 local jid_bare = require "util.jid".bare;
 local st = require "util.stanza";
+local clone_table = require "util.auxiliary".clone_table;
 local id_gen = require "util.auxiliary".generate_shortid;
 local fire_event = metronome.events.fire_event;
 local um_is_admin = require "core.usermanager".is_admin;
@@ -133,12 +134,15 @@ local function room_save(room, forced, save_occupants)
 			data._last_used = room.last_used;
 		end
 		if save_occupants then
-			local preserialized_sessions = {};
-			for from, pr in pairs(room._occupants.sessions) do
-				preserialized_sessions[from] = st.preserialize(pr);
+			local _occupants = clone_table(room._occupants);
+			for nick, occupant in pairs(_occupants) do
+				local preserialized_sessions = {};
+				for full_jid, pr in pairs(occupant.sessions) do
+					preserialized_sessions[full_jid] = st.preserialize(pr);
+				end
+				_occupants[nick].sessions = preserialized_sessions;
 			end
-			data._occupants = room._occupants;
-			data._occupants.sessions = preserialized_sessions;
+			data._occupants = _occupants;
 			data._jid_nick = room._jid_nick;
 		end
 		config_store:set(node, data);
@@ -162,12 +166,15 @@ for jid in pairs(persistent_rooms) do
 		room._data = data._data;
 		room._affiliations = data._affiliations;
 		if data._occupants then
-			local deserialized_sessions = {};
-			for from, pr in pairs(data._occupants.sessions) do
-				deserialized_sessions[from] = st.deserialize(pr);
+			local _occupants = data._occupants;
+			for nick, occupant in pairs(_occupants) do
+				local deserialized_sessions = {};
+				for full_jid, pr in pairs(occupant.sessions) do
+					deserialized_sessions[full_jid] = st.deserialize(pr);
+				end
+				_occupants[nick].sessions = deserialized_sessions;
 			end
-			room._occupants = data._occupants;
-			room._occupants.sessions = deserialized_sessions;
+			room._occupants = _occupants;
 		end
 		if data._jid_nick then room._jid_nick = data._jid_nick; end
 		if expire_inactive_rooms then
