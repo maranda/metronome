@@ -11,8 +11,8 @@ if module:get_host_session().anonymous_host then
 end
 
 local hosts = hosts;
-local ripairs, tonumber, type, os_remove, os_time, select, t_insert = 
-	ripairs, tonumber, type, os.remove, os.time, select, table.insert;
+local ripairs, tonumber, type, os_remove, os_time, select, setmetatable, t_insert = 
+	ripairs, tonumber, type, os.remove, os.time, select, setmetatable, table.insert;
 
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
@@ -30,6 +30,7 @@ local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";
 
 hash_map = {};
 services = {};
+local disco_ids = setmetatable({}, { __mode = "v" });
 local handlers = {};
 local handlers_owner = {};
 local NULL = {};
@@ -68,9 +69,11 @@ module:add_timer(check_service_inactivity, function()
 end);
 
 local function disco_info_query(from, to)
+	local id = uuid_generate();
+	disco_ids[id] = true;
 	module:log("debug", "Sending disco info query to: %s", to);
 	module:fire_global_event("route/post", hosts[module.host], 
-		st.stanza("iq", { from = from, to = to, id = "disco", type = "get" })
+		st.stanza("iq", { from = from, to = to, id = id, type = "get" })
 			:query("http://jabber.org/protocol/disco#info")
 	);
 end
@@ -617,54 +620,55 @@ module:hook("pep-autosubscribe-recipients", function(service, node)
 	return true;
 end);
 
-module:hook("iq-result/bare/disco", function(event)
-	local session, stanza = event.origin, event.stanza;
-	if stanza.attr.type == "result" then
-		local disco = stanza.tags[1];
-		if disco and disco.name == "query" and disco.attr.xmlns == "http://jabber.org/protocol/disco#info" then
-			-- Process disco response
-			local user = stanza.attr.to or (session.username.."@"..session.host);
-			local service = services[user];
-			if not service then return true; end -- User's pep service doesn't exist
-			local nodes = service.nodes;
-			local recipients = service.recipients;
-			local contact = stanza.attr.from;
-			local current = recipients[contact];
-			if not current then return true; end
+module:hook("iq-result/bare", function(event, result_id)
+	if not disco_ids[result_id] then return; end
 
-			module:log("debug", "Processing disco response from %s", stanza.attr.from);
-			local ver = current;
-			if not string.find(current, "#") then
-				ver = calculate_hash(disco.tags); -- calculate hash
-			end
-			local notify = {};
-			local has_notify = false;
-			for _, feature in pairs(disco.tags) do
-				if feature.name == "feature" and feature.attr.var then
-					local nfeature = feature.attr.var:match("^(.*)%+notify$");
-					if nfeature then notify[nfeature] = true; has_notify = true; end
-				end
-			end
-			if not has_notify then 
-				hash_map[ver] = notify;
-				recipients[contact] = false;
-				return true;
-			end
-			hash_map[ver] = notify; -- update hash map
-			recipients[contact] = ver; -- and contact hash
-			if service.is_new then
-				service.is_new = nil;
-				module:log("debug", "Sending probes to roster contacts to discover interested resources...");
-				for jid, item in pairs(session.roster or NULL) do -- for all interested contacts
-					if item.subscription == "both" or item.subscription == "from" then
-						probe_jid(session.full_jid, jid);
-					end
-				end
-				service.starting = nil;
-			end
-			pep_send(contact, user);
-			return true; -- end cb processing.
+	local session, stanza = event.origin, event.stanza;
+	local disco = stanza.tags[1];
+	if disco and disco.name == "query" and disco.attr.xmlns == "http://jabber.org/protocol/disco#info" then
+		-- Process disco response
+		local user = stanza.attr.to or (session.username.."@"..session.host);
+		local service = services[user];
+		if not service then return true; end -- User's pep service doesn't exist
+		local nodes = service.nodes;
+		local recipients = service.recipients;
+		local contact = stanza.attr.from;
+		local current = recipients[contact];
+		if not current then return true; end
+
+		module:log("debug", "Processing disco response from %s", stanza.attr.from);
+		local ver = current;
+		if not string.find(current, "#") then
+			ver = calculate_hash(disco.tags); -- calculate hash
 		end
+		local notify = {};
+		local has_notify = false;
+		for _, feature in pairs(disco.tags) do
+			if feature.name == "feature" and feature.attr.var then
+				local nfeature = feature.attr.var:match("^(.*)%+notify$");
+				if nfeature then notify[nfeature] = true; has_notify = true; end
+			end
+		end
+		if not has_notify then 
+			hash_map[ver] = notify;
+			recipients[contact] = false;
+			return true;
+		end
+		hash_map[ver] = notify; -- update hash map
+		recipients[contact] = ver; -- and contact hash
+		if service.is_new then
+			service.is_new = nil;
+			module:log("debug", "Sending probes to roster contacts to discover interested resources...");
+			for jid, item in pairs(session.roster or NULL) do -- for all interested contacts
+				if item.subscription == "both" or item.subscription == "from" then
+					probe_jid(session.full_jid, jid);
+				end
+			end
+			service.starting = nil;
+		end
+		pep_send(contact, user);
+		disco_ids[result_id] = nil;
+		return true; -- end cb processing.
 	end
 end, -1);
 

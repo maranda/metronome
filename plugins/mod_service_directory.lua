@@ -13,7 +13,8 @@ local jid_bare = require "util.jid".bare;
 local jid_split = require "util.jid".split;
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
-local type = type;
+local uuid = require "util.uuid".generate;
+local setmetatable, type = setmetatable, type;
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_event = "http://jabber.org/protocol/pubsub#event";
@@ -33,11 +34,16 @@ end
 
 -- Module Handlers.
 
+local disco_ids = setmetatable({}, { __mode = "v" });
+local vcard_ids = setmetatable({}, { __mode = "v" });
+
 local function handle_subscribed_peer(host)
 	-- send disco info request.
 	if not hosts[host] then
+		local id = uuid();
+		disco_ids[id] = true;
 		module:log("debug", "Sending disco info request to peer server %s", host);
-		local disco_get = st.iq({ from = my_host, to = host, type = "get", id = "directory_probe:disco" })
+		local disco_get = st.iq({ from = my_host, to = host, type = "get", id = id })
 			:query("http://jabber.org/protocol/disco#info");
 		module:send(disco_get);
 	else
@@ -55,7 +61,10 @@ local function handle_removed_peer(host)
 	service:retract("urn:xmpp:contacts", true, host);
 end
 
-local function process_disco_response(event)
+local function process_disco_response(event, stanza_id)
+	if not disco_ids[stanza_id] then return; end
+	disco_ids[stanza_id] = nil;
+
 	local origin, stanza = event.origin, event.stanza;
 	local node, remote = jid_split(stanza.attr.from);
 	
@@ -73,8 +82,10 @@ local function process_disco_response(event)
 		end
 
 		if is_public then
+			local id = uuid();
+			vcard_ids[id] = true;
 			module:log("debug", "Processing disco info response from peer server %s", remote);
-			local vcard_get = st.iq({ from = my_host, to = remote, type = "get", id = "directory_probe:vcard" })
+			local vcard_get = st.iq({ from = my_host, to = remote, type = "get", id = id })
 				:tag("vcard", { xmlns = "urn:ietf:params:xml:ns:vcard-4.0" });
 			module:send(vcard_get);
 			return true;
@@ -84,7 +95,10 @@ local function process_disco_response(event)
 	end
 end
 
-local function process_vcard_response(event)
+local function process_vcard_response(event, stanza_id)
+	if not vcard_ids[stanza_id] then return; end
+	vcard_ids[stanza_id] = nil;
+
 	local origin, stanza = event.origin, event.stanza;
 	local node, remote = jid_split(stanza.attr.from);
 	
@@ -257,7 +271,7 @@ set_service(pubsub.new({
 -- Hooks
 
 module:hook("iq/host/http://jabber.org/protocol/pubsub:pubsub", handle_pubsub_iq);
-module:hook("iq-result/host/directory_probe:disco", process_disco_response);
-module:hook("iq-result/host/directory_probe:vcard", process_vcard_response);
+module:hook("iq-result/host", process_disco_response);
+module:hook("iq-result/host", process_vcard_response);
 module:hook("peer-subscription-completed", handle_subscribed_peer);
 module:hook("peer-subscription-removed", handle_removed_peer);
