@@ -134,6 +134,7 @@ local function room_save(room, forced, save_occupants)
 			data._last_used = room.last_used;
 		end
 		if save_occupants then
+			module:log("debug", "stashing occupants for %s", room.jid);
 			local _occupants = clone_table(room._occupants);
 			for nick, occupant in pairs(_occupants) do
 				local preserialized_sessions = {};
@@ -188,6 +189,7 @@ for jid in pairs(persistent_rooms) do
 		room.route_stanza = room_route_stanza;
 		room.save = room_save;
 		rooms[jid] = room;
+		room:save(true); -- issue save to clear serialized occupant data
 	else -- missing room data
 		persistent_rooms[jid] = nil;
 		module:log("error", "Missing data for room '%s', removing from persistent room list", jid);
@@ -404,4 +406,4 @@ module:hook_global("server-stopping", function()
 	for _, room in pairs(rooms) do
 		if room.save then room:save(true, true); end
 	end
-end);
+end, -100);
