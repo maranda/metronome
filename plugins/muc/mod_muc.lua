@@ -393,6 +393,7 @@ module.unload = function(reload)
 end
 
 module:hook_global("server-stopping", function()
+	module:log("debug", "saving occupant list for persistent rooms...");
 	for _, room in pairs(rooms) do
 		if room.save then room:save(true, true); end
 	end
