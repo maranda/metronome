@@ -69,11 +69,11 @@ local registration_query = st.stanza("query", {xmlns = "jabber:iq:register"})
 if require_verification then
 	module:depends("register_api");
 	for index, field in ipairs(additional_fields) do
-		if type(field) == "table" and field.name == "email" or field == "email" then
+		if (type(field) == "table" and field.name == "email") or field == "email" or field == "email+" then
 			t_remove(additional_fields, index);
 		end
 	end
-	t_insert(additional_fields, "email+");
+	t_insert(additional_fields, "email");
 end
 
 t_insert(additional_fields, { type = "fixed", value = register_tos });
