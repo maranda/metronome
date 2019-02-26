@@ -694,6 +694,7 @@ module:hook("message/host", function(event)
 				.."need to verify the account within five minutes or it'll be deleted."
 			));
 		end
+		return true;
 	end
 end, 460);
 
