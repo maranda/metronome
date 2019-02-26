@@ -632,7 +632,7 @@ local function validate_registration(user, hostname, password, mail, ip, skip_gr
 			module:send(st.message({ from = hostname, to = user_jid, type = "chat", id = uuid() },
 				"Welcome to "..hostname.." in order to use this service you will need to verify your registration, "
 				.."please follow the instruction sent to you at "..mail..". You will need to verify within 5 minutes "
-				.."or the account will be deleted."
+				.."or the account will be automatically deleted."
 			));
 		end);
 	end
@@ -654,10 +654,10 @@ local function handle_user_registration(event)
 			timer.add_task(20, function()
 				module:log("debug", "Sending email request to %s", user_jid);
 				module:send(st.message({ from = hostname, to = user_jid, type = "chat", id = uuid() },
-					"To verify your registration with please reply to this message and provide a valid mail address "
-					.."if you fail to comply within five minutes your account will be automatically deleted. Also "
-					.."this account is currently in a locked state and you will be unable to use properly until "
-					.."the verification process is completed."
+					"To verify your registration please reply to this message providing a valid mail address "
+					.."if you fail to comply within five minutes your account will be automatically deleted. "
+					.."Also this account is currently in a locked state and you will be unable to use it properly "
+					.."until the verification process is completed."
 				));
 			end);
 			local id = timer.add_task(320, function()
