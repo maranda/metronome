@@ -687,7 +687,7 @@ module:hook("message/host", function(event)
 			));
 		else
 			timer.remove_task(nomail_users[jid].id);
-			validate_registration(origin.username, origin.host, nomail_user[jid].password, mail, nomail_users[jid].ip, true);
+			validate_registration(origin.username, origin.host, nomail_users[jid].password, mail, nomail_users[jid].ip, true);
 			nomail_users[jid] = nil;
 			module:send(st.message({ from = origin.host, to = jid, type = "chat", id = uuid() },
 				"Thank you, the instructions to verify your account will be mailed to you shortly. Please remember you "
