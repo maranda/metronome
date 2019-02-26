@@ -1,12 +1,17 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
-	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+﻿<!DOCTYPE html>
+<html lang="en">
 <head>
     <title>Metronome SPIM Block</title>
     <link rel="stylesheet" type="text/css" href="css/style.css" />
     <link rel="icon" type="image/png" href="/assets/favicon.png" />
-    <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" />
+    <meta charset="utf-8" />
+    <script type="text/javascript">
+      var onloadCallback = function () {
+        grecaptcha.render('recaptcha', {
+          'sitekey': '%RECAPTCHA-KEY'
+        });
+      };
+    </script>
 </head>
 
 <body>
@@ -17,15 +22,21 @@
 </div>
 
 <div id='main'>
-  <p>Please insert the provided token to unlock communication with a user on this server.</p>
-  <form action='%REG-URL' method='post' accept-charset='UTF-8' id='spim'>
-    <div><label for='set-token'>Anti-SPIM Token:</label></div>
-    <div><input type='text' name='spim_token' id='set-token' value="" /></div>
-    <div><label for='set-token'>What's the result of the following operation, %MATH-CHALLENGE:</label></div>
-    <div><input type='text' name='math_challenge' id='set-token' value="" /></div>
-    <div><br /><input type='submit' id='connect' value='Unlock' class='btn' /></div>
-  </form>
+    <p>
+    Please insert the provided token to unlock communication with a user on this server,
+    <br />note that this form is protected by reCAPTCHA meaning, that your IP address will be
+    <br />logged by our systems and sent to Google Servers to better help identifying bots from
+    <br />true users. Should you not agree with that you can always ask the contact through other
+    <br />means to add you to his or her contact list instead.
+    </p>
+    <form action='%REG-URL' method='post' accept-charset='UTF-8' id='spim'>
+        <div><label for='set-token'>Anti-SPIM Token:</label><br /></div>
+        <div><input type='text' name='spim_token' id='set-token' value="" /></div>
+        <div><br /></div>
+        <div id="recaptcha"></div>
+        <div><br /><input type='submit' id='connect' value='Unlock' class='btn' /></div>
+    </form>
 </div>
-
+<script src='https://www.google.com/recaptcha/api.js?onload=onloadCallback&amp;render=explicit'></script>
 </body>
 </html>

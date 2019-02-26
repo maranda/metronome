@@ -40,3 +40,15 @@ ul {
   height: 172px;
   background: url(../images/tile.png) repeat-x
 }
+
+#recaptcha {
+  margin: 0px;
+  width: 304px;
+  position: relative;
+}
+
+#recaptcha iframe {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+}

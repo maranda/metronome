@@ -8,7 +8,7 @@ module:depends("adhoc")
 
 local dataforms_new = require "util.dataforms".new
 local st = require "util.stanza"
-local id_gen = require "util.uuid".generate
+local id_gen = require "util.auxiliary".generate_shortid
 
 local pairs, os_time, setmetatable = pairs, os.time, setmetatable
 
@@ -152,6 +152,8 @@ function _inc_mt:new_object(fields, formtype)
 	else return false end
 end
 
+local sent_ids = setmetatable({}, { __mode = "v" })
+
 -- // Handler Functions //
 
 local function report_handler(event)
@@ -171,9 +173,11 @@ local function inquiry_handler(event)
 		report_iq.attr.from = stanza.attr.to
 		report_iq.attr.to = stanza.attr.from
 		report_iq.attr.type = "set"
+		report_iq.attr.id = id_gen()
 
 		origin.send(st.reply(stanza))
 		origin.send(report_iq)
+		sent_ids[report_iq.attr.id] = true
 		return true
 	else
 		module:log("error", "Server %s queried for incident %s but we don't know about it", stanza.attr.from, inc_id)
@@ -205,7 +209,13 @@ local function response_handler(event)
 	end
 end
 
-local function results_handler(event) return true end -- TODO results handling
+local function results_handler(event, stanza_id)
+	if sent_ids[stanza_id] then
+		local from = event.stanza.attr.from
+		module:log("debug", "%s handled requested report with id %s", from, stanza_id)
+		sent_ids[stanza_id] = nil ;	return true
+	end
+end
 
 -- // Adhoc Commands //
 
@@ -298,7 +308,7 @@ local function rr_command_handler(self, data, state, formtype)
 			local stanza = ih_lib.stanza_construct(id)
 			stanza.attr.from = my_host
 			stanza.attr.to = fields.entity
-			module:log("debug","Sending incident %s stanza to: %s", formtype, stanza.attr.to)
+			module:log("debug", "Sending incident %s stanza to: %s", formtype, stanza.attr.to)
 			module:send(stanza)
 
 			return { status = "completed", info = string.format("Incident %s sent to %s.", formtype, fields.entity) }
@@ -334,7 +344,7 @@ module:hook("iq-set/host/urn:xmpp:incident:2:report", report_handler)
 module:hook("iq-get/host/urn:xmpp:incident:2:inquiry", inquiry_handler)
 module:hook("iq-get/host/urn:xmpp:incident:2:request", request_handler)
 module:hook("iq-set/host/urn:xmpp:incident:2:response", response_handler)
-module:hook("iq-result/host/urn:xmpp:incident:2", results_handler)
+module:hook("iq-result/host", results_handler)
 
 -- // Module Methods //
 

@@ -34,6 +34,7 @@ local muc_new_room = muclib.new_room;
 local jid_section = require "util.jid".section;
 local jid_bare = require "util.jid".bare;
 local st = require "util.stanza";
+local clone_table = require "util.auxiliary".clone_table;
 local id_gen = require "util.auxiliary".generate_shortid;
 local fire_event = metronome.events.fire_event;
 local um_is_admin = require "core.usermanager".is_admin;
@@ -118,7 +119,7 @@ end
 local function room_route_stanza(room, stanza) 
 	fire_event("route/post", host_session, stanza); 
 end
-local function room_save(room, forced)
+local function room_save(room, forced, save_occupants)
 	local node = jid_section(room.jid, "node");
 	persistent_rooms[room.jid] = room._data.persistent;
 	if room._data.persistent then
@@ -131,6 +132,19 @@ local function room_save(room, forced)
 		};
 		if expire_inactive_rooms then
 			data._last_used = room.last_used;
+		end
+		if save_occupants then
+			module:log("debug", "stashing occupants for %s", room.jid);
+			local _occupants = clone_table(room._occupants);
+			for nick, occupant in pairs(_occupants) do
+				local preserialized_sessions = {};
+				for full_jid, pr in pairs(occupant.sessions) do
+					preserialized_sessions[full_jid] = st.preserialize(pr);
+				end
+				_occupants[nick].sessions = preserialized_sessions;
+			end
+			data._occupants = _occupants;
+			data._jid_nick = room._jid_nick;
 		end
 		config_store:set(node, data);
 		room._data.history = history;
@@ -152,6 +166,18 @@ for jid in pairs(persistent_rooms) do
 		local room = muc_new_room(jid);
 		room._data = data._data;
 		room._affiliations = data._affiliations;
+		if data._occupants then
+			local _occupants = data._occupants;
+			for nick, occupant in pairs(_occupants) do
+				local deserialized_sessions = {};
+				for full_jid, pr in pairs(occupant.sessions) do
+					deserialized_sessions[full_jid] = st.deserialize(pr);
+				end
+				_occupants[nick].sessions = deserialized_sessions;
+			end
+			room._occupants = _occupants;
+		end
+		if data._jid_nick then room._jid_nick = data._jid_nick; end
 		if expire_inactive_rooms then
 			local _last_used = room._data._last_used;
 			room._data._last_used = nil;
@@ -163,6 +189,7 @@ for jid in pairs(persistent_rooms) do
 		room.route_stanza = room_route_stanza;
 		room.save = room_save;
 		rooms[jid] = room;
+		room:save(true); -- issue save to clear serialized occupant data
 	else -- missing room data
 		persistent_rooms[jid] = nil;
 		module:log("error", "Missing data for room '%s', removing from persistent room list", jid);
@@ -322,9 +349,27 @@ end
 
 host_session.muc = { rooms = rooms };
 
-local saved = false;
+function shutdown_room(room, stanza)
+	for nick, occupant in pairs(room._occupants) do
+		stanza.attr.from = nick;
+		for jid in pairs(occupant.sessions) do
+			stanza.attr.to = jid;
+			room:_route_stanza(stanza);
+			room._jid_nick[jid] = nil;
+		end
+		room._occupants[nick] = nil;
+	end
+end
+function shutdown_component()
+	local stanza = st.presence({type = "unavailable"})
+		:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
+			:tag("item", {affiliation = "none", role = "none"}):up()
+			:tag("status", { code = "332"}):up();
+	for roomjid, room in pairs(rooms) do
+		shutdown_room(room, stanza);
+	end
+end
 module.save = function()
-	saved = true;
 	redirects_store:set(nil, muclib.redirects);
 	return { rooms = rooms, admin_toggles = muclib.admin_toggles };
 end
@@ -352,30 +397,13 @@ module.unload = function(reload)
 			redirects_store:set();
 		end
 		module:remove_all_timers();
+		shutdown_component();
 	end
 end
 
-function shutdown_room(room, stanza)
-	for nick, occupant in pairs(room._occupants) do
-		stanza.attr.from = nick;
-		for jid in pairs(occupant.sessions) do
-			stanza.attr.to = jid;
-			room:_route_stanza(stanza);
-			room._jid_nick[jid] = nil;
-		end
-		room._occupants[nick] = nil;
+module:hook_global("server-stopping", function()
+	module:log("debug", "saving occupant list for persistent rooms...");
+	for _, room in pairs(rooms) do
+		if room.save then room:save(true, true); end
 	end
-end
-function shutdown_component()
-	if not saved then
-		local stanza = st.presence({type = "unavailable"})
-			:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
-				:tag("item", {affiliation = "none", role = "none"}):up()
-				:tag("status", { code = "332"}):up();
-		for roomjid, room in pairs(rooms) do
-			shutdown_room(room, stanza);
-		end
-	end
-end
-module.unload = shutdown_component;
-module:hook_global("server-stopping", shutdown_component);
+end, -100);

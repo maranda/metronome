@@ -8,7 +8,7 @@
 
 module:depends("stream_management");
 
-local ipairs, pairs, tostring = ipairs, pairs, tostring;
+local ipairs, pairs, setmetatable, tostring = ipairs, pairs, setmetatable, tostring;
 
 local st = require "util.stanza";
 local jid_join = require "util.jid".join;
