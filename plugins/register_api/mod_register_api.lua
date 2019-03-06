@@ -555,7 +555,7 @@ local function handle_verify(event, path)
 					module:log("info", "Account %s@%s is successfully verified and unlocked", username, my_host);
 					usermanager.unlock_user(username, my_host);
 					pending[id_token] = nil; pending_node[username] = nil;
-					module:fire_event("user-registration-verified", { username = username, hostname = my_host, password = password });
+					module:fire_event("user-registration-verified", { username = username, host = my_host, password = password });
 					return r_template(event, "verify_success");
 				end
 
@@ -568,7 +568,7 @@ local function handle_verify(event, path)
 					module:log("info", "Account %s@%s is successfully verified and activated", username, my_host);
 					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
 					pending[id_token] = nil; pending_node[username] = nil;
-					module:fire_event("user-registration-verified", { username = username, hostname = my_host, password = password });
+					module:fire_event("user-registration-verified", { username = username, host = my_host, password = password });
 					return r_template(event, "verify_success");
 				else
 					module:log("error", "User creation failed: "..error);
