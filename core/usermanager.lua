@@ -97,14 +97,16 @@ function create_user(username, password, host, locked)
 	end
 end
 
-function delete_user(username, host, source)
+function delete_user(username, host, source, reason)
 	local hostname = hosts[host];
 	local session = hostname.sessions and hostname.sessions[username];
 	local ok, err = hostname.users.delete_user(username);
 	if not ok then return nil, err; end
 
-	hostname.events.fire_event("user-pre-delete", { username = username, host = host, session = session, source = source });
-	metronome.events.fire_event("user-deleted", { username = username, host = host, session = session, source = source });
+	hostname.events.fire_event("user-pre-delete",
+		{ username = username, host = host, session = session, source = source, reason = reason });
+	metronome.events.fire_event("user-deleted",
+		{ username = username, host = host, session = session, source = source, reason = reason });
 	return storagemanager.purge(username, host);
 end
 
