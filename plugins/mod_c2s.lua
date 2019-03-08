@@ -271,7 +271,7 @@ local function handle_deletion(event)
 	local user = (session and session) or (host_session and host_session.sessions and host_session.sessions[node]);
 	if not user then return; end
 	for _, session in pairs(user.sessions) do
-		session:close{ condition = "not-authorized", text = event.reason or "Account deleted" };
+		session:close{ condition = "not-authorized", text = reason or "Account deleted" };
 	end
 end
 
