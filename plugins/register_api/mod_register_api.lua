@@ -583,7 +583,7 @@ end
 
 local function handle_user_deletion(event)
 	local user, hostname = event.username, event.host;
-	if hostname == my_host then hashes:remove(user); end
+	if hostname == my_host and not pending_node[user] then hashes:remove(user); end
 end
 
 local function validate_registration(user, hostname, password, mail, ip, skip_greeting)
@@ -622,7 +622,7 @@ local function validate_registration(user, hostname, password, mail, ip, skip_gr
 		if pending[id_token] then
 			pending[id_token] = nil;
 			pending_node[user] = nil;
-			usermanager.delete_user(user, hostname, "mod_register_api");
+			usermanager.delete_user(user, hostname, "mod_register_api", "Failed to verify the account within 5 minutes, deleting");
 		end
 	end);
 
@@ -641,9 +641,13 @@ end
 local function handle_user_registration(event)
 	local user, hostname, password, data, session = event.username, event.host, event.password, event.data, event.session;
 	if do_mail_verification and event.source == "mod_register" then
-		if not check_node(user) then
-			module:log("warn", "%s attempted to register a user account with a forbidden or reserved username (%s)", session.ip, user);
-			usermanager.delete_user(user, hostname, "mod_register_api");
+		local checked = check_node(user);
+		if not checked or pending_node[user] then
+			module:log("warn", "%s attempted to register a user account %s (%s)", session.ip,
+				not checked and "with a forbidden or reserved username" or "which is pending registration verification already", user);
+			usermanager.delete_user(user, hostname, "mod_register_api",
+				"Account "..user.." is "..(not checked and "containing a forbidden or reserved word" or "already pending verification")
+			);
 			return;
 		end
 
@@ -662,7 +666,7 @@ local function handle_user_registration(event)
 			end);
 			local id = timer.add_task(320, function()
 				nomail_users[user_jid] = nil;
-				usermanager.delete_user(user, hostname, "mod_register_api");
+				usermanager.delete_user(user, hostname, "mod_register_api", "You didn't supply a mail to verify the account, deleting");
 			end);
 			nomail_users[user_jid] = { id = id, ip = session.ip, password = password };
 		else
