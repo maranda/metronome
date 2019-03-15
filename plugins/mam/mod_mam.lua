@@ -34,13 +34,14 @@ local forbid_purge = module:get_option_boolean("mam_forbid_purge", false);
 
 local mamlib = module:require("mam");
 local validate_query = module:require("validate").validate_query;
-local initialize_storage, initialize_session_store, save_stores =
-	mamlib.initialize_storage, mamlib.initialize_session_store, mamlib.save_stores;
+local initialize_storage, initialize_session_store, initialize_offline_store, save_stores =
+	mamlib.initialize_storage, mamlib.initialize_session_store, mamlib.initialize_offline_store, mamlib.save_stores;
 local get_prefs, set_prefs = mamlib.get_prefs, mamlib.set_prefs;
 local fields_handler, generate_stanzas, process_message, purge_messages =
 	mamlib.fields_handler, mamlib.generate_stanzas, mamlib.process_message, mamlib.purge_messages;
 
 local session_stores = mamlib.session_stores;
+local offline_stores = mamlib.offline_stores;
 local storage = initialize_storage();
 
 -- Handlers
@@ -116,8 +117,7 @@ local function purge_handler(event)
 	local archive = bare_session.archiving;
 
 	if not archive then
-		initialize_session_store(origin.username);
-		archive = bare_session.archiving;
+		archive = initialize_session_store(origin.username);
 	end
 
 	archive.last_used = now();
@@ -148,8 +148,7 @@ local function query_handler(event)
 	local archive = bare_session.archiving;
 
 	if not archive then
-		initialize_session_store(origin.username);
-		archive = bare_session.archiving;
+		archive = initialize_session_store(origin.username);
 	end
 
 	archive.last_used = now();
@@ -194,6 +193,23 @@ function module.unload()
 	module:remove_all_timers();
 	module:add_timer(5, function() collectgarbage(); end);
 end
+
+module:hook("mam-get-store", function(user)
+	local user_jid = jid_join(user, module_host);
+	local session_store = session_stores[user_jid];
+	local offline_store = offline_stores[user_jid];
+	if session_store then
+		return session_store;
+	else
+		if bare_sessions[user_jid] then
+			return initialize_session_store(user);
+		elseif offline_store then
+			return offline_store;
+		else
+			return initialize_offline_store(user, true);
+		end
+	end
+end);
 
 module:hook("pre-resource-unbind", save_session_store, 30);
 module:hook("resource-unbind", remove_session_store, 30);

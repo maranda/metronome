@@ -63,6 +63,27 @@ local function initialize_storage()
 	return storage;
 end
 
+local function initialize_offline_store(user, force)
+	local archive = storage:get(user);
+	if not archive and force then
+		archive = { logs = {}, prefs = { default = "never" } };
+	end
+	if archive then
+		offline_stores[bare_to] = archive;
+		module:add_timer(300, function()
+			if offline_stores[bare_to] then
+				local store = offline_stores[bare_to];
+				if store.changed then
+					store.changed, store.last_used = nil, nil;
+					storage:set(user, store);
+				end
+				offline_stores[bare_to] = nil;
+			end
+		end);
+	end
+	return archive;
+end
+
 local function initialize_session_store(user)
 	local bare_jid = jid_join(user, module_host);
 	local bare_session = bare_sessions[bare_jid];
@@ -92,6 +113,7 @@ local function initialize_session_store(user)
 			end
 		end
 	end);
+	return session_stores[bare_jid];
 end
 
 local function save_stores()
@@ -506,20 +528,7 @@ local function process_message(event, outbound)
 		local offline_overcap = module:fire_event("message/offline/overcap", { node = user });
 		if not offline_overcap then
 			if not offline_stores[bare_to] then
-				archive = storage:get(user);
-				if archive then
-					offline_stores[bare_to] = archive;
-					module:add_timer(300, function()
-						if offline_stores[bare_to] then
-							local store = offline_stores[bare_to];
-							if store.changed then
-								store.changed, store.last_used = nil, nil;
-								storage:set(user, store);
-							end
-							offline_stores[bare_to] = nil;
-						end
-					end);
-				end
+				archive = initialize_offline_store(user);
 			else
 				archive = offline_stores[bare_to];
 			end
@@ -608,6 +617,7 @@ end
 
 _M.initialize_storage = initialize_storage;
 _M.initialize_session_store = initialize_session_store;
+_M.initialize_offline_store = initialize_offline_store;
 _M.save_stores = save_stores;
 _M.get_prefs = get_prefs;
 _M.set_prefs = set_prefs;
@@ -616,5 +626,6 @@ _M.generate_stanzas = generate_stanzas;
 _M.process_message = process_message;
 _M.purge_messages = purge_messages;
 _M.session_stores = session_stores;
+_M.offline_stores = offline_stores;
 
 return _M;
