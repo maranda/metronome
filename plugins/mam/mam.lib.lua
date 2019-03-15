@@ -64,20 +64,21 @@ local function initialize_storage()
 end
 
 local function initialize_offline_store(user, force)
+	local bare_jid = jid_join(user, module_host);
 	local archive = storage:get(user);
 	if not archive and force then
 		archive = { logs = {}, prefs = { default = "never" } };
 	end
 	if archive then
-		offline_stores[bare_to] = archive;
+		offline_stores[bare_jid] = archive;
 		module:add_timer(300, function()
-			if offline_stores[bare_to] then
-				local store = offline_stores[bare_to];
+			if offline_stores[bare_jid] then
+				local store = offline_stores[bare_jid];
 				if store.changed then
 					store.changed, store.last_used = nil, nil;
 					storage:set(user, store);
 				end
-				offline_stores[bare_to] = nil;
+				offline_stores[bare_jid] = nil;
 			end
 		end);
 	end
