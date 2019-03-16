@@ -108,6 +108,7 @@ local function r_template(event, type, params)
 				"Please select the conversation recipient and the eventual message index" or
 				"Archive is empty"
 			);
+			data = data:gsub("%%LOGOUT%-URL", (not base_path:find("^/") and "/"..base_path or base_path).."logout");
 			if logs_amount > 0 then
 				local index, last_jid = params.last.threshold or 0, params.last.with;
 				if index < 0 then index = 0; end
@@ -187,14 +188,20 @@ local function handle_request(event, path)
 	if not request.secure and (path == "" or path == "browser") then
 		return r_template(event, "unsecure");
 	end
+
+	local cookie, token = request.headers.cookie;
+	if cookie then token = cookie:match("^MAM_SESSID=([%w/%+]+[^;])"); end
 	
 	if request.method == "GET" then
 		if path == "" then -- login
 			return r_template(event, "login");
+		elseif path == "logout" then -- logout
+			if token then
+				authenticated_tokens[token] = nil;
+				response.headers["Set-Cookie"] = "MAM_SESSID=";
+			end
+			return redirect_to(event);
 		elseif path == "browser" then -- browser
-			local cookie = request.headers.cookie;
-			module:log("debug", "Cookie is: %s", cookie or "nil");
-			local token = cookie and cookie:match("^MAM_SESSID=([%w/%+]+[^;])");
 			if authenticated_tokens[token] then
 				local username = authenticated_tokens[token];
 				local params = params_cache[username] or initialize_params_cache(username);
@@ -230,11 +237,7 @@ local function handle_request(event, path)
 			end
 		elseif path == "browser" then
 			if not body then return http_error_reply(event, 400, "Bad Request."); end
-
-			local cookie = request.headers.cookie;
-			local token = cookie and cookie:match("^MAM_SESSID=([%w/%+]+[^;])");
 			local username = authenticated_tokens[token];
-
 			if username then
 				local with_jid, threshold = body:match("^with_jid=(.*)&index=(.*)$");
 				with_jid, threshold = urldecode(with_jid), urldecode(threshold);
