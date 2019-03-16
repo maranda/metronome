@@ -127,7 +127,7 @@ local function r_template(event, type, params)
 						if _entry.to == last_jid or _entry.from == last_jid then
 							count = count + 1;
 							if count - index > 300 then trunked = true; break; end
-							if count > index then
+							if count >= index then
 								entries = entries .. entry:format(dt(_entry.timestamp), 
 									(last_body == _entry.body and last_to ~= _entry.to) and _entry.from.." (to ".._entry.to..")" or _entry.from,
 									_entry.body or "<strong>*empty or corrected*</strong>"
