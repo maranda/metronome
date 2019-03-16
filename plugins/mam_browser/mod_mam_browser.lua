@@ -89,6 +89,8 @@ local form = {
 	options_fin = "    </select></div>\n",
 	index_label = "    <div><label for='index'>Choose index (0 for start):</label><br /></div>\n",
 	index_input = "    <div><input type='number' name='index' id='index' value='%d' /></div>\n",
+	search_label = "    <div><label for='search'>Search for a specific word (Lua patterns are allowed):</label><br /></div>\n",
+	search_input = "    <div><input type='text' name='search' id='search' value='%s' /></div>\n",
 	send_input = "    <div><br /><input type='submit' id='get' value='Retrieve messages' class='btn' /></div>\n",
 	fin = "</form>\n"
 };
@@ -110,28 +112,39 @@ local function r_template(event, type, params)
 			);
 			data = data:gsub("%%LOGOUT%-URL", (not base_path:find("^/") and "/"..base_path or base_path).."logout");
 			if logs_amount > 0 then
-				local index, last_jid = params.last.threshold or 0, params.last.with;
+				local index, last_jid, search = params.last.threshold or 0, params.last.with, params.last.search;
 				if index < 0 then index = 0; end
+				if search == "" then
+					search = nil;
+				elseif search ~= nil then
+					search = search:gsub("%%", "%%%%");
+				end
+
 				local str = form.header .. form.options_label .. form.options_header;
 				for jid in pairs(params.users) do
 					str = str .. (params.last.with == jid and
 						form.options_el_selected:format(jid, jid) or form.options_el:format(jid, jid));
 				end
 				str = str .. form.options_fin .. form.index_label .. form.index_input:format(index) ..
-					form.send_input .. form.fin;
+					form.search_label .. form.search_input:format(search or "") .. form.send_input .. form.fin;
 				data = data:gsub("%%FORM", str);
+
 				if not last_jid then
 					data = data:gsub("%%FL", ""); data = data:gsub("%%ENTRIES", "");
 				else
 					local count, entries, last_body, last_to, trunked = 0, "";
 					for i, _entry in ipairs(params.logs) do
-						if _entry.to == last_jid or _entry.from == last_jid then
+						local negate;
+						if not _entry.body or (search and not _entry.body:find(search)) then
+							negate = true;
+						end
+						if not negate and (_entry.to == last_jid or _entry.from == last_jid) then
 							count = count + 1;
 							if not trunked and count - index >= 301 then trunked = count - 1; end
 							if not trunked and count >= index then
 								entries = entries .. entry:format(dt(_entry.timestamp), 
 									(last_body == _entry.body and last_to ~= _entry.to) and _entry.from.." (to ".._entry.to..")" or _entry.from,
-									_entry.body or "<strong>*empty or corrected*</strong>"
+									_entry.body
 								);
 								last_body, last_to = _entry.body, _entry.to;
 							end
@@ -240,11 +253,11 @@ local function handle_request(event, path)
 			if not body then return http_error_reply(event, 400, "Bad Request."); end
 			local username = authenticated_tokens[token];
 			if username then
-				local with_jid, threshold = body:match("^with_jid=(.*)&index=(.*)$");
-				with_jid, threshold = urldecode(with_jid), urldecode(threshold);
+				local with_jid, threshold, search = body:match("^with_jid=(.*)&index=(.*)&search=(.*)$");
+				with_jid, threshold, search = urldecode(with_jid), urldecode(threshold), urldecode(search);
 				threshold = tonumber(threshold);
 				local params = params_cache[username] or initialize_params_cache(username);
-				params.last.with, params.last.threshold = with_jid, threshold;
+				params.last.with, params.last.threshold, params.last.search = with_jid, threshold, search;
 				return r_template(event, "browser", params);
 			else
 				return redirect_to(event);
