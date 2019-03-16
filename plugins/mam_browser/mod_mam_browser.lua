@@ -82,7 +82,7 @@ end
 
 local form = {
 	header = "<form action='/mam/browser' method='post' accept-charset='UTF-8' id='login'>\n",
-	options_label = "    <div><label for='with_jid'>Select a sender:</label><br /></div>\n",
+	options_label = "    <div><label for='with_jid'>Select a recipient:</label><br /></div>\n",
 	options_header = "    <div><select name='with_jid'>\n",
 	options_el = "        <option value='%s'>%s</option>\n",
 	options_el_selected = "        <option value='%s' selected>%s</option>\n",
@@ -105,7 +105,7 @@ local function r_template(event, type, params)
 		elseif type == "browser" then
 			local logs_amount = #params.logs;
 			data = data:gsub("%%CAPTION", logs_amount > 0 and 
-				"Please select the recipient and the eventual message index" or
+				"Please select the conversation recipient and the eventual message index" or
 				"Archive is empty"
 			);
 			if logs_amount > 0 then
