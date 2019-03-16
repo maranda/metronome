@@ -9,8 +9,8 @@ module:depends("mam");
 local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
 local json_decode = require "util.json".decode;
-local pairs, next, open, os_time, setmetatable, unpack, tonumber, tostring =
-	pairs, next, io.open, os.time, setmetatable, unpack or table.unpack, tonumber, tostring;
+local ipairs, pairs, next, open, os_time, setmetatable, unpack, tonumber, tostring =
+	ipairs, pairs, next, io.open, os.time, setmetatable, unpack or table.unpack, tonumber, tostring;
 local jid_join = require "util.jid".join;
 local urldecode = http.urldecode;
 local urlencode = http.urlencode;
