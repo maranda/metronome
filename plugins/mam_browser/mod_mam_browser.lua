@@ -7,18 +7,12 @@
 module:depends("mam");
 
 local http_event = require "net.http.server".fire_server_event;
-local http_request = require "net.http".request;
-local json_decode = require "util.json".decode;
-local ipairs, pairs, next, open, os_time, setmetatable, unpack, tonumber, tostring =
-	ipairs, pairs, next, io.open, os.time, setmetatable, unpack or table.unpack, tonumber, tostring;
+local ipairs, pairs, open, setmetatable, tonumber, tostring =
+	ipairs, pairs, io.open, setmetatable, tonumber, tostring;
 local jid_join = require "util.jid".join;
 local urldecode = http.urldecode;
-local urlencode = http.urlencode;
 local generate = require "util.auxiliary".generate_secret;
-local new_uuid = require "util.uuid".generate;
-local st = require "util.stanza";
 local test_password = require "core.usermanager".test_password;
-local module_unload = require "core.modulemanager".module_unload;
 local dt = require "util.datetime".datetime;
 
 module:depends("http");
