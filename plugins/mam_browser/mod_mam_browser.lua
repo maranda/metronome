@@ -75,7 +75,7 @@ local function http_error_reply(event, code, message, headers)
 end
 
 local form = {
-	header = "<form action='/mam/browser' method='post' accept-charset='UTF-8' id='login'>\n",
+	header = "<form action='%sbrowser' method='post' accept-charset='UTF-8' id='login'>\n",
 	options_label = "    <div><label for='with_jid'>Select a recipient:</label><br /></div>\n",
 	options_header = "    <div><select name='with_jid'>\n",
 	options_el = "        <option value='%s'>%s</option>\n",
@@ -94,17 +94,18 @@ local entry = "(%s) <strong>%s</strong>: %s<br />\n";
 local function r_template(event, type, params)
 	local data = open_file(files_base..type..".html");
 	if data then
+		local base = not base_path:find("^/") and "/" .. base_path or base_path;
 		event.response.headers["Content-Type"] = "text/html";
 		if type == "login" then
 			data = data:gsub("%%HOST", "<strong>"..module.host.."</strong>");
-			data = data:gsub("%%LOGIN%-URL", not base_path:find("^/") and "/"..base_path or base_path);
+			data = data:gsub("%%LOGIN%-URL", base);
 		elseif type == "browser" then
 			local logs_amount = #params.logs;
 			data = data:gsub("%%CAPTION", logs_amount > 0 and 
 				"Please select the conversation recipient and the eventual message index" or
 				"Archive is empty"
 			);
-			data = data:gsub("%%LOGOUT%-URL", (not base_path:find("^/") and "/"..base_path or base_path).."logout");
+			data = data:gsub("%%LOGOUT%-URL", base.."logout");
 			if logs_amount > 0 then
 				local index, last_jid, search = params.last.threshold or 0, params.last.with, params.last.search;
 				if index < 0 then index = 0; end
@@ -114,7 +115,7 @@ local function r_template(event, type, params)
 					search = search:gsub("%%", "%%%%");
 				end
 
-				local str = form.header .. form.options_label .. form.options_header;
+				local str = form.header:format(base) .. form.options_label .. form.options_header;
 				for jid in pairs(params.users) do
 					str = str .. (params.last.with == jid and
 						form.options_el_selected:format(jid, jid) or form.options_el:format(jid, jid));
@@ -202,7 +203,11 @@ local function handle_request(event, path)
 	
 	if request.method == "GET" then
 		if path == "" then -- login
-			return r_template(event, "login");
+			if authenticated_tokens[token] then
+				return redirect_to(event, "browser");
+			else
+				return r_template(event, "login");
+			end
 		elseif path == "logout" then -- logout
 			if token then
 				authenticated_tokens[token] = nil;
@@ -230,7 +235,7 @@ local function handle_request(event, path)
 					local token = generate_secret();
 					if token then
 						response.headers["Set-Cookie"] =
-							"MAM_SESSID="..token.."; Path=/"..base_path.."browser; Max-Age=600; SameSite=Strict; Secure; HttpOnly"
+							"MAM_SESSID="..token.."; Path=/"..base_path.."; Max-Age=600; SameSite=Strict; Secure; HttpOnly"
 						authenticated_tokens[token] = username;
 						module:add_timer(600, function() authenticated_tokens[token] = nil; end);
 						return redirect_to(event, "browser");
