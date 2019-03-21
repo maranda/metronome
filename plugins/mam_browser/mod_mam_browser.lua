@@ -132,8 +132,7 @@ local function r_template(event, type, params)
 						local negate;
 						if not _entry.body or (search and not _entry.body:find(search)) then
 							negate = true;
-						end
-						if last_body == _entry.body and last_id == _entry.id then
+						elseif last_body == _entry.body and last_id == _entry.id then
 							negate = true;
 						end
 						if not negate and (_entry.bare_to == last_jid or _entry.bare_from == last_jid) then
