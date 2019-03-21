@@ -172,8 +172,9 @@ local function http_file_get(event, path)
 end
 
 local function redirect_to(event, path)
+	event.response.headers["Cache-Control"] = "no-store";
 	event.response.headers["Location"] = "/" .. base_path .. (path or "");
-	return 301;
+	return 302;
 end
 
 local function initialize_params_cache(user)
