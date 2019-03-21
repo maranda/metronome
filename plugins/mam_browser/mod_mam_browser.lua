@@ -89,7 +89,7 @@ local form = {
 	fin = "</form>\n"
 };
 
-local entry = "(%s) <strong>%s</strong>: %s<br />\n";
+local entry = "(%s) <strong>%s</strong> to <strong>%s</strong>: %s<br />\n";
 
 local function r_template(event, type, params)
 	local data = open_file(files_base..type..".html");
@@ -127,31 +127,35 @@ local function r_template(event, type, params)
 				if not last_jid then
 					data = data:gsub("%%FL", ""); data = data:gsub("%%ENTRIES", "");
 				else
-					local count, entries, last_body, last_to, trunked = 0, "";
+					local count, entries, last_body, last_id, trunked = 0, "";
 					for i, _entry in ipairs(params.logs) do
 						local negate;
 						if not _entry.body or (search and not _entry.body:find(search)) then
 							negate = true;
 						end
-						if not negate and (_entry.to == last_jid or _entry.from == last_jid) then
+						if last_body == _entry.body and last_id == _entry.id then
+							negate = true;
+						end
+						if not negate and (_entry.bare_to == last_jid or _entry.bare_from == last_jid) then
 							count = count + 1;
 							if not trunked and count - index >= 301 then trunked = count - 1; end
 							if not trunked and count >= index then
-								entries = entries .. entry:format(dt(_entry.timestamp), 
-									(last_body == _entry.body and last_to ~= _entry.to) and _entry.from.." (to ".._entry.to..")" or _entry.from,
-									_entry.body
-								);
-								last_body, last_to = _entry.body, _entry.to;
+								entries = entries .. entry:format(dt(_entry.timestamp), _entry.from, _entry.to, _entry.body);
 							end
+							last_body, last_id = _entry.body, _entry.id;
 						end
 					end
 					entries = entries:gsub("%%", "%%%%");
-					data = data:gsub("%%FL", "Returning archive entries from " ..
-						(index == 0 and "the beginning" or "message number "..tostring(index))
-						.. (not trunked and "" or " to message number "..tostring(trunked))
-						.. " (" .. tostring(count) .. " total messages)."
-					);
-					data = data:gsub("%%ENTRIES", entries);
+					if entries == "" then
+						data = data:gsub("%%FL", "No entries to show."); data = data:gsub("%%ENTRIES", "");
+					else
+						data = data:gsub("%%FL", "Returning archive entries from " ..
+							(index == 0 and "the beginning" or "message number "..tostring(index))
+							.. (not trunked and "" or " to message number "..tostring(trunked))
+							.. " (" .. tostring(count) .. " total messages)."
+						);
+						data = data:gsub("%%ENTRIES", entries);
+					end
 				end
 			end
 		end
@@ -180,9 +184,9 @@ end
 local function initialize_params_cache(user)
 	local jid = jid_join(user, module.host);
 	local archive = module:fire_event("mam-get-store", user);
-	local params = { users = {}, logs = archive.logs, last = {} };
+	local params = { users = {}, logs = archive.logs, last = {}, myself = jid };
 	for i, entry in ipairs(archive.logs) do
-		if entry.bare_from ~= jid and not params.users[entry.from] then params.users[entry.from] = true; end
+		if entry.bare_from ~= jid and not params.users[entry.bare_from] then params.users[entry.bare_from] = true; end
 	end
 	params_cache[user] = params;
 	return params;
