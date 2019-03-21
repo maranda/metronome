@@ -211,7 +211,8 @@ local function handle_request(event, path)
 		elseif path == "logout" then -- logout
 			if token then
 				authenticated_tokens[token] = nil;
-				response.headers["Set-Cookie"] = "MAM_SESSID=";
+				response.headers["Set-Cookie"] = 
+					"MAM_SESSID="..token.."; Path=/"..base_path.."; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
 			end
 			return redirect_to(event);
 		elseif path == "browser" then -- browser
