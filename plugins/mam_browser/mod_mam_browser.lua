@@ -75,7 +75,7 @@ local function http_error_reply(event, code, message, headers)
 end
 
 local form = {
-	header = "<form action='%sbrowser' method='post' accept-charset='UTF-8' id='login'>\n",
+	header = "<form action='%sbrowser' method='post' accept-charset='UTF-8' id='browser'>\n",
 	options_label = "    <div><label for='with_jid'>Select a recipient:</label><br /></div>\n",
 	options_header = "    <div><select name='with_jid'>\n",
 	options_el = "        <option value='%s'>%s</option>\n",
