@@ -91,7 +91,7 @@ end
 local function gdpr_handle_consent(event)
 	local origin, stanza = event.origin, event.stanza;
 
-	if origin and origin.type == "c2s" and stanza.name == "message" then
+	if origin and origin.type == "c2s" then
 		local from = jid_bare(stanza.attr.from) or jid_join(origin.username, origin.host);
 		local body = stanza:get_child_text("body");
 

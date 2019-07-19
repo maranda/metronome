@@ -7,6 +7,7 @@
 local b64_encode = require "util.encodings".base64.encode;
 local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
+local jid_join = require "util.jid".join;
 local jid_prep = require "util.jid".prep;
 local json_decode = require "util.json".decode;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
@@ -17,6 +18,7 @@ local sha1 = require "util.hashes".sha1;
 local urldecode = http.urldecode;
 local usermanager = usermanager;
 local generate = require "util.auxiliary".generate_secret;
+local uuid = require "util.uuid".generate;
 local timer = require "util.timer";
 local st = require "util.stanza";
 local dataforms = require "util.dataforms";
@@ -72,6 +74,7 @@ local recent_ips = {};
 local pending = {};
 local pending_node = {};
 local reset_tokens = {};
+local nomail_users = {};
 local default_whitelist, whitelisted, dea_checks;
 
 if use_nameapi then
@@ -378,12 +381,12 @@ local function handle_register(data, event)
 					pending_node[username] = nil;
 					hashes:remove(username);
 				end
-			end)
+			end);
 
 			if do_mail_verification then
 				module:log("info", "%s sent a registration request for %s, sending verification mail to %s", username, my_host, mail);
 				os_execute(
-					module_path.."/send_mail ".."register '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..username.."@"..my_host.."' '"
+					module_path.."/send_mail ".."register '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..jid_join(username, my_host).."' '"
 					..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."verify/", base_host).."' '"..id_token.."' '"
 					..(secure and "secure" or "").."' &"
 				);
@@ -422,7 +425,7 @@ local function handle_password_reset(data, event)
 		if do_mail_verification then
 			module:log("info", "%s requested password reset, sending mail to %s", node, mail);
 			os_execute(
-				module_path.."/send_mail ".."reset '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..node.."@"..my_host.."' '"
+				module_path.."/send_mail ".."reset '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..jid_join(node, my_host).."' '"
 				..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."reset/", base_host).."' '"..id_token.."' '"
 				..(secure and "secure" or "").."' &"
 			);
@@ -552,6 +555,7 @@ local function handle_verify(event, path)
 					module:log("info", "Account %s@%s is successfully verified and unlocked", username, my_host);
 					usermanager.unlock_user(username, my_host);
 					pending[id_token] = nil; pending_node[username] = nil;
+					module:fire_event("user-registration-verified", { username = username, host = my_host, password = password });
 					return r_template(event, "verify_success");
 				end
 
@@ -564,6 +568,7 @@ local function handle_verify(event, path)
 					module:log("info", "Account %s@%s is successfully verified and activated", username, my_host);
 					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
 					pending[id_token] = nil; pending_node[username] = nil;
+					module:fire_event("user-registration-verified", { username = username, host = my_host, password = password });
 					return r_template(event, "verify_success");
 				else
 					module:log("error", "User creation failed: "..error);
@@ -578,64 +583,95 @@ end
 
 local function handle_user_deletion(event)
 	local user, hostname = event.username, event.host;
-	if hostname == my_host then hashes:remove(user); end
+	if hostname == my_host and not pending_node[user] then hashes:remove(user); end
+end
+
+local function validate_registration(user, hostname, password, mail, ip, skip_greeting)
+	if not hashes:add(user, mail) then
+		module:log("warn", "failed to add the address hash for %s (mail provided is: %s)", 
+			user, tostring(mail));
+		usermanager.delete_user(user, hostname, "mod_register_api");
+		return;
+	end
+
+	local id_token = generate_secret();
+	if not id_token or not check_mail(mail) then
+		module:log("warn", "%s, invalidating %s registration and deleting account",
+			not id_token and "Failed to generate token" or "Supplied mail address is bogus or forbidden", user);
+		hashes:remove(user);
+		usermanager.delete_user(user, hostname, "mod_register_api");
+		return;
+	end
+
+	local user_jid = jid_join(user, hostname);
+		
+	if use_nameapi then check_dea(mail, user); end
+
+	module:log("info", "%s just registered on %s, sending verification mail to %s", user, hostname, mail);
+	os_execute(
+		module_path.."/send_mail ".."register '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..user_jid.."' '"
+		..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."verify/", base_host).."' '"..id_token.."' '"
+		..(secure and "secure" or "").."' &"
+	);
+
+	pending[id_token] = { node = user, password = password, ip = ip };
+	pending_node[user] = id_token;
+			
+	timer.add_task(300, function()
+		if use_nameapi then dea_checks[user] = nil; end
+		if pending[id_token] then
+			pending[id_token] = nil;
+			pending_node[user] = nil;
+			usermanager.delete_user(user, hostname, "mod_register_api", "Failed to verify the account within 5 minutes, deleting");
+		end
+	end);
+
+	if not skip_greeting then
+		timer.add_task(20, function()
+			module:log("debug", "Sending greeting message to %s", user_jid);
+			module:send(st.message({ from = hostname, to = user_jid, type = "chat", id = uuid() },
+				"Welcome to "..hostname.." in order to use this service you will need to verify your registration, "
+				.."please follow the instruction sent to you at "..mail..". You will need to verify within 5 minutes "
+				.."or the account will be automatically deleted."
+			));
+		end);
+	end
 end
 
 local function handle_user_registration(event)
 	local user, hostname, password, data, session = event.username, event.host, event.password, event.data, event.session;
 	if do_mail_verification and event.source == "mod_register" then
-		if not check_node(user) then
-			module:log("warn", "%s attempted to register a user account with a forbidden or reserved username (%s)", session.ip, user);
-			usermanager.delete_user(user, hostname, "mod_register_api");
+		local checked = check_node(user);
+		if not checked or pending_node[user] then
+			module:log("warn", "%s attempted to register a user account %s (%s)", session.ip,
+				not checked and "with a forbidden or reserved username" or "which is pending registration verification already", user);
+			usermanager.delete_user(user, hostname, "mod_register_api",
+				"Account "..user.." is "..(not checked and "containing a forbidden or reserved word" or "already pending verification")
+			);
 			return;
 		end
 
+		local user_jid = jid_join(user, hostname);
 		local mail = data.email and data.email:lower();
-		if not mail or not hashes:add(user, mail) then
-			module:log("warn", "%s register form doesn't have mail data or failed to add the address hash (mail provided is: %s)", 
-				user, tostring(mail));
-			usermanager.delete_user(user, hostname, "mod_register_api");
-			return;
+
+		if not mail then
+			timer.add_task(20, function()
+				module:log("debug", "Sending email request to %s", user_jid);
+				module:send(st.message({ from = hostname, to = user_jid, type = "chat", id = uuid() },
+					"To verify your registration please reply to this message providing a valid mail address "
+					.."if you fail to comply within five minutes your account will be automatically deleted. "
+					.."Also this account is currently in a locked state and you will be unable to use it properly "
+					.."until the verification process is completed."
+				));
+			end);
+			local id = timer.add_task(320, function()
+				nomail_users[user_jid] = nil;
+				usermanager.delete_user(user, hostname, "mod_register_api", "You didn't supply a mail to verify the account, deleting");
+			end);
+			nomail_users[user_jid] = { id = id, ip = session.ip, password = password };
+		else
+			validate_registration(user, hostname, password, mail, session.ip);
 		end
-
-		local id_token = generate_secret();
-		if not id_token or not check_mail(mail) then
-			module:log("warn", "%s, invalidating %s registration and deleting account",
-				not id_token and "Failed to generate token" or "Supplied mail address is bogus or forbidden", user);
-			hashes:remove(user);
-			usermanager.delete_user(user, hostname, "mod_register_api");
-			return;
-		end
-		
-		if use_nameapi then check_dea(mail, user); end
-
-		module:log("info", "%s just registered on %s, sending verification mail to %s", user, hostname, mail);
-		os_execute(
-			module_path.."/send_mail ".."register '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..user.."@"..hostname.."' '"
-			..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."verify/", base_host).."' '"..id_token.."' '"
-			..(secure and "secure" or "").."' &"
-		);
-
-		pending[id_token] = { node = user, password = password, ip = session.ip };
-		pending_node[user] = id_token;
-			
-		timer.add_task(300, function()
-			if use_nameapi then dea_checks[user] = nil; end
-			if pending[id_token] then
-				pending[id_token] = nil;
-				pending_node[user] = nil;
-				usermanager.delete_user(user, hostname, "mod_register_api");
-			end
-		end);
-
-		timer.add_task(60, function()
-			module:log("debug", "Sending greeting message to %s", user.."@"..hostname);
-			module:send(st.message({ from = hostname, to = user.."@"..hostname, type = "chat" },
-				"Welcome to "..hostname.." in order to use this service you will need to verify your registration, "
-				.."please follow the instruction sent to you at "..mail..". You will need to verify within 5 minutes "
-				.."or the account will be deleted."
-			));
-		end);
 	end
 end
 
@@ -643,6 +679,28 @@ local function slash_redirect(event)
 	event.response.headers.location = event.request.path .. "/";
 	return 301;
 end
+
+module:hook("message/host", function(event)
+	local origin, stanza = event.origin, event.stanza;
+	if origin.type == "c2s" and nomail_users[origin.username.."@"..origin.host] then
+		local jid = jid_join(origin.username, origin.host);
+		local mail = stanza:get_child_text("body");
+		if not check_mail(mail) then
+			module:send(st.message({ from = origin.host, to = jid, type = "chat", id = uuid() },
+				"The address you supplied doesn't look to be valid, sorry."
+			));
+		else
+			timer.remove_task(nomail_users[jid].id);
+			validate_registration(origin.username, origin.host, nomail_users[jid].password, mail, nomail_users[jid].ip, true);
+			nomail_users[jid] = nil;
+			module:send(st.message({ from = origin.host, to = jid, type = "chat", id = uuid() },
+				"Thank you, the instructions to verify your account will be mailed to you shortly. Please remember you "
+				.."need to verify the account within five minutes or it'll be deleted."
+			));
+		end
+		return true;
+	end
+end, 460);
 
 -- Set it up!
 
@@ -668,8 +726,9 @@ module:hook_global("user-deleted", handle_user_deletion, 10);
 
 -- Reloadability
 
-module.save = function() return { hashes = hashes, whitelisted = whitelisted }; end
+module.save = function() return { hashes = hashes, whitelisted = whitelisted, nomail_users = nomail_users }; end
 module.restore = function(data) 
 	hashes = data.hashes or { _index = {} }; setmt(hashes, hashes_mt);
 	whitelisted = use_nameapi and (data.whitelisted or default_whitelist) or nil;
+	nomail_users = data.nomail_users or {};
 end

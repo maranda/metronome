@@ -266,12 +266,12 @@ function listener.associate_session(conn, session)
 end
 
 local function handle_deletion(event)
-	local session, node, host = event.session, event.username, event.host;
+	local session, node, host, reason = event.session, event.username, event.host, event.reason;
 	local host_session = module:get_host_session(host);
 	local user = (session and session) or (host_session and host_session.sessions and host_session.sessions[node]);
 	if not user then return; end
 	for _, session in pairs(user.sessions) do
-		session:close{ condition = "not-authorized", text = "Account deleted" };
+		session:close{ condition = "not-authorized", text = reason or "Account deleted" };
 	end
 end
 
