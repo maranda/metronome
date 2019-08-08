@@ -45,6 +45,8 @@ local nameapi_ak = module:get_option_string("reg_api_nameapi_apikey");
 local plain_errors = module:get_option_boolean("reg_api_plain_http_errors", false);
 local mail_from = module:get_option_string("reg_api_mailfrom");
 local mail_reto = module:get_option_string("reg_api_mailreto");
+local restrict_node_pattern = module:get_option_boolean("reg_restrict_node_pattern", true);
+local negate_pattern = module:get_option_string("reg_api_node_negate_pattern", "^[^%s<>,:;%[%]%(%)%?\\]+$");
 
 local _hashes = storagemanager.open(my_host, "hashes");
 local _whitelisted = storagemanager.open(my_host, "whitelisted_md");
@@ -147,11 +149,27 @@ local function generate_secret()
 end
 
 local function check_mail(address)
-	if not address:match("^[^.]+[%w!#$%%&'*+-/=?^_`{|}~]+[^..]+@[%w.]+%.%w+$") and not address:match("^%w+@[%w.]+%.%w+$") then
+	local node, domain = address:match("(.*)@(.*)");
+	if not node or not domain then
+		return false;
+	elseif node:find("^%.") or node:find("%.%.") or node:find("%.$") then
+		return false;
+	elseif domain:match("^[%p]+$") or not domain:match("^[%w%-%.]+$") then
+		return false;
+	elseif not node:match("^[%w!#$%%&'%*+-/=%?^_`{|}~]+$") then
 		return false;
 	end
 	for _, pattern in ipairs(fm_patterns) do 
 		if address:match(pattern) then return false; end
+	end
+	return true;
+end
+
+local function check_node_policy(node)
+	if node:find("^%.") or node:find("%.%.") or node:find("%.$") then
+		return false;
+	elseif not node:match(negate_pattern) then
+		return false;
 	end
 	return true;
 end
@@ -326,6 +344,12 @@ local function handle_register(data, event)
 		module:log("debug", "A username containing invalid characters was supplied: %s", data.username);
 		return http_error_reply(event, 406, "Supplied username contains invalid characters, see RFC 6122.");
 	else
+		if restrict_node_pattern and not check_node_policy(username) then
+			module:log("warn", "%s attempted to register using an username that doesn't comply to the allowed characters system policy (%s)",
+				ip, username);
+			return http_error_reply(event, 403, "The specified Username doesn't comply with this system's allowed characters policy");
+		end
+
 		if not check_node(username) then
 			module:log("warn", "%s attempted to use an username (%s) matching one of the forbidden patterns", ip, username);
 			return http_error_reply(event, 403, "Requesting to register using this Username is forbidden, sorry.");
@@ -640,37 +664,47 @@ end
 
 local function handle_user_registration(event)
 	local user, hostname, password, data, session = event.username, event.host, event.password, event.data, event.session;
-	if do_mail_verification and event.source == "mod_register" then
-		local checked = check_node(user);
-		if not checked or pending_node[user] then
-			module:log("warn", "%s attempted to register a user account %s (%s)", session.ip,
-				not checked and "with a forbidden or reserved username" or "which is pending registration verification already", user);
-			usermanager.delete_user(user, hostname, "mod_register_api",
-				"Account "..user.." is "..(not checked and "containing a forbidden or reserved word" or "already pending verification")
-			);
-			return;
+	if event.source == "mod_register" then
+		if restrict_node_pattern and check_node_policy(user) then
+				module:log("warn", "%s attempted to register using an username that doesn't comply to the allowed characters system policy (%s)",
+					session.ip, user);
+				usermanager.delete_user(user, hostname, "mod_register_api",
+					"The specified JID node ("..user..") doesn't comply with this system allowed username policy");
+				return;
 		end
 
-		local user_jid = jid_join(user, hostname);
-		local mail = data.email and data.email:lower();
+		if do_mail_verification then
+			local checked = check_node(user);
+			if not checked or pending_node[user] then
+				module:log("warn", "%s attempted to register a user account %s (%s)", session.ip,
+					not checked and "with a forbidden or reserved username" or "which is pending registration verification already", user);
+				usermanager.delete_user(user, hostname, "mod_register_api",
+					"Account "..user.." is "..(not checked and "containing a forbidden or reserved word" or "already pending verification")
+				);
+				return;
+			end
 
-		if not mail then
-			timer.add_task(20, function()
-				module:log("debug", "Sending email request to %s", user_jid);
-				module:send(st.message({ from = hostname, to = user_jid, type = "chat", id = uuid() },
-					"To verify your registration please reply to this message providing a valid mail address "
-					.."if you fail to comply within five minutes your account will be automatically deleted. "
-					.."Also this account is currently in a locked state and you will be unable to use it properly "
-					.."until the verification process is completed."
-				));
-			end);
-			local id = timer.add_task(320, function()
-				nomail_users[user_jid] = nil;
-				usermanager.delete_user(user, hostname, "mod_register_api", "You didn't supply a mail to verify the account, deleting");
-			end);
-			nomail_users[user_jid] = { id = id, ip = session.ip, password = password };
-		else
-			validate_registration(user, hostname, password, mail, session.ip);
+			local user_jid = jid_join(user, hostname);
+			local mail = data.email and data.email:lower();
+
+			if not mail then
+				timer.add_task(20, function()
+					module:log("debug", "Sending email request to %s", user_jid);
+					module:send(st.message({ from = hostname, to = user_jid, type = "chat", id = uuid() },
+						"To verify your registration please reply to this message providing a valid mail address "
+						.."if you fail to comply within five minutes your account will be automatically deleted. "
+						.."Also this account is currently in a locked state and you will be unable to use it properly "
+						.."until the verification process is completed."
+					));
+				end);
+				local id = timer.add_task(320, function()
+					nomail_users[user_jid] = nil;
+					usermanager.delete_user(user, hostname, "mod_register_api", "You didn't supply a mail to verify the account, deleting");
+				end);
+				nomail_users[user_jid] = { id = id, ip = session.ip, password = password };
+			else
+				validate_registration(user, hostname, password, mail, session.ip);
+			end
 		end
 	end
 end
