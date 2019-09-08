@@ -29,6 +29,7 @@ local lmc_xmlns = "urn:xmpp:message-correct:0";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 local markers_xmlns = "urn:xmpp:chat-markers:0";
 local sid_xmlns = "urn:xmpp:sid:0";
+local omemo_xmlns = "eu.siacs.conversations.axolotl";
 
 local store_time = module:get_option_number("mam_save_time", 300);
 local stores_cap = module:get_option_number("mam_stores_cap", 10000);
@@ -49,6 +50,7 @@ if store_elements then
 	store_elements:remove("acknowledged");
 	store_elements:remove("body");
 	store_elements:remove("displayed");
+	store_elements:remove("encrypted");
 	store_elements:remove("markable");
 	store_elements:remove("origin-id");
 	store_elements:remove("received");
@@ -488,10 +490,11 @@ local function process_message(event, outbound)
 	local message, origin = event.stanza, event.origin;
 	if message.attr.type ~= "chat" and message.attr.type ~= "normal" then return; end
 	local body = message:child_with_name("body");
+	local omemo = message:get_child("encrypted", omemo_xmlns);
 	local marker = message:child_with_ns(markers_xmlns);
 	local marker_id = marker and marker.attr.id;
 	local markable;
-	if not body and not marker then
+	if not body and not marker and not omemo then
 		return; 
 	else
 		if message:get_child("no-store", hints_xmlns) or message:get_child("no-permanent-storage", hints_xmlns) then
@@ -556,13 +559,18 @@ local function process_message(event, outbound)
 			t_insert(tags, label);
 		end
 
-		if replace and body then
+		if omemo then
+			if not tags then tags = {}; end
+			t_insert(tags, omemo);
+		end
+
+		if replace and (body or omemo) then
 			id = log_entry_with_replace(
 				archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, message.attr.type, body,
 				markable and marker or nil, markable and marker_id or nil, oid and oid.attr.id, tags
 			);
 		else
-			if body then
+			if body or omemo then
 				id = log_entry(
 					archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, body,
 					markable and marker or nil, markable and marker_id or nil, oid and oid.attr.id, tags

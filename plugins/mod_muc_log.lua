@@ -30,6 +30,7 @@ local hints_xmlns = "urn:xmpp:hints";
 local labels_xmlns = "urn:xmpp:sec-label:0";
 local lmc_xmlns = "urn:xmpp:message-correct:0";
 local sid_xmlns = "urn:xmpp:sid:0";
+local omemo_xmlns = "eu.siacs.conversations.axolotl";
 
 local mod_host = module:get_host();
 local host_object = module:get_host_session();
@@ -58,9 +59,12 @@ function log_if_needed(e)
 				return;
 			end
 			
-			local body, subject = stanza:child_with_name("body"), stanza:child_with_name("subject");
+			local body, subject, omemo =
+				stanza:child_with_name("body"),
+				stanza:child_with_name("subject"),
+				stanza:get_child("encrypted", omemo_xmlns);
 			
-			if (not body and not subject) or
+			if (not body and not subject and not omemo) or
 				stanza:get_child("no-store", hints_xmlns) or
 				stanza:get_child("no-permanent-storage", hints_xmlns) then
 				return;
@@ -114,6 +118,11 @@ function log_if_needed(e)
 					data_entry.label_actions = get_actions(mod_host, text);
 					data_entry.label_name = text;
 					data_entry.tags = tags;
+				end
+
+				if omemo then
+					if not data_entry.tags then data_entry.tags = {}; end
+					t_insert(data_entry.tags, deserialize(omemo));
 				end
 				
 				data_store(node, mod_host, datastore .. "/" .. today, data);
