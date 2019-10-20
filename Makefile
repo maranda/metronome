@@ -49,6 +49,7 @@ install: metronome.install metronomectl.install metronome.cfg.lua.install metron
 	install -m755 ./send_mail.install $(MODULES)/register_api/send_mail
 	install -m644 certs/* $(CONFIG)/certs
 	test -e $(CONFIG)/metronome.cfg.lua || install -m644 metronome.cfg.lua.install $(CONFIG)/metronome.cfg.lua
+	test -e $(CONFIG)/templates/associate.template.txt || install -m644 ./templates/associate.template.txt $(CONFIG)/templates/associate.template.txt
 	test -e $(CONFIG)/templates/register.template.txt || install -m644 ./templates/register.template.txt $(CONFIG)/templates/register.template.txt
 	test -e $(CONFIG)/templates/reset.template.txt || install -m644 ./templates/reset.template.txt $(CONFIG)/templates/reset.template.txt
 	test -e metronome.version && install -m644 metronome.version $(SOURCE)/metronome.version || true

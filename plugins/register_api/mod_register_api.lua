@@ -334,13 +334,14 @@ if do_mail_verification then
 					mail = mail
 				};
 
-				if use_nameapi then check_dea(mail, username); end
+				if use_nameapi then check_dea(mail, user); end
 
 				os_execute(
 					module_path.."/send_mail ".."associate'"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..jid_join(user, my_host).."' '"
 					..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."associate/", base_host).."' '"..token.."' '"
 					..(secure and "secure" or "").."' &"
 				);
+				return { status = "completed", info = "Sent verification instructions to the specified address" };
 			else
 				return { status = "completed", error = { message = "Failed to generate verification token, please try again later" } };
 			end
