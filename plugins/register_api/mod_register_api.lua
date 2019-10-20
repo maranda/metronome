@@ -112,7 +112,7 @@ function hashes_mt:add(node, mail)
 	end
 end
 
-function hashes_mt:exists(mail);
+function hashes_mt:exists(mail)
 	local _hash = b64_encode(sha1(mail));
 	if self[_hash] then	return true; else return false;	end
 end
