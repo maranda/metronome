@@ -333,6 +333,7 @@ if do_mail_verification then
 					user = user,
 					mail = mail
 				};
+				pending_mail_changes._index[user] = token;
 
 				if use_nameapi then check_dea(mail, user); end
 
@@ -596,8 +597,10 @@ local function handle_associate(event, path)
 					hashes:save();
 				else
 					module:log("info", "Failed to associate %s to %s@%s account, the address already exists in the database", mail, username, my_host);
+					timer.remove_task(id); pending_mail_changes[id_token] = nil; pending_mail_changes._index[username] = nil;
 					return r_template(event, "associate_fail");
 				end
+				timer.remove_task(id); pending_mail_changes[id_token] = nil; pending_mail_changes._index[username] = nil;
 				return r_template(event, "associate_success");
 			end
 		end	
