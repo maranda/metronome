@@ -338,7 +338,7 @@ if do_mail_verification then
 
 				os_execute(
 					module_path.."/send_mail ".."associate'"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..jid_join(user, my_host).."' '"
-					..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."associate/", base_host).."' '"..id_token.."' '"
+					..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."associate/", base_host).."' '"..token.."' '"
 					..(secure and "secure" or "").."' &"
 				);
 			else
