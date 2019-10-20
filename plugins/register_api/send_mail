@@ -39,7 +39,7 @@ config.load(CFG_CONFIGDIR .. "/metronome.cfg.lua"); -- FIXME should be format/fi
 
 local template = read_file(CFG_CONFIGDIR .. "/templates/" .. request_type .. ".template.txt");
 if template then
-	if request_type == "associate" then	template = template:gsub(%%JID%%, new_jid);	end
+	if request_type == "associate" then template = template:gsub("%%JID%%", new_jid); end
 
 	template = template:gsub("%%URL%%", url):gsub("%%TOKEN%%", token);
 	template = html_escape(template);
