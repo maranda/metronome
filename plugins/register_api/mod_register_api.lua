@@ -301,13 +301,13 @@ if do_mail_verification then
 	};
 
 	local function associate_email(self, data, state, secure)
+		local user = jid_section(data.from, "node");
+		if pending_mail_changes._index[user] then
+			return { status = "completed", error = { message = "Another mail change is pending verification" } };
+		end
+
 		if state then
 			if data.action == "cancel" then return { status = "canceled" }; end
-
-			local user = jid_section(data.from, "node");
-			if pending_mail_changes._index[user] then
-				return { status = "completed", error = { message = "Another mail change is pending verification" } };
-			end
 
 			local fields = change_mail_layout:data(data.form);
 			local mail = fields.mail;
