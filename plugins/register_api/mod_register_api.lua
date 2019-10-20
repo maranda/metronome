@@ -9,6 +9,7 @@ local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
 local jid_join = require "util.jid".join;
 local jid_prep = require "util.jid".prep;
+local jid_section = require "util.jid".section;
 local json_decode = require "util.json".decode;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local saslprep = require "util.encodings".stringprep.saslprep;
@@ -74,6 +75,7 @@ local mime_types = {
 };
 local recent_ips = {};
 local pending = {};
+local pending_mail_changes = { _index = {} };
 local pending_node = {};
 local reset_tokens = {};
 local nomail_users = {};
@@ -108,6 +110,11 @@ function hashes_mt:add(node, mail)
 	else
 		return false;
 	end
+end
+
+function hashes_mt:exists(mail);
+	local _hash = b64_encode(sha1(mail));
+	if self[_hash] then	return true; else return false;	end
 end
 
 function hashes_mt:remove(node, check)
@@ -278,7 +285,7 @@ if do_mail_verification then
 	module:depends("adhoc");
 	local adhoc_new = module:require "adhoc".new;
 
-	local change_password_layout = dataforms.new{
+	local admin_change_mail_layout = dataforms.new{
 		title = "Change associated account mail address";
 		instructions = "This command allows admins to change an associated E-Mail address hash for user accounts on this host.";
 		{ name = "FORM_TYPE", type = "hidden", value = command_xmlns };
@@ -286,10 +293,66 @@ if do_mail_verification then
 		{ name = "mail", type = "text-single", label = "Associated E-Mail" };
 	};
 
+	local change_mail_layout = dataforms.new{
+		title = "Associate another mail address to the account";
+		instructions = "This command allows you to change the associated account's E-Mail address.";
+		{ name = "FORM_TYPE", type = "hidden", value = command_xmlns };
+		{ name = "mail", type = "text-single", label = "Associated E-Mail" };
+	};
+
+	local function associate_email(self, data, state, secure)
+		if state then
+			if data.action == "cancel" then return { status = "canceled" }; end
+
+			local user = jid_section(data.from, "node");
+			if pending_mail_changes._index[user] then
+				return { status = "completed", error = { message = "Another mail change is pending verification" } };
+			end
+
+			local fields = change_mail_layout:data(data.form);
+			local mail = fields.mail;
+
+			if not check_mail(mail) then
+				return { status = "completed", error = { message = "You supplied a bogus e-mail address" } };
+			end
+
+			if hashes:exists(mail) then
+				return { status = "completed", error = { message = 
+					"This mail address is already associated with a local account, please use another" } };
+			end
+
+			local token = generate_secret();
+			if token then
+				pending_mail_changes[token] = {
+					id = timer.add_task(300, function()
+						if pending_mail_changes[token] then
+							pending_mail_changes[token] = nil;
+							pending_mail_changes._index[user] = nil;
+						end
+					end),
+					user = user,
+					mail = mail
+				};
+
+				if use_nameapi then check_dea(mail, username); end
+
+				os_execute(
+					module_path.."/send_mail ".."associate'"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..jid_join(user, my_host).."' '"
+					..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."associate/", base_host).."' '"..id_token.."' '"
+					..(secure and "secure" or "").."' &"
+				);
+			else
+				return { status = "completed", error = { message = "Failed to generate verification token, please try again later" } };
+			end
+		else
+			return { status = "executing", form = change_mail_layout }, "executing";
+		end
+	end
+
 	local function change_email(self, data, state, secure)
 		if state then
 			if data.action == "cancel" then return { status = "canceled" }; end
-			local fields = change_password_layout:data(data.form);
+			local fields = admin_change_mail_layout:data(data.form);
 			if fields.username and fields.mail then
 				local user = nodeprep(fields.username);
 				if not user then
@@ -312,11 +375,12 @@ if do_mail_verification then
 				return { status = "completed", error = { message = "You need to supply both username and mail address" } };
 			end
 		else
-			return { status = "executing", form = change_password_layout }, "executing";
+			return { status = "executing", form = admin_change_mail_layout }, "executing";
 		end
 	end
 
 	local descriptor = adhoc_new("Change associated account mail address for users", command_xmlns, change_email, "admin");
+	local descriptor = adhoc_new("Change associated mail address for this account", command_xmlns, associate_email, "local_user");
 	module:provides("adhoc", descriptor);
 end
 
@@ -499,6 +563,45 @@ local function handle_req(event)
 	else
 		module:log("debug", "A request with an insufficent number of elements was sent");
 		return http_error_reply(event, 400, "Invalid syntax.");
+	end
+end
+
+local function handle_associate(event, path)
+	local request = event.request;
+	local body = request.body;
+	if secure and not request.secure then return nil; end
+
+	if request.method == "GET" then
+		return http_file_get(event, "associate", path);
+	elseif request.method == "POST" then
+		if path == "" then
+			if not body then return http_error_reply(event, 400, "Bad Request."); end
+			local id_token = urldecode(body):match("^id_token=(.*)$");
+
+			if not pending_mail_changes[id_token] then
+				return r_template(event, "associate_fail");
+			else
+				local username, mail, id =  
+				      pending_mail_changes[id_token].user, pending_mail_changes[id_token].mail, pending_mail_changes[id_token].id;
+
+				if use_nameapi and dea_checks[username] then
+					module:log("warn", "%s (%s) attempted to associate a disposable mail address, denying", username, ip);
+					pending_mail_changes[id_token] = nil; pending_mail_changes._index[ = nil; dea_checks[username] = nil;
+					return r_template(event, "associate_fail");
+				end
+
+				if hashes:add(username, mail) then
+					module:log("info", "Mail address %s is successfully associated to %s@%s account", mail, username, my_host);
+					hashes:save();
+				else
+					module:log("info", "Failed to associate %s to %s@%s account, the address already exists in the database", mail, username, my_host);
+					return r_template(event, "associate_fail");
+				end
+				return r_template(event, "associate_success");
+			end
+		end	
+	else
+		return http_error_reply(event, 405, "Invalid method.");
 	end
 end
 
@@ -746,8 +849,11 @@ module:provides("http", {
 	route = {
 		["GET /"] = handle_req,
 		["POST /"] = handle_req,
+		["GET /associate"] = slash_redirect,
 		["GET /reset"] = slash_redirect,
 		["GET /verify"] = slash_redirect,
+		["GET /associate/*"] = handle_associate,
+		["POST /associate/*"] = handle_associate,
 		["GET /reset/*"] = handle_reset,
 		["POST /reset/*"] = handle_reset,
 		["GET /verify/*"] = handle_verify,
@@ -760,9 +866,11 @@ module:hook_global("user-deleted", handle_user_deletion, 10);
 
 -- Reloadability
 
-module.save = function() return { hashes = hashes, whitelisted = whitelisted, nomail_users = nomail_users }; end
+module.save = function() return { hashes = hashes, whitelisted = whitelisted, 
+	nomail_users = nomail_users, pending_mail_changes = pending_mail_changes }; end
 module.restore = function(data) 
 	hashes = data.hashes or { _index = {} }; setmt(hashes, hashes_mt);
 	whitelisted = use_nameapi and (data.whitelisted or default_whitelist) or nil;
 	nomail_users = data.nomail_users or {};
+	pending_mail_changes = data.pending_mail_changes or { _index = {} };
 end

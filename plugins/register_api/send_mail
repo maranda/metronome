@@ -39,11 +39,15 @@ config.load(CFG_CONFIGDIR .. "/metronome.cfg.lua"); -- FIXME should be format/fi
 
 local template = read_file(CFG_CONFIGDIR .. "/templates/" .. request_type .. ".template.txt");
 if template then
+	if request_type == "associate" then	template = template:gsub(%%JID%%, new_jid);	end
+
 	template = template:gsub("%%URL%%", url):gsub("%%TOKEN%%", token);
 	template = html_escape(template);
 
-	local subject = request_type == "register" and 
-		"Account registration verification for: " or "Account password reset for: ";
+	local subject =
+		(request_type == "register" and "Account registration verification for: ") or
+		(request_type == "associate" and "Account mail change verification for: ") or
+		"Account password reset for: ";
 
 	local user, pass, host = config.get("*", "mail_user"), config.get("*", "mail_pass"), config.get("*", "mail_host");
 
