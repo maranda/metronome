@@ -586,7 +586,7 @@ local function handle_associate(event, path)
 
 				if use_nameapi and dea_checks[username] then
 					module:log("warn", "%s (%s) attempted to associate a disposable mail address, denying", username, ip);
-					pending_mail_changes[id_token] = nil; pending_mail_changes._index[ = nil; dea_checks[username] = nil;
+					pending_mail_changes[id_token] = nil; pending_mail_changes._index[username] = nil; dea_checks[username] = nil;
 					return r_template(event, "associate_fail");
 				end
 
