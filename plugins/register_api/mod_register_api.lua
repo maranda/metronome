@@ -75,7 +75,6 @@ local mime_types = {
 };
 local recent_ips = {};
 local pending = {};
-local pending_mail_changes = { _index = {} };
 local pending_node = {};
 local reset_tokens = {};
 local nomail_users = {};
@@ -95,9 +94,16 @@ if use_nameapi then
 	dea_checks = {};
 end
 
--- Setup hashes data structure
+-- Token generation function
 
-hashes = { _index = {} };
+local function generate_secret()
+	local str = generate(9);	
+	return str and str:upper() or nil;
+end
+
+-- Setup data structures
+
+hashes = { _index = {} }; -- mail hashes
 local hashes_mt = {}; hashes_mt.__index = hashes_mt;
 
 function hashes_mt:add(node, mail)
@@ -112,9 +118,11 @@ function hashes_mt:add(node, mail)
 	end
 end
 
-function hashes_mt:exists(mail)
+function hashes_mt:exists(mail, node)
 	local _hash = b64_encode(sha1(mail));
-	if self[_hash] then	return true; else return false;	end
+	if node and _hash == self._index[node] then
+		return nil;
+	elseif self[_hash] then	return true; else return false;	end
 end
 
 function hashes_mt:remove(node, check)
@@ -129,6 +137,42 @@ function hashes_mt:save()
 	if not _hashes:set("register_api", hashes) then
 		module:log("error", "Failed to save the mail addresses' hashes store");
 	end
+end
+
+pending_mail_changes = { _index = {} }; -- pending mail changes
+local pending_mail_changes_mt = {}; pending_mail_changes_mt.__index = pending_mail_changes_mt;
+
+function pending_mail_changes:add(node, mail)
+	if not self:exists(node) then
+		local token = generate_secret();
+		if token then
+			pending_mail_changes[token] = {
+				id = timer.add_task(300, function()
+					if self:exists(node) then self:remove(node); end
+				end),
+				user = node,
+				mail = mail
+			};
+			pending_mail_changes._index[node] = token;
+			return token;
+		end
+	end
+	return false;
+end
+
+function pending_mail_changes:exists(node)
+	return pending_mail_changes._index[node];
+end
+
+function pending_mail_changes:remove(node)
+	local token = self:exists(node);
+	if token then
+		timer.remove_task(pending_mail_changes[token].id);
+		pending_mail_changes[token] = nil;
+		pending_mail_changes._index[node] = nil;
+		return true;
+	end
+	return false;
 end
 
 -- Utility functions
@@ -148,11 +192,6 @@ local function convert_legacy_storage()
 		whitelisted = legacy_whitelisted;
 		_whitelisted:set("register_api", whitelisted);
 	end
-end
-
-local function generate_secret()
-	local str = generate(9);	
-	return str and str:upper() or nil;
 end
 
 local function check_mail(address)
@@ -302,7 +341,7 @@ if do_mail_verification then
 
 	local function associate_email(self, data, state, secure)
 		local user = jid_section(data.from, "node");
-		if pending_mail_changes._index[user] then
+		if pending_mail_changes:exists(user) then
 			return { status = "completed", error = { message = "Another mail change is pending verification" } };
 		end
 
@@ -316,25 +355,13 @@ if do_mail_verification then
 				return { status = "completed", error = { message = "You supplied a bogus e-mail address" } };
 			end
 
-			if hashes:exists(mail) then
+			if hashes:exists(mail, user) then
 				return { status = "completed", error = { message = 
 					"This mail address is already associated with a local account, please use another" } };
 			end
 
-			local token = generate_secret();
+			local token = pending_mail_changes:add(user, mail);
 			if token then
-				pending_mail_changes[token] = {
-					id = timer.add_task(300, function()
-						if pending_mail_changes[token] then
-							pending_mail_changes[token] = nil;
-							pending_mail_changes._index[user] = nil;
-						end
-					end),
-					user = user,
-					mail = mail
-				};
-				pending_mail_changes._index[user] = token;
-
 				if use_nameapi then check_dea(mail, user); end
 
 				os_execute(
@@ -592,15 +619,17 @@ local function handle_associate(event, path)
 					return r_template(event, "associate_fail");
 				end
 
-				if hashes:add(username, mail) then
+				if not hashes:exists(mail, username) then
 					module:log("info", "Mail address %s is successfully associated to %s@%s account", mail, username, my_host);
+					hashes:remove(username, true);
+					hashes:add(username, mail);
 					hashes:save();
 				else
 					module:log("info", "Failed to associate %s to %s@%s account, the address already exists in the database", mail, username, my_host);
-					timer.remove_task(id); pending_mail_changes[id_token] = nil; pending_mail_changes._index[username] = nil;
+					pending_mail_changes:remove(username);
 					return r_template(event, "associate_fail");
 				end
-				timer.remove_task(id); pending_mail_changes[id_token] = nil; pending_mail_changes._index[username] = nil;
+				pending_mail_changes:remove(username);
 				return r_template(event, "associate_success");
 			end
 		end	
@@ -870,11 +899,19 @@ module:hook_global("user-deleted", handle_user_deletion, 10);
 
 -- Reloadability
 
-module.save = function() return { hashes = hashes, whitelisted = whitelisted, 
-	nomail_users = nomail_users, pending_mail_changes = pending_mail_changes }; end
+module.save = function()
+	return { 
+		hashes = hashes, 
+		pending_mail_changes = pending_mail_changes,
+		whitelisted = whitelisted, 
+		nomail_users = nomail_users 
+	};
+end
 module.restore = function(data) 
-	hashes = data.hashes or { _index = {} }; setmt(hashes, hashes_mt);
+	hashes = data.hashes or { _index = {} };
+	setmt(hashes, hashes_mt);
+	pending_mail_changes = data.pending_mail_changes or { _index = {} };
+	setmt(pending_mail_changes, pending_mail_changes_mt);
 	whitelisted = use_nameapi and (data.whitelisted or default_whitelist) or nil;
 	nomail_users = data.nomail_users or {};
-	pending_mail_changes = data.pending_mail_changes or { _index = {} };
 end
