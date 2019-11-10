@@ -44,7 +44,6 @@ local singleton_nodes = pep_lib.singleton_nodes;
 local pep_error_reply = pep_lib.pep_error_reply;
 local subscription_presence = pep_lib.subscription_presence;
 local get_caps_hash_from_presence = pep_lib.get_caps_hash_from_presence;
-local get_service_by_jid = pep_lib.get_service_by_jid;
 local pep_send = pep_lib.pep_send;
 local pep_autosubscribe_recs = pep_lib.pep_autosubscribe_recs;
 local send_config_form = pep_lib.send_config_form;
@@ -62,7 +61,7 @@ module:add_timer(check_service_inactivity, function()
 	module:log("debug", "Checking for idle PEP Services...");
 	for name, service in pairs(services) do
 		if not module:get_bare_session(name) then
-			module:log("debug", "Deactivated inactive PEP Service -- %s", service.jid);
+			module:log("debug", "Deactivated inactive PEP Service -- %s", name);
 			services[name] = nil;
 		end
 	end
@@ -93,7 +92,7 @@ function handle_pubsub_iq(event)
 	local full_jid = origin.full_jid;
 	local username, host = jid_split(user);
 	local time_now = os_time();
-	local user_service = get_service_by_jid(user);
+	local user_service = services[user];
 	if not user_service and um_user_exists(username, host) then -- create service on demand.
 		user_service = set_service(pubsub.new(pep_new(username)), user, true);
 		user_service.is_new = true;
@@ -374,7 +373,7 @@ function handlers_owner.set_affiliations(service, origin, stanza, action)
 	local _to_change = {};
 	for _, tag in ipairs(action.tags) do
 		if tag.attr.jid and tag.attr.affiliation then
-			if tag.attr.jid == service.jid and tag.attr.affiliation == "none" then
+			if tag.attr.jid == service.name and tag.attr.affiliation == "none" then
 				return origin.send(pep_error_reply(stanza, "forbidden"));
 			end
 			_to_change[tag.attr.jid] = tag.attr.affiliation;
@@ -469,7 +468,7 @@ module:hook("account-disco-info", function(event)
 	local origin, stanza, node = event.origin, event.stanza, event.node;
 	if node then
 		local user = jid_bare(stanza.attr.to) or origin.username .. "@" .. origin.host;
-		local service = get_service_by_jid(user);
+		local service = services[user];
 		if not service then
 			stanza[false] = true; 
 			stanza.type = "cancel"; stanza.condition = "service-unavailable";
@@ -495,13 +494,12 @@ end, 50);
 
 module:hook("account-disco-items", function(event)
 	local reply, node = event.reply, event.node;
-	local user, host = jid_split(reply.attr.to);
-	local user_data = services[user] and services[user].nodes;
+	local bare = jid_bare(reply.attr.to);
+	local user_data = services[bare] and services[bare].nodes;
 
 	if user_data then
-		local bare = jid_join(user, host);
 		if node then
-			local ok, ret, orderly = services[user]:get_items(node, true);
+			local ok, ret, orderly = services[bare]:get_items(node, true);
 			if ok then
 				reply.tags[1].attr.node = node;
 				for _, id in pairs(orderly) do
@@ -524,8 +522,8 @@ function presence_handler(event)
 	local user = jid_bare(stanza.attr.to) or (origin.username.."@"..origin.host);
 	local t = stanza.attr.type;
 	local self = not stanza.attr.to;
-	local service = get_service_by_jid(user);
-	local user_bare_session = service and module:get_bare_session(service.name);
+	local service = services[user];
+	local user_bare_session = module:get_bare_session(user);
 	
 	if not service then return nil; end -- User Service doesn't exist
 	local nodes = service.nodes;
@@ -613,7 +611,7 @@ end, 100);
 
 module:hook("pep-get-service", function(username, spawn, from)
 	local user = jid_join(username, module.host);
-	local service = get_service_by_jid(user);
+	local service = services[user];
 	if spawn and from and not service and um_user_exists(username, module.host) then
 		service = set_service(pubsub.new(pep_new(username)), user, true);
 		service.is_new = true;
@@ -635,7 +633,7 @@ module:hook("iq-result/bare", function(event, result_id)
 	if disco and disco.name == "query" and disco.attr.xmlns == "http://jabber.org/protocol/disco#info" then
 		-- Process disco response
 		local user = stanza.attr.to or (session.username.."@"..session.host);
-		local service = get_service_by_jid(user);
+		local service = services[user];
 		if not service then return true; end -- User's pep service doesn't exist
 		local nodes = service.nodes;
 		local recipients = service.recipients;
@@ -681,8 +679,9 @@ end, -1);
 
 module:hook("resource-unbind", function(event)
 	local session = event.session;
-	local has_sessions = module:get_bare_session(session.username);
-	local service = services[session.username];
+	local user = jid_join(session.username, session.host);
+	local has_sessions = module:get_bare_session(user);
+	local service = services[user];
 
 	if not has_sessions and service then -- wipe recipients
 		service.recipients = {};
@@ -697,7 +696,7 @@ module:hook_global("user-deleted", function(event)
 	if host == module.host then
 		local jid = username.."@"..host;
 		local encoded_node = encode_node(username);
-		local service = get_service_by_jid(jid) or set_service(pubsub.new(pep_new(username)), jid, true);
+		local service = services[jid] or set_service(pubsub.new(pep_new(username)), jid, true);
 		local nodes = service.nodes;
 		local store = service.config.store;
 
@@ -721,19 +720,18 @@ module:hook_global("user-deleted", function(event)
 end, 100);
 
 function set_service(new_service, jid, restore)
-	local user = jid_split(jid);
-	services[user] = new_service;
-	services[user].name = user;
-	services[user].jid = jid;
-	services[user].recipients = {};
+	services[jid] = new_service;
+	services[jid].name = jid;
+	services[jid].recipients = {};
+	module.environment.services[jid] = services[jid];
 	if restore then 
-		services[user]:restore(); 
-		for name, node in pairs(services[user].nodes) do 
+		services[jid]:restore(); 
+		for name, node in pairs(services[jid].nodes) do 
 			node.subscribers = {};
-			services[user]:save_node(name);
+			services[jid]:save_node(name);
 		end
 	end
-	return services[user];
+	return services[jid];
 end
 
 function module.load()
@@ -749,8 +747,8 @@ function module.restore(data)
 	hash_map = data.hash_map or {};
 	local _services = data.services or {};
 	for id, service in pairs(_services) do
-		local jid = services[id].jid;
-		services[id] = set_service(pubsub.new(pep_new(username)), jid);
+		username = jid_split(id);
+		services[id] = set_service(pubsub.new(pep_new(username)), id);
 		services[id].nodes = service.nodes or {};
 		services[id].recipients = service.recipients or {};
 	end
