@@ -178,7 +178,7 @@ local function handle_presence_inject(event)
 	if session.type == "c2s" and not stanza.attr.type then
 		local has_avatar = module:get_bare_session(session.username).avatar_hash;
 		if has_avatar == nil then
-			module:log("debug", "Caching Avatar hash of %s...", bare_from);
+			module:log("debug", "Caching Avatar hash of %s@%s...", session.username, session.host);
 			local vc = hash_store:get(session.username);
 			if vc then
 				module:get_bare_session(session.username).avatar_hash = vc.hash;
