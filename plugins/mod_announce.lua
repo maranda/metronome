@@ -11,12 +11,11 @@ local st = require "util.stanza";
 
 function send_to_online(message, host)
 	local c = 0;
-	local host_sessions = hosts[host].sessions;
 	message.attr.from = host;
 	
-	for node in pairs(host_sessions) do
+	for jid in module:get_bare_sessions(host) do
 		c = c + 1;
-		message.attr.to = node .. "@" .. host;
+		message.attr.to = jid;
 		module:send(message);
 	end
 
