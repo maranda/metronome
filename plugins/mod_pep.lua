@@ -88,7 +88,7 @@ end
 
 function handle_pubsub_iq(event)
 	local origin, stanza = event.origin, event.stanza;
-	local user = stanza.attr.to or (origin.username.."@"..origin.host);
+	local user = stanza.attr.to or jid_join(origin.username, origin.host);
 	local full_jid = origin.full_jid;
 	local username, host = jid_split(user);
 	local time_now = os_time();
@@ -467,7 +467,7 @@ end
 module:hook("account-disco-info", function(event)
 	local origin, stanza, node = event.origin, event.stanza, event.node;
 	if node then
-		local user = jid_bare(stanza.attr.to) or origin.username .. "@" .. origin.host;
+		local user = jid_bare(stanza.attr.to) or jid_join(origin.username, origin.host);
 		local service = services[user];
 		if not service then
 			stanza[false] = true; 
@@ -519,7 +519,7 @@ end);
 
 function presence_handler(event)
 	local origin, stanza = event.origin, event.stanza;
-	local user = jid_bare(stanza.attr.to) or (origin.username.."@"..origin.host);
+	local user = jid_bare(stanza.attr.to) or jid_join(origin.username, origin.host);
 	local t = stanza.attr.type;
 	local self = not stanza.attr.to;
 	local service = services[user];
@@ -632,7 +632,7 @@ module:hook("iq-result/bare", function(event, result_id)
 	local disco = stanza.tags[1];
 	if disco and disco.name == "query" and disco.attr.xmlns == "http://jabber.org/protocol/disco#info" then
 		-- Process disco response
-		local user = stanza.attr.to or (session.username.."@"..session.host);
+		local user = stanza.attr.to or jid_join(session.username, session.host);
 		local service = services[user];
 		if not service then return true; end -- User's pep service doesn't exist
 		local nodes = service.nodes;
@@ -679,11 +679,11 @@ end, -1);
 
 module:hook("resource-unbind", function(event)
 	local session = event.session;
-	local user = jid_join(session.username, session.host);
-	local has_sessions = module:get_bare_session(user);
-	local service = services[user];
+	local has_sessions = module:get_bare_session(session.username);
 
-	if not has_sessions and service then -- wipe recipients
+	if not has_sessions then -- wipe recipients
+		local service = services[jid_join(session.username, session.host)];
+		if not service then return; end
 		service.recipients = {};
 		local nodes = service.nodes;
 		for _, node in pairs(nodes) do node.subscribers = {}; end
@@ -694,7 +694,7 @@ module:hook_global("user-deleted", function(event)
 	local username, host = event.username, event.host;
 
 	if host == module.host then
-		local jid = username.."@"..host;
+		local jid = jid_join(username, host);
 		local encoded_node = encode_node(username);
 		local service = services[jid] or set_service(pubsub.new(pep_new(username)), jid, true);
 		local nodes = service.nodes;
