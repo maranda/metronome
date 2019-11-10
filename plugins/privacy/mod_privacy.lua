@@ -14,7 +14,6 @@ if module:get_host_session().anonymous_host then
 end
 
 local st = require "util.stanza";
-local bare_sessions, full_sessions = bare_sessions, full_sessions;
 local jid_bare, jid_join, jid_section = require "util.jid".bare, require "util.jid".join, require "util.jid".section;
 local ipairs, pairs, tonumber, t_insert, t_sort = ipairs, pairs, tonumber, table.insert, table.sort;
 
@@ -106,9 +105,6 @@ module:hook("iq-set/self/"..blocking_xmlns..":block", function(data)
 
 	local block = stanza.tags[1];
 	if #block.tags > 0 then
-		local self_bare = jid_bare(origin.full_jid);
-		local self_resource = jid_section(origin.full_jid, "resource");
-	
 		simple_create_list(privacy_lists);
 		local entries = simple_process_entries(block);
 		if not entries then
@@ -117,7 +113,7 @@ module:hook("iq-set/self/"..blocking_xmlns..":block", function(data)
 		end
 		
 		for i = 1, #entries do simple_add_entry(privacy_lists, entries[i]); end
-		simple_push_entries(self_bare, self_resource, "block", entries);
+		simple_push_entries(origin.username, origin.resource, "block", entries);
 		
 		origin.send(st.reply(stanza));
 	else
@@ -139,9 +135,6 @@ module:hook("iq-set/self/"..blocking_xmlns..":unblock", function(data)
 	
 	local unblock = stanza.tags[1];
 	if #unblock.tags > 0 then -- remove single entries;
-		local self_bare = jid_bare(origin.full_jid);
-		local self_resource = jid_section(origin.full_jid, "resource");
-	
 		local entries = simple_process_entries(unblock);
 		if not entries then
 			origin.send(st.error_reply(stanza, "modify", "bad-request", "Item stanza is not well formed"));
@@ -155,10 +148,10 @@ module:hook("iq-set/self/"..blocking_xmlns..":unblock", function(data)
 			simple_delete_list(privacy_lists);
 		end
 		
-		simple_push_entries(self_bare, self_resource, "unblock", entries);
+		simple_push_entries(origin.username, origin.resource, "unblock", entries);
 	else
 		simple_delete_list(privacy_list);
-		simple_push_entries(self_bare, self_resource, "unblock");
+		simple_push_entries(origin.username, origin.resource, "unblock");
 	end
 	
 	privacy:set(origin.username, privacy_lists);

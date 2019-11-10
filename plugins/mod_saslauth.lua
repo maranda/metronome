@@ -49,7 +49,7 @@ local function reload()
 
 	for node, bare_session in pairs(host_session.sessions) do
 		for resource, full_session in pairs(bare_session.sessions) do
-			full_sessions.can_do_insecure_plain_auth = allow_unencrypted_plain_auth and true;
+			full_session.can_do_insecure_plain_auth = allow_unencrypted_plain_auth and true;
 		end
 	end
 

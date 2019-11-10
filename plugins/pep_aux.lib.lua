@@ -77,6 +77,12 @@ local function set_closures(s, h)
 	services = s; hash_map = h;
 end
 
+local function get_service_by_jid(jid)
+	local user = jid_split(jid);
+	local service = services[user];
+	if service and service.jid == jid then return service; end
+end
+
 local function pep_error_reply(stanza, error)
 	local e = pep_errors[error];
 	local reply = st.error_reply(stanza, unpack(e, 1, 3));
@@ -530,6 +536,7 @@ return {
 	pep_error_reply = pep_error_reply,
 	subscription_presence = subscription_presence,
 	get_caps_hash_from_presence = get_caps_hash_from_presence,
+	get_service_by_jid = get_service_by_jid,
 	pep_send = pep_send,
 	pep_autosubscribe_recs = pep_autosubscribe_recs,
 	send_config_form = send_config_form;

@@ -192,7 +192,7 @@ end
 
 function disconnect_user(match_jid)
 	local node, hostname, givenResource = jid.split(match_jid);
-	local bare_session = module:get_bare_session(jid.join(node, hostname));
+	local bare_session = module:get_bare_session(node);
 	for resource, session in pairs(bare_session.sessions or {}) do
 		if not givenResource or (resource == givenResource) then
 			module:log("debug", "Disconnecting %s@%s/%s", node, hostname, resource);
@@ -388,7 +388,7 @@ function get_user_stats_handler(self, data, state)
 				rostersize = rostersize + 1;
 			end
 		end
-		local bare_session = module:get_bare_session(jid.join(user, host));
+		local bare_session = module:get_bare_session(user);
 		for resource, session in pairs(bare_session.sessions or {}) do
 			resources = resources .. "\n" .. resource;
 			IPs = IPs .. "\n" .. session.ip;

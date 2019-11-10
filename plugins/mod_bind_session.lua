@@ -6,7 +6,6 @@
 
 local st = require "util.stanza";
 local sm_bind_resource = require "core.sessionmanager".bind_resource;
-local join = require "util.jid".join;
 
 local xmlns_bind = "urn:ietf:params:xml:ns:xmpp-bind";
 local xmlns_legacy = "urn:ietf:params:xml:ns:xmpp-session";
@@ -19,7 +18,7 @@ local legacy = module:get_option_boolean("legacy_session_support", true);
 local resources_limit = module:get_option_number("max_client_resources", 9);
 
 local function limit_binds(session)
-	local sessions = module:get_bare_session(join(session.username, session.host));
+	local sessions = module:get_bare_session(session.username);
 	if sessions then
 		sessions = sessions.sessions;
 	else return; end

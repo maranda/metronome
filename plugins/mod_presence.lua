@@ -116,13 +116,13 @@ function handle_normal_presence(origin, stanza)
 			if priority > 127 then priority = 127 end
 		else priority = 0; end
 	else priority = 0; end
-	if full_sessions[origin.full_jid] then -- if user is still connected
+	if module:get_full_session(origin.username, origin.resource) then -- if user is still connected
 		origin.send(stanza); -- reflect their presence back to them
 	end
 	local roster = origin.roster;
 	local has_ro = roster and roster.__readonly and true; -- check if user has readonly rosters.
 	local node, host = origin.username, origin.host;
-	local user = bare_sessions[node.."@"..host];
+	local user = module:get_bare_session(node);
 	for _, res in pairs(user and user.sessions or NULL) do -- broadcast to all resources
 		if res ~= origin and res.presence then -- to resource
 			stanza.attr.to = res.full_jid;
@@ -382,7 +382,7 @@ module:hook("presence/bare", function(data)
 			return handle_inbound_presence_subscriptions_and_probes(origin, stanza, jid_bare(stanza.attr.from), to_bare);
 		end
 	
-		local user = bare_sessions[to];
+		local user = module:get_bare_session(to);
 		if user then
 			for _, session in pairs(user.sessions) do
 				if session.presence then -- only send to available resources
@@ -415,7 +415,7 @@ module:hook("presence/full", function(data)
 		return handle_inbound_presence_subscriptions_and_probes(origin, stanza, jid_bare(stanza.attr.from), to_bare);
 	end
 
-	local session = full_sessions[stanza.attr.to];
+	local session = module:get_full_session(stanza.attr.to);
 	if session then
 		-- TODO fire post processing event
 		session.send(stanza);
@@ -459,12 +459,11 @@ module:hook("resource-unbind", function(event)
 end);
 
 module:hook_global("server-stopping", function()
-	local full_sessions = full_sessions;
 	local module_host = module.host;
 	module:log("debug", "%s -- broadcasting unavailable presences to local and remote entities...", module_host);
 	local unavailable = st.presence({ type = "unavailable" }):tag("status"):text("Disconnected: Server is shutting down"):up();
 
-	for jid, session in pairs(full_sessions) do
+	for jid, session in module:get_full_sessions() do
 		if session.host == module_host then
 			local directed = session.directed;
 			if session.presence then

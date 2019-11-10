@@ -90,7 +90,7 @@ local function handle_vcard(event)
 						data, type = data:get_text(), type:get_text();
 						local bytes, id = data:len(), sha1(b64_decode(data), true);
 
-						module:get_bare_session(session.username.."@"..session.host).avatar_hash = id;
+						module:get_bare_session(session.username).avatar_hash = id;
 						ok, err = hash_store:set(session.username, { hash = id });
 						if not ok then
 							module:log("warn", "Failed to save %s's avatar hash: %s", session.username.."@"..session.host, err);
@@ -163,7 +163,7 @@ local function handle_user_avatar(event)
 			module:log("debug", "Converting User Avatar to vCard-based Avatar...");
 			local ok, err = vcard_store:set(user, st.preserialize(vCard));
 			if not ok then module:log("warn", "Failed to save %s's vCard: %s", user.."@"..host, err); end
-			module:get_bare_session(event.origin.username.."@"..event.origin.host).avatar_hash = info.attr.id;
+			module:get_bare_session(event.origin.username).avatar_hash = info.attr.id;
 			ok, err = hash_store:set(user, { hash = info.attr.id });
 			if not ok then module:log("warn", "Failed to save %s's avatar hash: %s", user.."@"..host, err); end
 		end
@@ -176,16 +176,15 @@ end
 local function handle_presence_inject(event)
 	local session, stanza = event.origin, event.stanza;
 	if session.type == "c2s" and not stanza.attr.type then
-		local bare_from = session.username.."@"..session.host;
-		local has_avatar = module:get_bare_session(bare_from).avatar_hash;
+		local has_avatar = module:get_bare_session(session.username).avatar_hash;
 		if has_avatar == nil then
 			module:log("debug", "Caching Avatar hash of %s...", bare_from);
 			local vc = hash_store:get(session.username);
 			if vc then
-				module:get_bare_session(bare_from).avatar_hash = vc.hash;
+				module:get_bare_session(session.username).avatar_hash = vc.hash;
 				has_avatar = vc.hash;
 			else
-				module:get_bare_session(bare_from).avatar_hash = false;
+				module:get_bare_session(session.username).avatar_hash = false;
 				return;
 			end
 		elseif has_avatar == false then

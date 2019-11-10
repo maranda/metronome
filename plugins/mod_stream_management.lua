@@ -336,7 +336,7 @@ module:hook("pre-resource-unbind", function(event)
 			session.halted, session.detached = _now, true;
 			module:fire_event("sm-process-queue", { username = session.username, host = session.host, queue = session.sm_queue });
 			add_timer(session.sm_timeout or timeout, function()
-				local current = module:get_full_session(session.full_jid);
+				local current = module:get_full_session(session.username, session.resource);
 				if not session.destroyed and current and (current.token == token and session.halted == _now) then
 					session.log("debug", "%s session has been halted too long, destroying", session.full_jid);
 					handled_sessions[token] = nil;

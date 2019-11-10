@@ -117,7 +117,7 @@ function new_hashpass_provider(host)
 			return nil, "Auth failed, invalid username";
 		elseif account and account.locked then
 			account.locked = nil;
-			local bare_session = module:get_bare_session(username.."@"..host);
+			local bare_session = module:get_bare_session(username);
 			if bare_session then
 				for _, session in pairs(bare_session.sessions) do
 					session.locked = nil;

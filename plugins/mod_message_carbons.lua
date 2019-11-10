@@ -35,7 +35,7 @@ end
 
 local function clear_flag(session)
 	local has_carbons;
-	local bare_session = bare_sessions[jid_join(session.username, session.host)];
+	local bare_session = module:get_bare_session(session.username);
 	if not bare_session then return; end
 	for _, _session in pairs(bare_session.sessions) do
 		if _session.carbons then has_carbons = true; break; end
@@ -54,7 +54,7 @@ end
 local function process_message(origin, stanza, s, t)
 	local to_bare = t or jid_bare(stanza.attr.to);
 	local from_bare = s and jid_bare(origin.full_jid);
-	local bare_session = bare_sessions[from_bare or to_bare];
+	local bare_session = module:get_bare_session(from_bare or to_bare);
 	
 	if bare_session and bare_session.has_carbons and stanza.attr.type == "chat" then
 		local private = s and stanza:get_child("private", xmlns) and true;
@@ -96,7 +96,7 @@ module:hook("iq-set/self/"..xmlns..":enable", function(event)
 		return origin.send(st.error_reply(stanza, "cancel", "forbidden", "Message Carbons are already enabled"));
 	else
 		origin.carbons = true;
-		bare_sessions[jid_join(origin.username, origin.host)].has_carbons = true;
+		module:get_bare_session(origin.username).has_carbons = true;
 		return origin.send(st.reply(stanza));
 	end
 end);
@@ -117,7 +117,7 @@ end);
 
 module:hook("message/bare", function(event)
 	local origin, stanza = event.origin, event.stanza;
-	local bare_session = bare_sessions[stanza.attr.to];
+	local bare_session = module:get_bare_session(stanza.attr.to);
 
 	if bare_session and stanza.attr.type == "chat" then
 		local clone, allow_message = st.clone(stanza);
