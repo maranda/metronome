@@ -30,11 +30,12 @@ local rsm_xmlns = "http://jabber.org/protocol/rsm";
 local markers_xmlns = "urn:xmpp:chat-markers:0";
 local sid_xmlns = "urn:xmpp:sid:0";
 local omemo_xmlns = "eu.siacs.conversations.axolotl";
+local openpgp_xmlns = "urn:xmpp:openpgp:0";
 
 local store_time = module:get_option_number("mam_save_time", 300);
 local stores_cap = module:get_option_number("mam_stores_cap", 10000);
 local max_length = module:get_option_number("mam_message_max_length", 3000);
-local store_elements = module:get_option_set("mam_allowed_elements");
+local store_elements = module:get_option_set("mam_allowed_elements", {});
 local unload_cache_time = module:get_option_number("mam_unload_cache_time", 3600);
 
 local session_stores = {};
@@ -46,17 +47,18 @@ local valid_markers = {
 	markable = "markable", received = "received",
 	displayed = "displayed", acknowledged = "acknowledged"
 };
-if store_elements then
-	store_elements:remove("acknowledged");
-	store_elements:remove("body");
-	store_elements:remove("displayed");
-	store_elements:remove("encrypted");
-	store_elements:remove("markable");
-	store_elements:remove("origin-id");
-	store_elements:remove("received");
-	store_elements:remove("securitylabel");
-	if store_elements:empty() then store_elements = nil; end
-end
+
+store_elements:add("encrypted");
+store_elements:add("encryption");
+store_elements:add("openpgp");
+store_elements:add("securitylabel");
+store_elements:remove("acknowledged");
+store_elements:remove("body");
+store_elements:remove("displayed");
+store_elements:remove("markable");
+store_elements:remove("origin-id");
+store_elements:remove("received");
+store_elements:remove("replace");
 
 local _M = {};
 
@@ -491,10 +493,11 @@ local function process_message(event, outbound)
 	if message.attr.type ~= "chat" and message.attr.type ~= "normal" then return; end
 	local body = message:child_with_name("body");
 	local omemo = message:get_child("encrypted", omemo_xmlns);
+	local openpgp = message:get_child("openpgp", openpgp_xmlns);
 	local marker = message:child_with_ns(markers_xmlns);
 	local marker_id = marker and marker.attr.id;
 	local markable;
-	if not body and not marker and not omemo then
+	if not body and not marker and not omemo and not openpgp then
 		return; 
 	else
 		if message:get_child("no-store", hints_xmlns) or message:get_child("no-permanent-storage", hints_xmlns) then
@@ -540,37 +543,24 @@ local function process_message(event, outbound)
 	end
 
 	if archive and add_to_store(archive, user, outbound and bare_to or bare_from) then
-		local label = message:get_child("securitylabel", labels_xmlns);
 		local replace = message:get_child("replace", lmc_xmlns);
 		local oid = message:get_child("origin-id", sid_xmlns);
-		local id, tags;
+		local id;
 
-		if store_elements then
-			tags = {};
-			local elements = message.tags;
-			for i = 1, #elements do
-				if store_elements:contains(elements[i].name) then tags[#tags + 1] = elements[i]; end
-			end
-			if not next(tags) then tags = nil; end
+		local tags = {};
+		local elements = message.tags;
+		for i = 1, #elements do
+			if store_elements:contains(elements[i].name) then tags[#tags + 1] = elements[i]; end
 		end
+		if not next(tags) then tags = nil; end
 
-		if label then
-			if not tags then tags = {}; end
-			t_insert(tags, label);
-		end
-
-		if omemo then
-			if not tags then tags = {}; end
-			t_insert(tags, omemo);
-		end
-
-		if replace and (body or omemo) then
+		if replace and (body or omemo or openpgp) then
 			id = log_entry_with_replace(
 				archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, message.attr.type, body,
 				markable and marker or nil, markable and marker_id or nil, oid and oid.attr.id, tags
 			);
 		else
-			if body or omemo then
+			if body or omemo or openpgp then
 				id = log_entry(
 					archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, body,
 					markable and marker or nil, markable and marker_id or nil, oid and oid.attr.id, tags
