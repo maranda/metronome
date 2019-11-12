@@ -58,6 +58,11 @@ local kickable_error_conditions = {
 	["malformed error"] = true;
 };
 
+local route_to_bare = module:get_option_table("muc_bare_routable_iq_payloads", {
+	["pubsub"] = "http://jabber.org/protocol/pubsub";
+	["vCard"] = "vcard-temp"
+});
+
 local function get_error_condition(stanza)
 	local _, condition = stanza:get_error();
 	return condition or "malformed error";
@@ -546,12 +551,13 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 			module:log("debug", "%s sent private stanza to %s (%s)", from, to, o_data.jid);
 			if stanza.name == "iq" then
 				local id = stanza.attr.id;
-				if stanza.attr.type == "get" or stanza.attr.type == "set" then
+				if type == "get" or type == "set" then
 					stanza.attr.from, stanza.attr.to, stanza.attr.id = construct_stanza_id(self, stanza);
 				else
 					stanza.attr.from, stanza.attr.to, stanza.attr.id = deconstruct_stanza_id(self, stanza);
 				end
-				if type == "get" and stanza.tags[1].attr.xmlns == "vcard-temp" then
+				if (type == "get" or type == "set") and
+					route_to_bare[stanza.tags[1].name] == stanza.tags[1].attr.xmlns then
 					stanza.attr.to = jid_bare(stanza.attr.to);
 				end
 				if stanza.attr.id then self:_route_stanza(stanza); end
@@ -628,7 +634,7 @@ function room_mt:get_form_layout()
 			label = "Who May Discover Real JIDs?",
 			value = {
 				{ value = "moderators", label = "Moderators Only", default = self._data.whois == "moderators" },
-				{ value = "anyone",     label = "Anyone",          default = self._data.whois == "anyone" }
+				{ value = "anyone", label = "Anyone", default = self._data.whois == "anyone" }
 			}
 		},
 		{
