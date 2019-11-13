@@ -38,16 +38,16 @@ local host_object = module:get_host_session();
 
 local store_elements = module:get_option_set("muc_log_allowed_elements", {});
 
+store_elements:add("acknowledged");
+store_elements:add("displayed");
 store_elements:add("encrypted");
 store_elements:add("encryption");
+store_elements:add("markable");
 store_elements:add("openpgp");
 store_elements:add("securitylabel");
-store_elements:remove("acknowledged");
+store_elements:add("received");
 store_elements:remove("body");
-store_elements:remove("displayed");
-store_elements:remove("markable");
 store_elements:remove("origin-id");
-store_elements:remove("received");
 store_elements:remove("replace");
 
 -- Module Definitions
