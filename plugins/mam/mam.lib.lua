@@ -20,6 +20,7 @@ local ipairs, next, now, pairs, ripairs, t_insert, t_remove, tostring, type, unp
 	ipairs, next, os.time, pairs, ripairs, table.insert, table.remove, tostring, type, unpack or table.unpack;
     
 local xmlns = "urn:xmpp:mam:2";
+local client_xmlns = "jabber:client";
 local delay_xmlns = "urn:xmpp:delay";
 local e2e_xmlns = "http://www.xmpp.org/extensions/xep-0200.html#ns";
 local forward_xmlns = "urn:xmpp:forward:0";
@@ -229,7 +230,7 @@ local function append_stanzas(stanzas, entry, qid, check_acdf)
 		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.uid })
 			:tag("forwarded", { xmlns = forward_xmlns })
 				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
-				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
+				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type, xmlns = client_xmlns });
 
 	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
 	if entry.tags then

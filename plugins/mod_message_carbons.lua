@@ -14,6 +14,7 @@ local t_remove = table.remove;
 
 local pairs, ipairs = pairs, ipairs;
 local xmlns = "urn:xmpp:carbons:2";
+local client_xmlns = "jabber:client";
 
 module:add_feature(xmlns);
 
@@ -45,7 +46,8 @@ end
 
 local function fwd(bare, session, stanza, s)
 	local to = jid_join(session.username, session.host, session.resource);
-	local f = st.clone(s and sent or received):tag("forwarded", { xmlns = "urn:xmpp:forward:0" }):add_child(stanza);
+	local original = st.clone(stanza); original.attr.xmlns = client_xmlns;
+	local f = st.clone(s and sent or received):tag("forwarded", { xmlns = "urn:xmpp:forward:0" }):add_child(original);
 	local message = st.message({ from = bare, to = to }):add_child(f);
 	module:log("debug", "Forwarding carbon copy of message from %s to %s", stanza.attr.from or "self", to);
 	session.send(message);
