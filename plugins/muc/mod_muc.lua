@@ -116,7 +116,12 @@ function muclib.room_mt:set_affiliation(actor, jid, affiliation, callback, reaso
 	return _set_affiliation(self, actor, jid, affiliation, callback, reason);
 end
 
-local function room_route_stanza(room, stanza) 
+local function room_route_stanza(room, stanza)
+	if not stanza.attr.to or not stanza.attr.from then
+		module:log("warn", "stanza (%s) sent without from (%s) or without to (%s)",
+			stanza.name, stanza.attr.from or "nil", stanza.attr.to or "nil");
+		return;
+	end
 	fire_event("route/post", host_session, stanza); 
 end
 local function room_save(room, forced, save_occupants)
