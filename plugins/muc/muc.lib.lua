@@ -453,8 +453,8 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 								self:_route_stanza(leave);
 								t_remove(part, 1); t_remove(part.tags, 1);
 								part.tags[1].tags[1].attr.nick = to_nick;
-								part:tag("status", {code="303"}):up()
-									:tag("status", {code="110"}):up();
+								part:tag("status", {code = "303"}):up()
+									:tag("status", {code = "110"}):up();
 								part.attr.to = from;
 								self:_route_stanza(part);
 								sessions[from] = pr;
@@ -462,11 +462,11 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 								local join = st.clone(pr)
 									:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"});
 								for jid in pairs(sessions) do
-									join:tag("item", {jid=jid, affiliation = occupant.affiliation or "none", role = occupant.role or "none"}):up();
+									join:tag("item", {jid = jid, affiliation = occupant.affiliation or "none", role = occupant.role or "none"}):up();
 								end
-								join:tag("status", {code="110"}):up();
+								join:tag("status", {code = "110"}):up();
 								join.attr.to = from; join.attr.from = to;
-								self:_route_stanza(join);
+								self:route_stanza(join);
 							else
 								module:log("debug", "%s couldn't change nick", current_nick);
 								local reply = st.error_reply(stanza, "cancel", "conflict"):up();
@@ -479,8 +479,8 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 							local part = st.presence({type = "unavailable", from = current_nick, to = from})
 								:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
 									:tag("item", {affiliation = occupant.affiliation or "none", role = occupant.role or "none", nick = to_nick}):up()
-									:tag("status", {code="303"}):up()
-									:tag("status", {code="110"}):up();
+									:tag("status", {code = "303"}):up()
+									:tag("status", {code = "110"}):up();
 							self:_route_stanza(part);
 							self._occupants[to] = {
 								affiliation = occupant.affiliation, role = occupant.role, jid=from,
