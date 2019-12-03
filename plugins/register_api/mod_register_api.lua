@@ -801,7 +801,7 @@ end
 local function handle_user_registration(event)
 	local user, hostname, password, data, session = event.username, event.host, event.password, event.data, event.session;
 	if event.source == "mod_register" then
-		if restrict_node_pattern and check_node_policy(user) then
+		if restrict_node_pattern and not check_node_policy(user) then
 				module:log("warn", "%s attempted to register using an username that doesn't comply to the allowed characters system policy (%s)",
 					session.ip, user);
 				usermanager.delete_user(user, hostname, "mod_register_api",
