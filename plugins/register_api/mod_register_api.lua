@@ -750,16 +750,16 @@ local function validate_registration(user, hostname, password, mail, ip, skip_gr
 	if not hashes:add(user, mail) then
 		module:log("warn", "failed to add the address hash for %s (mail provided is: %s)", 
 			user, tostring(mail));
-		usermanager.delete_user(user, hostname, "mod_register_api");
+		usermanager.delete_user(user, hostname, "mod_register_api", "Failed to add mail address hash");
 		return;
 	end
 
 	local id_token = generate_secret();
 	if not id_token or not check_mail(mail) then
-		module:log("warn", "%s, invalidating %s registration and deleting account",
-			not id_token and "Failed to generate token" or "Supplied mail address is bogus or forbidden", user);
+		local reason = not id_token and "Failed to generate token" or "Supplied mail address is bogus or forbidden";
+		module:log("warn", "%s, invalidating %s registration and deleting account", reason, user);
 		hashes:remove(user);
-		usermanager.delete_user(user, hostname, "mod_register_api");
+		usermanager.delete_user(user, hostname, "mod_register_api", reason);
 		return;
 	end
 
@@ -823,7 +823,7 @@ local function handle_user_registration(event)
 			local user_jid = jid_join(user, hostname);
 			local mail = data.email and data.email:lower();
 
-			if not mail then
+			if not mail or hashes:exists(mail) then
 				timer.add_task(20, function()
 					module:log("debug", "Sending email request to %s", user_jid);
 					module:send(st.message({ from = hostname, to = user_jid, type = "chat", id = uuid() },
@@ -860,6 +860,12 @@ module:hook("message/host", function(event)
 				"The address you supplied doesn't look to be valid, sorry."
 			));
 		else
+			if hashes:exists(mail) then
+				module:send(st.message({ from = origin.host, to = jid, type = "chat", id = uuid() },
+					"The address you supplied looks to be already associated to an account, please try with another one."
+				));
+				return true;
+			end
 			timer.remove_task(nomail_users[jid].id);
 			validate_registration(origin.username, origin.host, nomail_users[jid].password, mail, nomail_users[jid].ip, true);
 			nomail_users[jid] = nil;
