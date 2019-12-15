@@ -11,23 +11,12 @@ local datamanager = require "util.datamanager";
 local st = require "util.stanza";
 local datetime = require "util.datetime";
 local ipairs = ipairs;
-local jid_split = require "util.jid".split;
+local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
+local is_contact_pending_out = require "util.rostermanager".is_contact_pending_out;
+local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 local limit = module:get_option_number("offline_store_limit", 40);
 
 module:add_feature("msgoffline");
-
-module:hook("message/offline/overcap", function(event)
-	local node = event.node;
-	local archive = datamanager.list_load(node, module.host, "offline");
-	
-	if not archive then
-		return false;
-	elseif #archive >= limit then
-		return true;
-	end
-	
-	return false;
-end);
 
 module:hook("message/offline/handle", function(event)
 	local origin, stanza = event.origin, event.stanza;
@@ -40,10 +29,28 @@ module:hook("message/offline/handle", function(event)
 		else
 			node, host = origin.username, origin.host;
 		end
-	
+
 		local archive = datamanager.list_load(node, host, "offline");
+		local mam_store, handled_by_mam = module:fire_event("mam-get-store", node);
+		if mam_store then
+			local from = jid_bare(stanza.attr.from);
+			local prefs = mam_store.prefs;
+			local to_prefs = prefs[jid_bare(stanza.attr.to)];
+			if to_prefs == false then
+				-- don't store
+			elseif to_prefs == true or prefs.default == "always" or
+				(
+					prefs.default == "roster" and from and
+					(is_contact_subscribed(node, host, from) or is_contact_pending_out(node, host, from))
+				) then
+				handled_by_mam = true;
+			end
+		end
+		
 		if archive and #archive >= limit then
-			origin.send(st.error_reply(stanza, "cancel", "service-unavailable", "User's offline message queue is full!"));
+			if not handled_by_mam then
+				origin.send(st.error_reply(stanza, "cancel", "service-unavailable", "User's offline message queue is full!"));
+			end
 			return true;
 		else
 			stanza.attr.stamp = datetime.datetime();

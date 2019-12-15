@@ -533,13 +533,10 @@ local function process_message(event, outbound)
 	end
 	
 	if not archive and not outbound then -- assume it's an offline message
-		local offline_overcap = module:fire_event("message/offline/overcap", { node = user });
-		if not offline_overcap then
-			if not offline_stores[bare_to] then
-				archive = initialize_offline_store(user);
-			else
-				archive = offline_stores[bare_to];
-			end
+		if not offline_stores[bare_to] then
+			archive = initialize_offline_store(user);
+		else
+			archive = offline_stores[bare_to];
 		end
 	end
 
