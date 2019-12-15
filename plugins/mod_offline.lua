@@ -14,7 +14,7 @@ local ipairs = ipairs;
 local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
 local is_contact_pending_out = require "util.rostermanager".is_contact_pending_out;
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
-local limit = module:get_option_number("offline_store_limit", 40);
+local limit = module:get_option_number("offline_store_limit", 100);
 
 module:add_feature("msgoffline");
 
