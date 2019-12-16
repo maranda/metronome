@@ -82,7 +82,7 @@ module:hook("iq-set/self/"..xmlns_bind2..":bind", function(event)
 	if success then
 		local reply = st.reply(stanza)
 			:tag("bind", { xmlns = xmlns_bind2 })
-				:tag("jid"):text(origin.full_jid)):up();
+				:tag("jid"):text(origin.full_jid):up();
 				:tag("latest-id"):text(mam_store.latest_id):up();
 		origin.send(reply);
 		origin.log("debug", "Resource bound: %s", origin.full_jid);
