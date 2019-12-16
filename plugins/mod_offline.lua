@@ -12,8 +12,7 @@ local st = require "util.stanza";
 local datetime = require "util.datetime";
 local ipairs = ipairs;
 local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
-local is_contact_pending_out = require "util.rostermanager".is_contact_pending_out;
-local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
+local mam_add_to_store = module:require("mam", "mam").add_to_store;
 local limit = module:get_option_number("offline_store_limit", 100);
 
 module:add_feature("msgoffline");
@@ -32,20 +31,7 @@ module:hook("message/offline/handle", function(event)
 
 		local archive = datamanager.list_load(node, host, "offline");
 		local mam_store, handled_by_mam = module:fire_event("mam-get-store", node);
-		if mam_store then
-			local from = jid_bare(stanza.attr.from);
-			local prefs = mam_store.prefs;
-			local to_prefs = prefs[jid_bare(stanza.attr.to)];
-			if to_prefs == false then
-				-- don't store
-			elseif to_prefs == true or prefs.default == "always" or
-				(
-					prefs.default == "roster" and from and
-					(is_contact_subscribed(node, host, from) or is_contact_pending_out(node, host, from))
-				) then
-				handled_by_mam = true;
-			end
-		end
+		if mam_store and mam_add_to_store(mam_store, node, jid_bare(to)) then handled_by_mam = true; end
 		
 		if archive and #archive >= limit then
 			if not handled_by_mam then
@@ -68,11 +54,13 @@ module:hook("message/offline/broadcast", function(event)
 
 	local data = datamanager.list_load(node, host, "offline");
 	if not data then return true; end
-	for _, stanza in ipairs(data) do
-		stanza = st.deserialize(stanza);
-		stanza:tag("delay", {xmlns = "urn:xmpp:delay", from = host, stamp = stanza.attr.stamp}):up(); -- XEP-0203
-		stanza.attr.stamp = nil;
-		origin.send(stanza);
+	if origin.bind_version ~= 2 then
+		for _, stanza in ipairs(data) do
+			stanza = st.deserialize(stanza);
+			stanza:tag("delay", {xmlns = "urn:xmpp:delay", from = host, stamp = stanza.attr.stamp}):up(); -- XEP-0203
+			stanza.attr.stamp = nil;
+			origin.send(stanza);
+		end
 	end
 	datamanager.list_store(node, host, "offline", nil);
 	return true;

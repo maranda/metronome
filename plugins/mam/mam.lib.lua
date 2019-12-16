@@ -571,6 +571,7 @@ local function process_message(event, outbound)
 			end
 		end
 
+		archive.latest_id = id;
 		if not loaded then archive.last_used = now(); end
 		if (not outbound or not to or to == bare_from) and id then message:tag("stanza-id", { xmlns = sid_xmlns, by = bare_to, id = id }):up(); end
 	else
@@ -620,6 +621,7 @@ _M.get_prefs = get_prefs;
 _M.set_prefs = set_prefs;
 _M.fields_handler = fields_handler;
 _M.generate_stanzas = generate_stanzas;
+_M.add_to_store = add_to_store;
 _M.process_message = process_message;
 _M.purge_messages = purge_messages;
 _M.session_stores = session_stores;
