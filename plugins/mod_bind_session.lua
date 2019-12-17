@@ -41,7 +41,9 @@ module:hook("stream-features", function(event)
 	local origin, features = event.origin, event.features;
 	if origin.username then
 		features:tag("bind", bind_attr):tag("required"):up():up();
-		if host_modules.mam then features:tag("bind", bind2_attr):tag("optional"):up():up(); end
+		if host_modules.mam and host_modules.message_carbons then
+			features:tag("bind", bind2_attr):tag("optional"):up():up();
+		end
 		if legacy then features:tag("session", legacy_attr):tag("optional"):up():up(); end
 	end
 end, 99);
@@ -69,7 +71,7 @@ end);
 
 module:hook("iq-set/self/"..xmlns_bind2..":bind", function(event)
 	local origin, stanza = event.origin, event.stanza;
-	if not host_modules.mam then
+	if not host_modules.mam or not host_modules.message_carbons then
 		origin.send(st.error_reply(stanza, "cancel", "not-acceptable", "Bind 2.0 is not available for this host"));
 		return true;
 	end
@@ -80,6 +82,9 @@ module:hook("iq-set/self/"..xmlns_bind2..":bind", function(event)
 	local mam_store = module:fire_event("mam-get-store", origin.username);
 	local success, err_type, err, err_msg = sm_bind_resource(origin);
 	if success then
+		-- auto enable carbons
+		origin.carbons = true;
+		module:get_bare_session(origin.username).has_carbons = true;
 		local reply = st.reply(stanza)
 			:tag("bind", { xmlns = xmlns_bind2 })
 				:tag("jid"):text(origin.full_jid):up()
