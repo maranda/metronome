@@ -68,11 +68,11 @@ function sha256(key, message, hex)
 end
 
 function sha384(key, message, hex)
-	return hmac(key, message, hashes.sha384, 64, hex)
+	return hmac(key, message, hashes.sha384, 128, hex)
 end
 
 function sha512(key, message, hex)
-	return hmac(key, message, hashes.sha512, 64, hex)
+	return hmac(key, message, hashes.sha512, 128, hex)
 end
 
 return _M
