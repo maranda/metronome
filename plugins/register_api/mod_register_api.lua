@@ -319,7 +319,8 @@ end
 -- Adhoc Handlers
 
 if do_mail_verification then
-	local command_xmlns = "http://metronome.im/protocol/register_api#change_pass";
+	local admin_xmlns = "http://metronome.im/protocol/register_api#change-mail-user";
+	local change_xmlns = "http://metronome.im/protocol/register_api#change-mail-self";
 
 	module:depends("adhoc");
 	local adhoc_new = module:require "adhoc".new;
@@ -408,8 +409,8 @@ if do_mail_verification then
 		end
 	end
 
-	local admin_descriptor = adhoc_new("Change associated account mail address for users", command_xmlns, change_email, "admin");
-	local descriptor = adhoc_new("Change associated mail address for this account", command_xmlns, associate_email, "local_user");
+	local admin_descriptor = adhoc_new("Change associated account mail address for users", admin_xmlns, change_email, "admin");
+	local descriptor = adhoc_new("Change associated mail address for this account", change_xmlns, associate_email, "local_user");
 	module:provides("adhoc", admin_descriptor);
 	module:provides("adhoc", descriptor);
 end
