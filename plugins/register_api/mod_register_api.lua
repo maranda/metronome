@@ -408,8 +408,9 @@ if do_mail_verification then
 		end
 	end
 
-	local descriptor = adhoc_new("Change associated account mail address for users", command_xmlns, change_email, "admin");
+	local admin_descriptor = adhoc_new("Change associated account mail address for users", command_xmlns, change_email, "admin");
 	local descriptor = adhoc_new("Change associated mail address for this account", command_xmlns, associate_email, "local_user");
+	module:provides("adhoc", admin_descriptor);
 	module:provides("adhoc", descriptor);
 end
 
