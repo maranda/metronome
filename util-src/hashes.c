@@ -21,6 +21,10 @@
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 
+#if (LUA_VERSION_NUM == 501)
+#define luaL_setfuncs(L, R, N) luaL_register(L, NULL, R)
+#endif
+
 const char* hex_tab = "0123456789abcdef";
 void toHex(const char* in, int length, char* out) {
 	int i;
@@ -67,7 +71,10 @@ static const luaL_Reg Reg[] =
 
 LUALIB_API int luaopen_util_hashes(lua_State *L)
 {
-	luaL_register(L, "hashes", Reg);
+#if (LUA_VERSION_NUM > 501)
+	luaL_checkversion(L);
+#endif
+	luaL_setfuncs(L, Reg, 0);
 	lua_pushliteral(L, "version");			/** version */
 	lua_pushliteral(L, "-3.14");
 	lua_settable(L,-3);
