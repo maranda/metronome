@@ -74,6 +74,7 @@ LUALIB_API int luaopen_util_hashes(lua_State *L)
 #if (LUA_VERSION_NUM > 501)
 	luaL_checkversion(L);
 #endif
+	lua_newtable(L);
 	luaL_setfuncs(L, Reg, 0);
 	lua_pushliteral(L, "version");			/** version */
 	lua_pushliteral(L, "-3.14");

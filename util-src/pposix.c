@@ -750,6 +750,7 @@ int luaopen_util_pposix(lua_State *L)
 		{ NULL, NULL }
 	};
 
+	lua_newtable(L);
 	luaL_setfuncs(L, exports, 0);
 
 	lua_pushliteral(L, "pposix");
