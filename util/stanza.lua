@@ -23,7 +23,7 @@ local xmlns_stanzas = "urn:ietf:params:xml:ns:xmpp-stanzas";
 
 local _ENV = nil;
 
-stanza_mt = { __type = "stanza" };
+local stanza_mt = { __type = "stanza" };
 stanza_mt.__index = stanza_mt;
 local stanza_mt = stanza_mt;
 
