@@ -30,7 +30,7 @@ if ssl then
 end
 
 local _ENV = nil;
-local certmanager = {};
+local _M = {};
 
 local default_ssl_config = configmanager.get("*", "ssl");
 local default_capath = "/etc/ssl/certs";
@@ -57,7 +57,7 @@ if no_compression and configmanager.get("*", "ssl_compression") ~= true then
 	default_options[#default_options + 1] = "no_compression";
 end
 
-function certmanager.get_ssl_config(host, mode, user_ssl_config)
+local function get_ssl_config(host, mode, user_ssl_config)
 	user_ssl_config = user_ssl_config or configmanager.get(host, "ssl") or default_ssl_config;
 
 	if not ssl then return nil, "LuaSec (required for encryption) was not found"; end
@@ -93,7 +93,7 @@ function certmanager.get_ssl_config(host, mode, user_ssl_config)
 	return ssl_config;
 end
 
-function certmanager.create_context(host, mode, user_ssl_config)
+function _M.create_context(host, mode, user_ssl_config)
 	local ctx, err, ssl_config;
 
 	ssl_config, err = get_ssl_config(host, mode, user_ssl_config);
@@ -136,10 +136,11 @@ function certmanager.create_context(host, mode, user_ssl_config)
 	return ctx, err;
 end
 
-function certmanager.reload_ssl_config()
+function _M.reload_ssl_config()
 	default_ssl_config = configmanager.get("*", "ssl");
 end
 
 metronome.events.add_handler("config-reloaded", certmanager.reload_ssl_config);
 
-return certmanager;
+_M.get_ssl_config = get_ssl_config;
+return _M;
