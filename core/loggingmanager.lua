@@ -26,6 +26,7 @@ local logger = require "util.logger";
 local metronome = metronome;
 
 _G.log = logger.init("general");
+metronome.log = logger.init("general");
 
 local _ENV = nil;
 
@@ -52,7 +53,7 @@ local function add_rule(sink_config)
 	end
 end
 
-function apply_sink_rules(sink_type)
+local function apply_sink_rules(sink_type)
 	if type(logging_config) == "table" then
 		
 		for _, level in ipairs(logging_levels) do
@@ -180,42 +181,41 @@ function log_sink_types.stdout(config)
 	end
 end
 
-do
-	local do_pretty_printing = true;
+local do_pretty_printing = logging_config.pretty_printing or true;
 	
-	local logstyles = {};
-	if do_pretty_printing then
-		logstyles["info"] = getstyle("bold");
-		logstyles["warn"] = getstyle("bold", "yellow");
-		logstyles["error"] = getstyle("bold", "red");
+local logstyles = {};
+if do_pretty_printing then
+	logstyles["info"] = getstyle("bold");
+	logstyles["warn"] = getstyle("bold", "yellow");
+	logstyles["error"] = getstyle("bold", "red");
+end
+
+function log_sink_types.console(config)
+	if not do_pretty_printing then
+		return log_sink_types.stdout(config);
 	end
-	function log_sink_types.console(config)
-		if not do_pretty_printing then
-			return log_sink_types.stdout(config);
-		end
-		
-		local timestamps = config.timestamps;
 
-		if timestamps == true then
-			timestamps = default_timestamp;
-		end
+	local timestamps = config.timestamps;
 
-		return function (name, level, message, ...)
-			sourcewidth = math_max(#name+2, sourcewidth);
-			local namelen = #name;
+	if timestamps == true then
+		timestamps = default_timestamp;
+	end
+
+	return function (name, level, message, ...)
+		sourcewidth = math_max(#name+2, sourcewidth);
+		local namelen = #name;
 			
-			if timestamps then
-				io_write(os_date(timestamps), " ");
-			end
-			io_write(name, rep(" ", sourcewidth-namelen));
-			setstyle(logstyles[level]);
-			io_write(level);
-			setstyle();
-			if ... then
-				io_write("\t", format(message, ...), "\n");
-			else
-				io_write("\t", message, "\n");
-			end
+		if timestamps then
+			io_write(os_date(timestamps), " ");
+		end
+		io_write(name, rep(" ", sourcewidth-namelen));
+		setstyle(logstyles[level]);
+		io_write(level);
+		setstyle();
+		if ... then
+			io_write("\t", format(message, ...), "\n");
+		else
+			io_write("\t", message, "\n");
 		end
 	end
 end
@@ -248,7 +248,7 @@ function log_sink_types.file(config)
 	end;
 end
 
-function register_sink_type(name, sink_maker)
+local function register_sink_type(name, sink_maker)
 	local old_sink_maker = log_sink_types[name];
 	log_sink_types[name] = sink_maker;
 	return old_sink_maker;
