@@ -19,7 +19,7 @@ local t_concat = table.concat;
 local char = string.char;
 local byte = string.byte;
 
-module "sasl.scram"
+local _ENV = nil;
 
 --[[
 SASL SCRAM according to RFCs 5802 and 7677
@@ -60,7 +60,7 @@ local function binaryXOR( a, b )
 end
 
 -- hash algorithm independent Hi(PBKDF2) implementation
-function Hi(hmac, str, salt, i)
+local function Hi(hmac, str, salt, i)
 	local Ust = hmac(str, salt.."\0\0\0\1");
 	local res = Ust;
 	for n=1,i-1 do
@@ -96,7 +96,7 @@ local function hashprep(hashname)
 	return hashname:lower():gsub("-", "_");
 end
 
-function getAuthenticationDatabase(hash_name, password, salt, iteration_count)
+local function getAuthenticationDatabase(hash_name, password, salt, iteration_count)
 	if type(password) ~= "string" or type(salt) ~= "string" or type(iteration_count) ~= "number" then
 		return false, "inappropriate argument types";
 	end
@@ -241,7 +241,7 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 	return scram_hash;
 end
 
-function init(registerMechanism)
+local function init(registerMechanism)
 	local function registerSCRAMMechanism(hash_name, hash, hmac_hash)
 		registerMechanism("SCRAM-"..hash_name, {"plain", "scram_"..(hashprep(hash_name))}, scram_gen(hash_name:lower(), hash, hmac_hash));
 		registerMechanism("SCRAM-"..hash_name.."-PLUS", {"plain", "scram_"..(hashprep(hash_name))}, scram_gen(hash_name:lower(), hash, hmac_hash), true);
@@ -253,4 +253,8 @@ function init(registerMechanism)
 	registerSCRAMMechanism("SHA-512", sha512, hmac_sha512);
 end
 
-return _M;
+return {
+	Hi = Hi,
+	getAuthenticationDatabase = getAuthenticationDatabase,
+	init = init
+};

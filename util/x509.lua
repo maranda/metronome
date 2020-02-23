@@ -27,7 +27,8 @@ local s_format = string.format;
 local t_insert = table.insert;
 local t_concat = table.concat;
 
-module "x509"
+local _ENV = nil;
+local _M = {};
 
 local oid_commonname = "2.5.4.3"; -- [LDAP] 2.3
 local oid_subjectaltname = "2.5.29.17"; -- [PKIX] 4.2.1.6
@@ -150,7 +151,7 @@ local function compare_srvname(host, service, asserted_names)
 	return false
 end
 
-function verify_identity(host, service, cert)
+local function verify_identity(host, service, cert)
 	local ext = cert:extensions()
 	if ext[oid_subjectaltname] then
 		local sans = ext[oid_subjectaltname];
@@ -213,4 +214,4 @@ function verify_identity(host, service, cert)
 	return false
 end
 
-return _M;
+return { verify_identity = verify_identity };

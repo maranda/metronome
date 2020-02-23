@@ -22,7 +22,8 @@ local escapes = {
 local unescapes = {};
 for k, v in pairs(escapes) do unescapes[v] = k; end
 
-module "jid"
+local _ENV = nil;
+local _jid = {};
 
 local function _split(jid)
 	if not jid then return; end
@@ -34,9 +35,9 @@ local function _split(jid)
 	if (not host) or ((not resource) and #jid >= pos) then return nil, nil, nil; end
 	return node, host, resource;
 end
-split = _split;
+_jid.split = _split;
 
-function bare(jid)
+function _jid.bare(jid)
 	local node, host = _split(jid);
 	if node and host then
 		return node.."@"..host;
@@ -44,7 +45,7 @@ function bare(jid)
 	return host;
 end
 
-function section(jid, type)
+local function section(jid, type)
 	if not jid then return; end
 	local node, host, resource, pos;
 	node, pos = match(jid, "^([^@/]+)@()");
@@ -55,7 +56,7 @@ function section(jid, type)
 	elseif type == "resource" then return resource; end
 end
 
-function prepped_section(jid, type)
+function _jid.prepped_section(jid, type)
 	local bit = section(jid, type);
 	if not bit then return; end
 	if type == "node" then return nodeprep(bit);
@@ -79,9 +80,9 @@ local function _prepped_split(jid)
 		return node, host, resource;
 	end
 end
-prepped_split = _prepped_split;
+_jid.prepped_split = _prepped_split;
 
-function prep(jid)
+function _jid.prep(jid)
 	local node, host, resource = _prepped_split(jid);
 	if host then
 		if node then
@@ -94,7 +95,7 @@ function prep(jid)
 	return host;
 end
 
-function join(node, host, resource)
+function _jid.join(node, host, resource)
 	if node and host and resource then
 		return node.."@"..host.."/"..resource;
 	elseif node and host then
@@ -107,7 +108,7 @@ function join(node, host, resource)
 	return nil; -- Invalid JID
 end
 
-function compare(jid, acl)
+function _jid.compare(jid, acl)
 	-- compare jid to single acl rule
 	-- TODO compare to table of rules?
 	local jid_node, jid_host, jid_resource = _split(jid);
@@ -120,7 +121,8 @@ function compare(jid, acl)
 	return false
 end
 
-function escape(s) return s and (s:gsub(".", escapes)); end
-function unescape(s) return s and (s:gsub("\\%x%x", unescapes)); end
+function _jid.escape(s) return s and (s:gsub(".", escapes)); end
+function _jid.unescape(s) return s and (s:gsub("\\%x%x", unescapes)); end
 
-return _M;
+_jid.section = section;
+return _jid;

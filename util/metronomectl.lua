@@ -29,25 +29,26 @@ local CFG_SOURCEDIR = _G.CFG_SOURCEDIR;
 local _G = _G;
 local metronome = metronome;
 
-module "metronomectl"
+local _ENV = nil;
+local _ctl = {};
 
 -- UI helpers
-function show_message(msg, ...)
+local function show_message(msg, ...)
 	print(msg:format(...));
 end
 
-function show_warning(msg, ...)
+function _ctl.show_warning(msg, ...)
 	print(msg:format(...));
 end
 
-function show_usage(usage, desc)
+function _ctl.show_usage(usage, desc)
 	print("Usage: ".._G.arg[0].." "..usage);
 	if desc then
 		print(" "..desc);
 	end
 end
 
-function getchar(n)
+local function getchar(n)
 	local stty_ret = os.execute("stty raw -echo 2>/dev/null");
 	local ok, char;
 	if stty_ret == true or stty_ret == 0 then
@@ -64,14 +65,14 @@ function getchar(n)
 	end
 end
 
-function getline()
+local function getline()
 	local ok, line = pcall(io.read, "*l");
 	if ok then
 		return line;
 	end
 end
 
-function getpass()
+local function getpass()
 	local stty_ret = os.execute("stty -echo 2>/dev/null");
 	if stty_ret ~= 0 then
 		io.write("\027[08m"); -- ANSI 'hidden' text attribute
@@ -88,7 +89,7 @@ function getpass()
 	end
 end
 
-function show_yesno(prompt)
+local function show_yesno(prompt)
 	io.write(prompt, " ");
 	local choice = getchar():lower();
 	io.write("\n");
@@ -99,7 +100,7 @@ function show_yesno(prompt)
 	return (choice == "y");
 end
 
-function read_password()
+function _ctl.read_password()
 	local password;
 	while true do
 		io.write("Enter new password: ");
@@ -120,7 +121,7 @@ function read_password()
 	return password;
 end
 
-function show_prompt(prompt)
+function _ctl.show_prompt(prompt)
 	io.write(prompt, " ");
 	local line = getline();
 	line = line and line:gsub("\n$","");
@@ -128,7 +129,7 @@ function show_prompt(prompt)
 end
 
 -- Server control
-function controluser(params, action)
+function _ctl.controluser(params, action)
 	local user, host, password = nodeprep(params.user), nameprep(params.host), params.password;
 	if not user then
 		return false, "invalid-username";
@@ -163,7 +164,7 @@ function controluser(params, action)
 	return true;
 end
 
-function getpid()
+function _ctl.getpid()
 	local pidfile = config.get("*", "pidfile");
 	if not pidfile then
 		return false, "no-pidfile";
@@ -195,8 +196,8 @@ function getpid()
 	return true, pid;
 end
 
-function isrunning()
-	local ok, pid, err = _M.getpid();
+function _ctl.isrunning()
+	local ok, pid, err = _ctl.getpid();
 	if not ok then
 		if pid == "pidfile-read-failed" or pid == "pidfile-not-locked" then
 			-- Report as not running, since we can't open the pidfile
@@ -208,8 +209,8 @@ function isrunning()
 	return true, signal.kill(pid, 0) == 0;
 end
 
-function start()
-	local ok, ret = _M.isrunning();
+function _ctl.start()
+	local ok, ret = _ctl.isrunning();
 	if not ok then
 		return ok, ret;
 	end
@@ -224,8 +225,8 @@ function start()
 	return true;
 end
 
-function stop()
-	local ok, ret = _M.isrunning();
+function _ctl.stop()
+	local ok, ret = _ctl.isrunning();
 	if not ok then
 		return ok, ret;
 	end
@@ -233,15 +234,15 @@ function stop()
 		return false, "not-running";
 	end
 	
-	local ok, pid = _M.getpid()
+	local ok, pid = _ctl.getpid()
 	if not ok then return false, pid; end
 	
 	signal.kill(pid, signal.SIGTERM);
 	return true;
 end
 
-function reload()
-	local ok, ret = _M.isrunning();
+function _ctl.reload()
+	local ok, ret = _ctl.isrunning();
 	if not ok then
 		return ok, ret;
 	end
@@ -249,11 +250,16 @@ function reload()
 		return false, "not-running";
 	end
 	
-	local ok, pid = _M.getpid()
+	local ok, pid = _ctl.getpid()
 	if not ok then return false, pid; end
 	
 	signal.kill(pid, signal.SIGHUP);
 	return true;
 end
 
-return _M;
+_ctl.show_message = show_message;
+_ctl.getchar = getchar;
+_ctl.getline = getline;
+_ctl.getpass = getpass;
+_ctl.show_yesno = show_yesno;
+return _ctl;

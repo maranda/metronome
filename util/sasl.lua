@@ -7,8 +7,6 @@ local setmetatable = setmetatable;
 local assert = assert;
 local require = require;
 
-module "sasl"
-
 --[[
 Authentication Backend Prototypes:
 
@@ -24,7 +22,7 @@ local channelbinding_mechanisms = {};
 local backend_mechanism = {};
 
 -- register a new SASL mechanims
-function registerMechanism(name, backends, f, cb)
+local function registerMechanism(name, backends, f, cb)
 	assert(type(name) == "string", "Parameter name MUST be a string.");
 	assert(type(backends) == "string" or type(backends) == "table", "Parameter backends MUST be either a string or a table.");
 	assert(type(f) == "function", "Parameter f MUST be a function.");
@@ -40,7 +38,7 @@ end
 -- new() expects an array, profile.order, to be present in the profile
 -- and which specifies the order of preference in which mechanisms are
 -- presented by the server
-function new(realm, profile)
+local function new(realm, profile)
 	local order = profile.order;
 	local session = profile.session;
 	local cb_capable = profile.channel_bind_cb and true;
@@ -111,4 +109,7 @@ require "util.sasl.digest-md5".init(registerMechanism);
 require "util.sasl.plain".init(registerMechanism);
 require "util.sasl.anonymous".init(registerMechanism);
 
-return _M;
+return {
+	registerMechanism = registerMechanism,
+	new = new
+};

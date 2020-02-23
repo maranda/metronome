@@ -58,7 +58,8 @@ pcall(function()
 	fallocate = pposix.fallocate or fallocate;
 end);
 
-module "datamanager"
+local _ENV = nil;
+local datamanager = {};
 
 ---- utils -----
 local encode, decode;
@@ -89,7 +90,7 @@ local callbacks = {};
 
 ------- API -------------
 
-function set_data_path(path)
+function datamanager.set_data_path(path)
 	log("debug", "Setting data path to: %s", path);
 	data_path = path;
 end
@@ -102,14 +103,14 @@ local function callback(username, host, datastore, data)
 
 	return username, host, datastore, data;
 end
-function add_callback(func)
+function datamanager.add_callback(func)
 	if not callbacks[func] then -- Would you really want to set the same callback more than once?
 		callbacks[func] = true;
 		callbacks[#callbacks+1] = func;
 		return true;
 	end
 end
-function remove_callback(func)
+function datamanager.remove_callback(func)
 	if callbacks[func] then
 		for i, f in ipairs(callbacks) do
 			if f == func then
@@ -135,7 +136,7 @@ local function recursive_ds_create(host, datastore)
 	end
 end
 
-function getpath(username, host, datastore, ext, create)
+function datamanager.getpath(username, host, datastore, ext, create)
 	ext = ext or "dat";
 	host = (host and encode(host)) or "_global";
 	username = username and encode(username);
@@ -154,7 +155,7 @@ function getpath(username, host, datastore, ext, create)
 	end
 end
 
-function load(username, host, datastore)
+function datamanager.load(username, host, datastore)
 	local data, ret = load_file(getpath(username, host, datastore), {});
 	if not data then
 		local mode = lfs.attributes(getpath(username, host, datastore), "mode");
@@ -208,7 +209,7 @@ if metronome.platform ~= "posix" then
 	end
 end
 
-function store(username, host, datastore, data)
+function datamanager.store(username, host, datastore, data)
 	if not data then
 		data = {};
 	end
@@ -244,7 +245,7 @@ function store(username, host, datastore, data)
 	return true;
 end
 
-function list_append(username, host, datastore, data)
+function datamanager.list_append(username, host, datastore, data)
 	if not data then return; end
 	if callback(username, host, datastore) == false then return true; end
 	-- save the datastore
@@ -270,7 +271,7 @@ function list_append(username, host, datastore, data)
 	return true;
 end
 
-function list_store(username, host, datastore, data)
+function datamanager.list_store(username, host, datastore, data)
 	if not data then
 		data = {};
 	end
@@ -294,7 +295,7 @@ function list_store(username, host, datastore, data)
 	return true;
 end
 
-function list_load(username, host, datastore)
+function datamanager.list_load(username, host, datastore)
 	local items = {};
 	local data, ret = _load_file(getpath(username, host, datastore, "list"), {item = function(i) t_insert(items, i); end});
 	if not data then
@@ -316,7 +317,7 @@ function list_load(username, host, datastore)
 end
 
 local type_map = { keyval = "dat", list = "list" }
-function stores(username, host, type, pattern)
+function datamanager.stores(username, host, type, pattern)
 	if not host then
 		return nil, "bad argument #2 to 'stores' (string expected, got nothing)";
 	end
@@ -357,7 +358,7 @@ function stores(username, host, type, pattern)
 	end, state;
 end
 
-function store_exists(username, host, datastore, type)
+function datamanager.store_exists(username, host, datastore, type)
 	if not username or not host or not datastore then
 		return nil, "syntax error store_exists requires to supply at least 3 arguments (username, host, datastore)";
 	end
@@ -365,7 +366,7 @@ function store_exists(username, host, datastore, type)
 	type = type_map[type or "keyval"];
 
 	if username == true then
-		if lfs.attributes(format("%s/%s/%s", data_path, encode(host) ,datastore), "mode") == "directory" then
+		if lfs.attributes(format("%s/%s/%s", data_path, encode(host), datastore), "mode") == "directory" then
 			return true;
 		end
 		return false;
@@ -385,7 +386,7 @@ local function do_remove(path)
 	return true;
 end
 
-function purge(username, host)
+function datamanager.purge(username, host)
 	local host_dir = format("%s/%s/", data_path, encode(host));
 	local errs = {};
 	for file in lfs.dir(host_dir) do
@@ -401,6 +402,6 @@ function purge(username, host)
 	return #errs == 0, t_concat(errs, ", ");
 end
 
-_M.path_decode = decode;
-_M.path_encode = encode;
-return _M;
+datamanager.path_decode = decode;
+datamanager.path_encode = encode;
+return datamanager;

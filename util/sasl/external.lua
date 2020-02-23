@@ -8,7 +8,7 @@ local log = require "util.logger".init("sasl");
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local ipairs = ipairs;
 
-module "sasl.external"
+local _ENV = nil;
 
 --[[
 SASL EXTERNAL according to RFC 4422
@@ -40,8 +40,8 @@ local function external(self, authid)
 	end
 end
 
-function init(registerMechanism)
+local function init(registerMechanism)
 	registerMechanism("EXTERNAL", {"external"}, external);
 end
 
-return _M;
+return { init = init };

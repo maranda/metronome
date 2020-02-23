@@ -15,25 +15,26 @@ local os_difftime = os.difftime;
 local error = error;
 local tonumber = tonumber;
 
-module "datetime"
+local _ENV = nil;
+local _dt = {};
 
-function date(t)
+function _dt.date(t)
 	return os_date("!%Y-%m-%d", t);
 end
 
-function datetime(t)
+function _dt.datetime(t)
 	return os_date("!%Y-%m-%dT%H:%M:%SZ", t);
 end
 
-function time(t)
+function _dt.time(t)
 	return os_date("!%H:%M:%S", t);
 end
 
-function legacy(t)
+function _dt.legacy(t)
 	return os_date("!%Y%m%dT%H:%M:%S", t);
 end
 
-function parse(s)
+function _dt.parse(s)
 	if s then
 		local year, month, day, hour, min, sec, tzd;
 		year, month, day, hour, min, sec, tzd = s:match("^(%d%d%d%d)-?(%d%d)-?(%d%d)T(%d%d):(%d%d):(%d%d)%.?%d*([Z+%-].*)$");
@@ -54,4 +55,4 @@ function parse(s)
 	end
 end
 
-return _M;
+return _dt;

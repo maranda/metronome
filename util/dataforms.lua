@@ -14,18 +14,18 @@ local t_concat = table.concat;
 local st = require "util.stanza";
 local jid_prep = require "util.jid".prep;
 
-module "dataforms"
+local _ENV = nil;
 
 local xmlns_forms = 'jabber:x:data';
 
 local form_t = {};
 local form_mt = { __index = form_t };
 
-function new(layout)
+local function new(layout)
 	return setmetatable(layout, form_mt);
 end
 
-function form_t.form(layout, data, formtype)
+local function form_t.form(layout, data, formtype)
 	local form = st.stanza("x", { xmlns = xmlns_forms, type = formtype or "form" });
 	if layout.title then
 		form:tag("title"):text(layout.title):up();
@@ -112,7 +112,7 @@ end
 
 local field_readers = {};
 
-function form_t.data(layout, stanza)
+local function form_t.data(layout, stanza)
 	local data = {};
 	local errors = {};
 
@@ -142,7 +142,7 @@ function form_t.data(layout, stanza)
 	return data;
 end
 
-field_readers["text-single"] =
+local field_readers["text-single"] =
 	function (field_tag, required)
 		local data = field_tag:get_child_text("value");
 		if data and #data > 0 then
@@ -152,10 +152,10 @@ field_readers["text-single"] =
 		end
 	end
 
-field_readers["text-private"] =
+local field_readers["text-private"] =
 	field_readers["text-single"];
 
-field_readers["jid-single"] =
+local field_readers["jid-single"] =
 	function (field_tag, required)
 		local raw_data = field_tag:get_child_text("value")
 		local data = jid_prep(raw_data);
@@ -168,7 +168,7 @@ field_readers["jid-single"] =
 		end
 	end
 
-field_readers["jid-multi"] =
+local field_readers["jid-multi"] =
 	function (field_tag, required)
 		local result = {};
 		local err = {};
@@ -187,7 +187,7 @@ field_readers["jid-multi"] =
 		end
 	end
 
-field_readers["list-multi"] =
+local field_readers["list-multi"] =
 	function (field_tag, required)
 		local result = {};
 		for value in field_tag:childtags("value") do
@@ -196,7 +196,7 @@ field_readers["list-multi"] =
 		return result, (required and #result == 0 and "Required value missing" or nil);
 	end
 
-field_readers["text-multi"] =
+local field_readers["text-multi"] =
 	function (field_tag, required)
 		local data, err = field_readers["list-multi"](field_tag, required);
 		if data then
@@ -205,7 +205,7 @@ field_readers["text-multi"] =
 		return data, err;
 	end
 
-field_readers["list-single"] =
+local field_readers["list-single"] =
 	field_readers["text-single"];
 
 local boolean_values = {
@@ -213,7 +213,7 @@ local boolean_values = {
 	["0"] = false, ["false"] = false,
 };
 
-field_readers["boolean"] =
+local field_readers["boolean"] =
 	function (field_tag, required)
 		local raw_value = field_tag:get_child_text("value");
 		local value = boolean_values[raw_value ~= nil and raw_value];
@@ -226,12 +226,12 @@ field_readers["boolean"] =
 		end
 	end
 
-field_readers["hidden"] =
+local field_readers["hidden"] =
 	function (field_tag)
 		return field_tag:get_child_text("value");
 	end
 
-return _M;
+return { new = new };
 
 
 --[=[

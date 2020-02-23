@@ -23,7 +23,8 @@ local debug_traceback = debug.traceback;
 local log = require "util.logger".init("serialization");
 local envload = require"util.envload".envload;
 
-module "serialization"
+local _ENV = nil;
+local _M = {};
 
 local indent = function(i)
 	return string_rep("\t", i);
@@ -74,16 +75,16 @@ local function _simplesave(o, ind, t, func)
 	end
 end
 
-function append(t, o)
+local function append(t, o)
 	_simplesave(o, 1, t, t.write or t_insert);
 	return t;
 end
 
-function serialize(o)
+function _M.serialize(o)
 	return t_concat(append({}, o));
 end
 
-function deserialize(str)
+function _M.deserialize(str)
 	if type(str) ~= "string" then return nil; end
 	str = "return "..str;
 	local f, err = envload(str, "@data", {});
@@ -93,4 +94,5 @@ function deserialize(str)
 	return ret;
 end
 
+_M.append = append;
 return _M;

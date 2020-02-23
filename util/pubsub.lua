@@ -12,8 +12,6 @@ local clean_table = require "util.auxiliary".clean_table;
 local clone_table = require "util.auxiliary".clone_table;
 local ipairs, next, now, pairs, table = ipairs, next, os.time, pairs, table;
 
-module("pubsub", package.seeall);
-
 local service = {};
 local service_mt = { __index = service };
 
@@ -41,7 +39,7 @@ local function get_persistent_nodes(nodes)
 	return self_nodes;
 end
 
-function new(config)
+local function new(config)
 	config = config or {};
 	return setmetatable({
 		config = setmetatable(config, { __index = default_config });
@@ -796,4 +794,4 @@ function service:restore_node(node, delayed)
 	return true;
 end
 
-return _M;
+return { new = new };

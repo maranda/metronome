@@ -8,17 +8,16 @@
 -- ** Copyright (c) 2008-2011, Matthew Wild, Waqas Hussain
 
 local metronome = metronome;
+local _deps = {};
 
-module("dependencies", package.seeall)
-
-function softreq(...) local ok, lib =  pcall(require, ...); if ok then return lib; else return nil, lib; end end
+local function softreq(...) local ok, lib =  pcall(require, ...); if ok then return lib; else return nil, lib; end end
 
 -- Required to be able to find packages installed with luarocks
 if not softreq "luarocks.loader" then -- LuaRocks 2.x
 	softreq "luarocks.require"; -- LuaRocks <1.x
 end
 
-function missingdep(name, sources, msg)
+local function missingdep(name, sources, msg)
 	print("");
 	print("**************************");
 	print("Metronome was unable to find "..tostring(name));
@@ -45,7 +44,7 @@ package.preload["util.ztact"] = function ()
 	end
 end;
 
-function check_dependencies()
+function _deps.check_dependencies()
 	local fatal;
 	
 	local lxp = softreq "lxp"
@@ -134,7 +133,7 @@ function check_dependencies()
 	return not fatal;
 end
 
-function log_warnings()
+function _deps.log_warnings()
 	if ssl then
 		local major, minor, veryminor, patched = ssl._VERSION:match("(%d+)%.(%d+)%.?(%d*)(M?)");
 		if not major or ((tonumber(major) == 0 and (tonumber(minor) or 0) <= 3 and (tonumber(veryminor) or 0) <= 2) and patched ~= "M") then
@@ -151,4 +150,6 @@ function log_warnings()
 	end
 end
 
-return _M;
+_deps.softreq = softreq;
+_deps.missingdep = missingdep;
+return _deps;

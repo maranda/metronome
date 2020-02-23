@@ -9,13 +9,12 @@
 
 local debug = require "util.debug";
 
-module("helpers", package.seeall);
-
 -- Helper functions for debugging
 
 local log = require "util.logger".init("util.debug");
+local _helpers = {};
 
-function log_events(events, name, logger)
+function _helpers.log_events(events, name, logger)
 	local f = events.fire_event;
 	if not f then
 		error("Object does not appear to be a util.events object");
@@ -30,11 +29,11 @@ function log_events(events, name, logger)
 	return events;
 end
 
-function revert_log_events(events)
+function _helpers.revert_log_events(events)
 	events.fire_event, events[events.fire_event] = events[events.fire_event], nil; -- :))
 end
 
-function show_events(events, specific_event)
+function _helpers.show_events(events, specific_event)
 	local event_handlers = events._handlers;
 	local events_array = {};
 	local event_handler_arrays = {};
@@ -63,7 +62,7 @@ function show_events(events, specific_event)
 	return table.concat(events_array, "\n");
 end
 
-function get_upvalue(f, get_name)
+function _helpers.get_upvalue(f, get_name)
 	local i, name, value = 0;
 	repeat
 		i = i + 1;
@@ -72,4 +71,4 @@ function get_upvalue(f, get_name)
 	return value;
 end
 
-return _M;
+return _helpers;

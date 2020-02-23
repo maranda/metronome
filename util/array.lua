@@ -7,13 +7,15 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2012, Matthew Wild, Waqas Hussain
 
-local t_insert, t_sort, t_remove, t_concat
-    = table.insert, table.sort, table.remove, table.concat;
+local type, t_insert, t_sort, t_remove, t_concat
+    = type, table.insert, table.sort, table.remove, table.concat;
 
 local setmetatable = setmetatable;
 local math_random = math.random;
 local pairs, ipairs = pairs, ipairs;
 local tostring = tostring;
+
+local _ENV = nil;
 
 local array = {};
 local array_base = {};
@@ -157,8 +159,5 @@ for method, f in pairs(array_base) do
 		return base_method(self, self, ...);
 	end
 end
-
-_G.array = array;
-module("array");
 
 return array;

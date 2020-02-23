@@ -7,13 +7,14 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2010, Dwayne Bent, Matthew Wild, Tobias Markmann, Waqas Hussain
 
-local hashes = require "util.hashes"
+local hashes = require "util.hashes";
 
 local s_char = string.char;
 local s_gsub = string.gsub;
 local s_rep = string.rep;
 
-module "hmac"
+local _ENV = nil;
+local _hmac = {};
 
 local xor_map = {0;1;2;3;4;5;6;7;8;9;10;11;12;13;14;15;1;0;3;2;5;4;7;6;9;8;11;10;13;12;15;14;2;3;0;1;6;7;4;5;10;11;8;9;14;15;12;13;3;2;1;0;7;6;5;4;11;10;9;8;15;14;13;12;4;5;6;7;0;1;2;3;12;13;14;15;8;9;10;11;5;4;7;6;1;0;3;2;13;12;15;14;9;8;11;10;6;7;4;5;2;3;0;1;14;15;12;13;10;11;8;9;7;6;5;4;3;2;1;0;15;14;13;12;11;10;9;8;8;9;10;11;12;13;14;15;0;1;2;3;4;5;6;7;9;8;11;10;13;12;15;14;1;0;3;2;5;4;7;6;10;11;8;9;14;15;12;13;2;3;0;1;6;7;4;5;11;10;9;8;15;14;13;12;3;2;1;0;7;6;5;4;12;13;14;15;8;9;10;11;4;5;6;7;0;1;2;3;13;12;15;14;9;8;11;10;5;4;7;6;1;0;3;2;14;15;12;13;10;11;8;9;6;7;4;5;2;3;0;1;15;14;13;12;11;10;9;8;7;6;5;4;3;2;1;0;};
 local function xor(x, y)
@@ -43,36 +44,36 @@ blocksize
 hex
 	return raw hash or hexadecimal string
 --]]
-function hmac(key, message, hash, blocksize, hex)
+function _hmac.hmac(key, message, hash, blocksize, hex)
 	if #key > blocksize then
-		key = hash(key)
+		key = hash(key);
 	end
 
 	local padding = blocksize - #key;
 	local ipad = s_gsub(key, ".", ipad_map)..s_rep(ipadc, padding);
 	local opad = s_gsub(key, ".", opad_map)..s_rep(opadc, padding);
 
-	return hash(opad..hash(ipad..message), hex)
+	return hash(opad..hash(ipad..message), hex);
 end
 
-function md5(key, message, hex)
-	return hmac(key, message, hashes.md5, 64, hex)
+function _hmac.md5(key, message, hex)
+	return hmac(key, message, hashes.md5, 64, hex);
 end
 
-function sha1(key, message, hex)
-	return hmac(key, message, hashes.sha1, 64, hex)
+function _hmac.sha1(key, message, hex)
+	return hmac(key, message, hashes.sha1, 64, hex);
 end
 
-function sha256(key, message, hex)
-	return hmac(key, message, hashes.sha256, 64, hex)
+function _hmac.sha256(key, message, hex)
+	return hmac(key, message, hashes.sha256, 64, hex);
 end
 
-function sha384(key, message, hex)
-	return hmac(key, message, hashes.sha384, 128, hex)
+function _hmac.sha384(key, message, hex)
+	return hmac(key, message, hashes.sha384, 128, hex);
 end
 
-function sha512(key, message, hex)
-	return hmac(key, message, hashes.sha512, 128, hex)
+function _hmac.sha512(key, message, hex)
+	return hmac(key, message, hashes.sha512, 128, hex);
 end
 
-return _M
+return _hmac;

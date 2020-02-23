@@ -21,16 +21,17 @@ local config = require "core.configmanager";
 local metronome = _G.metronome;
 local incoming_s2s = metronome.incoming_s2s;
 
-module "s2smanager"
+local _ENV = nil;
+local _M = {};
 
-function new_incoming(conn)
+function _M.new_incoming(conn)
 	local session = { conn = conn, type = "s2sin_unauthed", direction = "incoming", hosts = {} };
 	session.log = logger_init("s2sin"..tostring(conn):match("[a-f0-9]+$"));
 	incoming_s2s[session] = true;
 	return session;
 end
 
-function new_outgoing(from_host, to_host, connect)
+function _M.new_outgoing(from_host, to_host, connect)
 	local host_session = { to_host = to_host, from_host = from_host, host = from_host, notopen = true, 
 		type = "s2sout_unauthed", direction = "outgoing", tls_capable = hosts[from_host].ssl_ctx and true };
 	hosts[from_host].s2sout[to_host] = host_session;
@@ -48,7 +49,7 @@ local function incoming_has_hosts(session, host)
 	end
 end
 
-function make_authenticated(session, host)
+function _M.make_authenticated(session, host)
 	if session.type == "s2sout_unauthed" then
 		session.type = "s2sout";
 	elseif session.type == "s2sin_unauthed" then
@@ -80,11 +81,11 @@ function make_authenticated(session, host)
 	if not authed then return false; end
 	
 	session.log("debug", "connection %s->%s is now authenticated for %s", session.from_host, session.to_host, host);
-	mark_connected(session);
+	_M.mark_connected(session);
 	return true;
 end
 
-function mark_connected(session)
+function _M.mark_connected(session)
 	local sendq, send = session.sendq, session.sends2s;
 	
 	local from, to = session.from_host, session.to_host;
@@ -132,7 +133,7 @@ local resting_session = { -- Resting, not dead
 		filter = function (type, data) return data; end;
 	}; resting_session.__index = resting_session;
 
-function retire_session(session, reason)
+function _M.retire_session(session, reason)
 	local log = session.log or log;
 	for k in pairs(session) do
 		if k ~= "log" and k ~= "id" and k ~= "conn" and k ~= "from_host" and k ~= "to_host" then
@@ -147,7 +148,7 @@ function retire_session(session, reason)
 	return setmetatable(session, resting_session);
 end
 
-function destroy_session(session, reason)
+function _M.destroy_session(session, reason)
 	if session.destroyed then return; end
 	(session.log or log)("debug", "Destroying "..tostring(session.direction).." session "..tostring(session.from_host).."->"..tostring(session.to_host)..(reason and (": "..reason) or ""));
 	
@@ -171,7 +172,7 @@ function destroy_session(session, reason)
 		end
 	end
 	
-	retire_session(session, reason); -- Clean session until it is GC'd
+	_M.retire_session(session, reason); -- Clean session until it is GC'd
 	return true;
 end
 

@@ -5,6 +5,7 @@
 -- information about copyright and licensing.
 
 local ssl = require "ssl";
+local socket = require "socket";
 local smtp = require "socket.smtp";
 
 if not (ssl or smtp) then error("Either Luasocket or Luasec aren't installed, aborting load", 0); end
@@ -12,7 +13,7 @@ if not (ssl or smtp) then error("Either Luasocket or Luasec aren't installed, ab
 local version = ssl and ssl._VERSION:match("^%d+%.(%d+)");
 version = tonumber(version);
 
-function do_ssl()
+local function do_ssl()
     local s = socket.tcp();
     return setmetatable({
         connect = function(_, host, port)

@@ -11,7 +11,7 @@ local ipairs, pairs, setmetatable, next, tostring, type =
       ipairs, pairs, setmetatable, next, tostring, type;
 local t_concat = table.concat;
 
-module "set"
+local _ENV = nil;
 
 local set_mt = {};
 function set_mt.__call(set, _, k)
@@ -63,7 +63,7 @@ function items_mt.__call(items, _, k)
 	return next(items, k);
 end
 
-function new(list)
+function _M.new(list)
 	local items = setmetatable({}, items_mt);
 	local set = { _items = items };
 	
@@ -122,8 +122,8 @@ function new(list)
 	return setmetatable(set, set_mt);
 end
 
-function union(set1, set2)
-	local set = new();
+function _M.union(set1, set2)
+	local set = _M.new();
 	local items = set._items;
 	
 	for item in pairs(set1._items) do
@@ -137,8 +137,8 @@ function union(set1, set2)
 	return set;
 end
 
-function difference(set1, set2)
-	local set = new();
+function _M.difference(set1, set2)
+	local set = _M.new();
 	local items = set._items;
 	
 	for item in pairs(set1._items) do
@@ -148,8 +148,8 @@ function difference(set1, set2)
 	return set;
 end
 
-function intersection(set1, set2)
-	local set = new();
+function _M.intersection(set1, set2)
+	local set = _M.new();
 	local items = set._items;
 	
 	set1, set2 = set1._items, set2._items;
@@ -161,8 +161,8 @@ function intersection(set1, set2)
 	return set;
 end
 
-function xor(set1, set2)
-	return union(set1, set2) - intersection(set1, set2);
+function _M.xor(set1, set2)
+	return _M.union(set1, set2) - _M.intersection(set1, set2);
 end
 
 return _M;

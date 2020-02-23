@@ -11,6 +11,8 @@ local match_prefix = require"util.ip".match_prefix;
 local compare_destination = require"util.ip".compare_destination;
 local compare_source = require"util.ip".compare_source;
 
+local _ENV = nil;
+
 local function t_sort(t, comp, param)
 	for i = 1, (#t - 1) do
 		for j = (i + 1), #t do

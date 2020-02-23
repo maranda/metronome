@@ -11,7 +11,7 @@ local select = select;
 local t_insert = table.insert;
 local unpack, pairs, next, type = table.unpack or unpack, pairs, next, type;
 
-module "multitable"
+local _ENV = nil;
 
 local function get(self, ...)
 	local t = self.data;
@@ -175,4 +175,4 @@ function new()
 	};
 end
 
-return _M;
+return { iter = iter, new = new };

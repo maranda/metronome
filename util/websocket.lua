@@ -28,7 +28,7 @@ local char = string.char;
 local concat = table.concat;
 local setmetatable = setmetatable;
 
-module "websocket";
+local _ENV = nil;
 
 local ws = {};
 local mt = { __index = ws };
@@ -210,6 +210,6 @@ function ws:handle(frame)
 	return "";
 end
 	
-function new(conn, _log) return setmetatable({ conn = conn, frame_log = _log }, mt); end
+local function new(conn, _log) return setmetatable({ conn = conn, frame_log = _log }, mt); end
 	
-return _M;
+return { new = new };

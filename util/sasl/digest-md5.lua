@@ -14,8 +14,6 @@ local log = require "util.logger".init("sasl");
 local generate_uuid = require "util.uuid".generate;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 
-module "sasl.digest-md5"
-
 --[[
 SASL DIGEST-MD5 according to RFC 2831
 
@@ -231,8 +229,8 @@ local function digest(self, message)
 	end
 end
 
-function init(registerMechanism)
+local function init(registerMechanism)
 	registerMechanism("DIGEST-MD5", {"plain"}, digest);
 end
 
-return _M;
+return { init = init };
