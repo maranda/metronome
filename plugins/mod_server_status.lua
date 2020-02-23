@@ -13,7 +13,7 @@ local show_hosts = module:get_option_array("server_status_show_hosts", nil)
 local show_comps = module:get_option_array("server_status_show_comps", nil)
 local json_output = module:get_option_boolean("server_status_json", false)
 local metronome = metronome
-local pposix = pposix
+local pposix = require "util.pposix";
 local hosts = metronome.hosts
 local NULL = {}
 

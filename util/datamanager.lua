@@ -136,7 +136,7 @@ local function recursive_ds_create(host, datastore)
 	end
 end
 
-function datamanager.getpath(username, host, datastore, ext, create)
+local function getpath(username, host, datastore, ext, create)
 	ext = ext or "dat";
 	host = (host and encode(host)) or "_global";
 	username = username and encode(username);
@@ -402,6 +402,7 @@ function datamanager.purge(username, host)
 	return #errs == 0, t_concat(errs, ", ");
 end
 
+datamanager.getpath = getpath;
 datamanager.path_decode = decode;
 datamanager.path_encode = encode;
 return datamanager;
