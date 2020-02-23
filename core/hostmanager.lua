@@ -88,7 +88,7 @@ end
 
 function _M.activate(host)
 	if hosts[host] then return nil, "The host "..host.." is already activated"; end
-	host_config = configmanager.getconfig()[host];
+	local host_config = configmanager.getconfig()[host];
 	local host_session = {
 		host = host;
 		s2sout = {};

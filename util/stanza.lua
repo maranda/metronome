@@ -170,12 +170,9 @@ function stanza_mt:maptags(callback)
 	return self;
 end
 
-local xml_escape
-do
-	local escape_table = { ["'"] = "&apos;", ["\""] = "&quot;", ["<"] = "&lt;", [">"] = "&gt;", ["&"] = "&amp;" };
-	function xml_escape(str) return (s_gsub(str, "['&<>\"]", escape_table)); end
-	_M.xml_escape = xml_escape;
-end
+local xml_escape;
+local escape_table = { ["'"] = "&apos;", ["\""] = "&quot;", ["<"] = "&lt;", [">"] = "&gt;", ["&"] = "&amp;" };
+function xml_escape(str) return (s_gsub(str, "['&<>\"]", escape_table)); end
 
 local function _dostring(t, buf, self, xml_escape, parentns)
 	local nsid = 0;
@@ -319,7 +316,7 @@ local function _clone(stanza)
 	end
 	return setmetatable(new, stanza_mt);
 end
-clone = _clone;
+local clone = _clone;
 
 local function message(attr, body)
 	if not body then

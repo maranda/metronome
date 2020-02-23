@@ -9,12 +9,11 @@
 
 local t_insert, t_remove = table.insert, table.remove;
 
-local _ENV = nil;
-local _filters = {};
+local _ENV, _M = nil, {};
 
 local new_filter_hooks = {};
 
-function initialize(session)
+local function initialize(session)
 	if not session.filters then
 		local filters = {};
 		session.filters = filters;
@@ -38,7 +37,7 @@ function initialize(session)
 	return session.filter;
 end
 
-function _filters.add_filter(session, type, callback, priority)
+function _M.add_filter(session, type, callback, priority)
 	if not session.filters then
 		initialize(session);
 	end
@@ -60,7 +59,7 @@ function _filters.add_filter(session, type, callback, priority)
 	filter_list[callback] = priority;
 end
 
-function _filters.remove_filter(session, type, callback)
+function _M.remove_filter(session, type, callback)
 	if not session.filters then return; end
 	local filter_list = session.filters[type];
 	if filter_list and filter_list[callback] then
@@ -74,11 +73,11 @@ function _filters.remove_filter(session, type, callback)
 	end
 end
 
-function _filters.add_filter_hook(callback)
+function _M.add_filter_hook(callback)
 	t_insert(new_filter_hooks, callback);
 end
 
-function _filters.remove_filter_hook(callback)
+function _M.remove_filter_hook(callback)
 	for i=1,#new_filter_hooks do
 		if new_filter_hooks[i] == callback then
 			t_remove(new_filter_hooks, i);
@@ -86,5 +85,5 @@ function _filters.remove_filter_hook(callback)
 	end
 end
 
-_filters.initialize = initialize;
-return _filters;
+_M.initialize = initialize;
+return _M;

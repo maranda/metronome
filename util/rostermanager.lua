@@ -23,11 +23,9 @@ local um_user_exists = require "core.usermanager".user_exists;
 local st = require "util.stanza";
 local jid_split = require "util.jid".split;
 
-local _ENV = nil;
+local _ENV, _M = nil;
 
-local rostermanager = {};
-
-local function rostermanager.add_to_roster(session, jid, item)
+function _M.add_to_roster(session, jid, item)
 	if session.roster then
 		local old_item = session.roster[jid];
 		session.roster[jid] = item;
@@ -42,7 +40,7 @@ local function rostermanager.add_to_roster(session, jid, item)
 	end
 end
 
-local function rostermanager.remove_from_roster(session, jid)
+function _M.remove_from_roster(session, jid)
 	if session.roster then
 		local old_item = session.roster[jid];
 		session.roster[jid] = nil;
@@ -57,7 +55,7 @@ local function rostermanager.remove_from_roster(session, jid)
 	end
 end
 
-local function rostermanager.roster_push(username, host, jid)
+function _M.roster_push(username, host, jid)
 	local roster = jid and jid ~= "pending" and hosts[host] and hosts[host].sessions[username] and hosts[host].sessions[username].roster;
 	if roster then
 		local item = hosts[host].sessions[username].roster[jid];
@@ -83,7 +81,7 @@ local function rostermanager.roster_push(username, host, jid)
 	end
 end
 
-local function rostermanager.load_roster(username, host)
+function _M.load_roster(username, host)
 	local jid = username.."@"..host;
 	log("debug", "load_roster: asked for: %s", jid);
 	local user = bare_sessions[jid];
@@ -109,7 +107,7 @@ local function rostermanager.load_roster(username, host)
 	return roster, err;
 end
 
-local function rostermanager.save_roster(username, host, roster)
+function _M.save_roster(username, host, roster)
 	if not um_user_exists(username, host) then
 		log("debug", "not saving roster for %s@%s: the user doesn't exist", username, host);
 		return nil;
@@ -142,7 +140,7 @@ local function rostermanager.save_roster(username, host, roster)
 	return nil;
 end
 
-local function rostermanager.get_readonly_rosters(user, host)
+function _M.get_readonly_rosters(user, host)
 	local bare_session = bare_sessions[user .. "@" .. host];
 	local roster = (bare_session and bare_session.roster) or load_roster(user, host);
 	local readonly = roster.__readonly;
@@ -157,7 +155,7 @@ local function rostermanager.get_readonly_rosters(user, host)
 	end
 end
 
-local function rostermanager.get_readonly_item(user, host, jid)
+function _M.get_readonly_item(user, host, jid)
 	for ro_roster in get_readonly_rosters(user, host) do
 		if ro_roster[jid] then return ro_roster[jid]; end
 	end
@@ -165,7 +163,7 @@ local function rostermanager.get_readonly_item(user, host, jid)
 	return nil;
 end
 
-local function rostermanager.process_inbound_subscription_approval(username, host, jid)
+function _M.process_inbound_subscription_approval(username, host, jid)
 	local roster = load_roster(username, host);
 	local item = roster[jid];
 	if item and item.ask then
@@ -179,7 +177,7 @@ local function rostermanager.process_inbound_subscription_approval(username, hos
 	end
 end
 
-local function rostermanager.process_inbound_subscription_cancellation(username, host, jid)
+function _M.process_inbound_subscription_cancellation(username, host, jid)
 	local roster = load_roster(username, host);
 	local item = roster[jid];
 	local changed = nil;
@@ -201,7 +199,7 @@ local function rostermanager.process_inbound_subscription_cancellation(username,
 	end
 end
 
-local function rostermanager.process_inbound_unsubscribe(username, host, jid)
+function _M.process_inbound_unsubscribe(username, host, jid)
 	local roster = load_roster(username, host);
 	local item = roster[jid];
 	local changed = nil;
@@ -235,7 +233,7 @@ local function _get_online_roster_subscription(jidA, jidB)
 	local item = roster[jidB] or { subscription = "none" };
 	return item and item.subscription;
 end
-local function rostermanager.is_contact_subscribed(username, host, jid)
+function _M.is_contact_subscribed(username, host, jid)
 	do
 		local selfjid = username.."@"..host;
 		local subscription = _get_online_roster_subscription(selfjid, jid);
@@ -255,11 +253,11 @@ local function rostermanager.is_contact_subscribed(username, host, jid)
 	end
 end
 
-local function rostermanager.is_contact_pending_in(username, host, jid)
+function _M.is_contact_pending_in(username, host, jid)
 	local roster = load_roster(username, host);
 	return roster.pending and roster.pending[jid];
 end
-local function rostermanager.set_contact_pending_in(username, host, jid, pending)
+function _M.set_contact_pending_in(username, host, jid, pending)
 	local roster = load_roster(username, host);
 	local item = roster[jid];
 	if item and (item.subscription == "from" or item.subscription == "both") then
@@ -269,12 +267,12 @@ local function rostermanager.set_contact_pending_in(username, host, jid, pending
 	roster.pending[jid] = true;
 	return save_roster(username, host, roster);
 end
-local function rostermanager.is_contact_pending_out(username, host, jid)
+function _M.is_contact_pending_out(username, host, jid)
 	local roster = load_roster(username, host);
 	local item = roster[jid];
 	return item and item.ask;
 end
-local function rostermanager.set_contact_pending_out(username, host, jid) -- subscribe
+function _M.set_contact_pending_out(username, host, jid) -- subscribe
 	local roster = load_roster(username, host);
 	local item = roster[jid];
 	if item and (item.ask or item.subscription == "to" or item.subscription == "both") then
@@ -288,7 +286,7 @@ local function rostermanager.set_contact_pending_out(username, host, jid) -- sub
 	log("debug", "set_contact_pending_out: saving roster; set %s@%s.roster[%q].ask=subscribe", username, host, jid);
 	return save_roster(username, host, roster);
 end
-local function rostermanager.unsubscribe(username, host, jid)
+function _M.unsubscribe(username, host, jid)
 	local roster = load_roster(username, host);
 	local item = roster[jid];
 	if not item then return false; end
@@ -303,7 +301,7 @@ local function rostermanager.unsubscribe(username, host, jid)
 	end
 	return save_roster(username, host, roster);
 end
-local function rostermanager.subscribed(username, host, jid)
+function _M.subscribed(username, host, jid)
 	if is_contact_pending_in(username, host, jid) then
 		local roster = load_roster(username, host);
 		local item = roster[jid];
@@ -321,7 +319,7 @@ local function rostermanager.subscribed(username, host, jid)
 		return save_roster(username, host, roster);
 	end -- TODO else implement optional feature pre-approval (ask = subscribed)
 end
-local function rostermanager.unsubscribed(username, host, jid)
+function _M.unsubscribed(username, host, jid)
 	local roster = load_roster(username, host);
 	local item = roster[jid];
 	local pending = is_contact_pending_in(username, host, jid);
@@ -342,7 +340,7 @@ local function rostermanager.unsubscribed(username, host, jid)
 	return success, pending, subscribed;
 end
 
-local function rostermanager.process_outbound_subscription_request(username, host, jid)
+function _M.process_outbound_subscription_request(username, host, jid)
 	local roster = load_roster(username, host);
 	local item = roster[jid];
 	if item and (item.subscription == "none" or item.subscription == "from") then
@@ -351,4 +349,4 @@ local function rostermanager.process_outbound_subscription_request(username, hos
 	end
 end
 
-return rostermanager;
+return _M;

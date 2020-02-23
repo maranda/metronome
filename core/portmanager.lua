@@ -24,7 +24,7 @@ local NULL = {};
 local metronome = metronome;
 local fire_event = metronome.events.fire_event;
 
-local _ENV = nil;
+local _ENV, _M = nil, {};
 
 --- Config
 
