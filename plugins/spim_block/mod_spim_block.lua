@@ -12,8 +12,8 @@ local pairs, next, open, os_time, t_concat, tonumber, tostring =
 local jid_bare, jid_join, jid_section, jid_split =
 	require "util.jid".bare, require "util.jid".join,
 	require "util.jid".section, require "util.jid".split;
-local urldecode = http.urldecode;
-local urlencode = http.urlencode;
+local urldecode = require "net.http".urldecode;
+local urlencode = require "net.http".urlencode;
 local is_contact_pending_out = require "util.rostermanager".is_contact_pending_out;
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 local generate = require "util.auxiliary".generate_secret;

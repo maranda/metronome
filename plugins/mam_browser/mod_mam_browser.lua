@@ -10,7 +10,7 @@ local http_event = require "net.http.server".fire_server_event;
 local ipairs, pairs, open, setmetatable, tonumber, tostring =
 	ipairs, pairs, io.open, setmetatable, tonumber, tostring;
 local jid_join = require "util.jid".join;
-local urldecode = http.urldecode;
+local urldecode = require "net.http".urldecode;
 local generate = require "util.auxiliary".generate_secret;
 local test_password = require "core.usermanager".test_password;
 local dt = require "util.datetime".datetime;
