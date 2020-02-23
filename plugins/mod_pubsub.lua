@@ -7,6 +7,9 @@
 local hosts = hosts;
 local type = type;
 
+local storagemanager = require "core.storagemanager";
+local usermanager = require "core.usermanager";
+
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
 local jid_bare, jid_section = require "util.jid".bare, require "util.jid".section;

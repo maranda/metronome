@@ -6,6 +6,7 @@
 
 local hosts = hosts;
 local jid_bare, jid_join, jid_section = require "util.jid".bare, require "util.jid".join, require "util.jid".section;
+local storagemanager = require "core.storagemanager";
 
 local gdpr = storagemanager.open(module.host, "gdpr");
 

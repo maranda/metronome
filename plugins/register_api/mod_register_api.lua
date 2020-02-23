@@ -17,7 +17,8 @@ local ipairs, pairs, pcall, open, os_execute, os_time, setmt, tonumber =
       ipairs, pairs, pcall, io.open, os.execute, os.time, setmetatable, tonumber;
 local sha1 = require "util.hashes".sha1;
 local urldecode = http.urldecode;
-local usermanager = usermanager;
+local usermanager = require "core.usermanager";
+local storagemanager = require "core.storagemanager";
 local generate = require "util.auxiliary".generate_secret;
 local uuid = require "util.uuid".generate;
 local timer = require "util.timer";

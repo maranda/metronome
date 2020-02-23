@@ -8,8 +8,9 @@
 -- ** Copyright (c) 2009-2011, Florian Zeitz, Matthew Wild, Waqas Hussain
 
 if module:get_host_session().anonymous_host then
+	local unload = require "core.modulemanager".unload;
 	module:log("error", "Privacy Lists/Blocking Command won't be available on anonymous hosts as storage is explicitly disabled");
-	modulemanager.unload(module.host, module.name);
+	unload(module.host, module.name);
 	return;
 end
 

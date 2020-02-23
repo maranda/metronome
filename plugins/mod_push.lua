@@ -10,6 +10,7 @@ module:depends("stream_management");
 
 local ipairs, pairs, setmetatable, tostring = ipairs, pairs, setmetatable, tostring;
 
+local storagemanager = require "core.storagemanager";
 local st = require "util.stanza";
 local jid_join = require "util.jid".join;
 local jid_split = require "util.jid".split;

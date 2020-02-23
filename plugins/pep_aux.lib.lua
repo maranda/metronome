@@ -10,6 +10,7 @@ local tonumber, tostring, type, unpack =
 	tonumber, tostring, type, table.unpack or unpack;
 
 local log = require "util.logger".init("mod_pep");
+local storagemanager = require "core.storagemanager";
 local jid_bare = require "util.jid".bare;
 local jid_split = require "util.jid".split;
 local set_new = require "util.set".new;
@@ -17,7 +18,7 @@ local st = require "util.stanza";
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 local dataforms = require "util.dataforms";
 local encode_node = datamanager.path_encode;
-local um_is_admin = usermanager.is_admin;
+local um_is_admin = require "core.usermanager".is_admin;
 local fire_event = metronome.events.fire_event;
 local hosts = hosts;
 

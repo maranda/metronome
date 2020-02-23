@@ -11,6 +11,7 @@ module:set_global();
 module:depends("http_errors");
 
 local moduleapi = require "core.moduleapi";
+local portmanager = require "core.portmanager";
 local url_parse = require "socket.url".parse;
 local url_build = require "socket.url".build;
 

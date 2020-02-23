@@ -6,7 +6,7 @@
 
 if module:get_host_session().anonymous_host then
 	module:log("error", "Personal Eventing Protocol won't be available on anonymous hosts as storage is explicitly disabled");
-	modulemanager.unload(module.host, module.name);
+	require "core.modulemanager".unload(module.host, module.name);
 	return;
 end
 
@@ -23,7 +23,8 @@ local uuid_generate = require "util.uuid".generate;
 local calculate_hash = require "util.caps".calculate_hash;
 local encode_node = require "util.datamanager".path_encode;
 local get_path = require "util.datamanager".getpath;
-local um_user_exists = usermanager.user_exists;
+local um_user_exists = require "core.usermanager".user_exists;
+local storagemanager = require "core.storagemanager";
 
 local xmlns_pubsub = "http://jabber.org/protocol/pubsub";
 local xmlns_pubsub_owner = "http://jabber.org/protocol/pubsub#owner";

@@ -20,7 +20,7 @@ local st_clone, st_stanza, st_reply =
 local add_filter = require "util.filters".add_filter;
 local add_timer = require "util.timer".add_task;
 local dt = require "util.datetime".datetime;
-local destroy = sessionmanager.destroy_session;
+local destroy = require "core.sessionmanager".destroy_session;
 local uuid = require "util.uuid".generate;
 
 local fire_event = metronome.events.fire_event;

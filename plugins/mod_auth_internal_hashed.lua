@@ -7,6 +7,7 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2010-2013, Kim Alvefur, Matthew Wild, Tobias Markmann, Waqas Hussain
 
+local storagemanager = require "core.storagemanager";
 local log = require "util.logger".init("auth_internal_hashed");
 local getAuthenticationDatabase = require "util.sasl.scram".getAuthenticationDatabase;
 local generate_uuid = require "util.uuid".generate;

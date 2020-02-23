@@ -24,7 +24,7 @@ module:depends("bosh");
 
 local st = require "util.stanza";
 local uuid_generate = require "util.uuid".generate;
-local is_admin = usermanager.is_admin;
+local is_admin = require "core.usermanager".is_admin;
 local pubsub = require "util.pubsub";
 local jid_bare = require "util.jid".bare;
 local lfs = require "lfs";

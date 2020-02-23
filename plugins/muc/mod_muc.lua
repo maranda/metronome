@@ -38,6 +38,7 @@ local clone_table = require "util.auxiliary".clone_table;
 local id_gen = require "util.auxiliary".generate_shortid;
 local fire_event = metronome.events.fire_event;
 local um_is_admin = require "core.usermanager".is_admin;
+local storagemanager = require "core.storagemanager";
 local pairs, ipairs, next, now = pairs, ipairs, next, os.time;
 
 local config_store = storagemanager.open(muc_host, "config");

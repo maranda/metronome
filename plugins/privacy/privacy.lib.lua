@@ -9,6 +9,7 @@
 
 local st = require "util.stanza";
 local rostermanager = require "util.rostermanager";
+local storagemanager = require "core.storagemanager";
 local ipairs, pairs, tonumber, tostring, t_insert, t_remove, t_sort = 
 	ipairs, pairs, tonumber, tostring, table.insert, table.remove, table.sort;
 local jid_bare, jid_join, jid_split =

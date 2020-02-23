@@ -16,6 +16,7 @@ local usermanager_user_exists = require "core.usermanager".user_exists;
 local usermanager_create_user = require "core.usermanager".create_user;
 local usermanager_set_password = require "core.usermanager".set_password;
 local usermanager_delete_user = require "core.usermanager".delete_user;
+local storagemanager = require "core.storagemanager";
 local ipairs, os_time, pairs, t_concat, t_insert, t_remove, tostring =
 	ipairs, os.time, pairs, table.concat, table.insert, table.remove, tostring;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
