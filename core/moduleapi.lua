@@ -8,7 +8,7 @@
 -- ** Copyright (c) 2008-2013, Florian Zeitz, Kim Alvefur, Marco Cirillo, Matthew Wild
 
 local config = require "core.configmanager";
-local modulemanager = require "core.modulemanager";
+local modulemanager = modulemanager;
 local array = require "util.array";
 local set = require "util.set";
 local logger = require "util.logger";
