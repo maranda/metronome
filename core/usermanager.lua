@@ -185,17 +185,16 @@ local function account_type(user, host)
 	end
 end
 
-_M.initialize_host = initialize_host,
-_M.test_password = test_password,
-_M.get_password = get_password,
-_M.set_password = set_password,
-_M.user_exists = user_exists,
-_M.create_user = create_user,
-_M.delete_user = deleted_user,
-_M.get_sasl_handler = get_sasl_handlers,
-_M.get_provider = get_provider,
-_M.is_locked = is_locked,
-_M.is_admin = is_admin,
-_M.account_type = account_type
-
+_M.initialize_host = initialize_host;
+_M.test_password = test_password;
+_M.get_password = get_password;
+_M.set_password = set_password;
+_M.user_exists = user_exists;
+_M.create_user = create_user;
+_M.delete_user = deleted_user;
+_M.get_sasl_handler = get_sasl_handlers;
+_M.get_provider = get_provider;
+_M.is_locked = is_locked;
+_M.is_admin = is_admin;
+_M.account_type = account_type;
 return _M;
