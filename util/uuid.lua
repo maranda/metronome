@@ -45,6 +45,5 @@ local function generate()
 	-- generate RFC 4122 complaint UUIDs (version 4 - random)
 	return get_nibbles(8).."-"..get_nibbles(4).."-4"..get_nibbles(3).."-"..(get_twobits())..get_nibbles(3).."-"..get_nibbles(12);
 end
-seed = _seed;
 
-return { generate = generate, seed = seed };
+return { generate = generate, seed = _seed };
