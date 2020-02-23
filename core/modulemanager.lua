@@ -10,6 +10,7 @@
 local logger = require "util.logger";
 local log = logger.init("modulemanager");
 local config = require "core.configmanager";
+local api = require "core.moduleapi"; -- Module API container
 local pluginloader = require "util.pluginloader";
 local set = require "util.set";
 
@@ -34,12 +35,10 @@ local autoload_modules = { "router", "bind_session", "presence", "message", "iq"
 
 local _G = _G;
 
-local _ENV = nil;
-local _M = {};
-
-local api = _G.require "core.moduleapi"; -- Module API container
-
+local _ENV, _M = nil, {};
 local modulemap = { ["*"] = {} };
+
+local load_modules_for_host, load, unload, reload, get_module, get_items, get_modules, is_loaded, module_has_method, call_module_method;
 
 function load_modules_for_host(host)
 	local component = config.get(host, "component_module");
