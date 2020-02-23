@@ -12,6 +12,7 @@ local ipairs, pairs, setmetatable, next, tostring, type =
 local t_concat = table.concat;
 
 local _ENV = nil;
+local _M = {};
 
 local set_mt = {};
 function set_mt.__call(set, _, k)
