@@ -72,25 +72,23 @@ function _M.set(host, key, value, old_value)
 	return set(config, host, key, value);
 end
 
-do
-	local rel_path_start = ".."..path_sep;
-	function resolve_relative_path(parent_path, path)
-		if path then
-			parent_path = parent_path:gsub("%"..path_sep.."+$", "");
-			path = path:gsub("^%.%"..path_sep.."+", "");
-			
-			local is_relative;
-			if path_sep == "/" and path:sub(1,1) ~= "/" then
-				is_relative = true;
-			elseif path_sep == "\\" and (path:sub(1,1) ~= "/" and (path:sub(2,3) ~= ":\\" or path:sub(2,3) ~= ":/")) then
-				is_relative = true;
-			end
-			if is_relative then
-				return parent_path..path_sep..path;
-			end
+local rel_path_start = ".."..path_sep;
+local function resolve_relative_path(parent_path, path)
+	if path then
+		parent_path = parent_path:gsub("%"..path_sep.."+$", "");
+		path = path:gsub("^%.%"..path_sep.."+", "");
+	
+		local is_relative;
+		if path_sep == "/" and path:sub(1,1) ~= "/" then
+			is_relative = true;
+		elseif path_sep == "\\" and (path:sub(1,1) ~= "/" and (path:sub(2,3) ~= ":\\" or path:sub(2,3) ~= ":/")) then
+			is_relative = true;
 		end
-		return path;
-	end	
+		if is_relative then
+			return parent_path..path_sep..path;
+		end
+	end
+	return path;
 end
 
 local function glob_to_pattern(glob)
