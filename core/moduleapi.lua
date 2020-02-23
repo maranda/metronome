@@ -8,7 +8,6 @@
 -- ** Copyright (c) 2008-2013, Florian Zeitz, Kim Alvefur, Marco Cirillo, Matthew Wild
 
 local config = require "core.configmanager";
-local modulemanager = modulemanager;
 local array = require "util.array";
 local set = require "util.set";
 local logger = require "util.logger";
@@ -219,6 +218,7 @@ function api:require(lib, path)
 end
 
 function api:depends(name)
+	local modulemanager = require "core.modulemanager";
 	if not self.dependencies then
 		self.dependencies = {};
 		self:hook("module-reloaded", function (event)
@@ -398,6 +398,7 @@ function api:remove_item(key, value)
 end
 
 function api:get_items(key, host)
+	local modulemanager = require "core.modulemanager";
 	local result = modulemanager.get_items(key, host or self.host) or {};
 	return result;
 end
