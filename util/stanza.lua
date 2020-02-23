@@ -206,13 +206,13 @@ local function _dostring(t, buf, self, xml_escape, parentns)
 		t_insert(buf, "</"..name..">");
 	end
 end
-local function stanza_mt.__tostring(t)
+function stanza_mt.__tostring(t)
 	local buf = {};
 	_dostring(t, buf, _dostring, xml_escape, nil);
 	return t_concat(buf);
 end
 
-local function stanza_mt.top_tag(t)
+function stanza_mt.top_tag(t)
 	local attr_string = "";
 	if t.attr then
 		for k, v in pairs(t.attr) do if type(k) == "string" then attr_string = attr_string .. s_format(" %s='%s'", k, xml_escape(tostring(v))); end end
@@ -220,13 +220,13 @@ local function stanza_mt.top_tag(t)
 	return s_format("<%s%s>", t.name, attr_string);
 end
 
-local function stanza_mt.get_text(t)
+function stanza_mt.get_text(t)
 	if #t.tags == 0 then
 		return t_concat(t);
 	end
 end
 
-local function stanza_mt.get_error(stanza)
+function stanza_mt.get_error(stanza)
 	local type, condition, text;
 	
 	local error_tag = stanza:get_child("error");
