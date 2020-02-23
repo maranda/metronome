@@ -21,7 +21,7 @@ local event_base = server.event_base;
 local EVENT_LEAVE = (event.core and event.core.LEAVE) or -1;
 
 task_list = {};
-local _M;
+local _M = {};
 
 function _M.add_task(delay, callback, origin, host)
 	local uuid, event_handle = uuid();
