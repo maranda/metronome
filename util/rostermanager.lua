@@ -23,7 +23,7 @@ local um_user_exists = require "core.usermanager".user_exists;
 local st = require "util.stanza";
 local jid_split = require "util.jid".split;
 
-local _ENV, _M = nil;
+local _ENV, _M = nil, {};
 
 function _M.add_to_roster(session, jid, item)
 	if session.roster then
