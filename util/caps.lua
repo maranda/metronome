@@ -15,7 +15,7 @@ local ipairs = ipairs;
 
 local _ENV = nil;
 
-function calculate_hash(disco_info)
+local function calculate_hash(disco_info)
 	local identities, features, extensions = {}, {}, {};
 	for _, tag in ipairs(disco_info) do
 		if tag.name == "identity" then

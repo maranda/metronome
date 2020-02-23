@@ -14,6 +14,7 @@ local jid_section = require "util.jid".section;
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local load_roster = require "util.rostermanager".load_roster;
+local storagemanager = require "core.storagemanager";
 local check_policy = module:require("acdf_aux").check_policy;
 
 local ipairs, next, now, pairs, ripairs, t_insert, t_remove, tostring, type, unpack = 

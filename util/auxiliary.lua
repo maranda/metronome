@@ -11,10 +11,10 @@ local open, popen = io.open, io.popen;
 local base64 = require "util.encodings".base64.encode;
 local char, next, os_time, pairs, tonumber, tostring, type = string.char, next, os.time, pairs, tonumber, tostring, type;
 
-local _ENV = nil;
-local auxiliary = {};
+local _ENV, _M = nil, {};
+local clone_table;
 
-function auxiliary.read_version()
+function _M.read_version()
 	local version_file = open((CFG_SOURCEDIR or ".").."/metronome.version");
 	if version_file then
 		metronome.version = version_file:read("*a"):gsub("%s*$", "");
@@ -24,7 +24,7 @@ function auxiliary.read_version()
 	end
 end
 
-function auxiliary.get_openssl_version()
+function _M.get_openssl_version()
 	-- will possibly work only on linux likes which have a globally installed
 	-- openssl.
 	local version = popen("openssl version"):read();
@@ -36,7 +36,7 @@ function auxiliary.get_openssl_version()
 	end
 end
 
-function auxiliary.ripairs(t)
+function _M.ripairs(t)
 	local function reverse(t,index)
 		index = index-1;
 		local value = t[index];
@@ -46,7 +46,7 @@ function auxiliary.ripairs(t)
 	return reverse, t, #t+1;
 end
 
-function auxiliary.clone_table(t)
+function clone_table(t)
 	local clone = {};
 	for key, value in pairs(t) do
 		if type(value) == "table" then
@@ -58,7 +58,7 @@ function auxiliary.clone_table(t)
 	return clone;
 end
 
-function auxiliary.clean_table(t)
+function _M.clean_table(t)
 	for key, value in pairs(t) do
 		if type(value) == "table" and not next(value) then
 			t[key] = nil;
@@ -69,7 +69,7 @@ function auxiliary.clean_table(t)
 	end
 end
 
-function auxiliary.escape_magic_chars(string)
+function _M.escape_magic_chars(string)
 	-- escape magic characters
 	string = string:gsub("%(", "%%(")
 	string = string:gsub("%)", "%%)")
@@ -87,7 +87,7 @@ function auxiliary.escape_magic_chars(string)
 	return string
 end
 
-function auxiliary.html_escape(t)
+function _M.html_escape(t)
 	if t then
 		t = t:gsub("<", "&lt;");
 		t = t:gsub(">", "&gt;");
@@ -105,7 +105,7 @@ function auxiliary.html_escape(t)
 	return t;
 end
 
-function auxiliary.load_file(f, mode)
+function _M.load_file(f, mode)
 	local file, err, ret = open(f, mode or "r");
 	if file then
 		ret = file:read("*a");
@@ -114,7 +114,7 @@ function auxiliary.load_file(f, mode)
 	return ret, err;
 end
 
-function auxiliary.generate_secret(bytes)
+function _M.generate_secret(bytes)
 	local n, urandom = 0;
 	repeat
 		local f = open("/dev/urandom", "r");
@@ -128,9 +128,10 @@ function auxiliary.generate_secret(bytes)
 	return (urandom and base64(urandom)) or nil;
 end
 
-function auxiliary.generate_shortid()
+function _M.generate_shortid()
 	local bits = generate_secret(9);
 	return bits and bits:gsub("/", ""):gsub("%+", "") .. tostring(os_time()):match("%d%d%d%d$");
 end
 
-return auxiliary;
+_M.clone_table = clone_table;
+return _M;
