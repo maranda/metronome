@@ -53,7 +53,7 @@ local function add_rule(sink_config)
 	end
 end
 
-local function apply_sink_rules(sink_type)
+function apply_sink_rules(sink_type)
 	if type(logging_config) == "table" then
 		
 		for _, level in ipairs(logging_levels) do
