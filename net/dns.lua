@@ -74,9 +74,8 @@ local get, set = ztact.get, ztact.set;
 
 local default_timeout = 15;
 
-module('dns')
-local dns = _M;
-
+local _ENV = nil;
+local dns = {};
 
 -- Utility functions, types definition and class codes
 
