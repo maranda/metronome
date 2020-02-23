@@ -121,7 +121,7 @@ function get_levels(criteria, set)
 	return set;
 end
 
-function reload_logging()
+local function reload_logging()
 	local old_sink_types = {};
 	
 	for name, sink_maker in pairs(log_sink_types) do

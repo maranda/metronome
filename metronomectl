@@ -114,7 +114,7 @@ metronome.paths = { source = CFG_SOURCEDIR, config = CFG_CONFIGDIR,
 
 if metronome.installed then require "lfs".chdir(data_path); end
 
-require "core.loggingmanager"
+require "core.loggingmanager";
 
 dependencies.log_warnings();
 
