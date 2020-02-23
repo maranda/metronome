@@ -32,6 +32,8 @@ local requests = {}; -- Open requests
 
 local listener = { default_port = 80, default_mode = "*a" };
 
+local destroy_request;
+
 function listener.onconnect(conn)
 	local req = requests[conn];
 	local request_line = { req.method or "GET", " ", req.path, " HTTP/1.1\r\n" };
@@ -212,7 +214,7 @@ local function request(u, ex, callback)
 	return req;
 end
 
-local function destroy_request(request)
+function destroy_request(request)
 	if request.conn then
 		request.conn = nil;
 		request.handler:close();
