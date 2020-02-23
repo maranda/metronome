@@ -14,13 +14,14 @@ local get_time = require "socket".gettime;
 local uuid = require "util.uuid".generate;
 local pairs = pairs;
 
-local _ENV = nil;
+local _G, _ENV = _G, nil;
 
 local event = server.event;
 local event_base = server.event_base;
 local EVENT_LEAVE = (event.core and event.core.LEAVE) or -1;
 
-task_list = {};
+_G.task_list = {};
+local task_list = _G.task_list;
 local _M = {};
 
 function _M.add_task(delay, callback, origin, host)
