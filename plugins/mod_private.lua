@@ -16,7 +16,7 @@ end
 local _type = type;
 
 local st = require "util.stanza";
-local storagemanager = storagemanager;
+local storagemanager = require "core.storagemanager";
 
 local private = storagemanager.open(module.host, "private");
 

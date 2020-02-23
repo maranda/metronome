@@ -142,97 +142,87 @@ function form_t.data(layout, stanza)
 	return data;
 end
 
-local field_readers["text-single"] =
-	function (field_tag, required)
-		local data = field_tag:get_child_text("value");
-		if data and #data > 0 then
-			return data
-		elseif required then
-			return nil, "Required value missing";
+field_readers["text-single"] = function (field_tag, required)
+	local data = field_tag:get_child_text("value");
+	if data and #data > 0 then
+		return data
+	elseif required then
+		return nil, "Required value missing";
+	end
+end
+
+field_readers["text-private"] =	field_readers["text-single"];
+
+field_readers["jid-single"] = function (field_tag, required)
+	local raw_data = field_tag:get_child_text("value")
+	local data = jid_prep(raw_data);
+	if data and #data > 0 then
+		return data
+	elseif raw_data then
+		return nil, "Invalid JID: " .. raw_data;
+	elseif required then
+		return nil, "Required value missing";
+	end
+end
+
+field_readers["jid-multi"] = function (field_tag, required)
+	local result = {};
+	local err = {};
+	for value_tag in field_tag:childtags("value") do
+		local raw_value = value_tag:get_text();
+		local value = jid_prep(raw_value);
+		result[#result+1] = value;
+		if raw_value and not value then
+			err[#err+1] = ("Invalid JID: " .. raw_value);
 		end
 	end
-
-local field_readers["text-private"] =
-	field_readers["text-single"];
-
-local field_readers["jid-single"] =
-	function (field_tag, required)
-		local raw_data = field_tag:get_child_text("value")
-		local data = jid_prep(raw_data);
-		if data and #data > 0 then
-			return data
-		elseif raw_data then
-			return nil, "Invalid JID: " .. raw_data;
-		elseif required then
-			return nil, "Required value missing";
-		end
+	if #result > 0 then
+		return result, (#err > 0 and t_concat(err, "\n") or nil);
+	elseif required then
+		return nil, "Required value missing";
 	end
+end
 
-local field_readers["jid-multi"] =
-	function (field_tag, required)
-		local result = {};
-		local err = {};
-		for value_tag in field_tag:childtags("value") do
-			local raw_value = value_tag:get_text();
-			local value = jid_prep(raw_value);
-			result[#result+1] = value;
-			if raw_value and not value then
-				err[#err+1] = ("Invalid JID: " .. raw_value);
-			end
-		end
-		if #result > 0 then
-			return result, (#err > 0 and t_concat(err, "\n") or nil);
-		elseif required then
-			return nil, "Required value missing";
-		end
+field_readers["list-multi"] =	function (field_tag, required)
+	local result = {};
+	for value in field_tag:childtags("value") do
+		result[#result+1] = value:get_text();
 	end
+	return result, (required and #result == 0 and "Required value missing" or nil);
+end
 
-local field_readers["list-multi"] =
-	function (field_tag, required)
-		local result = {};
-		for value in field_tag:childtags("value") do
-			result[#result+1] = value:get_text();
-		end
-		return result, (required and #result == 0 and "Required value missing" or nil);
+field_readers["text-multi"] =	function (field_tag, required)
+	local data, err = field_readers["list-multi"](field_tag, required);
+	if data then
+		data = t_concat(data, "\n");
 	end
+	return data, err;
+end
 
-local field_readers["text-multi"] =
-	function (field_tag, required)
-		local data, err = field_readers["list-multi"](field_tag, required);
-		if data then
-			data = t_concat(data, "\n");
-		end
-		return data, err;
-	end
-
-local field_readers["list-single"] =
-	field_readers["text-single"];
+field_readers["list-single"] = field_readers["text-single"];
 
 local boolean_values = {
 	["1"] = true, ["true"] = true,
 	["0"] = false, ["false"] = false,
 };
 
-local field_readers["boolean"] =
-	function (field_tag, required)
-		local raw_value = field_tag:get_child_text("value");
-		local value = boolean_values[raw_value ~= nil and raw_value];
-		if value ~= nil then
-			return value;
-		elseif raw_value then
-			return nil, "Invalid boolean representation";
-		elseif required then
-			return nil, "Required value missing";
-		end
+field_readers["boolean"] = function (field_tag, required)
+	local raw_value = field_tag:get_child_text("value");
+	local value = boolean_values[raw_value ~= nil and raw_value];
+	if value ~= nil then
+		return value;
+	elseif raw_value then
+		return nil, "Invalid boolean representation";
+	elseif required then
+		return nil, "Required value missing";
 	end
+end
 
-local field_readers["hidden"] =
-	function (field_tag)
-		return field_tag:get_child_text("value");
-	end
+field_readers["hidden"] = function (field_tag)
+	return field_tag:get_child_text("value");
+end
 
 return { new = new };
-
 
 --[=[
 

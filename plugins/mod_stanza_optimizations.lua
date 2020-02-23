@@ -16,7 +16,7 @@ local jid_section = require "util.jid".section;
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 
-local storagemanager = storagemanager;
+local storagemanager = require "core.storagemanager";
 	
 module:add_feature("urn:xmpp:csi:0");
 module:add_feature("urn:xmpp:sift:2");
