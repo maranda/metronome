@@ -185,7 +185,7 @@ local function account_type(user, host)
 	end
 end
 
-_M.initialize_host = new_null_provider;
+_M.new_null_provider = new_null_provider;
 _M.initialize_host = initialize_host;
 _M.test_password = test_password;
 _M.get_password = get_password;
