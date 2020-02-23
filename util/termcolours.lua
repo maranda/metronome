@@ -14,7 +14,7 @@ local ipairs = ipairs;
 local io_write = io.write;
 
 local _ENV = nil;
-_M = {};
+local _M = {};
 
 local stylemap = {
 	reset = 0; bright = 1, dim = 2, underscore = 4, blink = 5, reverse = 7, hidden = 8;
