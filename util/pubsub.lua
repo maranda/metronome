@@ -6,6 +6,7 @@
 
 local datetime = require "util.datetime".datetime;
 local events = require "util.events";
+local array = require "util.array";
 local keys = require "util.iterators".keys;
 local st = require "util.stanza";
 local clean_table = require "util.auxiliary".clean_table;
