@@ -252,4 +252,5 @@ do
 	
 end
 
+_M.resolve_relative_path = resolve_relative_path;
 return _M;
