@@ -47,7 +47,7 @@ function throttle:poll(cost, split)
 	end
 end
 
-function create(max, period)
+local function create(max, period)
 	return setmetatable({ rate = max / period, max = max, t = 0, balance = max }, throttle_mt);
 end
 
