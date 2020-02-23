@@ -25,6 +25,7 @@ local metronome = metronome;
 local fire_event = metronome.events.fire_event;
 
 local _ENV, _M = nil, {};
+local register_service, unregister_service;
 
 --- Config
 
@@ -168,7 +169,7 @@ local function deactivate(service_name, service_info)
 	log("info", "Deactivated service '%s'", service_name or service_info.name);
 end
 
-local function register_service(service_name, service_info)
+function register_service(service_name, service_info)
 	table.insert(services[service_name], service_info);
 
 	if not active_services:get(service_name) then
@@ -183,7 +184,7 @@ local function register_service(service_name, service_info)
 	return true;
 end
 
-local function unregister_service(service_name, service_info)
+function unregister_service(service_name, service_info)
 	log("debug", "Unregistering service: %s", service_name);
 	local service_info_list = services[service_name];
 	for i, service in ipairs(service_info_list) do
