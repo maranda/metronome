@@ -29,7 +29,6 @@ local CFG_SOURCEDIR = _G.CFG_SOURCEDIR;
 local _G = _G;
 local metronome = metronome;
 
-local _ENV = nil;
 local _ctl = {};
 
 -- UI helpers
