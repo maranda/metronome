@@ -29,6 +29,8 @@ local getmetatable = getmetatable;
 local _ENV = nil;
 local _M = {};
 
+local retire_session;
+
 function _M.new_session(conn)
 	local session = { conn = conn, type = "c2s_unauthed", conntime = gettime() };
 	
@@ -61,7 +63,7 @@ local resting_session = { -- Resting, not dead
 		filter = function (type, data) return data; end;
 	}; resting_session.__index = resting_session;
 
-function _M.retire_session(session)
+function retire_session(session)
 	local log = session.log or log;
 	for k in pairs(session) do
 		if k ~= "log" and k ~= "id" and k ~= "ip" and k ~= "full_jid" and k ~= "username" and k ~= "host" then
@@ -205,4 +207,5 @@ function _M.send_to_interested_resources(user, host, stanza)
 	return count;
 end
 
+_M.retire_session = retire_session;
 return _M;
