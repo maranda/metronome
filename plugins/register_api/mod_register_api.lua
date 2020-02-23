@@ -320,6 +320,8 @@ end
 -- Adhoc Handlers
 
 if do_mail_verification then
+	local a_xmlns = "http://jabber.org/protocol/admin";
+	local c_xmlns = "http://jabber.org/protocol/commands";
 	local admin_xmlns = "http://metronome.im/protocol/register_api#change-mail-user";
 	local change_xmlns = "http://metronome.im/protocol/register_api#change-mail-self";
 
@@ -329,7 +331,7 @@ if do_mail_verification then
 	local admin_change_mail_layout = dataforms.new{
 		title = "Change associated account mail address";
 		instructions = "This command allows admins to change an associated E-Mail address hash for user accounts on this host.";
-		{ name = "FORM_TYPE", type = "hidden", value = command_xmlns };
+		{ name = "FORM_TYPE", type = "hidden", value = a_xmlns };
 		{ name = "username", type = "text-single", label = "Username" };
 		{ name = "mail", type = "text-single", label = "Associated E-Mail" };
 	};
@@ -337,7 +339,7 @@ if do_mail_verification then
 	local change_mail_layout = dataforms.new{
 		title = "Associate another mail address to the account";
 		instructions = "This command allows you to change the associated account's E-Mail address.";
-		{ name = "FORM_TYPE", type = "hidden", value = command_xmlns };
+		{ name = "FORM_TYPE", type = "hidden", value = c_xmlns };
 		{ name = "mail", type = "text-single", label = "Associated E-Mail" };
 	};
 

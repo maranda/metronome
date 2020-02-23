@@ -10,6 +10,7 @@ local jid_split = require "util.jid".split
 local jid_bare = require "util.jid".bare
 local jid_join = require "util.jid".join
 local st = require "util.stanza";
+local storagemanager = require "core.storagemanager";
 
 local auto_optin_host = module:get_option_string("auto_optin_host")
 local restrict_to_hosts = module:get_option_set("restrict_to_hosts")

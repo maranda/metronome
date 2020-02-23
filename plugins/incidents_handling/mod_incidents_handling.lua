@@ -8,6 +8,7 @@ module:depends("adhoc")
 
 local dataforms_new = require "util.dataforms".new
 local st = require "util.stanza"
+local storagemanager = require "core.storagemanager"
 local id_gen = require "util.auxiliary".generate_shortid
 
 local pairs, os_time, setmetatable = pairs, os.time, setmetatable

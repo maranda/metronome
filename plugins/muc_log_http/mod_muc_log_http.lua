@@ -25,6 +25,7 @@ local config_get = require "core.configmanager".get;
 local urldecode = require "net.http".urldecode;
 local html_escape = require "util.auxiliary".html_escape;
 local http_event = require "net.http.server".fire_server_event;
+local datamanager = require "util.datamanager";
 local data_load, data_getpath, data_stores, data_store_exists = 
 	datamanager.load, datamanager.getpath, datamanager.stores, datamanager.store_exists;
 local datastore = "muc_log";
