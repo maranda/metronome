@@ -25,7 +25,7 @@ local function new(layout)
 	return setmetatable(layout, form_mt);
 end
 
-local function form_t.form(layout, data, formtype)
+function form_t.form(layout, data, formtype)
 	local form = st.stanza("x", { xmlns = xmlns_forms, type = formtype or "form" });
 	if layout.title then
 		form:tag("title"):text(layout.title):up();
@@ -112,7 +112,7 @@ end
 
 local field_readers = {};
 
-local function form_t.data(layout, stanza)
+function form_t.data(layout, stanza)
 	local data = {};
 	local errors = {};
 
