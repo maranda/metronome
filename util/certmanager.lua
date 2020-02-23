@@ -140,7 +140,7 @@ function _M.reload_ssl_config()
 	default_ssl_config = configmanager.get("*", "ssl");
 end
 
-metronome.events.add_handler("config-reloaded", certmanager.reload_ssl_config);
+metronome.events.add_handler("config-reloaded", _M.reload_ssl_config);
 
 _M.get_ssl_config = get_ssl_config;
 return _M;
