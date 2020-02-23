@@ -27,7 +27,7 @@ local stanza_mt = { __type = "stanza" };
 stanza_mt.__index = stanza_mt;
 local stanza_mt = stanza_mt;
 
-function stanza(name, attr)
+local function stanza(name, attr)
 	local stanza = { name = name, attr = attr or {}, tags = {} };
 	return setmetatable(stanza, stanza_mt);
 end
