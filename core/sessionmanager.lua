@@ -26,9 +26,10 @@ local gettime = require "socket".gettime;
 
 local getmetatable = getmetatable;
 
-module "sessionmanager"
+local _ENV = nil;
+local _M = {};
 
-function new_session(conn)
+function _M.new_session(conn)
 	local session = { conn = conn, type = "c2s_unauthed", conntime = gettime() };
 	
 	local filter = initialize_filters(session);
@@ -60,7 +61,7 @@ local resting_session = { -- Resting, not dead
 		filter = function (type, data) return data; end;
 	}; resting_session.__index = resting_session;
 
-function retire_session(session)
+function _M.retire_session(session)
 	local log = session.log or log;
 	for k in pairs(session) do
 		if k ~= "log" and k ~= "id" and k ~= "ip" and k ~= "full_jid" and k ~= "username" and k ~= "host" then
@@ -73,7 +74,7 @@ function retire_session(session)
 	return setmetatable(session, resting_session);
 end
 
-function destroy_session(session, err)
+function _M.destroy_session(session, err)
 	if session.destroyed then return; end
 	if not session.detached then
 		(session.log or log)("debug", "Destroying session for %s (%s@%s)%s", session.full_jid or "(unknown)", session.username or "(unknown)", session.host or "(unknown)", err and (": "..err) or "");
@@ -101,7 +102,7 @@ function destroy_session(session, err)
 	retire_session(session);
 end
 
-function make_authenticated(session, username)
+function _M.make_authenticated(session, username)
 	username = nodeprep(username);
 	if not username or #username == 0 then return nil, "Invalid username"; end
 	session.username = username;
@@ -112,7 +113,7 @@ function make_authenticated(session, username)
 	return true;
 end
 
-function bind_resource(session, resource)
+function _M.bind_resource(session, resource)
 	if not session.username then return nil, "auth", "not-authorized", "Cannot bind resource before authentication"; end
 	if session.resource then return nil, "cancel", "already-bound", "Cannot bind multiple resources on a single connection"; end
 
@@ -174,7 +175,7 @@ function bind_resource(session, resource)
 	return true;
 end
 
-function send_to_available_resources(user, host, stanza)
+function _M.send_to_available_resources(user, host, stanza)
 	local jid = user.."@"..host;
 	local count = 0;
 	local user = bare_sessions[jid];
@@ -189,7 +190,7 @@ function send_to_available_resources(user, host, stanza)
 	return count;
 end
 
-function send_to_interested_resources(user, host, stanza)
+function _M.send_to_interested_resources(user, host, stanza)
 	local jid = user.."@"..host;
 	local count = 0;
 	local user = bare_sessions[jid];

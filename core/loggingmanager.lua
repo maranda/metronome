@@ -27,7 +27,7 @@ local metronome = metronome;
 
 _G.log = logger.init("general");
 
-module "loggingmanager"
+local _ENV = nil;
 
 local default_logging;
 local default_file_logging;
@@ -254,4 +254,7 @@ function register_sink_type(name, sink_maker)
 	return old_sink_maker;
 end
 
-return _M;
+return {
+	reload_logging = reload_logging,
+	register_sink_type = register_sink_type
+}

@@ -24,7 +24,7 @@ local NULL = {};
 local metronome = metronome;
 local fire_event = metronome.events.fire_event;
 
-module "portmanager";
+local _ENV = nil;
 
 --- Config
 
@@ -79,7 +79,7 @@ end
 
 --- Public API
 
-function activate(service_name)
+local function activate(service_name)
 	local service_info = services[service_name][1];
 	if not service_info then
 		return nil, "Unknown service: "..service_name;
@@ -158,7 +158,7 @@ function activate(service_name)
 	return true;
 end
 
-function deactivate(service_name, service_info)
+local function deactivate(service_name, service_info)
 	for name, interface, port, n, active_service
 		in active_services:iter(service_name or service_info and service_info.name, nil, nil, nil) do
 		if service_info == nil or active_service.service == service_info then
@@ -168,7 +168,7 @@ function deactivate(service_name, service_info)
 	log("info", "Deactivated service '%s'", service_name or service_info.name);
 end
 
-function register_service(service_name, service_info)
+local function register_service(service_name, service_info)
 	table.insert(services[service_name], service_info);
 
 	if not active_services:get(service_name) then
@@ -183,7 +183,7 @@ function register_service(service_name, service_info)
 	return true;
 end
 
-function unregister_service(service_name, service_info)
+local function unregister_service(service_name, service_info)
 	log("debug", "Unregistering service: %s", service_name);
 	local service_info_list = services[service_name];
 	for i, service in ipairs(service_info_list) do
@@ -198,7 +198,7 @@ function unregister_service(service_name, service_info)
 	fire_event("service-removed", { name = service_name, service = service_info });
 end
 
-function close(interface, port)
+local function close(interface, port)
 	local service, server = get_service_at(interface, port);
 	if not service then
 		return false, "port-not-open";
@@ -209,21 +209,30 @@ function close(interface, port)
 	return true;
 end
 
-function get_service_at(interface, port)
+local function get_service_at(interface, port)
 	local data = active_services:search(nil, interface, port)[1][1];
 	return data.service, data.server;
 end
 
-function get_service(service_name)
+local function get_service(service_name)
 	return services[service_name];
 end
 
-function get_active_services()
+local function get_active_services()
 	return active_services;
 end
 
-function get_registered_services()
+local function get_registered_services()
 	return services;
 end
 
+_M.activate = activate;
+_M.deactivate = deactivate;
+_M.register_service = register_service;
+_M.unregister_service = unregister_service;
+_M.close = close;
+_M.get_service_at = get_service_at;
+_M.get_service = get_service;
+_M.get_active_services = get_active_services;
+_M.get_registered_services = get_registered_services;
 return _M;

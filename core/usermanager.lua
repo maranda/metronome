@@ -25,9 +25,10 @@ local setmetatable = setmetatable;
 
 local default_provider = "internal_plain";
 
-module "usermanager"
+local _ENV = nil;
+local _M = {};
 
-function new_null_provider()
+local function new_null_provider()
 	local function dummy() return nil, "method not implemented"; end;
 	local function dummy_get_sasl_handler() return sasl_new(nil, {}); end
 	return setmetatable({name = "null", get_sasl_handler = dummy_get_sasl_handler}, {
@@ -37,7 +38,7 @@ end
 
 local provider_mt = { __index = new_null_provider() };
 
-function initialize_host(host)
+local function initialize_host(host)
 	local host_session = hosts[host];
 	if host_session.type ~= "local" then return; end
 	
@@ -67,27 +68,27 @@ metronome.events.add_handler("host-activated", initialize_host, 100);
 
 local host_unknown = "host unknown or deactivated";
 
-function test_password(username, host, password)
+local function test_password(username, host, password)
 	if hosts[host] then return hosts[host].users.test_password(username, password); end
 	return nil, host_unknown;
 end
 
-function get_password(username, host)
+local function get_password(username, host)
 	if hosts[host] then return hosts[host].users.get_password(username); end
 	return nil, host_unknown;
 end
 
-function set_password(username, password, host)
+local function set_password(username, password, host)
 	if hosts[host] then return hosts[host].users.set_password(username, password); end
 	return nil, host_unknown;
 end
 
-function user_exists(username, host)
+local function user_exists(username, host)
 	if hosts[host] then return hosts[host].users.user_exists(username); end
 	return nil, host_unknown;
 end
 
-function create_user(username, password, host, locked)
+local function create_user(username, password, host, locked)
 	local ok, err = hosts[host].users.create_user(username, password, locked);
 	if not ok then
 		return nil, err;
@@ -97,7 +98,7 @@ function create_user(username, password, host, locked)
 	end
 end
 
-function delete_user(username, host, source, reason)
+local function delete_user(username, host, source, reason)
 	local hostname = hosts[host];
 	local session = hostname.sessions and hostname.sessions[username];
 	local ok, err = hostname.users.delete_user(username);
@@ -110,26 +111,26 @@ function delete_user(username, host, source, reason)
 	return storagemanager.purge(username, host);
 end
 
-function get_sasl_handler(host, session)
+local function get_sasl_handler(host, session)
 	if hosts[host] then return hosts[host].users.get_sasl_handler(session); end
 	return nil, host_unknown;
 end
 
-function get_provider(host)
+local function get_provider(host)
 	return hosts[host] and hosts[host].users or nil;
 end
 
-function is_locked(username, host)
+local function is_locked(username, host)
 	if hosts[host] then return hosts[host].users.is_locked(username); end
 	return nil, host_unknown;
 end
 
-function unlock_user(username, host)
+local function unlock_user(username, host)
 	if hosts[host] then return hosts[host].users.unlock_user(username); end
 	return nil, host_unknown;
 end
 
-function is_admin(jid, host)
+local function is_admin(jid, host)
 	if host and not hosts[host] then return false; end
 	if type(jid) ~= "string" then return false; end
 
@@ -172,7 +173,7 @@ function is_admin(jid, host)
 	return is_admin or false;
 end
 
-function account_type(user, host)
+local function account_type(user, host)
 	local host_session = hosts[host];
 	if not host_session or host_session.type ~= "local" then return; end
 	if is_admin(jid_join(user, host), host) then
@@ -183,5 +184,18 @@ function account_type(user, host)
 		return "registered";
 	end
 end
+
+_M.initialize_host = initialize_host,
+_M.test_password = test_password,
+_M.get_password = get_password,
+_M.set_password = set_password,
+_M.user_exists = user_exists,
+_M.create_user = create_user,
+_M.delete_user = deleted_user,
+_M.get_sasl_handler = get_sasl_handlers,
+_M.get_provider = get_provider,
+_M.is_locked = is_locked,
+_M.is_admin = is_admin,
+_M.account_type = account_type
 
 return _M;

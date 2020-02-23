@@ -34,7 +34,8 @@ local autoload_modules = { "router", "bind_session", "presence", "message", "iq"
 
 local _G = _G;
 
-module "modulemanager"
+local _ENV = nil;
+local _M = {};
 
 local api = _G.require "core.moduleapi"; -- Module API container
 
@@ -311,4 +312,15 @@ function call_module_method(module, method, ...)
 	end
 end
 
+_M.load_modules_for_host = load_modules_for_host;
+_M.load = load;
+_M.unload = unload;
+_M.reload = reload;
+_M.get_module = get_module;
+_M.get_items = get_items;
+_M.get_modules = get_modules;
+_M.is_loaded = is_loaded;
+_M.module_has_method = module_has_method;
+_M.call_module_method = call_module_method;
 return _M;
+

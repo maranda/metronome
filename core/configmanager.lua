@@ -18,7 +18,8 @@ local envload = require"util.envload".envload;
 local lfs = require "lfs";
 local path_sep = package.config:sub(1,1);
 
-module "configmanager"
+local _ENV = nil;
+local _M = {};
 
 local parsers = {};
 
@@ -27,7 +28,7 @@ local config = setmetatable({ ["*"] = {} }, config_mt);
 
 local host_mt = { };
 
-function section_mt(section_name)
+function _M.section_mt(section_name)
 	return { 
 		__index = function (t, k)
 			local section = rawget(config["*"], section_name);
@@ -37,16 +38,16 @@ function section_mt(section_name)
 	};
 end
 
-function getconfig()
+function _M.getconfig()
 	return config;
 end
 
-function get(host, key, old_key)
+function _M.get(host, key, old_key)
 	if key == "core" then key = old_key; end
 	return config[host][key];
 end
 
-function is_host_defined(host)
+function _M.is_host_defined(host)
 	if host == "*" then 
 		return false;
 	else
@@ -104,7 +105,7 @@ local function glob_to_pattern(glob)
 	end).."$";
 end
 
-function load(filename, format)
+function _M.load(filename, format)
 	format = format or filename:match("%w+$");
 
 	if parsers[format] and parsers[format].load then
@@ -129,10 +130,10 @@ function load(filename, format)
 	end
 end
 
-function save(filename, format)
+function _M.save(filename, format)
 end
 
-function addparser(format, parser)
+function _M.addparser(format, parser)
 	if format and parser then
 		parsers[format] = parser;
 	end
