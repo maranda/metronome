@@ -7,9 +7,11 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2013, Florian Zeitz (rfc6724.lua)
 
-local match_prefix = require"util.ip".match_prefix;
-local compare_destination = require"util.ip".compare_destination;
-local compare_source = require"util.ip".compare_source;
+local match_prefix = require "util.ip".match_prefix;
+local compare_destination = require "util.ip".compare_destination;
+local compare_source = require "util.ip".compare_source;
+
+local ipairs = ipairs;
 
 local _ENV = nil;
 
