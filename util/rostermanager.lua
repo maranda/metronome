@@ -25,7 +25,7 @@ local jid_split = require "util.jid".split;
 
 local _ENV = nil;
 
-local save_roster, add_to_roster, roster_push, load_roster, get_readonly_rosters, get_readonly_item,
+local save_roster, add_to_roster, remove_from_roster, roster_push, load_roster, get_readonly_rosters, get_readonly_item,
 	process_inbound_subscription_approval, process_inbound_subscription_cancellation, process_inbound_unsubscribe,
 	is_contact_subscribed, is_contact_pending_in, set_contact_pending_in, is_contact_pending_out,
 	set_contact_pending_out, unsubscribe, subscribed, unsubscribed, process_outbound_subscription_request;
@@ -355,7 +355,7 @@ function process_outbound_subscription_request(username, host, jid)
 end
 
 return { 
-	add_to_roster, roster_push, load_roster, save_roster, get_readonly_rosters, get_readonly_item,
+	add_to_roster, remove_from_roster, roster_push, load_roster, save_roster, get_readonly_rosters, get_readonly_item,
 	process_inbound_subscription_approval, process_inbound_subscription_cancellation, process_inbound_unsubscribe,
 	is_contact_subscribed, is_contact_pending_in, set_contact_pending_in, is_contact_pending_out, set_contact_pending_out,
 	unsubscribe, subscribed, unsubscribed, process_outbound_subscription_request
