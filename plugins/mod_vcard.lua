@@ -13,6 +13,7 @@ end
 local ipairs, pairs, tostring = ipairs, pairs, tostring;
 
 local st = require "util.stanza";
+local datamanager = require "util.datamanager";
 local storagemanager = require "core.storagemanager";
 local jid_split = require "util.jid".split;
 local sha1 = require "util.hashes".sha1;
