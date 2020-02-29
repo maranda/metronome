@@ -77,13 +77,10 @@ local function process_message(origin, stanza, s, t)
 				end
 			end
 		elseif private then -- just strip the tag;
-			local index;
-			for i, tag in ipairs(stanza) do
-				if tag.name == "private" and tag.attr.xmlns == xmlns then 
-					index = i; t_remove(stanza, i); break; 
-				end
-			end
+			stanza:reset();
+			local index = stanza:get_index("private", xmlns);
 			t_remove(stanza.tags, index);
+			t_remove(stanza, index);
 		end
 	end
 end

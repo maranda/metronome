@@ -10,7 +10,7 @@
 local metronome = metronome;
 local _deps = {};
 
-local function softreq(...) local ok, lib =  pcall(require, ...); if ok then return lib; else return nil, lib; end end
+local function softreq(...) local ok, lib = pcall(require, ...); if ok then return lib; else return nil, lib; end end
 
 -- Required to be able to find packages installed with luarocks
 if not softreq "luarocks.loader" then -- LuaRocks 2.x

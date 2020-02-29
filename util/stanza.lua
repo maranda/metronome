@@ -76,6 +76,28 @@ function stanza_mt:add_direct_child(child)
 	t_insert(self, child);
 end
 
+function stanza_mt:get_index(name, xmlns)
+	for idx, tag in ipairs(self.tags) do
+		if xmlns and (tag.name == name and tag.attr.xmlns == xmlns) then
+			return idx;
+		elseif not xmlns and tag.name == name then
+			return idx;
+		end
+	end
+end
+
+function stanza_mt:get_last_tag_index(name, xmlns)
+	if self.last_add then
+		for idx, tag in ipairs(self.last_add[1]) do
+			if xmlns and (tag.name == name and tag.attr.xmlns == xmlns) then
+				return idx;
+			elseif not xmlns and tag.name == name then
+				return idx;
+			end
+		end
+	end
+end
+
 function stanza_mt:add_child(child)
 	local last_add = self.last_add;
 	(last_add and last_add[#last_add] or self):add_direct_child(child);

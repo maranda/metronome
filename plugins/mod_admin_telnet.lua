@@ -30,6 +30,7 @@ local set, array = require "util.set", require "util.array";
 local cert_verify_identity = require "util.x509".verify_identity;
 local envload = require "util.envload".envload;
 local envloadfile = require "util.envload".envloadfile;
+local pcall = pcall;
 local dns = require "net.dns";
 local st = require "util.stanza";
 local cm = require "core.configmanager";
@@ -40,6 +41,9 @@ local read_version = read_version;
 local commands = module:shared("commands")
 local def_env = module:shared("env");
 local default_env_mt = { __index = def_env };
+
+local ok, pposix = pcall(require, "util.pposix");
+if not ok then pposix = nil; end
 
 local strict_host_checks = module:get_option_boolean("admin_telnet_strict_host_checks", true)
 
