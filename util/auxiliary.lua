@@ -12,7 +12,7 @@ local base64 = require "util.encodings".base64.encode;
 local char, next, os_time, pairs, tonumber, tostring, type = string.char, next, os.time, pairs, tonumber, tostring, type;
 
 local _ENV, _M = nil, {};
-local clone_table;
+local clone_table, clean_table, generate_secret;
 
 function _M.read_version()
 	local version_file = open((CFG_SOURCEDIR or ".").."/metronome.version");
@@ -58,7 +58,7 @@ function clone_table(t)
 	return clone;
 end
 
-function _M.clean_table(t)
+function clean_table(t)
 	for key, value in pairs(t) do
 		if type(value) == "table" and not next(value) then
 			t[key] = nil;
@@ -114,7 +114,7 @@ function _M.load_file(f, mode)
 	return ret, err;
 end
 
-function _M.generate_secret(bytes)
+function generate_secret(bytes)
 	local n, urandom = 0;
 	repeat
 		local f = open("/dev/urandom", "r");
@@ -134,4 +134,6 @@ function _M.generate_shortid()
 end
 
 _M.clone_table = clone_table;
+_M.clean_table = clean_table;
+_M.generate_secret = generate_secret;
 return _M;
