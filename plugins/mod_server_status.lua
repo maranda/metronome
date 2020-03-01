@@ -187,9 +187,11 @@ local function forge_response_json()
 	sessions.s2s = { incoming = count_s2sin, outgoing = count_s2sout, bidi = count_bidi  }
 	
 	if pposix then
-		local info = pposix.meminfo()
-		result.memory = {} ; local memory = result.memory
-		memory.allocated = { bytes = info.allocated } ; memory.used = { bytes = info.used }
+		local info = pposix.meminfo and pposix.meminfo()
+		if info then
+			result.memory = {} ; local memory = result.memory
+			memory.allocated = { bytes = info.allocated } ; memory.used = { bytes = info.used }
+		end
 	end
 
 	if show_hosts then
