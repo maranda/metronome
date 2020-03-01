@@ -41,7 +41,7 @@
 #include <linux/falloc.h>
 #endif
 
-#if (defined(_SVID_SOURCE) && !defined(WITHOUT_MALLINFO))
+#if !defined(WITHOUT_MALLINFO) && defined(_GNU_SOURCE)
 	#include <malloc.h>
 	#define WITH_MALLINFO
 #endif
