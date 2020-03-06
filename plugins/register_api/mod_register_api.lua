@@ -33,7 +33,7 @@ module:depends("http");
 
 local auth_token = module:get_option_string("reg_api_auth_token");
 local secure = module:get_option_boolean("reg_api_secure", true);
-local base_path = module:get_option_string("reg_api_base", "/register_account/");
+local base_path = module:get_option_string("reg_api_base", "register_account/");
 local base_host = module:get_option_string("reg_api_urlhost", my_host);
 local throttle_time = module:get_option_number("reg_api_ttime", nil);
 local whitelist = module:get_option_set("reg_api_wl", {});
