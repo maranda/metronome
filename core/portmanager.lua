@@ -25,7 +25,7 @@ local metronome = metronome;
 local fire_event = metronome.events.fire_event;
 
 local _ENV, _M = nil, {};
-local close, register_service, unregister_service;
+local get_service_at, close, register_service, unregister_service;
 
 --- Config
 
@@ -210,7 +210,7 @@ function close(interface, port)
 	return true;
 end
 
-local function get_service_at(interface, port)
+function get_service_at(interface, port)
 	local data = active_services:search(nil, interface, port)[1][1];
 	return data.service, data.server;
 end
