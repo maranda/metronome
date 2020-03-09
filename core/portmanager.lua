@@ -25,7 +25,7 @@ local metronome = metronome;
 local fire_event = metronome.events.fire_event;
 
 local _ENV, _M = nil, {};
-local get_service_at, close, register_service, unregister_service;
+local close, register_service, unregister_service;
 
 --- Config
 
@@ -199,6 +199,11 @@ function unregister_service(service_name, service_info)
 	fire_event("service-removed", { name = service_name, service = service_info });
 end
 
+local function get_service_at(interface, port)
+	local data = active_services:search(nil, interface, port)[1][1];
+	return data.service, data.server;
+end
+
 function close(interface, port)
 	local service, server = get_service_at(interface, port);
 	if not service then
@@ -208,11 +213,6 @@ function close(interface, port)
 	active_services:remove(service.name, interface, port);
 	log("debug", "Removed listening service %s from [%s]:%d", service.name, interface, port);
 	return true;
-end
-
-function get_service_at(interface, port)
-	local data = active_services:search(nil, interface, port)[1][1];
-	return data.service, data.server;
 end
 
 local function get_service(service_name)
