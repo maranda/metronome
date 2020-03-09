@@ -25,7 +25,7 @@ local metronome = metronome;
 local fire_event = metronome.events.fire_event;
 
 local _ENV, _M = nil, {};
-local register_service, unregister_service;
+local close, register_service, unregister_service;
 
 --- Config
 
@@ -199,7 +199,7 @@ function unregister_service(service_name, service_info)
 	fire_event("service-removed", { name = service_name, service = service_info });
 end
 
-local function close(interface, port)
+function close(interface, port)
 	local service, server = get_service_at(interface, port);
 	if not service then
 		return false, "port-not-open";
