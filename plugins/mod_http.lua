@@ -13,12 +13,20 @@ module:depends("http_errors");
 local moduleapi = require "core.moduleapi";
 local portmanager = require "core.portmanager";
 local url_parse = require "socket.url".parse;
-local url_build = require "socket.url".build;
 
 local server = require "net.http.server";
 
 server.set_default_host(module:get_option_string("http_default_host"));
 server.set_alias_hosts(module:get_option_table("http_alias_hosts", {}));
+
+local function url_build(url)
+	if (url.scheme == "https" and url.port == 443) or (url.scheme = "http" a nd url.port == 80) then url.port = nil; end
+	url.path = url.path:gsub("^[/]+", "");
+	if url.port then
+		return url.scheme .. "://" .. url.host .. ":" .. url.port .. "/" .. url.path;
+	end
+	return url.scheme .. "://" .. url.host .. "/" .. url.path;
+end
 
 local function normalize_path(path)
 	if path:sub(-1,-1) == "/" then path = path:sub(1, -2); end
@@ -46,7 +54,7 @@ local function get_base_path(host_module, app_name, default_app_path)
 		or default_app_path); -- Default
 end
 
-local ports_by_scheme = { http = 80, https = 443, };
+local ports_by_scheme = { http = 80, https = 443 };
 
 -- Helper to deduce a module's external URL
 function moduleapi.http_url(module, app_name, default_path, default_host)
