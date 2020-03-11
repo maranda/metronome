@@ -20,7 +20,7 @@ server.set_default_host(module:get_option_string("http_default_host"));
 server.set_alias_hosts(module:get_option_table("http_alias_hosts", {}));
 
 local function url_build(url)
-	if (url.scheme == "https" and url.port == 443) or (url.scheme = "http" a nd url.port == 80) then url.port = nil; end
+	if (url.scheme == "https" and url.port == 443) or (url.scheme = "http" and url.port == 80) then url.port = nil; end
 	url.path = url.path:gsub("^[/]+", "");
 	if url.port then
 		return url.scheme .. "://" .. url.host .. ":" .. url.port .. "/" .. url.path;
