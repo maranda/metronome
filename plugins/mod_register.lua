@@ -36,7 +36,7 @@ local max_pass_len = module:get_option_number("register_max_pass_length", 30);
 local require_verification = module:get_option_boolean("register_require_verification", false);
 local register_tos = module:get_option_string("register_tos", "By registering you implicitly accept our terms of service.");
 
-local register_xmlns = register_xmlns;
+local register_xmlns = "jabber:iq:register";
 
 local field_map = {
 	username = { name = "username", type = "text-single", label = "Username", required = true };
