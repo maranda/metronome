@@ -99,7 +99,7 @@ registration_query:add_child(registration_form:form());
 
 module:add_feature(register_xmlns);
 
-local register_stream_feature = st.stanza("register", {xmlns = "http://jabber.org/features/iq-register"}):up();
+local register_stream_feature = st.stanza("register", { xmlns = "http://jabber.org/features/iq-register" }):up();
 module:hook("stream-features", function(event)
 	local session, features = event.origin, event.features;
 
@@ -135,7 +135,7 @@ local function handle_registration_stanza(event)
 	local query = stanza.tags[1];
 	if stanza.attr.type == "get" then
 		local reply = st.reply(stanza);
-		reply:tag("query", {xmlns = register_xmlns})
+		reply:tag("query", { xmlns = register_xmlns })
 			:tag("registered"):up()
 			:tag("username"):text(session.username):up()
 			:tag("password"):up();
