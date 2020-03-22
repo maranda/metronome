@@ -181,9 +181,10 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 				end
 			elseif self.profile["scram_"..hashprep(hash_name)] then
 				local stored_key, server_key, iteration_count, salt, state = self.profile["scram_"..hashprep(hash_name)](self, _state.name, self.realm);
-				if not stored_key or not server_key then return "failure", "temporary-auth-failure", "Missing "..hash_name.." keys"; end
-				if state == nil then return "failure", "not-authorized";
-				elseif state == false then return "failure", "account-disabled"; end
+				if state == nil then return "failure", "not-authorized"; elseif state == false then return "failure", "account-disabled"; end
+				if not stored_key or not server_key then
+					return "failure", "temporary-auth-failure", "Missing "..hash_name.." keys, please reset your password";
+				end
 				
 				_state.stored_key = stored_key;
 				_state.server_key = server_key;
