@@ -495,7 +495,7 @@ local function process_message(event, outbound)
 	local message, origin = event.stanza, event.origin;
 	if message.attr.type ~= "chat" and message.attr.type ~= "normal" then return; end
 	local body = message:child_with_name("body");
-	local html = message:child("html", xhtml_xmlns);
+	local html = message:get_child("html", xhtml_xmlns);
 	local omemo = message:get_child("encrypted", omemo_xmlns);
 	local openpgp = message:get_child("openpgp", openpgp_xmlns);
 	local marker = message:child_with_ns(markers_xmlns);
