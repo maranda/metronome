@@ -99,7 +99,7 @@ local function iq_handler(event)
 	if (tag.name ~= "data" and tag.attr.xmlns ~= bob_xmlns) or not cid then return; end
 
 	if stanza.attr.type == "result" then cache_data(tag); end
-	if stanza.attr.type	== "get" then
+	if stanza.attr.type == "get" then
 		local cached = bob_cache:get(cid);
 		if not cached then
 			if queried[cid] then
