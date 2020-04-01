@@ -32,6 +32,7 @@ local lmc_xmlns = "urn:xmpp:message-correct:0";
 local sid_xmlns = "urn:xmpp:sid:0";
 local omemo_xmlns = "eu.siacs.conversations.axolotl";
 local openpgp_xmlns = "urn:xmpp:openpgp:0";
+local xhtml_xmlns = "http://www.w3.org/1999/xhtml";
 
 local mod_host = module:get_host();
 local host_object = module:get_host_session();
@@ -47,6 +48,7 @@ store_elements:add("openpgp");
 store_elements:add("securitylabel");
 store_elements:add("received");
 store_elements:remove("body");
+store_elements:remove("html");
 store_elements:remove("origin-id");
 store_elements:remove("replace");
 
@@ -74,13 +76,14 @@ function log_if_needed(e)
 				return;
 			end
 			
-			local body, subject, omemo, openpgp =
+			local body, subject, omemo, html, openpgp =
 				stanza:child_with_name("body"),
 				stanza:child_with_name("subject"),
 				stanza:get_child("encrypted", omemo_xmlns),
+				stanza:get_child("html", xhtml_xmlns),
 				stanza:get_child("openpgp", omemo_xmlns);
 			
-			if (not body and not subject and not omemo and not openpgp) or
+			if (not body and not subject and not omemo and not html and not openpgp) or
 				stanza:get_child("no-store", hints_xmlns) or
 				stanza:get_child("no-permanent-storage", hints_xmlns) then
 				return;
@@ -131,13 +134,14 @@ function log_if_needed(e)
 				local tags = {};
 				local elements = stanza.tags;
 				for i = 1, #elements do
-					if store_elements:contains(elements[i].name) then
-						if elements[i].name == "securitylabel" and elements[i].attr.xmlns == labels_xmlns then
-							local text = elements[i]:get_child_text("displaymarking");
+					local element = elements[i];
+					if store_elements:contains(element.name) or (element.name == "html" and html) then
+						if element.name == "securitylabel" and element.attr.xmlns == labels_xmlns then
+							local text = element:get_child_text("displaymarking");
 							data_entry.label_actions = get_actions(mod_host, text);
 							data_entry.label_name = text;
 						end
-						t_insert(tags, deserialize(elements[i]));
+						t_insert(tags, deserialize(element));
 					end
 				end
 				if not next(tags) then

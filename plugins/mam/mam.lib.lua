@@ -33,10 +33,10 @@ local markers_xmlns = "urn:xmpp:chat-markers:0";
 local sid_xmlns = "urn:xmpp:sid:0";
 local omemo_xmlns = "eu.siacs.conversations.axolotl";
 local openpgp_xmlns = "urn:xmpp:openpgp:0";
+local xhtml_xmlns = "http://www.w3.org/1999/xhtml";
 
 local store_time = module:get_option_number("mam_save_time", 300);
 local stores_cap = module:get_option_number("mam_stores_cap", 10000);
-local max_length = module:get_option_number("mam_message_max_length", 3000);
 local store_elements = module:get_option_set("mam_allowed_elements", {});
 local unload_cache_time = module:get_option_number("mam_unload_cache_time", 3600);
 
@@ -57,6 +57,7 @@ store_elements:add("securitylabel");
 store_elements:remove("acknowledged");
 store_elements:remove("body");
 store_elements:remove("displayed");
+store_elements:remove("html");
 store_elements:remove("markable");
 store_elements:remove("origin-id");
 store_elements:remove("received");
@@ -494,12 +495,13 @@ local function process_message(event, outbound)
 	local message, origin = event.stanza, event.origin;
 	if message.attr.type ~= "chat" and message.attr.type ~= "normal" then return; end
 	local body = message:child_with_name("body");
+	local html = message:child("html", xhtml_xmlns);
 	local omemo = message:get_child("encrypted", omemo_xmlns);
 	local openpgp = message:get_child("openpgp", openpgp_xmlns);
 	local marker = message:child_with_ns(markers_xmlns);
 	local marker_id = marker and marker.attr.id;
 	local markable;
-	if not body and not marker and not omemo and not openpgp then
+	if not body and not html and not marker and not omemo and not openpgp then
 		return; 
 	else
 		if message:get_child("no-store", hints_xmlns) or message:get_child("no-permanent-storage", hints_xmlns) then
@@ -507,7 +509,6 @@ local function process_message(event, outbound)
 		end
 		if body then
 			body = body:get_text() or "";
-			if body:len() > max_length then return; end
 			-- COMPAT, Drop OTR/E2E messages for clients not implementing XEP-334
 			if message:get_child("c", e2e_xmlns) or body:match("^%?OTR%:[^%s]*%.$") then return; end
 		end
@@ -549,7 +550,8 @@ local function process_message(event, outbound)
 		local tags = {};
 		local elements = message.tags;
 		for i = 1, #elements do
-			if store_elements:contains(elements[i].name) then tags[#tags + 1] = elements[i]; end
+			local element = elements[i];
+			if store_elements:contains(element.name) or (element.name == "html" and html) then tags[#tags + 1] = element; end
 		end
 		if not next(tags) then tags = nil; end
 
