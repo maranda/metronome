@@ -156,7 +156,7 @@ local function handle_user_avatar(event)
 					:tag("TYPE"):text(type):up()
 					:tag("BINVAL"):text(data):up():up();
 			else
-				vCard = st.stanza("vcard", { xmlns = "vcard-temp" })
+				vCard = st.stanza("vCard", { xmlns = "vcard-temp" })
 					:tag("PHOTO")
 						:tag("TYPE"):text(type):up()
 						:tag("BINVAL"):text(data):up():up();
