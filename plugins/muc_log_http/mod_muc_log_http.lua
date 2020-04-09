@@ -559,4 +559,13 @@ function module.load()
 			["GET /*"] = handle_request
 		}
 	});
+
+	module:hook("muc-disco-info-extended", function(room, form)
+		local layout, node = form.layout, split_jid(room.jid);
+		layout[#layout + 1] = { 
+			name = "muc#roominfo_logs",
+			label = "Web URL to access room logs",
+			value = module:http_url(nil, url_base .. "/" .. node .. "/", config.http_host)
+		};
+	end, 100);
 end
