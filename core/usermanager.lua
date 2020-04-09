@@ -196,6 +196,7 @@ _M.delete_user = delete_user;
 _M.get_sasl_handler = get_sasl_handler;
 _M.get_provider = get_provider;
 _M.is_locked = is_locked;
+_M.unlock_user = unlock_user;
 _M.is_admin = is_admin;
 _M.account_type = account_type;
 return _M;
