@@ -7,6 +7,7 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2010-2013, Kim Alvefur, Matthew Wild, Tobias Markmann, Waqas Hussain
 
+local storagemanager = require "core.storagemanager";
 local log = require "util.logger".init("auth_internal_hashed");
 local getAuthenticationDatabase = require "util.sasl.scram".getAuthenticationDatabase;
 local generate_uuid = require "util.uuid".generate;
@@ -117,7 +118,7 @@ function new_hashpass_provider(host)
 			return nil, "Auth failed, invalid username";
 		elseif account and account.locked then
 			account.locked = nil;
-			local bare_session = module:get_bare_session(username.."@"..host);
+			local bare_session = module:get_bare_session(username);
 			if bare_session then
 				for _, session in pairs(bare_session.sessions) do
 					session.locked = nil;

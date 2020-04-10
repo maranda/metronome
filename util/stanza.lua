@@ -21,13 +21,13 @@ end
 
 local xmlns_stanzas = "urn:ietf:params:xml:ns:xmpp-stanzas";
 
-module "stanza"
+local _ENV = nil;
 
-stanza_mt = { __type = "stanza" };
+local stanza_mt = { __type = "stanza" };
 stanza_mt.__index = stanza_mt;
 local stanza_mt = stanza_mt;
 
-function stanza(name, attr)
+local function stanza(name, attr)
 	local stanza = { name = name, attr = attr or {}, tags = {} };
 	return setmetatable(stanza, stanza_mt);
 end
@@ -74,6 +74,28 @@ function stanza_mt:add_direct_child(child)
 		t_insert(self.tags, child);
 	end
 	t_insert(self, child);
+end
+
+function stanza_mt:get_index(name, xmlns)
+	for idx, tag in ipairs(self.tags) do
+		if xmlns and (tag.name == name and tag.attr.xmlns == xmlns) then
+			return idx;
+		elseif not xmlns and tag.name == name then
+			return idx;
+		end
+	end
+end
+
+function stanza_mt:get_last_tag_index(name, xmlns)
+	if self.last_add then
+		for idx, tag in ipairs(self.last_add[1]) do
+			if xmlns and (tag.name == name and tag.attr.xmlns == xmlns) then
+				return idx;
+			elseif not xmlns and tag.name == name then
+				return idx;
+			end
+		end
+	end
 end
 
 function stanza_mt:add_child(child)
@@ -170,12 +192,9 @@ function stanza_mt:maptags(callback)
 	return self;
 end
 
-local xml_escape
-do
-	local escape_table = { ["'"] = "&apos;", ["\""] = "&quot;", ["<"] = "&lt;", [">"] = "&gt;", ["&"] = "&amp;" };
-	function xml_escape(str) return (s_gsub(str, "['&<>\"]", escape_table)); end
-	_M.xml_escape = xml_escape;
-end
+local xml_escape;
+local escape_table = { ["'"] = "&apos;", ["\""] = "&quot;", ["<"] = "&lt;", [">"] = "&gt;", ["&"] = "&amp;" };
+function xml_escape(str) return (s_gsub(str, "['&<>\"]", escape_table)); end
 
 local function _dostring(t, buf, self, xml_escape, parentns)
 	local nsid = 0;
@@ -250,15 +269,13 @@ function stanza_mt.get_error(stanza)
 	return type, condition or "undefined-condition", text;
 end
 
-do
-	local id = 0;
-	function new_id()
-		id = id + 1;
-		return "lx"..id;
-	end
+local id = 0;
+local function new_id()
+	id = id + 1;
+	return "lx"..id;
 end
 
-function preserialize(stanza)
+local function preserialize(stanza)
 	local s = { name = stanza.name, attr = stanza.attr };
 	for _, child in ipairs(stanza) do
 		if type(child) == "table" then
@@ -270,7 +287,7 @@ function preserialize(stanza)
 	return s;
 end
 
-function deserialize(stanza)
+local function deserialize(stanza)
 	-- Set metatable
 	if stanza then
 		local attr = stanza.attr;
@@ -321,37 +338,35 @@ local function _clone(stanza)
 	end
 	return setmetatable(new, stanza_mt);
 end
-clone = _clone;
+local clone = _clone;
 
-function message(attr, body)
+local function message(attr, body)
 	if not body then
 		return stanza("message", attr);
 	else
 		return stanza("message", attr):tag("body"):text(body):up();
 	end
 end
-function iq(attr)
+local function iq(attr)
 	if attr and not attr.id then attr.id = new_id(); end
 	return stanza("iq", attr or { id = new_id() });
 end
 
-function reply(orig)
+local function reply(orig)
 	return stanza(orig.name, orig.attr and { to = orig.attr.from, from = orig.attr.to, id = orig.attr.id, type = ((orig.name == "iq" and "result") or orig.attr.type) });
 end
 
-do
-	local xmpp_stanzas_attr = { xmlns = xmlns_stanzas };
-	function error_reply(orig, type, condition, message)
-		local t = reply(orig);
-		t.attr.type = "error";
-		t:tag("error", {type = type}) --COMPAT: Some day xmlns:stanzas goes here
-			:tag(condition, xmpp_stanzas_attr):up();
-		if (message) then t:tag("text", xmpp_stanzas_attr):text(message):up(); end
-		return t; -- stanza ready for adding app-specific errors
-	end
+local xmpp_stanzas_attr = { xmlns = xmlns_stanzas };
+local function error_reply(orig, type, condition, message)
+	local t = reply(orig);
+	t.attr.type = "error";
+	t:tag("error", {type = type}) --COMPAT: Some day xmlns:stanzas goes here
+		:tag(condition, xmpp_stanzas_attr):up();
+	if (message) then t:tag("text", xmpp_stanzas_attr):text(message):up(); end
+	return t; -- stanza ready for adding app-specific errors
 end
 
-function presence(attr)
+local function presence(attr)
 	return stanza("presence", attr);
 end
 
@@ -395,4 +410,17 @@ else
 	stanza_mt.pretty_top_tag = stanza_mt.top_tag;
 end
 
-return _M;
+return {
+	stanza = stanza,
+	stanza_mt = stanza_mt,
+	xml_escape = xml_escape,
+	new_id = new_id,
+	preserialize = preserialize,
+	deserialize = deserialize,
+	clone = clone,
+	message = message,
+	iq = iq,
+	reply = reply,
+	error_reply = error_reply,
+	presence = presence
+};

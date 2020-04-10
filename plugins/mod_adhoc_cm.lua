@@ -13,6 +13,7 @@ local jid_split = require "util.jid".prepped_split;
 local extract_data = module:require("sasl_aux").extract_data;
 local get_address = module:require("sasl_aux").get_address;
 local user_exists = require "core.usermanager".user_exists;
+local storagemanager = require "core.storagemanager";
 
 local t_insert, time = table.insert, os.time;
 

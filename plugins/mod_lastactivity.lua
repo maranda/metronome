@@ -11,6 +11,7 @@ local st = require "util.stanza";
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 local jid_bare = require "util.jid".bare;
 local jid_section = require "util.jid".section;
+local storagemanager = require "core.storagemanager";
 local module_host = module.host;
 
 local lastactivity = storagemanager.open(module_host, "last_activity");

@@ -10,6 +10,7 @@ module:depends("adhoc");
 
 local st = require "util.stanza";
 local dataforms = require "util.dataforms";
+local storagemanager = require "core.storagemanager";
 local jid_split = require "util.jid".split;
 local my_host = module.host;
 local NULL = {};

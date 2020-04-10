@@ -18,7 +18,8 @@ local envload = require"util.envload".envload;
 local lfs = require "lfs";
 local path_sep = package.config:sub(1,1);
 
-module "configmanager"
+local _ENV = nil;
+local _M = {};
 
 local parsers = {};
 
@@ -27,7 +28,7 @@ local config = setmetatable({ ["*"] = {} }, config_mt);
 
 local host_mt = { };
 
-function section_mt(section_name)
+function _M.section_mt(section_name)
 	return { 
 		__index = function (t, k)
 			local section = rawget(config["*"], section_name);
@@ -37,16 +38,16 @@ function section_mt(section_name)
 	};
 end
 
-function getconfig()
+function _M.getconfig()
 	return config;
 end
 
-function get(host, key, old_key)
+function _M.get(host, key, old_key)
 	if key == "core" then key = old_key; end
 	return config[host][key];
 end
 
-function is_host_defined(host)
+function _M.is_host_defined(host)
 	if host == "*" then 
 		return false;
 	else
@@ -71,25 +72,23 @@ function _M.set(host, key, value, old_value)
 	return set(config, host, key, value);
 end
 
-do
-	local rel_path_start = ".."..path_sep;
-	function resolve_relative_path(parent_path, path)
-		if path then
-			parent_path = parent_path:gsub("%"..path_sep.."+$", "");
-			path = path:gsub("^%.%"..path_sep.."+", "");
-			
-			local is_relative;
-			if path_sep == "/" and path:sub(1,1) ~= "/" then
-				is_relative = true;
-			elseif path_sep == "\\" and (path:sub(1,1) ~= "/" and (path:sub(2,3) ~= ":\\" or path:sub(2,3) ~= ":/")) then
-				is_relative = true;
-			end
-			if is_relative then
-				return parent_path..path_sep..path;
-			end
+local rel_path_start = ".."..path_sep;
+local function resolve_relative_path(parent_path, path)
+	if path then
+		parent_path = parent_path:gsub("%"..path_sep.."+$", "");
+		path = path:gsub("^%.%"..path_sep.."+", "");
+	
+		local is_relative;
+		if path_sep == "/" and path:sub(1,1) ~= "/" then
+			is_relative = true;
+		elseif path_sep == "\\" and (path:sub(1,1) ~= "/" and (path:sub(2,3) ~= ":\\" or path:sub(2,3) ~= ":/")) then
+			is_relative = true;
 		end
-		return path;
-	end	
+		if is_relative then
+			return parent_path..path_sep..path;
+		end
+	end
+	return path;
 end
 
 local function glob_to_pattern(glob)
@@ -104,7 +103,7 @@ local function glob_to_pattern(glob)
 	end).."$";
 end
 
-function load(filename, format)
+function _M.load(filename, format)
 	format = format or filename:match("%w+$");
 
 	if parsers[format] and parsers[format].load then
@@ -129,10 +128,10 @@ function load(filename, format)
 	end
 end
 
-function save(filename, format)
+function _M.save(filename, format)
 end
 
-function addparser(format, parser)
+function _M.addparser(format, parser)
 	if format and parser then
 		parsers[format] = parser;
 	end
@@ -253,4 +252,5 @@ do
 	
 end
 
+_M.resolve_relative_path = resolve_relative_path;
 return _M;

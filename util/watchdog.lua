@@ -11,7 +11,7 @@ local timer = require "util.timer";
 local setmetatable = setmetatable;
 local os_time = os.time;
 
-module "watchdog"
+local _ENV = nil;
 
 local watchdog_methods = {};
 local watchdog_mt = { __index = watchdog_methods };
@@ -40,4 +40,4 @@ function watchdog_methods:cancel()
 	self.last_reset = nil;
 end
 
-return _M;
+return { new = new };

@@ -11,23 +11,11 @@ local datamanager = require "util.datamanager";
 local st = require "util.stanza";
 local datetime = require "util.datetime";
 local ipairs = ipairs;
-local jid_split = require "util.jid".split;
-local limit = module:get_option_number("offline_store_limit", 40);
+local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
+local mam_add_to_store = module:require("mam", "mam").add_to_store;
+local limit = module:get_option_number("offline_store_limit", 100);
 
 module:add_feature("msgoffline");
-
-module:hook("message/offline/overcap", function(event)
-	local node = event.node;
-	local archive = datamanager.list_load(node, module.host, "offline");
-	
-	if not archive then
-		return false;
-	elseif #archive >= limit then
-		return true;
-	end
-	
-	return false;
-end);
 
 module:hook("message/offline/handle", function(event)
 	local origin, stanza = event.origin, event.stanza;
@@ -40,10 +28,15 @@ module:hook("message/offline/handle", function(event)
 		else
 			node, host = origin.username, origin.host;
 		end
-	
+
 		local archive = datamanager.list_load(node, host, "offline");
+		local mam_store, handled_by_mam = module:fire_event("mam-get-store", node);
+		if mam_store and mam_add_to_store(mam_store, node, jid_bare(to)) then handled_by_mam = true; end
+		
 		if archive and #archive >= limit then
-			origin.send(st.error_reply(stanza, "cancel", "service-unavailable", "User's offline message queue is full!"));
+			if not handled_by_mam then
+				origin.send(st.error_reply(stanza, "cancel", "service-unavailable", "User's offline message queue is full!"));
+			end
 			return true;
 		else
 			stanza.attr.stamp = datetime.datetime();
@@ -61,11 +54,13 @@ module:hook("message/offline/broadcast", function(event)
 
 	local data = datamanager.list_load(node, host, "offline");
 	if not data then return true; end
-	for _, stanza in ipairs(data) do
-		stanza = st.deserialize(stanza);
-		stanza:tag("delay", {xmlns = "urn:xmpp:delay", from = host, stamp = stanza.attr.stamp}):up(); -- XEP-0203
-		stanza.attr.stamp = nil;
-		origin.send(stanza);
+	if origin.bind_version ~= 2 then
+		for _, stanza in ipairs(data) do
+			stanza = st.deserialize(stanza);
+			stanza:tag("delay", {xmlns = "urn:xmpp:delay", from = host, stamp = stanza.attr.stamp}):up(); -- XEP-0203
+			stanza.attr.stamp = nil;
+			origin.send(stanza);
+		end
 	end
 	datamanager.list_store(node, host, "offline", nil);
 	return true;

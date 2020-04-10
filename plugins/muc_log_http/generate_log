@@ -75,14 +75,20 @@ day_t, day_m, day_mm, day_title = html_day.time, html_day.message, html_day.mess
 data = datamanager.load(node, host, "muc_log" .. "/" .. date);
 if not data then
 	ret = "";
-elseif data and #data <= 3000 then
+elseif data and #data <= 5000 then
 	for i, entry in ipairs(data) do
 		local label, actions, dont_add = entry.label_name, entry.label_actions;
 		if label and (not actions or actions == "none" or (type(actions) == "table" and actions.type == "groupchat")) then
 			dont_add = true;
 		end
 		if not dont_add then
-			local tmp = parse_message(entry.body, entry.subject, entry.time, entry.from, day_t, day_m, day_mm, day_title);
+			local body;
+			if not entry.body and entry.html then
+				body = "[This is XHTML-IM message without a plain body variant, can't show it]";
+			else
+				body = entry.body;
+			end
+			local tmp = parse_message(body, entry.subject, entry.time, entry.from, day_t, day_m, day_mm, day_title);
 			if tmp then ret = ret .. tmp; end
 		end
 	end

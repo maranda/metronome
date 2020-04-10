@@ -1,0 +1,6 @@
+This is an automated message from the account system, to associate this mail address with %JID%'s xmpp account please visit %URL% within 5 minutes.
+And input (copy and paste) the following token in the presented web form: %TOKEN%
+
+Regards.
+
+If you think you're not the recipient of this message or you received this by mistake please delete the message and possibly report the incident to us.

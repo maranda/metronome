@@ -15,6 +15,7 @@ local st = require "util.stanza";
 local jid_bare, jid_split = require "util.jid".bare, require "util.jid".split;
 local sha1 = require "util.hashes".sha1;
 local debase64 = require "util.encodings".base64.decode;
+local storagemanager = require "core.storagemanager";
 
 local room_icons = storagemanager.open(module.host, "room_icons");
 

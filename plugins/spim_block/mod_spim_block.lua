@@ -12,8 +12,8 @@ local pairs, next, open, os_time, t_concat, tonumber, tostring =
 local jid_bare, jid_join, jid_section, jid_split =
 	require "util.jid".bare, require "util.jid".join,
 	require "util.jid".section, require "util.jid".split;
-local urldecode = http.urldecode;
-local urlencode = http.urlencode;
+local urldecode = require "net.http".urldecode;
+local urlencode = require "net.http".urlencode;
 local is_contact_pending_out = require "util.rostermanager".is_contact_pending_out;
 local is_contact_subscribed = require "util.rostermanager".is_contact_subscribed;
 local generate = require "util.auxiliary".generate_secret;
@@ -31,8 +31,6 @@ allow_list = {};
 challenge_requests = setmetatable({}, { __mode = "v" });
 count = 0;
 
-local bare_sessions = bare_sessions;
-local full_sessions = full_sessions;
 local hosts = metronome.hosts;
 
 local recaptcha_key = module:get_option_string("spim_recaptcha_client_key");
@@ -135,7 +133,7 @@ local function check_recaptcha(response, ip, to, from, token)
 			if data then
 				local ret = json_decode(data);
 				if ret.success then
-					local bare_session = bare_sessions[to];
+					local bare_session = module:get_bare_session(to);
 					if not allow_list[to] then allow_list[to] = {}; end
 					allow_list[to][from] = true;
 					if not bare_session then
@@ -261,7 +259,7 @@ local function handle_incoming(event)
 				return send_message(origin, name, to, from, token);
 			end
 		else
-			local full_session = full_sessions[to];
+			local full_session = module:get_full_session(to);
 			if full_session then
 				if full_session.directed_bare[from_bare] then return; end
 				local token = generate_secret(9);
@@ -309,8 +307,8 @@ module:hook("message/full", handle_incoming, 100);
 module:hook("presence/bare", handle_incoming, 100);
 module:hook("resource-unbind", function(event)
 	local username, host = event.session.username, event.session.host;
-	local jid = username.."@"..host;
-	if not bare_sessions[jid] then
+	if not module:get_bare_session(username) then
+		local jid = jid_join(username, host);
 		module:log("debug", "removing SPIM exemptions of %s as all resources went offline", jid);
 		block_list[jid] = nil;
 		allow_list[jid] = nil;

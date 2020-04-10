@@ -11,3 +11,4 @@ metronome.cfg.lua
 *.log
 *.err
 *.debug
+.vs

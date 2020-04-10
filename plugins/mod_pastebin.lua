@@ -10,6 +10,7 @@
 local host_object = module:get_host_session();
 
 local st = require "util.stanza";
+local storagemanager = require "core.storagemanager";
 module:depends("http");
 local uuid_new = require "util.uuid".generate;
 local os_time = os.time;

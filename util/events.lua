@@ -13,9 +13,9 @@ local t_sort = table.sort;
 local setmetatable = setmetatable;
 local next = next;
 
-module "events"
+local _ENV = nil;
 
-function new()
+local function new()
 	local handlers = {};
 	local event_map = {};
 	local function _rebuild_index(handlers, event)
@@ -80,4 +80,5 @@ function new()
 	};
 end
 
-return _M;
+return { new = new };
+

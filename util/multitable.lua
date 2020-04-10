@@ -11,7 +11,7 @@ local select = select;
 local t_insert = table.insert;
 local unpack, pairs, next, type = table.unpack or unpack, pairs, next, type;
 
-module "multitable"
+local _ENV = nil;
 
 local function get(self, ...)
 	local t = self.data;
@@ -127,7 +127,7 @@ local function search_add(self, results, ...)
 	return results;
 end
 
-function iter(self, ...)
+local function iter(self, ...)
 	local query = { ... };
 	local maxdepth = select("#", ...);
 	local stack = { self.data };
@@ -162,7 +162,7 @@ function iter(self, ...)
 	return it, self;
 end
 
-function new()
+local function new()
 	return {
 		data = {};
 		get = get;
@@ -175,4 +175,4 @@ function new()
 	};
 end
 
-return _M;
+return { iter = iter, new = new };

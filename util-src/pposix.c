@@ -41,9 +41,13 @@
 #include <linux/falloc.h>
 #endif
 
-#if (defined(_SVID_SOURCE) && !defined(WITHOUT_MALLINFO))
+#if !defined(WITHOUT_MALLINFO) && defined(_GNU_SOURCE)
 	#include <malloc.h>
 	#define WITH_MALLINFO
+#endif
+
+#if (LUA_VERSION_NUM == 501)
+#define luaL_setfuncs(L, R, N) luaL_register(L, NULL, R)
 #endif
 
 /* Daemonization support */
@@ -702,6 +706,10 @@ int lc_fallocate(lua_State* L)
 
 int luaopen_util_pposix(lua_State *L)
 {
+#if (LUA_VERSION_NUM > 501)
+	luaL_checkversion(L);
+#endif
+
 	luaL_Reg exports[] = {
 		{ "abort", lc_abort },
 
@@ -742,7 +750,8 @@ int luaopen_util_pposix(lua_State *L)
 		{ NULL, NULL }
 	};
 
-	luaL_register(L, "pposix",  exports);
+	lua_newtable(L);
+	luaL_setfuncs(L, exports, 0);
 
 	lua_pushliteral(L, "pposix");
 	lua_setfield(L, -2, "_NAME");

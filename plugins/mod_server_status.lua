@@ -13,7 +13,7 @@ local show_hosts = module:get_option_array("server_status_show_hosts", nil)
 local show_comps = module:get_option_array("server_status_show_comps", nil)
 local json_output = module:get_option_boolean("server_status_json", false)
 local metronome = metronome
-local pposix = pposix
+local pposix = require "util.pposix";
 local hosts = metronome.hosts
 local NULL = {}
 
@@ -187,9 +187,11 @@ local function forge_response_json()
 	sessions.s2s = { incoming = count_s2sin, outgoing = count_s2sout, bidi = count_bidi  }
 	
 	if pposix then
-		local info = pposix.meminfo()
-		result.memory = {} ; local memory = result.memory
-		memory.allocated = { bytes = info.allocated } ; memory.used = { bytes = info.used }
+		local info = pposix.meminfo and pposix.meminfo()
+		if info then
+			result.memory = {} ; local memory = result.memory
+			memory.allocated = { bytes = info.allocated } ; memory.used = { bytes = info.used }
+		end
 	end
 
 	if show_hosts then

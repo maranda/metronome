@@ -58,6 +58,11 @@ local kickable_error_conditions = {
 	["malformed error"] = true;
 };
 
+local route_to_bare = module:get_option_table("muc_bare_routable_iq_payloads", {
+	["pubsub"] = "http://jabber.org/protocol/pubsub";
+	["vCard"] = "vcard-temp"
+});
+
 local function get_error_condition(stanza)
 	local _, condition = stanza:get_error();
 	return condition or "malformed error";
@@ -424,28 +429,85 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 					else -- change nick
 						local occupant = self._occupants[current_nick];
 						local is_multisession = next(occupant.sessions, next(occupant.sessions));
-						if self._occupants[to] or is_multisession then
-							module:log("debug", "%s couldn't change nick", current_nick);
-							local reply = st.error_reply(stanza, "cancel", "conflict"):up();
-							origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
+						local to_nick = jid_section(to, "resource");
+						if not to_nick then
+							module:log("debug", "%s sent a malformed nick change request!", current_nick);
+							origin.send(st.error_reply(stanza, "cancel", "jid-malformed"));
+						elseif self._occupants[to] then
+							local sessions = self._occupants[to].sessions;
+							if jid_bare(from) == jid_bare(next(sessions)) then
+								module:log("debug", "%s (%s) merging nick to %s", current_nick, occupant.jid, to);
+								local part = st.presence({type = "unavailable", from = current_nick})
+									:tag("status"):text("Merging to existing session"):up()
+									:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
+										:tag("item", {affiliation = occupant.affiliation or "none", role = occupant.role or "none"}):up();
+								if is_multisession then
+									occupant.sessions[from] = nil;
+								else
+									local parted = st.clone(part);
+									self._occupants[current_nick] = nil;
+									self:broadcast_except_nick(parted, current_nick);
+								end
+								local leave = st.clone(part);
+								leave.attr.from = to; leave.attr.to = from;
+								self:_route_stanza(leave);
+								t_remove(part, 1); t_remove(part.tags, 1);
+								part.tags[1].tags[1].attr.nick = to_nick;
+								part:tag("status", {code = "303"}):up()
+									:tag("status", {code = "110"}):up();
+								part.attr.to = from;
+								self:_route_stanza(part);
+								sessions[from] = pr;
+								self._jid_nick[from] = to;
+								local join = st.clone(pr)
+									:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"});
+								for jid in pairs(sessions) do
+									join:tag("item", {jid = jid, affiliation = occupant.affiliation or "none", role = occupant.role or "none"}):up();
+								end
+								join:tag("status", {code = "110"}):up();
+								join.attr.to = from; join.attr.from = to;
+								self:route_stanza(join);
+							else
+								module:log("debug", "%s couldn't change nick", current_nick);
+								local reply = st.error_reply(stanza, "cancel", "conflict"):up();
+								origin.send(reply:tag("x", {xmlns = "http://jabber.org/protocol/muc"}));
+							end
+						elseif is_multisession then
+							module:log("debug", "%s (%s) unmerging nick to %s", current_nick, occupant.jid, to);
+							occupant.sessions[from] = nil;
+							local new_jid = next(occupant.sessions);
+							local part = st.presence({type = "unavailable", from = current_nick, to = from})
+								:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
+									:tag("item", {affiliation = occupant.affiliation or "none", role = occupant.role or "none", nick = to_nick}):up()
+									:tag("status", {code = "303"}):up()
+									:tag("status", {code = "110"}):up();
+							self:_route_stanza(part);
+							self._occupants[to] = {
+								affiliation = occupant.affiliation, role = occupant.role, jid=from,
+								sessions = { [from] = pr }
+							};
+							self._jid_nick[from] = to;
+							local join = st.clone(pr);
+							join.attr.to = from; join.attr.from = to;
+							self:broadcast_presence(join, from);
+							local _next = st.clone(occupant.sessions[new_jid])
+								:tag("x", {xmlns = "http://jabber.org/protocol/muc#user"})
+									:tag("item", {affiliation = occupant.affiliation or "none", role = occupant.role or "none"});
+							_next.attr.from = current_nick;
+							self:broadcast_except_nick(_next, current_nick);
+							module:fire_event("muc-occupant-nick-unmerge", self, from, current_nick, to);
 						else
 							local data = self._occupants[current_nick];
-							local to_nick = jid_section(to, "resource");
-							if to_nick then
-								module:log("debug", "%s (%s) changing nick to %s", current_nick, data.jid, to);
-								local p = st.presence({type = "unavailable", from = current_nick});
-								self:broadcast_presence(p, from, "303", to_nick);
-								self._occupants[current_nick] = nil;
-								self._occupants[to] = data;
-								self._jid_nick[from] = to;
-								pr.attr.from = to;
-								self._occupants[to].sessions[from] = pr;
-								self:broadcast_presence(pr, from);
-								module:fire_event("muc-occupant-nick-change", self, from, current_nick, to);
-							else
-								module:log("debug", "%s sent a malformed nick change request!", current_nick);
-								origin.send(st.error_reply(stanza, "cancel", "jid-malformed"));
-							end
+							module:log("debug", "%s (%s) changing nick to %s", current_nick, data.jid, to);
+							local p = st.presence({type = "unavailable", from = current_nick});
+							self:broadcast_presence(p, from, "303", to_nick);
+							self._occupants[current_nick] = nil;
+							self._occupants[to] = data;
+							self._jid_nick[from] = to;
+							pr.attr.from = to;
+							self._occupants[to].sessions[from] = pr;
+							self:broadcast_presence(pr, from);
+							module:fire_event("muc-occupant-nick-change", self, from, current_nick, to);
 						end
 					end
 				else -- possible rejoin
@@ -546,12 +608,13 @@ function room_mt:handle_to_occupant(origin, stanza) -- PM, vCards, etc
 			module:log("debug", "%s sent private stanza to %s (%s)", from, to, o_data.jid);
 			if stanza.name == "iq" then
 				local id = stanza.attr.id;
-				if stanza.attr.type == "get" or stanza.attr.type == "set" then
+				if type == "get" or type == "set" then
 					stanza.attr.from, stanza.attr.to, stanza.attr.id = construct_stanza_id(self, stanza);
 				else
 					stanza.attr.from, stanza.attr.to, stanza.attr.id = deconstruct_stanza_id(self, stanza);
 				end
-				if type == "get" and stanza.tags[1].attr.xmlns == "vcard-temp" then
+				if (type == "get" or type == "set") and
+					route_to_bare[stanza.tags[1].name] == stanza.tags[1].attr.xmlns then
 					stanza.attr.to = jid_bare(stanza.attr.to);
 				end
 				if stanza.attr.id then self:_route_stanza(stanza); end
@@ -628,7 +691,7 @@ function room_mt:get_form_layout()
 			label = "Who May Discover Real JIDs?",
 			value = {
 				{ value = "moderators", label = "Moderators Only", default = self._data.whois == "moderators" },
-				{ value = "anyone",     label = "Anyone",          default = self._data.whois == "anyone" }
+				{ value = "anyone", label = "Anyone", default = self._data.whois == "anyone" }
 			}
 		},
 		{

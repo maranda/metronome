@@ -26,6 +26,7 @@ local host_object = module:get_host_session();
 local xmlns = "urn:xmpp:mam:2";
 local delay_xmlns = "urn:xmpp:delay";
 local forward_xmlns = "urn:xmpp:forward:0";
+local markers_xmlns = "urn:xmpp:chat-markers:0";
 
 local mamlib = module:require("mam", "mam");
 local validate_query = module:require("validate", "mam").validate_query;
@@ -74,6 +75,7 @@ end
 
 module:hook("muc-disco-info-features", function(room, reply)
 	reply:tag("feature", { var = xmlns }):up()
+	reply:tag("feature", { var = markers_xmlns }):up()
 end, -100);
 
 module:hook("muc-log-add-to-mamcache", function(room, entry)

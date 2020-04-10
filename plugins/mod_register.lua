@@ -16,6 +16,7 @@ local usermanager_user_exists = require "core.usermanager".user_exists;
 local usermanager_create_user = require "core.usermanager".create_user;
 local usermanager_set_password = require "core.usermanager".set_password;
 local usermanager_delete_user = require "core.usermanager".delete_user;
+local storagemanager = require "core.storagemanager";
 local ipairs, os_time, pairs, t_concat, t_insert, t_remove, tostring =
 	ipairs, os.time, pairs, table.concat, table.insert, table.remove, tostring;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
@@ -34,6 +35,8 @@ local min_pass_len = module:get_option_number("register_min_pass_length", 8);
 local max_pass_len = module:get_option_number("register_max_pass_length", 30);
 local require_verification = module:get_option_boolean("register_require_verification", false);
 local register_tos = module:get_option_string("register_tos", "By registering you implicitly accept our terms of service.");
+
+local register_xmlns = "jabber:iq:register";
 
 local field_map = {
 	username = { name = "username", type = "text-single", label = "Username", required = true };
@@ -57,11 +60,12 @@ local registration_form = dataform_new{
 	instructions = "Choose a username and password for use with this service."
 	..(require_verification and " Also supply your E-Mail address for verification." or "");
 
+	{ name = "FORM_TYPE", type = "hidden", value = register_xmlns };
 	field_map.username;
 	field_map.password;
 };
 
-local registration_query = st.stanza("query", {xmlns = "jabber:iq:register"})
+local registration_query = st.stanza("query", { xmlns = register_xmlns })
 	:tag("instructions"):text("Choose a username and password for use with this service."):up()
 	:tag("username"):up()
 	:tag("password"):up();
@@ -93,9 +97,9 @@ for _, field in ipairs(additional_fields) do
 end
 registration_query:add_child(registration_form:form());
 
-module:add_feature("jabber:iq:register");
+module:add_feature(register_xmlns);
 
-local register_stream_feature = st.stanza("register", {xmlns = "http://jabber.org/features/iq-register"}):up();
+local register_stream_feature = st.stanza("register", { xmlns = "http://jabber.org/features/iq-register" }):up();
 module:hook("stream-features", function(event)
 	local session, features = event.origin, event.features;
 
@@ -131,7 +135,7 @@ local function handle_registration_stanza(event)
 	local query = stanza.tags[1];
 	if stanza.attr.type == "get" then
 		local reply = st.reply(stanza);
-		reply:tag("query", {xmlns = "jabber:iq:register"})
+		reply:tag("query", { xmlns = register_xmlns })
 			:tag("registered"):up()
 			:tag("username"):text(session.username):up()
 			:tag("password"):up();

@@ -9,7 +9,7 @@
 
 local st = require "util.stanza";
 local rostermanager = require "util.rostermanager";
-local bare_sessions, full_sessions = bare_sessions, full_sessions;
+local storagemanager = require "core.storagemanager";
 local ipairs, pairs, tonumber, tostring, t_insert, t_remove, t_sort = 
 	ipairs, pairs, tonumber, tostring, table.insert, table.remove, table.sort;
 local jid_bare, jid_join, jid_split =
@@ -23,7 +23,7 @@ local blocking_xmlns = "urn:xmpp:blocking";
 -- Storage Functions
 
 local function store_load(username)
-	local bare_session = bare_sessions[jid_join(username, module.host)];
+	local bare_session = module:get_bare_session(username);
 	if bare_session then
 		if bare_session.privacy_lists then
 			return bare_session.privacy_lists;
@@ -39,7 +39,7 @@ end
 -- Privacy List Functions
 
 local function priv_is_list_used(origin, name, privacy_lists)
-	local user = bare_sessions[origin.username.."@"..origin.host];
+	local user = module:get_bare_session(origin.username);
 	if user then
 		for resource, session in pairs(user.sessions) do
 			if resource ~= origin.resource then
@@ -54,7 +54,7 @@ local function priv_is_list_used(origin, name, privacy_lists)
 end
 
 local function priv_is_defaultlist_used(origin)
-	local user = bare_sessions[origin.username.."@"..origin.host];
+	local user = module:get_bare_session(origin.username);
 	if user then
 		for resource, session in pairs(user.sessions) do
 			if resource ~= origin.resource and session.active_privacylist == nil then
@@ -142,8 +142,6 @@ local function priv_create_list(privacy_lists, origin, stanza, name, entries)
 		return { "modify", "policy-violation", "This list name is reserved and can't be created via privacy lists" };
 	end
 
-	local bare_jid = origin.username.."@"..origin.host;
-	
 	if privacy_lists.lists == nil then
 		privacy_lists.lists = {};
 	end
@@ -201,12 +199,14 @@ local function priv_create_list(privacy_lists, origin, stanza, name, entries)
 	t_sort(list, function(a, b) return a.order < b.order; end);
 
 	origin.send(st.reply(stanza));
-	if bare_sessions[bare_jid] then
+	local bare_session = module:get_bare_session(origin.username);
+	if bare_session then
+		local bare_jid = jid_join(origin.username, origin.host);
 		local iq = st.iq({ type = "set", id="privacy-lists-push" })
 				:tag ("query", { xmlns = privacy_xmlns })
 					:tag ("list", { name = list.name }):up():up();
 
-		for resource, session in pairs(bare_sessions[bare_jid].sessions) do
+		for resource, session in pairs(bare_session.sessions) do
 			iq.attr.to = bare_jid.."/"..resource
 			session.send(iq);
 		end
@@ -311,10 +311,10 @@ local function simple_generate_stanza(stanza, entries, payload)
 		return stanza;
 end
 
-local function simple_push_entries(self_bare, self_resource, payload, entries)
+local function simple_push_entries(username, self_resource, payload, entries)
 		local push = simple_generate_stanza(st.iq({ type = "set", id = "simple-blocking-cmd-push" }), entries, payload);
 		
-		for resource, session in pairs(bare_sessions[self_bare].sessions) do
+		for resource, session in pairs(module:get_bare_session(username).sessions) do
 			if resource ~= self_resource then
 				push.attr.to = session.full_jid;
 				session.send(push);
@@ -336,7 +336,7 @@ local function check_stanza(e, session)
 	local origin, stanza = e.origin, e.stanza;
 	local privacy_lists = store_load(session.username);
 	local session_username, session_host = session.username, session.host;
-	local bare_jid = session_username.."@"..session_host;
+	local bare_jid = jid_join(session_username, session_host);
 	local to = stanza.attr.to or bare_jid;
 	local from = stanza.attr.from;
 	
@@ -379,8 +379,8 @@ local function check_stanza(e, session)
 				node, host, resource = jid_split(to);
 			end
 			if item.type == "jid" and
-			   (node and host and resource and item.value == node.."@"..host.."/"..resource) or
-			   (node and host and item.value == node.."@"..host) or
+			   (node and host and resource and item.value == jid_join(node, host, resource)) or
+			   (node and host and item.value == jid_join(node, host)) or
 			   (host and resource and item.value == host.."/"..resource) or
 			   (host and item.value == host) then
 				apply = true;
@@ -442,16 +442,17 @@ local function stanza_check_incoming(e)
 		end
 		if resource == nil then
 			local prio = 0;
-			if bare_sessions[node.."@"..host] then
-				for resource, session_ in pairs(bare_sessions[node.."@"..host].sessions) do
-					if session_.priority and session_.priority > prio then
-						session = session_;
-						prio = session_.priority;
+			local bare_session = module:get_bare_session(node, host);
+			if bare_session then
+				for resource, _session in pairs(bare_session.sessions) do
+					if _session.priority and _session.priority > prio then
+						session = _session;
+						prio = _session.priority;
 					end
 				end
 			end
 		else
-			session = full_sessions[node.."@"..host.."/"..resource];
+			session = module:get_full_session(node, resource, host);
 		end
 		if session then
 			return check_stanza(e, session);
@@ -462,7 +463,7 @@ end
 local function stanza_check_outgoing(e)
 	local session = e.origin;
 	if e.stanza.attr.from == nil then
-		e.stanza.attr.from = session.username.."@".. session.host;
+		e.stanza.attr.from = jid_join(session.username, session.host);
 		if session.resource then
 		 	e.stanza.attr.from = e.stanza.attr.from.."/".. session.resource;
 		end

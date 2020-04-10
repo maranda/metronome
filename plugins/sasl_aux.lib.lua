@@ -6,6 +6,7 @@
 
 -- Exportable SASL backends.
 
+local storagemanager = require "core.storagemanager";
 local user_exists = require "core.usermanager".user_exists;
 local get_password = require "core.usermanager".get_password;
 local set_password = require "core.usermanager".set_password;

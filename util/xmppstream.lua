@@ -22,7 +22,8 @@ local setmetatable = setmetatable;
 -- COMPAT: w/LuaExpat 1.1.0
 local lxp_supports_doctype = pcall(lxp.new, { StartDoctypeDecl = false });
 
-module "xmppstream"
+local _ENV = nil;
+local _M = {};
 
 local new_parser = lxp.new;
 
@@ -41,7 +42,7 @@ local ns_pattern = "^([^"..ns_separator.."]*)"..ns_separator.."?(.*)$";
 _M.ns_separator = ns_separator;
 _M.ns_pattern = ns_pattern;
 
-function new_sax_handlers(session, stream_callbacks)
+local function new_sax_handlers(session, stream_callbacks)
 	local xml_handlers = {};
 	
 	local cb_streamopened = stream_callbacks.streamopened;
@@ -185,7 +186,7 @@ function new_sax_handlers(session, stream_callbacks)
 	return xml_handlers, { reset = reset, set_session = set_session };
 end
 
-function new(session, stream_callbacks)
+function _M.new(session, stream_callbacks)
 	local handlers, meta = new_sax_handlers(session, stream_callbacks);
 	local parser = new_parser(handlers, ns_separator);
 	local parse = parser.parse;
@@ -203,4 +204,5 @@ function new(session, stream_callbacks)
 	};
 end
 
+_M.new_sax_handlers = new_sax_handlers;
 return _M;

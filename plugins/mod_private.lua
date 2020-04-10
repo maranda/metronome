@@ -9,14 +9,14 @@
 
 if module:get_host_session().anonymous_host then
 	module:log("error", "Private Storage won't be available on anonymous hosts as storage is explicitly disabled");
-	modulemanager.unload(module.host, module.name);
+	require "core.modulemanager".unload(module.host, module.name);
 	return;
 end
 
 local _type = type;
 
 local st = require "util.stanza";
-local storagemanager = storagemanager;
+local storagemanager = require "core.storagemanager";
 
 local private = storagemanager.open(module.host, "private");
 

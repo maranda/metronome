@@ -11,6 +11,7 @@ local ripairs, tonumber, tostring, type, unpack =
 	ripairs, tonumber, tostring, type, table.unpack or unpack;
 
 local st = require "util.stanza";
+local storagemanager = require "core.storagemanager";
 local uuid_generate = require "util.uuid".generate;
 local dataforms = require "util.dataforms";
 

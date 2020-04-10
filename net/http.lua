@@ -26,11 +26,13 @@ local tonumber, tostring, xpcall, select, debug_traceback, char, format =
 
 local log = require "util.logger".init("http");
 
-module "http"
+local _ENV, _M = nil, {};
 
 local requests = {}; -- Open requests
 
 local listener = { default_port = 80, default_mode = "*a" };
+
+local destroy_request;
 
 function listener.onconnect(conn)
 	local req = requests[conn];
@@ -73,8 +75,8 @@ function listener.ondisconnect(conn, err)
 	requests[conn] = nil;
 end
 
-function urlencode(s) return s and (s:gsub("[^a-zA-Z0-9.~_-]", function (c) return format("%%%02x", c:byte()); end)); end
-function urldecode(s) return s and (s:gsub("%%(%x%x)", function (c) return char(tonumber(c,16)); end)); end
+local function urlencode(s) return s and (s:gsub("[^a-zA-Z0-9.~_-]", function (c) return format("%%%02x", c:byte()); end)); end
+local function urldecode(s) return s and (s:gsub("%%(%x%x)", function (c) return char(tonumber(c,16)); end)); end
 
 local function _formencodepart(s)
 	return s and (s:gsub("%W", function (c)
@@ -86,7 +88,7 @@ local function _formencodepart(s)
 	end));
 end
 
-function formencode(form)
+local function formencode(form)
 	local result = {};
 	if form[1] then
 		for _, field in ipairs(form) do
@@ -100,7 +102,7 @@ function formencode(form)
 	return t_concat(result, "&");
 end
 
-function formdecode(s)
+local function formdecode(s)
 	if not s:match("=") then return urldecode(s); end
 	local r = {};
 	for k, v in s:gmatch("([^=&]*)=([^&]*)") do
@@ -139,7 +141,7 @@ local function request_reader(request, data, startpos)
 end
 
 local function handleerr(err) log("error", "Traceback[http]: %s: %s", tostring(err), debug_traceback()); end
-function request(u, ex, callback)
+local function request(u, ex, callback)
 	local req = url.parse(u);
 	
 	if not (req and req.host) then
@@ -219,6 +221,12 @@ function destroy_request(request)
 	end
 end
 
+_M.requests = requests;
 _M.urlencode = urlencode;
+_M.urldecode = urldecode;
+_M.formencode = formencode;
+_M.formdecode = formdecode;
+_M.request = request;
+_M.destroy_request = destroy_request;
 
 return _M;

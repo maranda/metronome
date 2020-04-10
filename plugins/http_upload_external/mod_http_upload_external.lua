@@ -66,7 +66,7 @@ module:hook("iq/host/http://jabber.org/protocol/disco#info:query", function(even
 	return true;
 end);
 
-local function delete_file(user, host, delete_url, get_url, no_notify)
+local function delete_file(user, host, delete_url, get_url)
 	http.request(delete_url, { method = "DELETE" },
 		function(data, code, req)
 			local url_list = datamanager.load(user, host, "http_upload_external") or {};
@@ -74,12 +74,6 @@ local function delete_file(user, host, delete_url, get_url, no_notify)
 				module:log("debug", "Successfully deleted uploaded file for %s [%s]", user .."@".. host, get_url);
 			else
 				module:log("error", "Failed to delete uploaded file for %s [%s]", user .."@".. host, get_url);
-				if not no_notify then
-					module:send(st.message({ from = module.host, to = user.."@"..host, type = "chat" },
-						"The upstream HTTP file service reported it couldn't remove your file located at " .. get_url
-						.. ", it's possible the file was removed already or the upload failed."
-					));
-				end
 			end
 			for i, url_data in ipairs(url_list) do
 				if url_data[2] == get_url then t_remove(url_list, i); break; end
@@ -98,17 +92,17 @@ local function auto_cleanup(user, host, url_list)
 		local delete_url, get_url, created_time = unpack(url_data);
 		if created_time and os_time() - created_time > file_auto_cleanup then
 			module:log("debug", "Expiring file %s", get_url);
-			delete_file(user, host, delete_url, get_url, true);
+			delete_file(user, host, delete_url, get_url);
 		end
 	end	
 end
 
-local function purge_files(user, host, no_notify)
+local function purge_files(user, host)
 	local url_list = datamanager.load(user, host, "http_upload_external");
 	if url_list then
 		for _, url_data in ipairs(url_list) do
 			local delete_url, get_url = unpack(url_data);
-			delete_file(user, host, delete_url, get_url, no_notify);
+			delete_file(user, host, delete_url, get_url);
 		end
 	end
 end
@@ -278,7 +272,7 @@ local function purge_others_uploads(self, data, state)
 			end
 
 			if user_exists(user, host) then
-				purge_files(user, host, true);
+				purge_files(user, host);
 				return { status = "completed", info = "Purge request sent to the upstream file server" };
 			else
 				return { status = "completed", error = { message = "User doesn't exist" } };
@@ -301,7 +295,7 @@ if delete_base_url then
 	module:provides("adhoc", delete_uploads_descriptor);
 	module:provides("adhoc", purge_uploads_descriptor);
 	module:provides("adhoc", purge_others_uploads_descriptor);
-	module:hook_global("user-deleted", function(event) purge_files(event.username, event.host, true); end, 20);
+	module:hook_global("user-deleted", function(event) purge_files(event.username, event.host); end, 20);
 end
 
 module:hook("iq/host/"..legacy_namespace..":request", handle_iq);

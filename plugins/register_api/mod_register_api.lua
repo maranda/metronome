@@ -9,14 +9,16 @@ local http_event = require "net.http.server".fire_server_event;
 local http_request = require "net.http".request;
 local jid_join = require "util.jid".join;
 local jid_prep = require "util.jid".prep;
+local jid_section = require "util.jid".section;
 local json_decode = require "util.json".decode;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local saslprep = require "util.encodings".stringprep.saslprep;
 local ipairs, pairs, pcall, open, os_execute, os_time, setmt, tonumber = 
       ipairs, pairs, pcall, io.open, os.execute, os.time, setmetatable, tonumber;
 local sha1 = require "util.hashes".sha1;
-local urldecode = http.urldecode;
-local usermanager = usermanager;
+local urldecode = require "net.http".urldecode;
+local usermanager = require "core.usermanager";
+local storagemanager = require "core.storagemanager";
 local generate = require "util.auxiliary".generate_secret;
 local uuid = require "util.uuid".generate;
 local timer = require "util.timer";
@@ -45,6 +47,8 @@ local nameapi_ak = module:get_option_string("reg_api_nameapi_apikey");
 local plain_errors = module:get_option_boolean("reg_api_plain_http_errors", false);
 local mail_from = module:get_option_string("reg_api_mailfrom");
 local mail_reto = module:get_option_string("reg_api_mailreto");
+local restrict_node_pattern = module:get_option_boolean("reg_restrict_node_pattern", true);
+local negate_pattern = module:get_option_string("reg_api_node_negate_pattern", "^[^%s<>,:;%[%]%(%)%?\\]+$");
 
 local _hashes = storagemanager.open(my_host, "hashes");
 local _whitelisted = storagemanager.open(my_host, "whitelisted_md");
@@ -91,9 +95,16 @@ if use_nameapi then
 	dea_checks = {};
 end
 
--- Setup hashes data structure
+-- Token generation function
 
-hashes = { _index = {} };
+local function generate_secret()
+	local str = generate(9);	
+	return str and str:upper() or nil;
+end
+
+-- Setup data structures
+
+hashes = { _index = {} }; -- mail hashes
 local hashes_mt = {}; hashes_mt.__index = hashes_mt;
 
 function hashes_mt:add(node, mail)
@@ -108,6 +119,13 @@ function hashes_mt:add(node, mail)
 	end
 end
 
+function hashes_mt:exists(mail, node)
+	local _hash = b64_encode(sha1(mail));
+	if node and _hash == self._index[node] then
+		return nil;
+	elseif self[_hash] then	return true; else return false;	end
+end
+
 function hashes_mt:remove(node, check)
 	local _hash = self._index[node];
 	if _hash then
@@ -120,6 +138,42 @@ function hashes_mt:save()
 	if not _hashes:set("register_api", hashes) then
 		module:log("error", "Failed to save the mail addresses' hashes store");
 	end
+end
+
+pending_mail_changes = { _index = {} }; -- pending mail changes
+local pending_mail_changes_mt = {}; pending_mail_changes_mt.__index = pending_mail_changes_mt;
+
+function pending_mail_changes:add(node, mail)
+	if not self:exists(node) then
+		local token = generate_secret();
+		if token then
+			pending_mail_changes[token] = {
+				id = timer.add_task(300, function()
+					if self:exists(node) then self:remove(node); end
+				end),
+				user = node,
+				mail = mail
+			};
+			pending_mail_changes._index[node] = token;
+			return token;
+		end
+	end
+	return false;
+end
+
+function pending_mail_changes:exists(node)
+	return pending_mail_changes._index[node];
+end
+
+function pending_mail_changes:remove(node)
+	local token = self:exists(node);
+	if token then
+		timer.remove_task(pending_mail_changes[token].id);
+		pending_mail_changes[token] = nil;
+		pending_mail_changes._index[node] = nil;
+		return true;
+	end
+	return false;
 end
 
 -- Utility functions
@@ -141,17 +195,28 @@ local function convert_legacy_storage()
 	end
 end
 
-local function generate_secret()
-	local str = generate(9);	
-	return str and str:upper() or nil;
-end
-
 local function check_mail(address)
-	if not address:match("^[^.]+[%w!#$%%&'*+-/=?^_`{|}~]+[^..]+@[%w.]+%.%w+$") and not address:match("^%w+@[%w.]+%.%w+$") then
+	local node, domain = address:match("(.*)@(.*)");
+	if not node or not domain then
+		return false;
+	elseif node:find("^%.") or node:find("%.%.") or node:find("%.$") then
+		return false;
+	elseif domain:match("^[%p]+$") or not domain:match("^[%w%-%.]+$") then
+		return false;
+	elseif not node:match("^[%w!#$%%&'%*+-/=%?^_`{|}~]+$") then
 		return false;
 	end
 	for _, pattern in ipairs(fm_patterns) do 
 		if address:match(pattern) then return false; end
+	end
+	return true;
+end
+
+local function check_node_policy(node)
+	if node:find("^%.") or node:find("%.%.") or node:find("%.$") then
+		return false;
+	elseif not node:match(negate_pattern) then
+		return false;
 	end
 	return true;
 end
@@ -255,23 +320,72 @@ end
 -- Adhoc Handlers
 
 if do_mail_verification then
-	local command_xmlns = "http://metronome.im/protocol/register_api#change_pass";
+	local a_xmlns = "http://jabber.org/protocol/admin";
+	local c_xmlns = "http://jabber.org/protocol/commands";
+	local admin_xmlns = "http://metronome.im/protocol/register_api#change-mail-user";
+	local change_xmlns = "http://metronome.im/protocol/register_api#change-mail-self";
 
 	module:depends("adhoc");
 	local adhoc_new = module:require "adhoc".new;
 
-	local change_password_layout = dataforms.new{
+	local admin_change_mail_layout = dataforms.new{
 		title = "Change associated account mail address";
 		instructions = "This command allows admins to change an associated E-Mail address hash for user accounts on this host.";
-		{ name = "FORM_TYPE", type = "hidden", value = command_xmlns };
+		{ name = "FORM_TYPE", type = "hidden", value = a_xmlns };
 		{ name = "username", type = "text-single", label = "Username" };
 		{ name = "mail", type = "text-single", label = "Associated E-Mail" };
 	};
 
+	local change_mail_layout = dataforms.new{
+		title = "Associate another mail address to the account";
+		instructions = "This command allows you to change the associated account's E-Mail address.";
+		{ name = "FORM_TYPE", type = "hidden", value = c_xmlns };
+		{ name = "mail", type = "text-single", label = "Associated E-Mail" };
+	};
+
+	local function associate_email(self, data, state, secure)
+		local user = jid_section(data.from, "node");
+		if pending_mail_changes:exists(user) then
+			return { status = "completed", error = { message = "Another mail change is pending verification" } };
+		end
+
+		if state then
+			if data.action == "cancel" then return { status = "canceled" }; end
+
+			local fields = change_mail_layout:data(data.form);
+			local mail = fields.mail;
+
+			if not check_mail(mail) then
+				return { status = "completed", error = { message = "You supplied a bogus e-mail address" } };
+			end
+
+			if hashes:exists(mail, user) then
+				return { status = "completed", error = { message = 
+					"This mail address is already associated with a local account, please use another" } };
+			end
+
+			local token = pending_mail_changes:add(user, mail);
+			if token then
+				if use_nameapi then check_dea(mail, user); end
+
+				os_execute(
+					module_path.."/send_mail ".."associate '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..jid_join(user, my_host).."' '"
+					..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."associate/", base_host).."' '"..token.."' '"
+					..(secure and "secure" or "").."' &"
+				);
+				return { status = "completed", info = "Sent verification instructions to the specified address" };
+			else
+				return { status = "completed", error = { message = "Failed to generate verification token, please try again later" } };
+			end
+		else
+			return { status = "executing", form = change_mail_layout }, "executing";
+		end
+	end
+
 	local function change_email(self, data, state, secure)
 		if state then
 			if data.action == "cancel" then return { status = "canceled" }; end
-			local fields = change_password_layout:data(data.form);
+			local fields = admin_change_mail_layout:data(data.form);
 			if fields.username and fields.mail then
 				local user = nodeprep(fields.username);
 				if not user then
@@ -294,11 +408,13 @@ if do_mail_verification then
 				return { status = "completed", error = { message = "You need to supply both username and mail address" } };
 			end
 		else
-			return { status = "executing", form = change_password_layout }, "executing";
+			return { status = "executing", form = admin_change_mail_layout }, "executing";
 		end
 	end
 
-	local descriptor = adhoc_new("Change associated account mail address for users", command_xmlns, change_email, "admin");
+	local admin_descriptor = adhoc_new("Change associated account mail address for users", admin_xmlns, change_email, "admin");
+	local descriptor = adhoc_new("Change associated mail address for this account", change_xmlns, associate_email, "local_user");
+	module:provides("adhoc", admin_descriptor);
 	module:provides("adhoc", descriptor);
 end
 
@@ -326,6 +442,12 @@ local function handle_register(data, event)
 		module:log("debug", "A username containing invalid characters was supplied: %s", data.username);
 		return http_error_reply(event, 406, "Supplied username contains invalid characters, see RFC 6122.");
 	else
+		if restrict_node_pattern and not check_node_policy(username) then
+			module:log("warn", "%s attempted to register using an username that doesn't comply to the allowed characters system policy (%s)",
+				ip, username);
+			return http_error_reply(event, 403, "The specified Username doesn't comply with this system's allowed characters policy");
+		end
+
 		if not check_node(username) then
 			module:log("warn", "%s attempted to use an username (%s) matching one of the forbidden patterns", ip, username);
 			return http_error_reply(event, 403, "Requesting to register using this Username is forbidden, sorry.");
@@ -478,6 +600,49 @@ local function handle_req(event)
 	end
 end
 
+local function handle_associate(event, path)
+	local request = event.request;
+	local body = request.body;
+	if secure and not request.secure then return nil; end
+
+	if request.method == "GET" then
+		return http_file_get(event, "associate", path);
+	elseif request.method == "POST" then
+		if path == "" then
+			if not body then return http_error_reply(event, 400, "Bad Request."); end
+			local id_token = urldecode(body):match("^id_token=(.*)$");
+
+			if not pending_mail_changes[id_token] then
+				return r_template(event, "associate_fail");
+			else
+				local username, mail, id =  
+				      pending_mail_changes[id_token].user, pending_mail_changes[id_token].mail, pending_mail_changes[id_token].id;
+
+				if use_nameapi and dea_checks[username] then
+					module:log("warn", "%s (%s) attempted to associate a disposable mail address, denying", username, ip);
+					pending_mail_changes[id_token] = nil; pending_mail_changes._index[username] = nil; dea_checks[username] = nil;
+					return r_template(event, "associate_fail");
+				end
+
+				if not hashes:exists(mail, username) then
+					module:log("info", "Mail address %s is successfully associated to %s@%s account", mail, username, my_host);
+					hashes:remove(username, true);
+					hashes:add(username, mail);
+					hashes:save();
+				else
+					module:log("info", "Failed to associate %s to %s@%s account, the address already exists in the database", mail, username, my_host);
+					pending_mail_changes:remove(username);
+					return r_template(event, "associate_fail");
+				end
+				pending_mail_changes:remove(username);
+				return r_template(event, "associate_success");
+			end
+		end	
+	else
+		return http_error_reply(event, 405, "Invalid method.");
+	end
+end
+
 local function handle_reset(event, path)
 	local request = event.request;
 	local body = request.body;
@@ -590,16 +755,16 @@ local function validate_registration(user, hostname, password, mail, ip, skip_gr
 	if not hashes:add(user, mail) then
 		module:log("warn", "failed to add the address hash for %s (mail provided is: %s)", 
 			user, tostring(mail));
-		usermanager.delete_user(user, hostname, "mod_register_api");
+		usermanager.delete_user(user, hostname, "mod_register_api", "Failed to add mail address hash");
 		return;
 	end
 
 	local id_token = generate_secret();
 	if not id_token or not check_mail(mail) then
-		module:log("warn", "%s, invalidating %s registration and deleting account",
-			not id_token and "Failed to generate token" or "Supplied mail address is bogus or forbidden", user);
+		local reason = not id_token and "Failed to generate token" or "Supplied mail address is bogus or forbidden";
+		module:log("warn", "%s, invalidating %s registration and deleting account", reason, user);
 		hashes:remove(user);
-		usermanager.delete_user(user, hostname, "mod_register_api");
+		usermanager.delete_user(user, hostname, "mod_register_api", reason);
 		return;
 	end
 
@@ -640,37 +805,47 @@ end
 
 local function handle_user_registration(event)
 	local user, hostname, password, data, session = event.username, event.host, event.password, event.data, event.session;
-	if do_mail_verification and event.source == "mod_register" then
-		local checked = check_node(user);
-		if not checked or pending_node[user] then
-			module:log("warn", "%s attempted to register a user account %s (%s)", session.ip,
-				not checked and "with a forbidden or reserved username" or "which is pending registration verification already", user);
-			usermanager.delete_user(user, hostname, "mod_register_api",
-				"Account "..user.." is "..(not checked and "containing a forbidden or reserved word" or "already pending verification")
-			);
-			return;
+	if event.source == "mod_register" then
+		if restrict_node_pattern and not check_node_policy(user) then
+				module:log("warn", "%s attempted to register using an username that doesn't comply to the allowed characters system policy (%s)",
+					session.ip, user);
+				usermanager.delete_user(user, hostname, "mod_register_api",
+					"The specified JID node ("..user..") doesn't comply with this system allowed username policy");
+				return;
 		end
 
-		local user_jid = jid_join(user, hostname);
-		local mail = data.email and data.email:lower();
+		if do_mail_verification then
+			local checked = check_node(user);
+			if not checked or pending_node[user] then
+				module:log("warn", "%s attempted to register a user account %s (%s)", session.ip,
+					not checked and "with a forbidden or reserved username" or "which is pending registration verification already", user);
+				usermanager.delete_user(user, hostname, "mod_register_api",
+					"Account "..user.." is "..(not checked and "containing a forbidden or reserved word" or "already pending verification")
+				);
+				return;
+			end
 
-		if not mail then
-			timer.add_task(20, function()
-				module:log("debug", "Sending email request to %s", user_jid);
-				module:send(st.message({ from = hostname, to = user_jid, type = "chat", id = uuid() },
-					"To verify your registration please reply to this message providing a valid mail address "
-					.."if you fail to comply within five minutes your account will be automatically deleted. "
-					.."Also this account is currently in a locked state and you will be unable to use it properly "
-					.."until the verification process is completed."
-				));
-			end);
-			local id = timer.add_task(320, function()
-				nomail_users[user_jid] = nil;
-				usermanager.delete_user(user, hostname, "mod_register_api", "You didn't supply a mail to verify the account, deleting");
-			end);
-			nomail_users[user_jid] = { id = id, ip = session.ip, password = password };
-		else
-			validate_registration(user, hostname, password, mail, session.ip);
+			local user_jid = jid_join(user, hostname);
+			local mail = data.email and data.email:lower();
+
+			if not mail or hashes:exists(mail) then
+				timer.add_task(20, function()
+					module:log("debug", "Sending email request to %s", user_jid);
+					module:send(st.message({ from = hostname, to = user_jid, type = "chat", id = uuid() },
+						"To verify your registration please reply to this message providing a valid mail address "
+						.."if you fail to comply within five minutes your account will be automatically deleted. "
+						.."Also this account is currently in a locked state and you will be unable to use it properly "
+						.."until the verification process is completed."
+					));
+				end);
+				local id = timer.add_task(320, function()
+					nomail_users[user_jid] = nil;
+					usermanager.delete_user(user, hostname, "mod_register_api", "You didn't supply a mail to verify the account, deleting");
+				end);
+				nomail_users[user_jid] = { id = id, ip = session.ip, password = password };
+			else
+				validate_registration(user, hostname, password, mail, session.ip);
+			end
 		end
 	end
 end
@@ -690,6 +865,12 @@ module:hook("message/host", function(event)
 				"The address you supplied doesn't look to be valid, sorry."
 			));
 		else
+			if hashes:exists(mail) then
+				module:send(st.message({ from = origin.host, to = jid, type = "chat", id = uuid() },
+					"The address you supplied looks to be already associated to an account, please try with another one."
+				));
+				return true;
+			end
 			timer.remove_task(nomail_users[jid].id);
 			validate_registration(origin.username, origin.host, nomail_users[jid].password, mail, nomail_users[jid].ip, true);
 			nomail_users[jid] = nil;
@@ -712,8 +893,11 @@ module:provides("http", {
 	route = {
 		["GET /"] = handle_req,
 		["POST /"] = handle_req,
+		["GET /associate"] = slash_redirect,
 		["GET /reset"] = slash_redirect,
 		["GET /verify"] = slash_redirect,
+		["GET /associate/*"] = handle_associate,
+		["POST /associate/*"] = handle_associate,
 		["GET /reset/*"] = handle_reset,
 		["POST /reset/*"] = handle_reset,
 		["GET /verify/*"] = handle_verify,
@@ -726,9 +910,19 @@ module:hook_global("user-deleted", handle_user_deletion, 10);
 
 -- Reloadability
 
-module.save = function() return { hashes = hashes, whitelisted = whitelisted, nomail_users = nomail_users }; end
+module.save = function()
+	return { 
+		hashes = hashes, 
+		pending_mail_changes = pending_mail_changes,
+		whitelisted = whitelisted, 
+		nomail_users = nomail_users 
+	};
+end
 module.restore = function(data) 
-	hashes = data.hashes or { _index = {} }; setmt(hashes, hashes_mt);
+	hashes = data.hashes or { _index = {} };
+	setmt(hashes, hashes_mt);
+	pending_mail_changes = data.pending_mail_changes or { _index = {} };
+	setmt(pending_mail_changes, pending_mail_changes_mt);
 	whitelisted = use_nameapi and (data.whitelisted or default_whitelist) or nil;
 	nomail_users = data.nomail_users or {};
 end

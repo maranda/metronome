@@ -9,7 +9,7 @@ module:set_global();
 
 local hosts = hosts;
 local incoming_s2s = metronome.incoming_s2s;
-local modulemanager = modulemanager;
+local modulemanager = require "core.modulemanager";
 local set_new = require "util.set".new;
 local now, pairs, section = os.time, pairs, require "util.jid".section;
 

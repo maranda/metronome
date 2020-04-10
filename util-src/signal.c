@@ -6,6 +6,10 @@
 #include "lua.h"
 #include "lauxlib.h"
 
+#if (LUA_VERSION_NUM == 501)
+#define luaL_setfuncs(L, R, N) luaL_register(L, NULL, R)
+#endif
+
 #ifndef lsig
 
 #define lsig
@@ -355,10 +359,14 @@ static const struct luaL_Reg lsignal_lib[] = {
 
 int luaopen_util_signal(lua_State *L)
 {
+#if (LUA_VERSION_NUM > 501)
+  luaL_checkversion(L);
+#endif
   int i = 0;
 
   /* add the library */
-  luaL_register(L, "signal", lsignal_lib);
+  lua_newtable(L);
+  luaL_setfuncs(L, lsignal_lib, 0);
 
   /* push lua_signals table into the registry */
   /* put the signals inside the library table too,

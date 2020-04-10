@@ -7,6 +7,7 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2010-2013, Kim Alvefur, Matthew Wild, Waqas Hussain
 
+local storagemanager = require "core.storagemanager";
 local new_sasl = require "util.sasl".new;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local plain_backend = module:require "sasl_aux".plain_backend;
@@ -71,7 +72,7 @@ function new_default_provider(host)
 			return nil, "Auth failed, invalid username";
 		elseif account and account.locked then
 			account.locked = nil;
-			local bare_session = module:get_bare_session(username.."@"..host);
+			local bare_session = module:get_bare_session(username);
 			if bare_session then
 				for _, session in pairs(bare_session.sessions) do
 					session.locked = nil;

@@ -362,11 +362,11 @@ local function upload_data(event, path)
 
 	local bare_user = join(user, host);
 	throttle[bare_user] = (throttle[bare_user] and throttle[bare_user] + size) or size;
-	local bare_session = module:get_bare_session(bare_user);
+	local bare_session = module:get_bare_session(user, host);
 	if not bare_session.upload_timer then
 		bare_session.upload_timer = true;
 		module:add_timer(throttle_time, function()
-			local bare_session = bare_sessions[bare_user];
+			local bare_session = module:get_bare_session(bare_user);
 			throttle[bare_user] = nil;
 			if bare_session then bare_session.upload_timer = nil; end
 		end);

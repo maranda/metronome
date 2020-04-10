@@ -38,6 +38,7 @@ local clone_table = require "util.auxiliary".clone_table;
 local id_gen = require "util.auxiliary".generate_shortid;
 local fire_event = metronome.events.fire_event;
 local um_is_admin = require "core.usermanager".is_admin;
+local storagemanager = require "core.storagemanager";
 local pairs, ipairs, next, now = pairs, ipairs, next, os.time;
 
 local config_store = storagemanager.open(muc_host, "config");
@@ -116,7 +117,12 @@ function muclib.room_mt:set_affiliation(actor, jid, affiliation, callback, reaso
 	return _set_affiliation(self, actor, jid, affiliation, callback, reason);
 end
 
-local function room_route_stanza(room, stanza) 
+local function room_route_stanza(room, stanza)
+	if not stanza.attr.to or not stanza.attr.from then
+		module:log("warn", "stanza (%s) sent without from (%s) or without to (%s)",
+			stanza.name, stanza.attr.from or "nil", stanza.attr.to or "nil");
+		return;
+	end
 	fire_event("route/post", host_session, stanza); 
 end
 local function room_save(room, forced, save_occupants)

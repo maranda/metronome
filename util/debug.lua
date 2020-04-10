@@ -32,9 +32,10 @@ do
 		location         = _("yellow");
 	};
 end
-module("debugx", package.seeall);
 
-function get_locals_table(thread, level)
+local _debug = {};
+
+function _debug.get_locals_table(thread, level)
 	local locals = {};
 	for local_num = 1, math.huge do
 		local name, value;
@@ -49,7 +50,7 @@ function get_locals_table(thread, level)
 	return locals;
 end
 
-function get_upvalues_table(func)
+function _debug.get_upvalues_table(func)
 	local upvalues = {};
 	if func then
 		for upvalue_num = 1, math.huge do
@@ -61,7 +62,7 @@ function get_upvalues_table(func)
 	return upvalues;
 end
 
-function string_from_var_table(var_table, max_line_len, indent_str)
+function _debug.string_from_var_table(var_table, max_line_len, indent_str)
 	local var_string = {};
 	local col_pos = 0;
 	max_line_len = max_line_len or math.huge;
@@ -97,7 +98,7 @@ function string_from_var_table(var_table, max_line_len, indent_str)
 	end
 end
 
-function get_traceback_table(thread, start_level)
+function _debug.get_traceback_table(thread, start_level)
 	local levels = {};
 	for level = start_level, math.huge do
 		local info;
@@ -118,7 +119,7 @@ function get_traceback_table(thread, start_level)
 	return levels;
 end
 
-function traceback(...)
+function _debug.traceback(...)
 	local ok, ret = pcall(_traceback, ...);
 	if not ok then
 		return "Error in error handling: "..ret;
@@ -131,7 +132,7 @@ local function build_source_boundary_marker(last_source_desc)
 	return getstring(styles.boundary_padding, "v"..padding).." "..getstring(styles.filename, last_source_desc).." "..getstring(styles.boundary_padding, padding..(#last_source_desc%2==0 and "-v" or "v "));
 end
 
-function _traceback(thread, message, level)
+function _debug._traceback(thread, message, level)
 
 	-- Lua manual says: debug.traceback ([thread,] [message [, level]])
 	-- I fathom this to mean one of:
@@ -200,8 +201,8 @@ function _traceback(thread, message, level)
 	return message.."stack traceback:\n"..table.concat(lines, "\n");
 end
 
-function use()
+function _debug.use()
 	debug.traceback = traceback;
 end
 
-return _M;
+return _debug;

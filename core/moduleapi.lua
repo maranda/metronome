@@ -8,12 +8,12 @@
 -- ** Copyright (c) 2008-2013, Florian Zeitz, Kim Alvefur, Marco Cirillo, Matthew Wild
 
 local config = require "core.configmanager";
-local modulemanager = require "modulemanager";
 local array = require "util.array";
 local set = require "util.set";
 local logger = require "util.logger";
 local pluginloader = require "util.pluginloader";
 local timer = require "util.timer";
+local join = require "util.jid".join;
 local section = require "util.jid".section;
 
 local t_insert, t_remove, t_concat = table.insert, table.remove, table.concat;
@@ -62,12 +62,30 @@ function api:get_host_type(host)
 	end
 end
 
-function api:get_bare_session(jid)
-	return bare_sessions[jid];
+function api:get_bare_session(node, host)
+	if node and node:find("@") then -- direct jid
+		return bare_sessions[node];
+	end
+
+	if host then
+		return bare_sessions[join(node, host)];
+	else
+		return bare_sessions[join(node, self.host)];
+	end
 end
 
-function api:get_full_session(jid)
-	return full_sessions[jid];
+function api:get_full_session(node, resource, host)
+	if node and node:find("@") then -- direct jid
+		return full_sessions[node];
+	end
+
+	if not resource then return nil; end
+
+	if host then
+		return full_sessions[join(node, host, resource)];
+	else
+		return full_sessions[join(node, self.host, resource)];
+	end
 end
 
 function api:get_bare_sessions(host)
@@ -200,6 +218,7 @@ function api:require(lib, path)
 end
 
 function api:depends(name)
+	local modulemanager = require "core.modulemanager";
 	if not self.dependencies then
 		self.dependencies = {};
 		self:hook("module-reloaded", function (event)
@@ -379,6 +398,7 @@ function api:remove_item(key, value)
 end
 
 function api:get_items(key, host)
+	local modulemanager = require "core.modulemanager";
 	local result = modulemanager.get_items(key, host or self.host) or {};
 	return result;
 end

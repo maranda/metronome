@@ -13,7 +13,7 @@ local os_time = os.time;
 local os_clock = os.clock;
 local sha1 = require "util.hashes".sha1;
 
-module "uuid"
+local _ENV = nil;
 
 local last_uniq_time = 0;
 local function uniq_time()
@@ -41,10 +41,9 @@ local function get_twobits()
 	return ("%x"):format(get_nibbles(1):byte() % 4 + 8);
 end
 
-function generate()
+local function generate()
 	-- generate RFC 4122 complaint UUIDs (version 4 - random)
 	return get_nibbles(8).."-"..get_nibbles(4).."-4"..get_nibbles(3).."-"..(get_twobits())..get_nibbles(3).."-"..get_nibbles(12);
 end
-seed = _seed;
 
-return _M;
+return { generate = generate, seed = _seed };

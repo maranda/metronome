@@ -13,7 +13,7 @@ local tonumber = tonumber;
 local deadroutine = coroutine.create(function() end);
 coroutine.resume(deadroutine);
 
-module("httpstream")
+local _ENV = nil;
 
 local function parser(success_cb, parser_type, options_cb)
 	local data = coroutine.yield();
@@ -120,7 +120,7 @@ local function parser(success_cb, parser_type, options_cb)
 	else coroutine.yield("unknown-parser-type"); end
 end
 
-function new(success_cb, error_cb, parser_type, options_cb)
+local function new(success_cb, error_cb, parser_type, options_cb)
 	local co = coroutine.create(parser);
 	coroutine.resume(co, success_cb, parser_type, options_cb)
 	return {
@@ -139,4 +139,4 @@ function new(success_cb, error_cb, parser_type, options_cb)
 	};
 end
 
-return _M;
+return { new = new };

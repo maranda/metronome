@@ -19,6 +19,10 @@
 #include "lua.h"
 #include "lauxlib.h"
 
+#if (LUA_VERSION_NUM == 501)
+#define luaL_setfuncs(L, R, N) luaL_register(L, NULL, R)
+#endif
+
 /***************** BASE64 *****************/
 
 static const char code[]=
@@ -360,31 +364,29 @@ static const luaL_Reg Reg_idna[] =
 
 /***************** end *****************/
 
-static const luaL_Reg Reg[] =
-{
-	{ NULL,		NULL	}
-};
-
 LUALIB_API int luaopen_util_encodings(lua_State *L)
 {
+#if (LUA_VERSION_NUM > 501)
+	luaL_checkversion(L);
+#endif
 #ifdef USE_STRINGPREP_ICU
 	init_icu();
 #endif
-	luaL_register(L, "encodings", Reg);
+	lua_newtable(L);
 
 	lua_pushliteral(L, "base64");
 	lua_newtable(L);
-	luaL_register(L, NULL, Reg_base64);
+	luaL_setfuncs(L, Reg_base64, 0);
 	lua_settable(L,-3);
 
 	lua_pushliteral(L, "stringprep");
 	lua_newtable(L);
-	luaL_register(L, NULL, Reg_stringprep);
+	luaL_setfuncs(L, Reg_stringprep, 0);
 	lua_settable(L,-3);
 
 	lua_pushliteral(L, "idna");
 	lua_newtable(L);
-	luaL_register(L, NULL, Reg_idna);
+	luaL_setfuncs(L, Reg_idna, 0);
 	lua_settable(L,-3);
 
 	lua_pushliteral(L, "version");			/** version */

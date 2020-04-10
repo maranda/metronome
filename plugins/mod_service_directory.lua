@@ -13,6 +13,7 @@ local jid_bare = require "util.jid".bare;
 local jid_split = require "util.jid".split;
 local pubsub = require "util.pubsub";
 local st = require "util.stanza";
+local storagemanager = require "core.storagemanager";
 local uuid = require "util.uuid".generate;
 local setmetatable, type = setmetatable, type;
 

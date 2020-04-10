@@ -26,7 +26,8 @@ local fire_event = metronome_events.fire_event;
 
 local pairs, tostring, type = pairs, tostring, type;
 
-module "hostmanager"
+local _ENV = nil;
+local _M = {};
 
 local hosts_loaded_once;
 
@@ -48,7 +49,7 @@ local function load_enabled_hosts()
 			if not host_config.component_module then
 				activated_any_host = true;
 			end
-			activate(host, host_config);
+			_M.activate(host, host_config);
 		end
 	end
 	
@@ -85,9 +86,9 @@ local function host_send(stanza)
 	fire_event("route/local", nil, stanza);
 end
 
-function activate(host)
+function _M.activate(host)
 	if hosts[host] then return nil, "The host "..host.." is already activated"; end
-	host_config = configmanager.getconfig()[host];
+	local host_config = configmanager.getconfig()[host];
 	local host_session = {
 		host = host;
 		s2sout = {};
@@ -120,7 +121,7 @@ function activate(host)
 	return true;
 end
 
-function deactivate(host, reason)
+function _M.deactivate(host, reason)
 	local host_session = hosts[host];
 	if not host_session then return nil, "The host "..tostring(host).." is not activated"; end
 	log("info", "Deactivating host: %s", host);
@@ -138,7 +139,7 @@ function deactivate(host, reason)
 	return true;
 end
 
-function get_children(host)
+function _M.get_children(host)
 	return disco_items:get(host) or NULL;
 end
 

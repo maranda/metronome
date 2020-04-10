@@ -7,7 +7,7 @@
 local s_match = string.match;
 local log = require "util.logger".init("sasl");
 
-module "sasl.anonymous"
+local _ENV = nil;
 
 --[[
 SASL ANONYMOUS according to RFC 4505
@@ -23,14 +23,14 @@ anonymous:
 
 local function anonymous(self, message)
 	local username, err;
-	username, err = self.profile.anonymous(self, self.profile.session, realm);
+	username, err = self.profile.anonymous(self, self.profile.session);
 	if err then return "failure", err; end
 	self.username = username;
 	return "success";
 end
 
-function init(registerMechanism)
+local function init(registerMechanism)
 	registerMechanism("ANONYMOUS", {"anonymous"}, anonymous);
 end
 
-return _M;
+return { init = init };

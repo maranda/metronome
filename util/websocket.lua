@@ -13,22 +13,23 @@
 local log = require "util.logger".init("websocket");
 local softreq = require "util.dependencies".softreq;
 
-local bit;
-do
-	pcall(function() bit = require "bit"; end);
-	bit = bit or softreq "bit32";
-end
-if not bit then error("This library requires either LuaJIT 2, lua-bitop or Lua 5.2"); end
-local band = bit.band;
-local bxor = bit.bxor;
-local rshift = bit.rshift;
-
 local byte = string.byte;
 local char = string.char;
 local concat = table.concat;
 local setmetatable = setmetatable;
+local pcall = pcall;
 
-module "websocket";
+local bit;
+pcall(function() bit = require "bit"; end);
+bit = bit or softreq "bit32";
+
+if not bit then error("This library requires either LuaJIT 2, lua-bitop or Lua 5.2"); end
+
+local band = bit.band;
+local bxor = bit.bxor;
+local rshift = bit.rshift;
+
+local _ENV = nil;
 
 local ws = {};
 local mt = { __index = ws };
@@ -210,6 +211,6 @@ function ws:handle(frame)
 	return "";
 end
 	
-function new(conn, _log) return setmetatable({ conn = conn, frame_log = _log }, mt); end
+local function new(conn, _log) return setmetatable({ conn = conn, frame_log = _log }, mt); end
 	
-return _M;
+return { new = new };

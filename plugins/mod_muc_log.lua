@@ -30,9 +30,27 @@ local hints_xmlns = "urn:xmpp:hints";
 local labels_xmlns = "urn:xmpp:sec-label:0";
 local lmc_xmlns = "urn:xmpp:message-correct:0";
 local sid_xmlns = "urn:xmpp:sid:0";
+local omemo_xmlns = "eu.siacs.conversations.axolotl";
+local openpgp_xmlns = "urn:xmpp:openpgp:0";
+local xhtml_xmlns = "http://www.w3.org/1999/xhtml";
 
 local mod_host = module:get_host();
 local host_object = module:get_host_session();
+
+local store_elements = module:get_option_set("muc_log_allowed_elements", {});
+
+store_elements:add("acknowledged");
+store_elements:add("displayed");
+store_elements:add("encrypted");
+store_elements:add("encryption");
+store_elements:add("markable");
+store_elements:add("openpgp");
+store_elements:add("securitylabel");
+store_elements:add("received");
+store_elements:remove("body");
+store_elements:remove("html");
+store_elements:remove("origin-id");
+store_elements:remove("replace");
 
 -- Module Definitions
 
@@ -58,9 +76,14 @@ function log_if_needed(e)
 				return;
 			end
 			
-			local body, subject = stanza:child_with_name("body"), stanza:child_with_name("subject");
+			local body, subject, omemo, html, openpgp =
+				stanza:child_with_name("body"),
+				stanza:child_with_name("subject"),
+				stanza:get_child("encrypted", omemo_xmlns),
+				stanza:get_child("html", xhtml_xmlns),
+				stanza:get_child("openpgp", omemo_xmlns);
 			
-			if (not body and not subject) or
+			if (not body and not subject and not omemo and not html and not openpgp) or
 				stanza:get_child("no-store", hints_xmlns) or
 				stanza:get_child("no-permanent-storage", hints_xmlns) then
 				return;
@@ -69,7 +92,6 @@ function log_if_needed(e)
 
 			if muc_from then
 				local data = data_load(node, mod_host, datastore .. "/" .. today) or {};
-				local label = stanza:get_child("securitylabel", labels_xmlns);
 				local replace = stanza:get_child("replace", lmc_xmlns);
 				local oid = stanza:get_child("origin-id", sid_xmlns);
 				local id = stanza.attr.id;
@@ -107,12 +129,24 @@ function log_if_needed(e)
 				};
 				data[#data + 1] = data_entry;
 
-				if label then
-					local tags = {};
-					local text = label:get_child_text("displaymarking");
-					t_insert(tags, deserialize(label));
-					data_entry.label_actions = get_actions(mod_host, text);
-					data_entry.label_name = text;
+				-- store elements
+
+				local tags = {};
+				local elements = stanza.tags;
+				for i = 1, #elements do
+					local element = elements[i];
+					if store_elements:contains(element.name) or (element.name == "html" and html) then
+						if element.name == "securitylabel" and element.attr.xmlns == labels_xmlns then
+							local text = element:get_child_text("displaymarking");
+							data_entry.label_actions = get_actions(mod_host, text);
+							data_entry.label_name = text;
+						end
+						t_insert(tags, deserialize(element));
+					end
+				end
+				if not next(tags) then
+					tags = nil;
+				else
 					data_entry.tags = tags;
 				end
 				

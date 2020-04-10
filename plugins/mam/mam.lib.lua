@@ -14,12 +14,14 @@ local jid_section = require "util.jid".section;
 local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local load_roster = require "util.rostermanager".load_roster;
+local storagemanager = require "core.storagemanager";
 local check_policy = module:require("acdf_aux").check_policy;
 
 local ipairs, next, now, pairs, ripairs, t_insert, t_remove, tostring, type, unpack = 
 	ipairs, next, os.time, pairs, ripairs, table.insert, table.remove, tostring, type, unpack or table.unpack;
     
 local xmlns = "urn:xmpp:mam:2";
+local client_xmlns = "jabber:client";
 local delay_xmlns = "urn:xmpp:delay";
 local e2e_xmlns = "http://www.xmpp.org/extensions/xep-0200.html#ns";
 local forward_xmlns = "urn:xmpp:forward:0";
@@ -29,11 +31,13 @@ local lmc_xmlns = "urn:xmpp:message-correct:0";
 local rsm_xmlns = "http://jabber.org/protocol/rsm";
 local markers_xmlns = "urn:xmpp:chat-markers:0";
 local sid_xmlns = "urn:xmpp:sid:0";
+local omemo_xmlns = "eu.siacs.conversations.axolotl";
+local openpgp_xmlns = "urn:xmpp:openpgp:0";
+local xhtml_xmlns = "http://www.w3.org/1999/xhtml";
 
 local store_time = module:get_option_number("mam_save_time", 300);
 local stores_cap = module:get_option_number("mam_stores_cap", 10000);
-local max_length = module:get_option_number("mam_message_max_length", 3000);
-local store_elements = module:get_option_set("mam_allowed_elements");
+local store_elements = module:get_option_set("mam_allowed_elements", {});
 local unload_cache_time = module:get_option_number("mam_unload_cache_time", 3600);
 
 local session_stores = {};
@@ -45,16 +49,19 @@ local valid_markers = {
 	markable = "markable", received = "received",
 	displayed = "displayed", acknowledged = "acknowledged"
 };
-if store_elements then
-	store_elements:remove("acknowledged");
-	store_elements:remove("body");
-	store_elements:remove("displayed");
-	store_elements:remove("markable");
-	store_elements:remove("origin-id");
-	store_elements:remove("received");
-	store_elements:remove("securitylabel");
-	if store_elements:empty() then store_elements = nil; end
-end
+
+store_elements:add("encrypted");
+store_elements:add("encryption");
+store_elements:add("openpgp");
+store_elements:add("securitylabel");
+store_elements:remove("acknowledged");
+store_elements:remove("body");
+store_elements:remove("displayed");
+store_elements:remove("html");
+store_elements:remove("markable");
+store_elements:remove("origin-id");
+store_elements:remove("received");
+store_elements:remove("replace");
 
 local _M = {};
 
@@ -225,7 +232,7 @@ local function append_stanzas(stanzas, entry, qid, check_acdf)
 		:tag("result", { xmlns = xmlns, queryid = qid, id = entry.uid })
 			:tag("forwarded", { xmlns = forward_xmlns })
 				:tag("delay", { xmlns = delay_xmlns, stamp = dt(entry.timestamp) }):up()
-				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type });
+				:tag("message", { to = entry.to, from = entry.from, id = entry.id, type = entry.type, xmlns = client_xmlns });
 
 	if entry.body then to_forward:tag("body"):text(entry.body):up(); end
 	if entry.tags then
@@ -488,10 +495,13 @@ local function process_message(event, outbound)
 	local message, origin = event.stanza, event.origin;
 	if message.attr.type ~= "chat" and message.attr.type ~= "normal" then return; end
 	local body = message:child_with_name("body");
+	local html = message:get_child("html", xhtml_xmlns);
+	local omemo = message:get_child("encrypted", omemo_xmlns);
+	local openpgp = message:get_child("openpgp", openpgp_xmlns);
 	local marker = message:child_with_ns(markers_xmlns);
 	local marker_id = marker and marker.attr.id;
 	local markable;
-	if not body and not marker then
+	if not body and not html and not marker and not omemo and not openpgp then
 		return; 
 	else
 		if message:get_child("no-store", hints_xmlns) or message:get_child("no-permanent-storage", hints_xmlns) then
@@ -499,7 +509,6 @@ local function process_message(event, outbound)
 		end
 		if body then
 			body = body:get_text() or "";
-			if body:len() > max_length then return; end
 			-- COMPAT, Drop OTR/E2E messages for clients not implementing XEP-334
 			if message:get_child("c", e2e_xmlns) or body:match("^%?OTR%:[^%s]*%.$") then return; end
 		end
@@ -526,43 +535,33 @@ local function process_message(event, outbound)
 	end
 	
 	if not archive and not outbound then -- assume it's an offline message
-		local offline_overcap = module:fire_event("message/offline/overcap", { node = user });
-		if not offline_overcap then
-			if not offline_stores[bare_to] then
-				archive = initialize_offline_store(user);
-			else
-				archive = offline_stores[bare_to];
-			end
+		if not offline_stores[bare_to] then
+			archive = initialize_offline_store(user);
+		else
+			archive = offline_stores[bare_to];
 		end
 	end
 
 	if archive and add_to_store(archive, user, outbound and bare_to or bare_from) then
-		local label = message:get_child("securitylabel", labels_xmlns);
 		local replace = message:get_child("replace", lmc_xmlns);
 		local oid = message:get_child("origin-id", sid_xmlns);
-		local id, tags;
+		local id;
 
-		if store_elements then
-			tags = {};
-			local elements = message.tags;
-			for i = 1, #elements do
-				if store_elements:contains(elements[i].name) then tags[#tags + 1] = elements[i]; end
-			end
-			if not next(tags) then tags = nil; end
+		local tags = {};
+		local elements = message.tags;
+		for i = 1, #elements do
+			local element = elements[i];
+			if store_elements:contains(element.name) or (element.name == "html" and html) then tags[#tags + 1] = element; end
 		end
+		if not next(tags) then tags = nil; end
 
-		if label then
-			if not tags then tags = {}; end
-			t_insert(tags, label);
-		end
-
-		if replace and body then
+		if replace and (body or omemo or openpgp) then
 			id = log_entry_with_replace(
 				archive, to, bare_to, from, bare_from, message.attr.id, replace.attr.id, message.attr.type, body,
 				markable and marker or nil, markable and marker_id or nil, oid and oid.attr.id, tags
 			);
 		else
-			if body then
+			if body or omemo or openpgp then
 				id = log_entry(
 					archive, to, bare_to, from, bare_from, message.attr.id, message.attr.type, body,
 					markable and marker or nil, markable and marker_id or nil, oid and oid.attr.id, tags
@@ -575,6 +574,7 @@ local function process_message(event, outbound)
 			end
 		end
 
+		archive.latest_id = id;
 		if not loaded then archive.last_used = now(); end
 		if (not outbound or not to or to == bare_from) and id then message:tag("stanza-id", { xmlns = sid_xmlns, by = bare_to, id = id }):up(); end
 	else
@@ -624,6 +624,7 @@ _M.get_prefs = get_prefs;
 _M.set_prefs = set_prefs;
 _M.fields_handler = fields_handler;
 _M.generate_stanzas = generate_stanzas;
+_M.add_to_store = add_to_store;
 _M.process_message = process_message;
 _M.purge_messages = purge_messages;
 _M.session_stores = session_stores;
