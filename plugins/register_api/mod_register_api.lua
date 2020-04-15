@@ -828,7 +828,7 @@ local function handle_user_registration(event)
 			local user_jid = jid_join(user, hostname);
 			local mail = data.email and data.email:lower();
 
-			if not mail or hashes:exists(mail) then
+			if not mail or mail == "" or hashes:exists(mail) then
 				timer.add_task(20, function()
 					module:log("debug", "Sending email request to %s", user_jid);
 					module:send(st.message({ from = hostname, to = user_jid, type = "chat", id = uuid() },
