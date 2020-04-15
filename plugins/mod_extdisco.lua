@@ -87,25 +87,29 @@ end);
 module:hook("iq-get/host/"..xmlns_extdisco..":credentials", function (event)
 	local origin, stanza = event.origin, event.stanza;
 	local credentials = stanza:get_child("credentials", xmlns_extdisco):child_with_name("service");
-	local reply = st.reply(stanza);
+	if not credentials then	
+		origin.send(st.error_reply(stanza, "modify", "bad-request"));
+		return true;
+	end
+
 	local host, type = credentials.attr.host, credentials.attr.type;
 	if not host then
 		origin.send(st.error_reply(stanza, "modify", "not-acceptable", "Please specify at least the hostname"));
 		return true;
 	end
-	
+
 	local service = services[host];
 	if not service then
 		origin.send(st.error_reply(stanza, "cancel", "item-not-found", "Specified service is not known"));
 		return true;
 	end
 
+	local reply = st.reply(stanza);
 	reply:tag("credentials", { xmlns = xmlns_extdisco });
 	local found;
 	for i, info in pairs(service) do
 		found = render_credentials(host, type, info, reply); 
 	end
-
 	if not found then
 		origin.send(st.error_reply(stanza, "cancel", "item-not-found", "The service doesn't need any credentials"));
 		return true;
