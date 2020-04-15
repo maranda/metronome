@@ -380,9 +380,7 @@ function api:get_option_table(name, ...)
 end
 
 function api:context(host)
-
 	return setmetatable({host=host or "*"}, {__index=self,__newindex=self});
-
 end
 
 function api:add_item(key, value)
