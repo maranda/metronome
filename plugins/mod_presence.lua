@@ -47,7 +47,7 @@ local function select_top_resources(user)
 	for _, session in pairs(user.sessions) do
 		if session.presence and session.priority >= 0 then t_insert(recipients, session); end
 	end
-	t_sort(recipients, function(a, b) return a.priority < b.priority; end);
+	t_sort(recipients, function(a, b) return a.priority > b.priority; end);
 	return recipients;
 end
 local function recalc_resource_map(user)
