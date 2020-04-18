@@ -13,7 +13,9 @@ local ipairs, pairs, now, tostring = ipairs, pairs, os.time, tostring;
 local services = module:get_option_table("external_services", {});
 
 local xmlns_extdisco = "urn:xmpp:extdisco:2";
+local xmlns_extdisco_legacy = "urn:xmpp:extdisco:1";
 
+module:add_feature(xmlns_extdisco_legacy);
 module:add_feature(xmlns_extdisco);
 
 local function generate_nonce(secret, ttl)
@@ -22,7 +24,7 @@ local function generate_nonce(secret, ttl)
 	return tostring(username), password, datetime(username);
 end
 
-local function render(host, type, info, reply)
+local function render(host, type, info, reply, proto)
 	if not type or info.type == type then
 		local username, password, expires;
 		if info.turn_secret and info.turn_ttl then -- generate TURN REST temporal credentials
@@ -35,8 +37,9 @@ local function render(host, type, info, reply)
 			type = info.type;
 			username = username or info.username;
 			password = password or info.password;
-			expires = expires;
-			restricted = expires and "1";
+			ttl = (proto == xmlns_extdisco_legacy and info.turn_ttl and tostring(info.turn_ttl)) or nil;
+			expires = (proto == xmlns_extdisco and expires) or nil;
+			restricted = (proto == xmlns_extdisco and expires and "1") or nil;
 		}):up();
 	end
 end
@@ -59,34 +62,28 @@ local function render_credentials(host, type, info, reply)
 	end
 end
 
-module:hook_global("config-reloaded", function() 
-	services = module:get_option_table("external_services", {}); 
-end);
-
-module:hook("iq-get/host/"..xmlns_extdisco..":services", function (event)
-	local origin, stanza = event.origin, event.stanza;
-	local service = stanza:get_child("service", xmlns_extdisco);
+local function process_iq_services(origin, stanza, proto)
+	local service = stanza:get_child("service", proto);
 	local service_type = service and service.attr.type;
 	local reply = st.reply(stanza);
-	reply:tag("services", { xmlns = xmlns_extdisco });
+	reply:tag("services", { xmlns = proto });
 
 	for host, service_info in pairs(services) do
 		if #service_info > 0 then
 			for i, info in ipairs(service_info) do 
-				render(host, service_type, info, reply); 
+				render(host, service_type, info, reply, proto); 
 			end
 		else
-			render(host, service_type, service_info, reply);
+			render(host, service_type, service_info, reply, proto);
 		end
 	end
 
 	origin.send(reply);
 	return true;
-end);
+end
 
-module:hook("iq-get/host/"..xmlns_extdisco..":credentials", function (event)
-	local origin, stanza = event.origin, event.stanza;
-	local credentials = stanza:get_child("credentials", xmlns_extdisco):child_with_name("service");
+local function process_iq_credentials(origin, stanza, proto)	
+	local credentials = stanza:get_child("credentials", proto):child_with_name("service");
 	if not credentials then	
 		origin.send(st.error_reply(stanza, "modify", "bad-request"));
 		return true;
@@ -105,7 +102,7 @@ module:hook("iq-get/host/"..xmlns_extdisco..":credentials", function (event)
 	end
 
 	local reply = st.reply(stanza);
-	reply:tag("credentials", { xmlns = xmlns_extdisco });
+	reply:tag("credentials", { xmlns = proto });
 	local found;
 	for i, info in pairs(service) do
 		found = render_credentials(host, type, info, reply); 
@@ -117,4 +114,28 @@ module:hook("iq-get/host/"..xmlns_extdisco..":credentials", function (event)
 
 	origin.send(reply);
 	return true;
+end
+
+module:hook_global("config-reloaded", function() 
+	services = module:get_option_table("external_services", {}); 
+end);
+
+module:hook("iq-get/host/"..xmlns_extdisco_legacy..":services", function (event)
+	local origin, stanza = event.origin, event.stanza;
+	return process_iq_services(origin, stanza, xmlns_extdisco_legacy);
+end);
+
+module:hook("iq-get/host/"..xmlns_extdisco_legacy..":credentials", function (event)
+	local origin, stanza = event.origin, event.stanza;
+	return process_iq_credentials(origin, stanza, xmlns_extdisco_legacy);
+end);
+
+module:hook("iq-get/host/"..xmlns_extdisco..":services", function (event)
+	local origin, stanza = event.origin, event.stanza;
+	return process_iq_services(origin, stanza, xmlns_extdisco);
+end);
+
+module:hook("iq-get/host/"..xmlns_extdisco..":credentials", function (event)
+	local origin, stanza = event.origin, event.stanza;
+	return process_iq_credentials(origin, stanza, xmlns_extdisco);
 end);
