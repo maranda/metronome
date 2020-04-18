@@ -38,8 +38,9 @@ local function process_to_bare(bare, origin, stanza)
 					local recipient = recipients[i];
 					if recipient.to_block and recipient.to_block[stanza] then
 						recipient.to_block[stanza] = nil;
-					elseif recipient.send(stanza) then 
-						return true; 
+					else
+						module:log("debug", "Forking message from %s to %s", stanza.attr.from, bare .. "/" .. recipient.resource);
+						recipient.send(stanza);
 					end
 				end
 			end
