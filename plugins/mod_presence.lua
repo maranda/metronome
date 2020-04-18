@@ -11,7 +11,7 @@ local log = module._log;
 
 local require = require;
 local pairs, ipairs, next = pairs, ipairs, next;
-local t_concat, t_insert = table.concat, table.insert;
+local t_concat, t_insert, t_sort = table.concat, table.insert, table.sort;
 local s_find = string.find;
 local tonumber = tonumber;
 
@@ -42,20 +42,12 @@ local function pre_process(bare_jid)
 end
 
 local function select_top_resources(user)
-	local priority = 0;
+	-- find resource with greatest priority
 	local recipients = {};
-	for _, session in pairs(user.sessions) do -- find resource with greatest priority
-		if session.presence then
-			-- TODO check active privacy list for session
-			local p = session.priority;
-			if p > priority then
-				priority = p;
-				recipients = {session};
-			elseif p == priority then
-				t_insert(recipients, session);
-			end
-		end
+	for _, session in pairs(user.sessions) do
+		if session.presence and session.priority >= 0 then t_insert(recipients, session); end
 	end
+	t_sort(recipients, function(a, b) return a.priority < b.priority; end);
 	return recipients;
 end
 local function recalc_resource_map(user)
