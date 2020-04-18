@@ -78,6 +78,8 @@ local function process_iq_services(origin, stanza, proto)
 		end
 	end
 
+	module:log("debug", "%s requested external service data (%s type)...", 
+		stanza.attr.from or origin.username .. "@" .. origin.host, service_type or "nil");
 	origin.send(reply);
 	return true;
 end
@@ -112,6 +114,8 @@ local function process_iq_credentials(origin, stanza, proto)
 		return true;
 	end
 
+	module:log("debug", "%s requested external service credentials for service host %s (type %s)...", 
+		stanza.attr.from or origin.username .. "@" .. origin.host, host, type or "nil");
 	origin.send(reply);
 	return true;
 end
