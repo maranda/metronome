@@ -7,7 +7,6 @@
 local st = require "util.stanza";
 local base64 = require "util.encodings".base64.encode;
 local hmac_sha1 = require "util.hmac".sha1;
-local datetime = require "util.datetime".datetime;
 local ipairs, pairs, now, tostring = ipairs, pairs, os.time, tostring;
 
 local relay_host = module:get_option_string("jingle_nodes_host", module.host);
