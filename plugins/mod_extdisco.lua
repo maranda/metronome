@@ -71,7 +71,7 @@ local function process_iq_services(origin, stanza, proto)
 	for host, service_info in pairs(services) do
 		if #service_info > 0 then
 			for i, info in ipairs(service_info) do 
-				render(host, service_type, info, reply, proto); 
+				render(host, service_type, info, reply, proto);
 			end
 		else
 			render(host, service_type, service_info, reply, proto);
