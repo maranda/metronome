@@ -94,7 +94,7 @@ function s2sout.attempt_connection(host_session, err)
 				end
 			end
 		else
-			if not first_lookup then
+			if not first_lookup and not host_session.srv_hosts then
 				log("debug", "%s has no SRV records, falling back to A/AAAA", to_host);
 				host_session.no_srv_records = true;
 			end
