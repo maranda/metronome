@@ -17,7 +17,7 @@ local relay_tcp = module:get_option_boolean("jingle_nodes_tcp", true);
 local relay_udp = module:get_option_boolean("jingle_nodes_udp", true);
 local relay_port = module:get_option_number("jingle_nodes_port", 3478);
 local turn_credentials = module:get_option_boolean("jingle_nodes_turn_credentials", false);
-local turn_credentials_secret = module:get_options_string("jingle_nodes_turn_secret");
+local turn_credentials_secret = module:get_option_string("jingle_nodes_turn_secret");
 local turn_credentials_ttl = module:get_option_number("jingle_nodes_turn_credentials_ttl", 6200);
 
 local xmlns = "http://jabber.org/protocol/jinglenodes";
