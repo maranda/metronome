@@ -203,6 +203,7 @@ end
 -- These are simple commands, not valid standalone in Lua
 
 function commands.bye(session, line)
+	if line == "bye\r\n" or line == "quit\r\n" or line == "exit\r\n" then line = nil; end
 	session.print(line or "See you! :)");
 	session.disconnect();
 end
