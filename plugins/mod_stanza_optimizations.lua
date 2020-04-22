@@ -37,6 +37,7 @@ local allowed_ns_map = module:get_option_set("allowed_inactive_message_payloads"
 	"http://jabber.org/protocol/pubsub#event",
 	"urn:xmpp:eme:0",
 	"urn:xmpp:chat-markers:0",
+	"urn:xmpp:jingle-message:0",
 	"urn:xmpp:mam:2"
 });
 local function whitelist_message(stanza)
