@@ -128,6 +128,7 @@ function console_listener.onincoming(conn, data)
 						commands.bye(session, "Too many wrong login attempts, have a nice day! ;)");
 					else
 						session.print(wrong_password[rand(1,4)]);
+						session.print("Please insert the console password:");
 					end
 					break;
 				end
