@@ -11,6 +11,7 @@ local datetime = require "util.datetime".datetime;
 local ipairs, pairs, now, tostring = ipairs, pairs, os.time, tostring;
 
 local services = module:get_option_table("external_services", {});
+local restricted = module:get_option_boolean("external_services_restricted", true);
 
 local xmlns_extdisco = "urn:xmpp:extdisco:2";
 local xmlns_extdisco_legacy = "urn:xmpp:extdisco:1";
@@ -63,60 +64,68 @@ local function render_credentials(host, type, info, reply)
 end
 
 local function process_iq_services(origin, stanza, proto)
-	local service = stanza:get_child("service", proto);
-	local service_type = service and service.attr.type;
-	local reply = st.reply(stanza);
-	reply:tag("services", { xmlns = proto });
+	if (origin.host == module.host) or not restricted then
+		local service = stanza:get_child("service", proto);
+		local service_type = service and service.attr.type;
+		local reply = st.reply(stanza);
+		reply:tag("services", { xmlns = proto });
 
-	for host, service_info in pairs(services) do
-		if #service_info > 0 then
-			for i, info in ipairs(service_info) do 
-				render(host, service_type, info, reply, proto);
+		for host, service_info in pairs(services) do
+			if #service_info > 0 then
+				for i, info in ipairs(service_info) do 
+					render(host, service_type, info, reply, proto);
+				end
+			else
+				render(host, service_type, service_info, reply, proto);
 			end
-		else
-			render(host, service_type, service_info, reply, proto);
 		end
-	end
 
-	module:log("debug", "%s requested external service data (%s type)...", 
-		stanza.attr.from or origin.username .. "@" .. origin.host, service_type or "nil");
-	origin.send(reply);
+		module:log("debug", "%s requested external service data (%s type)...", 
+			stanza.attr.from or origin.username .. "@" .. origin.host, service_type or "nil");
+		origin.send(reply);
+	else
+		origin.send(st.error_reply(stanza, "cancel", "not-allowed", "External services information is restricted"));
+	end
 	return true;
 end
 
-local function process_iq_credentials(origin, stanza, proto)	
-	local credentials = stanza:get_child("credentials", proto):child_with_name("service");
-	if not credentials then	
-		origin.send(st.error_reply(stanza, "modify", "bad-request"));
-		return true;
-	end
+local function process_iq_credentials(origin, stanza, proto)
+	if (origin.host == module.host) or not restricted then
+		local credentials = stanza:get_child("credentials", proto):child_with_name("service");
+		if not credentials then	
+			origin.send(st.error_reply(stanza, "modify", "bad-request"));
+			return true;
+		end
 
-	local host, type = credentials.attr.host, credentials.attr.type;
-	if not host then
-		origin.send(st.error_reply(stanza, "modify", "not-acceptable", "Please specify at least the hostname"));
-		return true;
-	end
+		local host, type = credentials.attr.host, credentials.attr.type;
+		if not host then
+			origin.send(st.error_reply(stanza, "modify", "not-acceptable", "Please specify at least the hostname"));
+			return true;
+		end
 
-	local service = services[host];
-	if not service then
-		origin.send(st.error_reply(stanza, "cancel", "item-not-found", "Specified service is not known"));
-		return true;
-	end
+		local service = services[host];
+		if not service then
+			origin.send(st.error_reply(stanza, "cancel", "item-not-found", "Specified service is not known"));
+			return true;
+		end
 
-	local reply = st.reply(stanza);
-	reply:tag("credentials", { xmlns = proto });
-	local found;
-	for i, info in pairs(service) do
-		found = render_credentials(host, type, info, reply); 
-	end
-	if not found then
-		origin.send(st.error_reply(stanza, "cancel", "item-not-found", "The service doesn't need any credentials"));
-		return true;
-	end
+		local reply = st.reply(stanza);
+		reply:tag("credentials", { xmlns = proto });
+		local found;
+		for i, info in pairs(service) do
+			found = render_credentials(host, type, info, reply); 
+		end
+		if not found then
+			origin.send(st.error_reply(stanza, "cancel", "item-not-found", "The service doesn't need any credentials"));
+			return true;
+		end
 
-	module:log("debug", "%s requested external service credentials for service host %s (type %s)...", 
-		stanza.attr.from or origin.username .. "@" .. origin.host, host, type or "nil");
-	origin.send(reply);
+		module:log("debug", "%s requested external service credentials for service host %s (type %s)...", 
+			stanza.attr.from or origin.username .. "@" .. origin.host, host, type or "nil");
+		origin.send(reply);
+	else
+		origin.send(st.error_reply(stanza, "cancel", "not-allowed", "You are forbidden from requesting temporary credentials, sorry"));
+	end
 	return true;
 end
 
