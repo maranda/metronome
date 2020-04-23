@@ -114,28 +114,6 @@ module:hook("iq-set/self/"..xmlns..":disable", function(event)
 	end
 end);
 
-module:hook("message/bare", function(event)
-	local origin, stanza = event.origin, event.stanza;
-	local bare_session = module:get_bare_session(stanza.attr.to);
-
-	if bare_session and stanza.attr.type == "chat" then
-		local clone, allow_message = st.clone(stanza);
-		local top_resource = bare_session.top_resources and bare_session.top_resources[1];
-		for resource, session in pairs(bare_session.sessions) do
-			if session.carbons and session ~= top_resource then
-				if session.csi == "inactive" and allow_message == nil then
-					allow_message = allow_message_to_csi(stanza);
-				end
-				if session.csi ~= "inactive" or allow_message then
-					clone.attr.to = jid_join(session.username, session.host, resource);
-					module:log("debug", "Forking message from %s to %s", stanza.attr.from, clone.attr.to);
-					session.send(clone);
-				end
-			end
-		end
-	end
-end, 1);
-
 module:hook("message/full", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local bare_from = jid_bare(stanza.attr.from);

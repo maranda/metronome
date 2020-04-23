@@ -4,6 +4,8 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 --
+-- Additional Contributors: yalh76
+--
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2013, Florian Zeitz, Kim Alvefur, Marco Cirillo, Matthew Wild
 
@@ -377,6 +379,10 @@ function api:get_option_table(name, ...)
 	else
 		return value;
 	end
+end
+
+function api:context(host)
+	return setmetatable({host=host or "*"}, {__index=self,__newindex=self});
 end
 
 function api:add_item(key, value)

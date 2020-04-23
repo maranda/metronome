@@ -45,6 +45,7 @@ local stores_overrides = multitable.new();
 
 local function initialize_host(host)
 	local host_session = hosts[host];
+
 	host_session.events.add_handler("item-added/data-driver", function (event)
 		local item = event.item;
 		stores_available:set(host, item.name, item);
@@ -72,6 +73,8 @@ local function initialize_host(host)
 			end
 		end
 	end);
+
+	host_session.storage_initialized = true;
 end
 metronome.events.add_handler("host-activated", initialize_host, 101);
 

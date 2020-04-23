@@ -27,7 +27,7 @@ local tostring, tonumber = tostring, tonumber;
 local CFG_SOURCEDIR = _G.CFG_SOURCEDIR;
 
 local _G = _G;
-local metronome = metronome;
+local metronome = _G.metronome;
 
 local _ctl = {};
 
@@ -140,11 +140,12 @@ function _ctl.controluser(params, action)
 	if not host_session then
 		return false, "no-such-host";
 	end
+
+	if not host_session.storage_initialized then storagemanager.initialize_host(host); end
 	local provider = host_session.users;
 	if not(provider) or provider.name == "null" then
 		usermanager.initialize_host(host);
 	end
-	storagemanager.initialize_host(host);
 	
 	local ok, errmsg;
 	if action == "check" then

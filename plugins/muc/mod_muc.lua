@@ -404,6 +404,7 @@ module.unload = function(reload)
 		end
 		module:remove_all_timers();
 		shutdown_component();
+		host_session.muc = nil;
 	end
 end
 

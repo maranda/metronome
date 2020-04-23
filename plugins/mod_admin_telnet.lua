@@ -30,13 +30,15 @@ local set, array = require "util.set", require "util.array";
 local cert_verify_identity = require "util.x509".verify_identity;
 local envload = require "util.envload".envload;
 local envloadfile = require "util.envload".envloadfile;
-local pcall = pcall;
+local pcall, rand = pcall, math.random;
 local dns = require "net.dns";
 local st = require "util.stanza";
 local cm = require "core.configmanager";
 local mm = require "core.modulemanager";
 local um = require "core.usermanager";
 local read_version = read_version;
+
+local graphic_banner, short_banner;
 
 local commands = module:shared("commands")
 local def_env = module:shared("env");
@@ -45,7 +47,8 @@ local default_env_mt = { __index = def_env };
 local ok, pposix = pcall(require, "util.pposix");
 if not ok then pposix = nil; end
 
-local strict_host_checks = module:get_option_boolean("admin_telnet_strict_host_checks", true)
+local strict_host_checks = module:get_option_boolean("admin_telnet_strict_host_checks", true);
+local auth_user = module:get_option_string("admin_telnet_auth_user");
 
 local function redirect_output(_G, session)
 	local env = setmetatable({ print = session.print }, { __index = function (t, k) return rawget(_G, k); end });
@@ -92,8 +95,14 @@ function console_listener.onconnect(conn)
 	session.send(string.char(0));
 end
 
+local wrong_password = {
+	"No not that...", "Maybe near... but no", "Fire... fireeee... Water, sorry.", "Wrong Password"
+};
+
 function console_listener.onincoming(conn, data)
 	local session = sessions[conn];
+
+	if data:match("^"..string.char(255)..".*") then return; end
 
 	local partial = session.partial_data;
 	if partial then
@@ -104,11 +113,30 @@ function console_listener.onincoming(conn, data)
 		repeat
 			local useglobalenv;
 
-			if line:match("^>") then
+			if session.wait_password then
+				local pass = line:match("(.*)\r\n$");
+				local user, host = jid_split(auth_user);
+				if um.test_password(user, host, pass) then
+					session.print(short_banner);
+					session.send(string.char(255,252,1));
+					session.wait_password = nil;
+					session.wrong_password = nil;
+					break;
+				else
+					session.wrong_pass = session.wrong_pass and session.wrong_pass + 1 or 1;
+					if session.wrong_pass >= 3 then
+						commands.bye(session, "Too many wrong login attempts, have a nice day! ;)");
+					else
+						session.print(wrong_password[rand(1,4)]);
+						session.print("Please insert the console password:");
+					end
+					break;
+				end
+			elseif line:match("^>") then
 				line = line:gsub("^>", "");
 				useglobalenv = true;
 			elseif line == "\004" then
-				commands["bye"](session, line);
+				commands.bye(session, line);
 				break;
 			else
 				local command = line:match("^%w+") or line:match("%p");
@@ -175,8 +203,9 @@ end
 -- Console commands --
 -- These are simple commands, not valid standalone in Lua
 
-function commands.bye(session)
-	session.print("See you! :)");
+function commands.bye(session, line)
+	if line == "bye\r\n" or line == "quit\r\n" or line == "exit\r\n" then line = nil; end
+	session.print(line or "See you! :)");
 	session.disconnect();
 end
 commands.quit, commands.exit = commands.bye, commands.bye;
@@ -1057,10 +1086,8 @@ end
 
 -------------
 
-function printbanner(session)
-	local option = module:get_option("console_banner");
-	if option == nil or option == "full" or option == "graphic" then
-		session.print [[ 
+short_banner = "Welcome to the Metronome administration console. For a list of commands, type: help";
+graphic_banner = [[ 
 |
 |          /===========\
 |          | Mêtronôme |
@@ -1068,17 +1095,33 @@ function printbanner(session)
 |
 |          When things tick and tack...
 |
-|]]
+|]];
+
+local function print_auth(session)
+	session.print("Please insert the console password:");
+	session.wait_password = true;
+	session.send(string.char(255,251,1));
+end
+
+function printbanner(session)
+	local option = module:get_option("console_banner");
+	if option == nil or option == "full" or option == "graphic" then
+		session.print(graphic_banner);
 	end
 	if option == nil or option == "short" or option == "full" then
-	session.print("Welcome to the Metronome administration console. For a list of commands, type: help");
+		if auth_user then
+			print_auth(session);
+		else
+			session.print(short_banner);
+		end
 	end
 	if option and option ~= "short" and option ~= "full" and option ~= "graphic" then
 		if type(option) == "string" then
-			session.print(option)
+			session.print(option);
 		elseif type(option) == "function" then
 			module:log("warn", "Using functions as value for the console_banner option is no longer supported");
 		end
+		if auth_user then print_auth(session); end
 	end
 end
 
