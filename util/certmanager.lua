@@ -8,10 +8,12 @@
 -- ** Copyright (c) 2010-2013, Kim Alvefur, Matthew Wild, Waqas Hussain
 
 local configmanager = require "core.configmanager";
+local softreq = require "util.dependencies".softreq;
 local log = require "util.logger".init("certmanager");
 local ssl = require "ssl";
 local ssl_newcontext = ssl and ssl.newcontext;
 local ssl_context = ssl and require "ssl.context";
+local x509 = ssl.x509 or softreq "ssl.x509";
 
 local openssl_version = require "util.auxiliary".get_openssl_version();
 local load_file = require "util.auxiliary".load_file;
@@ -43,13 +45,13 @@ if openssl_version and openssl_version < 100 then
 	supports_ecdh = false;
 	noticket = false;
 end
-local default_verify = (ssl and ssl.x509 and { "peer" }) or "none";
+local default_verify = (x509 and { "peer", "client_once" }) or { "none" };
 local default_options = { "no_sslv2", noticket and "no_ticket" };
 local default_verifyext = { "lsec_continue" };
 
 if disable_sslv3 then default_options[#default_options + 1] = "no_sslv3"; end
 
-if not verifyext and ssl and ssl.x509 then
+if not verifyext and x509 then
 	default_verify[#default_verify + 1] = "continue";
 end
 
@@ -105,17 +107,6 @@ function _M.create_context(host, mode, user_ssl_config)
 		local success;
 		success, err = ssl_context.setcipher(ctx, user_ssl_config and user_ssl_config.ciphers or default_ciphers);
 		if not success then ctx = nil; end
-		if success and mode == "server" then
-			local verify = ssl_config.verify;
-			for i=1,#verify do
-				if verify[i] == "client_once" then -- log warning
-					log("warn", "Disabling certificate request during renegotiation while eliminating possible TLS Renegotiation vulnerabilities");
-					log("warn", "will also cause certain LuaSec API functions to behave inconsistently, preventing Metronome to be able to verify");
-					log("warn", "peer certificates on server listeners, make sure you actually need the flag before using it");
-					break;
-				end
-			end
-		end
 	end
 
 	if not ctx then
