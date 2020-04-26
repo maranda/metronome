@@ -561,11 +561,13 @@ function module.load()
 	});
 
 	module:hook("muc-disco-info-extended", function(room, form)
-		local layout, node = form.layout, split_jid(room.jid);
-		layout[#layout + 1] = { 
-			name = "muc#roominfo_logs",
-			label = "Web URL to access room logs",
-			value = module:http_url(nil, url_base .. "/" .. node .. "/", config.http_host)
-		};
+		if room._data.logging and not room._data.hidden then
+			local layout, node = form.layout, split_jid(room.jid);
+			layout[#layout + 1] = { 
+				name = "muc#roominfo_logs",
+				label = "Web URL to access room logs",
+				value = module:http_url(nil, url_base .. "/" .. node .. "/", config.http_host)
+			};
+		end
 	end, 100);
 end
