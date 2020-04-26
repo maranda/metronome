@@ -255,12 +255,13 @@ local function handle_to_domain(event)
 	local type = stanza.attr.type;
 	if type == "error" or type == "result" then return; end
 	if stanza.name == "iq" and type == "get" then
+		local name = stanza.tags[1].name;
 		local xmlns = stanza.tags[1].attr.xmlns;
-		if xmlns == "http://jabber.org/protocol/disco#info" then
+		if name == "query" and xmlns == "http://jabber.org/protocol/disco#info" then
 			origin.send(get_disco_info(stanza));
-		elseif xmlns == "http://jabber.org/protocol/disco#items" then
+		elseif name == "query" and xmlns == "http://jabber.org/protocol/disco#items" then
 			origin.send(get_disco_items(stanza));
-		elseif xmlns == "http://jabber.org/protocol/muc#unique" and stanza.tags[1].name == "unique" then
+		elseif name == "unique" and xmlns == "http://jabber.org/protocol/muc#unique" then
 		   if can_create_room(origin, stanza) then
 				local id = id_gen();
 				unique_reservations[id.."@"..muc_host] = jid_bare(stanza.attr.from or origin.full_jid);
