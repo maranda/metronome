@@ -18,6 +18,7 @@ local cfg = {
 	WRITE_TIMEOUT = 180,  -- timeout in seconds for write data on socket
 	CONNECT_TIMEOUT = 20,  -- timeout in seconds for connection attempts
 	CLEAR_DELAY = 5,  -- seconds to wait for clearing interface list (and calling ondisconnect listeners)
+	READ_RETRY_DELAY = 1e-06, -- if, after reading, there is still data in buffer, wait this long and continue reading
 	DEBUG = true  -- show debug messages
 };
 
@@ -330,21 +331,13 @@ do
 	end
 	
 	function interface_mt:socket() return self.conn; end
-	
 	function interface_mt:server() return self._server or self; end
-	
 	function interface_mt:port() return self._port; end
-	
 	function interface_mt:serverport() return self._serverport; end
-	
 	function interface_mt:ip() return self._ip; end
-	
 	function interface_mt:ssl() return self._usingssl; end
-
 	function interface_mt:type() return self._type or "client"; end
-	
 	function interface_mt:connections() return self._connections; end
-	
 	function interface_mt:address() return self.addr; end
 	
 	function interface_mt:set_sslctx(sslctx)
@@ -404,15 +397,24 @@ do
 	end
 	
 	function interface_mt:setlistener(listener)
-		self.onconnect, self.ondisconnect, self.onincoming, self.ontimeout, self.onstatus
-			= listener.onconnect, listener.ondisconnect, listener.onincoming, listener.ontimeout, listener.onstatus;
+		self:ondetach(); -- Notify that the listener is no longer owning this connection
+		self.onconnect, self.ondisconnect, self.onincoming, self.onreadtimeout =
+			listener.onconnect, listener.ondisconnect, listener.onincoming, listener.onreadtimeout;
+		self.ontimeout, self.onstatus, self.ondetach, self.ondrain =
+			listener.ontimeout, listener.onstatus, listener.ondetach, listener.ondrain;
 	end
 	
 	-- Stub handlers
 	function interface_mt:onconnect() end
 	function interface_mt:onincoming() end
+	function interface_mt:onreadtimeout()
+		self.fatalerror = "timeout during receiving";
+		debug("connection failed:", self.fatalerror);
+		self:_close(); self.eventread = nil;
+	end
 	function interface_mt:ondisconnect() end
 	function interface_mt:ontimeout() end
+	function interface_mt:ondetach() end
 	function interface_mt:ondrain() end
 	function interface_mt:onstatus() end
 end
@@ -437,6 +439,9 @@ do
 			ondisconnect = listener.ondisconnect,  -- will be called when client disconnects
 			onincoming = listener.onincoming, -- will be called when client sends data
 			ontimeout = listener.ontimeout, -- called when fatal socket timeout occurs
+			onreadtimeout = listener.onreadtimeout, -- called when socket inactivity timeout occurs
+			ondrain = listener.ondrain, -- called when writebuffer is empty
+			ondetach = listener.ondetach, -- called when disassociating this listener from this connection
 			onstatus = listener.onstatus, -- called for status changes (e.g. of SSL/TLS)
 			eventread = false, eventwrite = false, eventclose = false,
 			eventhandshake = false, eventstarthandshake = false,  -- event handler
@@ -529,7 +534,7 @@ do
 				interface.eventread = nil;
 				return -1;
 			end
-			if EV_TIMEOUT == event then  -- took too long to get some data from client -> disconnect
+			if EV_TIMEOUT == event and not interface.conn:dirty() and interface:onreadtimeout() ~= true then  -- took too long to get some data from client -> disconnect
 				interface.fatalerror = "timeout during receiving";
 				debug("connection failed:", interface.fatalerror);
 				interface:_close();
@@ -577,6 +582,9 @@ do
 				if interface.noreading then
 					interface.eventread = nil;
 					return -1;
+				end
+				if interface.conn:dirty() then -- data still in buffer
+					return EV_TIMEOUT, cfg.READ_RETRY_DELAY;
 				end
 				return EV_READ, cfg.READ_TIMEOUT;
 			end
