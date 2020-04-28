@@ -23,7 +23,7 @@ local cfg = {
 };
 
 local coroutine, ipairs, require, select, setmetatable, tostring, t_concat, t_insert =
-	coroutine, ipairs, require, select, setmetatable, tostring, t_concat, t_insert;
+	coroutine, ipairs, require, select, setmetatable, tostring, table.concat, table.insert;
 
 local ssl = require "ssl";
 local socket = require "socket";
