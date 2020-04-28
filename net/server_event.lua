@@ -22,20 +22,11 @@ local cfg = {
 	DEBUG = true  -- show debug messages
 };
 
-local function use(x) return rawget(_G, x); end
-local ipairs = use "ipairs";
-local string = use "string";
-local select = use "select";
-local require = use "require";
-local tostring = use "tostring";
-local coroutine = use "coroutine";
-local setmetatable = use "setmetatable";
+local coroutine, ipairs, require, select, setmetatable, tostring, t_concat, t_insert =
+	coroutine, ipairs, require, select, setmetatable, tostring, t_concat, t_insert;
 
-local t_insert = table.insert;
-local t_concat = table.concat;
-
-local ssl = use "ssl" or require "ssl";
-local socket = use "socket" or require "socket";
+local ssl = require "ssl";
+local socket = require "socket";
 
 local log = require ("util.logger").init("socket");
 
