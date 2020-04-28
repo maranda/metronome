@@ -126,6 +126,10 @@ do
 					self:_close();
 					debug("new connection failed. id:", self.id, "error:", self.fatalerror);
 				else
+					if EV_READWRITE == event and self.readcallback(event) == -1 then
+						-- there's a fatal error
+						return -1;
+					end
 					if plainssl and ssl then  -- start ssl session
 						self:starttls(self._sslctx, true);
 					else  -- normal connection
@@ -136,7 +140,7 @@ do
 				self.eventconnect = nil;
 				return -1;
 			end
-			self.eventconnect = addevent(base, self.conn, EV_WRITE, callback, cfg.CONNECT_TIMEOUT);
+			self.eventconnect = addevent(base, self.conn, EV_READWRITE, callback, cfg.CONNECT_TIMEOUT);
 			return true;
 	end
 	function interface_mt:_start_session(call_onconnect) -- new session, for example after startssl
