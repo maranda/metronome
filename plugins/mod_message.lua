@@ -43,6 +43,7 @@ local function process_to_bare(bare, origin, stanza)
 						recipient.send(stanza);
 					end
 				end
+				return true;
 			end
 		end
 		-- no resources are online
