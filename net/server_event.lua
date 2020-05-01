@@ -367,7 +367,7 @@ do
 			return nil, err;
 		end
 		self._usingssl = true;
-		self.startsslcallback = function();  -- we have to start the handshake outside of a read/write event
+		self.startsslcallback = function()  -- we have to start the handshake outside of a read/write event
 			self.startsslcallback = nil;
 			self:_start_ssl(call_onconnect);
 			self.eventstarthandshake = nil;
