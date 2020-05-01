@@ -3,7 +3,7 @@
 
 This software codebase began as a fork of prosody trunk (to be 0.9) merged with LW.Org's custom patches, initiating from August 7th 2012 (see first commit).
 
-Being mainly based on Prosody a lot of Metronome's code is backport compatible, but as development progressed a good portion of it completely diverged from mainstream's to better suit LW.Org IM's needs.
+Being mainly based on Prosody a lot of Metronome's code is backport compatible, but as development keeps progressing the majority of the codebase has almost completely diverged from mainstream.
 
 Differences from Prosody are, but not limited to:
 
