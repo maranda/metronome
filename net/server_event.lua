@@ -136,7 +136,7 @@ do
 	end
 	function interface_mt:_start_session(call_onconnect) -- new session, for example after startssl
 		if self.type == "client" then
-			local callback = function();
+			local callback = function()
 				self:_lock(false, false, false);
 				self.eventread = addevent(base, self.conn, EV_READ, self.readcallback, cfg.READ_TIMEOUT);  -- register callback
 				if call_onconnect then
