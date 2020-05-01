@@ -29,6 +29,11 @@ local expire_inactive_rooms = module:get_option_boolean("expire_inactive_rooms",
 local expire_inactive_rooms_time = module:get_option_number("expire_inactive_rooms_time", 2592000);
 local expire_inactive_rooms_whitelist = module:get_option_set("expire_inactive_rooms_whitelist", {});
 local expire_unique_reservations = module:get_option_number("expire_unique_room_reservations", 180);
+local instant_room_on_creation = module:get_option_boolean("instant_room_on_creation", false);
+local room_default_whois = module:get_option_string("room_default_whois");
+if room_default_whois and (room_default_whois ~= "moderators" and room_default_whois ~= "anyone") then
+	room_default_whois = nil;
+end
 local muclib = module:require "muc";
 local muc_new_room = muclib.new_room;
 local jid_section = require "util.jid".section;
@@ -306,10 +311,13 @@ function stanza_handler(event)
 		local from_host = jid_section(stanza.attr.from, "host");
 		if can_create_room(origin, stanza) then
 			room = muc_new_room(bare);
-			room.just_created = stanza:get_child("x", "http://jabber.org/protocol/muc") and true or nil;
+			if not instant_room_on_creation then
+				room.just_created = stanza:get_child("x", "http://jabber.org/protocol/muc") and true or nil;
+			end
 			room.route_stanza = room_route_stanza;
 			room.save = room_save;
 			rooms[bare] = room;
+			if room_default_whois then room:set_option("whois", room_default_whois); end
 		end
 	end
 	if room then
