@@ -44,6 +44,7 @@ if metronome then
 			MAX_HANDSHAKE_ATTEMPTS = settings.max_ssl_handshake_roundtrips;
 			MAX_READ_LENGTH = settings.max_receive_buffer_size;
 			MAX_SEND_LENGTH = settings.max_send_buffer_size;
+			READ_RETRY_DELAY = settings.event_read_retry_interval;
 			READ_TIMEOUT = settings.read_timeout;
 			WRITE_TIMEOUT = settings.send_timeout;
 		};

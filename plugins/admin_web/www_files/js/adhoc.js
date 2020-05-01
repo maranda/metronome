@@ -161,7 +161,7 @@ Adhoc.prototype = {
         $(result).find("command > *").each(function() {
             if ($(this).is("note")) {
                 self.addNote($(this).text(), $(this).attr("type"));
-            } else if ($(this).is("x[xmlns=jabber:x:data]")) {
+            } else if ($(this).is("x[xmlns=jabber\\:x\\:data]")) {
                 self.addForm(this);
             }
         });
