@@ -15,15 +15,12 @@ end
 local datamanager = require "util.datamanager";
 local storagemanager = require "core.storagemanager";
 local json = require "util.json";
-local message = metronomectl.show_message;
 local unpack = table.unpack or unpack;
 	
 function module.command(arg)
 	local node, host, store = unpack(arg);
 	if not node or not host or not store then
-		message("Incorrect syntax please use:");
-		message("metronomectl mod_dump_json <node name or nil> <host> <store name>");
-		return 1;
+		return "Incorrect syntax please use:\nmetronomectl mod_dump_json <node name or nil> <host> <store name>";
 	end
 	
 	storagemanager.initialize_host(host); -- initialize host storage
@@ -31,10 +28,8 @@ function module.command(arg)
 	
 	local data = datamanager.load(node, host, store);
 	if data then
-		message(json.encode(data));
-		return 0;
+		return json.encode(data);
 	else
-		message("Datastore is empty");
-		return 1;
+		return "Datastore is empty";
 	end
 end

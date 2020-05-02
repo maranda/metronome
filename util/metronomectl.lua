@@ -33,11 +33,19 @@ local _ctl = {};
 
 -- UI helpers
 local function show_message(msg, ...)
-	print(msg:format(...));
+	if ... then
+		print(msg:format(...));
+	else
+		print(msg);
+	end
 end
 
 function _ctl.show_warning(msg, ...)
-	print(msg:format(...));
+	if ... then
+		print(msg:format(...));
+	else
+		print(msg);
+	end
 end
 
 function _ctl.show_usage(usage, desc)
