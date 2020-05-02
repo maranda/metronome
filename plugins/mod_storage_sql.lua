@@ -8,6 +8,9 @@
 --
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2010-2013, Kim Alvefur, Matthew Wild, Waqas Hussain
+--
+-- WARNING: This backend is not tested with Lua 5.2, neither is the underlying
+-- library (LuaDBI), so it may not work.
 
 --[[
 
@@ -32,7 +35,7 @@ local next = next;
 local setmetatable = setmetatable;
 local xpcall = xpcall;
 local json = require "util.json";
-local build_url = require"socket.url".build;
+local build_url = require "socket.url".build;
 
 local DBI;
 local connection;
