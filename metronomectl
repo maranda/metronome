@@ -53,7 +53,7 @@ if not dependencies.check_dependencies() then
 	os.exit(1);
 end
 
-config = require "core.configmanager"
+config = require "core.configmanager";
 
 do
 	local filenames = {};
@@ -261,6 +261,7 @@ end
 local modulemanager = require "core.modulemanager";
 local metronomectl = require "util.metronomectl";
 local socket = require "socket";
+_G.metronomectl = metronomectl;
 -----------------------
 
 read_version = require "util.auxiliary".read_version;
