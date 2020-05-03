@@ -114,8 +114,7 @@ end
 module:hook("resource-unbind", function(event)
 	local user, host = event.session.username, event.session.host;
 	local jid = jid_join(user, host);
-	local bare_session = module:get_bare_session(jid);
-	if not bare_session then purge(user, host); end
+	if not module:get_bare_session(jid) then purge(user, host); end
 end);
 
 module:add_item("auth-provider", new_default_provider(module.host));
