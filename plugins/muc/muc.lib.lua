@@ -20,7 +20,7 @@ local st = require "util.stanza";
 local t_insert, t_remove = table.insert, table.remove;
 local setmetatable = setmetatable;
 local base64 = require "util.encodings".base64;
-local md5 = require "util.hashes".md5;
+local sha1 = require "util.hashes".sha1;
 local clone_table = require "util.auxiliary".clone_table;
 local check_policy = module:require("acdf_aux").check_policy;
 
@@ -341,7 +341,7 @@ local function construct_stanza_id(room, stanza)
 	local occupant = room._occupants[to_nick];
 	local to_jid = occupant.jid;
 	
-	return from_nick, to_jid, base64.encode(to_jid.."\0"..stanza.attr.id.."\0"..md5(from_jid));
+	return from_nick, to_jid, base64.encode(to_jid.."\0"..stanza.attr.id.."\0"..sha1(from_jid, true));
 end
 local function deconstruct_stanza_id(room, stanza)
 	local from_jid_possiblybare, to_nick = stanza.attr.from, stanza.attr.to;
@@ -353,7 +353,7 @@ local function deconstruct_stanza_id(room, stanza)
 
 	local occupant = room._occupants[to_nick];
 	for to_jid in pairs(occupant and occupant.sessions or {}) do
-		if md5(to_jid) == to_jid_hash then
+		if sha1(to_jid, true) == to_jid_hash then
 			return from_nick, to_jid, id;
 		end
 	end
