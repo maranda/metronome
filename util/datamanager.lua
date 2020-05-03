@@ -407,17 +407,22 @@ end
 function datamanager.purge(username, host)
 	local host_dir = format("%s/%s/", data_path, encode(host));
 	local errs = {};
-	for file in lfs.dir(host_dir) do
-		if lfs.attributes(host_dir..file, "mode") == "directory" then
-			local store = decode(file);
-			local ok, err = do_remove(getpath(username, host, store));
-			if not ok then errs[#errs+1] = err; end
+	local mode = lfs.attributes(host_dir, "mode");
+	if mode then
+		for file in lfs.dir(host_dir) do
+			if lfs.attributes(host_dir..file, "mode") == "directory" then
+				local store = decode(file);
+				local ok, err = do_remove(getpath(username, host, store));
+				if not ok then errs[#errs+1] = err; end
 
-			local ok, err = do_remove(getpath(username, host, store, "list"));
-			if not ok then errs[#errs+1] = err; end
+				local ok, err = do_remove(getpath(username, host, store, "list"));
+				if not ok then errs[#errs+1] = err; end
+			end
 		end
+		return #errs == 0, t_concat(errs, ", ");
+	else
+		return false, "Host datastore root not present";
 	end
-	return #errs == 0, t_concat(errs, ", ");
 end
 
 datamanager.atomic_store = atomic_store;

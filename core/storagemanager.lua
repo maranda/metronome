@@ -139,17 +139,7 @@ local function open(host, store, typ)
 end
 
 local function purge(user, host)
-	local storage = config.get(host, "storage");
-	local driver_name;
-	if type(storage) == "table" then
-		local purged = {};
-		for store, driver in pairs(storage) do
-			if not purged[driver] then purged[driver] = get_driver(host, store):purge(user); end
-		end
-	end
-	get_driver(host):purge(user);
-	olddm.purge(user, host);
-	
+	for store in stores_available:get(host) do get_driver(host, store):purge(user); end
 	return true;
 end
 
