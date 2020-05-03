@@ -139,7 +139,7 @@ local function open(host, store, typ)
 end
 
 local function purge(user, host)
-	for store in stores_available:get(host) do get_driver(host, store):purge(user); end
+	for store in pairs(stores_available:get(host)) do get_driver(host, store):purge(user); end
 	return true;
 end
 
