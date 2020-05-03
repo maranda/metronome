@@ -7,12 +7,6 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2008-2010, Matthew Wild, Waqas Hussain
 
-if module:get_host_session().anonymous_host then
-	module:log("error", "Private Storage won't be available on anonymous hosts as storage is explicitly disabled");
-	require "core.modulemanager".unload(module.host, module.name);
-	return;
-end
-
 local _type = type;
 
 local st = require "util.stanza";

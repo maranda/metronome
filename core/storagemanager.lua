@@ -108,7 +108,8 @@ local function get_driver(host, store)
 	end
 	if not driver_name then
 		if config.get(host, "authentication") == "anonymous" then
-			driver_name = config.get(host, "default_storage") or "null";
+			driver_name = config.get(host, "default_storage") or "cache";
+			if driver_name == "cache" then config.set(host, "storage_cache_save_data", false); end
 		else
 			driver_name = config.get(host, "default_storage") or "internal";
 		end
@@ -162,13 +163,13 @@ function datamanager.stores(username, host, type, pattern)
 	return get_driver(host):stores(username, type, pattern);
 end
 function datamanager.store_exists(username, host, datastore, type)
-	return get_driver(host):store_exists(username, datastore, type);
+	return open(host, datastore):store_exists(username, type);
+end
+function datamanager.nodes(host, datastore, type)
+	return open(host, datastore):nodes(type);
 end
 function datamanager.purge(username, host)
 	return purge(username, host);
-end
-function datamanager.users(host)
-	return get_driver(host):users();
 end
 
 _M.initialize_host = initialize_host;

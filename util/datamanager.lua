@@ -332,7 +332,7 @@ function datamanager.stores(username, host, type, pattern)
 
 	local mode, err = lfs.attributes(store_dir, "mode");
 	if not mode then
-		return function() log("debug", err or (store_dir .. " does not exist")) end
+		return function() log("debug", err or (store_dir .. " does not exist")); end
 	end
 	local next, state = lfs.dir(store_dir);
 	return function(state)
@@ -378,6 +378,24 @@ function datamanager.store_exists(username, host, datastore, type)
 	end
 end
 
+function datamanager.nodes(host, datastore, type)
+	type = type_map[type or "keyval"];
+	local store_dir = format("%s/%s/%s", data_path, encode(host), datastore);
+
+	local mode, err = lfs.attributes(store_dir, "mode");
+	if not mode then
+		return function() log("debug", "%s", err or (store_dir .. " does not exist")); end
+	end
+
+	local next, state = lfs.dir(store_dir);
+	return function(state)
+		for node in next, state do
+			local file, ext = node:match("^(.*)%.([dalist]+)$");
+			if file and ext == type then return decode(file); end
+		end
+	end, state;
+end
+
 local function do_remove(path)
 	local ok, err = os_remove(path);
 	if not ok and lfs.attributes(path, "mode") then
@@ -402,6 +420,7 @@ function datamanager.purge(username, host)
 	return #errs == 0, t_concat(errs, ", ");
 end
 
+datamanager.atomic_store = atomic_store;
 datamanager.getpath = getpath;
 datamanager.path_decode = decode;
 datamanager.path_encode = encode;

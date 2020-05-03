@@ -4,12 +4,6 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-if module:get_host_session().anonymous_host then
-	module:log("error", "Personal Eventing Protocol won't be available on anonymous hosts as storage is explicitly disabled");
-	require "core.modulemanager".unload(module.host, module.name);
-	return;
-end
-
 local hosts = hosts;
 local ripairs, tonumber, type, os_remove, os_time, select, setmetatable, t_insert = 
 	ripairs, tonumber, type, os.remove, os.time, select, setmetatable, table.insert;

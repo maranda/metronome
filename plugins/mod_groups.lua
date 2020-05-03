@@ -7,12 +7,6 @@
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2009-2011, Christian Haase, Jeff Mitchell, Matthew Wild
 
-if module:get_host_session().anonymous_host then
-	module:log("error", "Roster Groups won't be available on anonymous hosts as storage is explicitly disabled");
-	require "core.modulemanager".unload(module.host, module.name);
-	return;
-end
-
 local groups;
 local members;
 

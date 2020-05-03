@@ -30,20 +30,20 @@ function driver:set(user, data)
 	return datamanager.store(user, host, self.store, data);
 end
 
-function driver:stores(username, type, pattern)
-	return datamanager.stores(username, host, type, pattern);
+function driver:stores(user, type, pattern)
+	return datamanager.stores(user, host, type, pattern);
 end
 
-function driver:store_exists(username, datastore, type)
-	return datamanager.store_exists(username, host, datastore, type);
+function driver:store_exists(user, type)
+	return datamanager.store_exists(user, host, self.store, type);
 end
 
 function driver:purge(user)
 	return datamanager.purge(user, host);
 end
 
-function driver:users()
-	return nil, "User listing is not available for this storage backend";
+function driver:nodes(type)
+	return datamanager.nodes(host, self.store, type);
 end
 
 module:add_item("data-driver", driver);

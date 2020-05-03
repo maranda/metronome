@@ -4,12 +4,6 @@
 -- ISC License, please see the LICENSE file in this source package for more
 -- information about copyright and licensing.
 
-if module:get_host_session().anonymous_host then
-	module:log("error", "vCards won't be available on anonymous hosts as storage is explicitly disabled");
-	require "core.modulemanager".unload(module.host, module.name);
-	return;
-end
-
 local ipairs, pairs, tostring = ipairs, pairs, tostring;
 
 local st = require "util.stanza";
