@@ -196,7 +196,7 @@ local function convert_legacy_storage()
 end
 
 local function check_mail(address)
-	if not address return false; end
+	if not address then return false; end
 	local node, domain = address:match("(.*)@(.*)");
 	if not node or not domain then
 		return false;
