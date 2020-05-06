@@ -8,6 +8,9 @@
 --
 -- As per the sublicensing clause, this file is also MIT/X11 Licensed.
 -- ** Copyright (c) 2010-2013, Kim Alvefur, Matthew Wild, Waqas Hussain
+--
+-- WARNING: This backend is not tested with Lua 5.2, neither is the underlying
+-- library (LuaDBI), so it may not work.
 
 --[[
 
@@ -32,7 +35,7 @@ local next = next;
 local setmetatable = setmetatable;
 local xpcall = xpcall;
 local json = require "util.json";
-local build_url = require"socket.url".build;
+local build_url = require "socket.url".build;
 
 local DBI;
 local connection;
@@ -277,6 +280,7 @@ function keyval_store:set(username, data)
 	local success, ret, err = xpcall(function() return keyval_store_set(data); end, debug.traceback);
 	if success then return ret, err; else return rollback(nil, ret); end
 end
+local type_error = "Only key / value pairs are supported";
 
 -- Store defs.
 
@@ -285,14 +289,16 @@ cache = {};
 local driver = { name = "sql" };
 
 function driver:open(store, typ)
-	if not typ then -- default key-value store
+	if not typ or typ == "keyval" then -- default key-value store
 		if not cache[store] then cache[store] = setmetatable({ store = store }, keyval_store); end
 		return cache[store];
 	end
-	return nil, "unsupported-store";
+	return nil, type_error;
 end
 
 function driver:stores(username, type, pattern)
+	if type and type ~= "keyval" then return nil, type_error; end
+
 	local sql = "SELECT DISTINCT `store` FROM `metronome` WHERE `host`=? AND `user`"..(username == true and "!=?" or "=?").." AND `store` LIKE ?";
 
 	if username == true or not username then
@@ -316,12 +322,13 @@ function driver:stores(username, type, pattern)
 	end);
 end
 
-function driver:store_exists(username, datastore, type)
-	local sql = "SELECT DISTINCT `store` FROM `metronome` WHERE `host`=? and `user`"..(username == true and "!=?" or "=?").." AND `store`=?";
+function driver:store_exists(username, type)
+	if type and type ~= "keyval" then return nil, type_error; end
 
+	local sql = "SELECT DISTINCT `store` FROM `metronome` WHERE `host`=? and `user`"..(username == true and "!=?" or "=?").." AND `store`=?";
 	if username == true or not username then username = ""; end
 
-	local stmt, err = dosql(sql, host, username, datastore);
+	local stmt, err = dosql(sql, host, username, self.store);
 	if not stmt then
 		return rollback(nil, err);
 	end
@@ -335,22 +342,24 @@ function driver:store_exists(username, datastore, type)
 	return false;
 end
 
-function driver:purge(username)
-	local stmt, err = dosql("DELETE FROM `metronome` WHERE `host`=? AND `user`=?", host, username);
-	if not stmt then return rollback(stmt, err); end
-	local changed, err = stmt:affected();
-	if not changed then return rollback(changed, err); end
-	return commit(true, changed);
-end
+function driver:nodes(type)
+	if type and type ~= "keyval" then return nil, type_error; end
 
-function driver:users()
-	local stmt, err = dosql("SELECT DISTINCT `user` FROM `metronome` WHERE `store`=? AND `host`=?", "accounts", host);
+	local stmt, err = dosql("SELECT DISTINCT `user` FROM `metronome` WHERE `store`=? AND `host`=?", self.store, host);
 	if not stmt then return rollback(nil, err); end
 	local next = stmt:rows();
 	return commit(function()
 		local row = next();
 		return row and row[1];
 	end);
+end
+
+function driver:purge(username)
+	local stmt, err = dosql("DELETE FROM `metronome` WHERE `host`=? AND `user`=?", host, username);
+	if not stmt then return rollback(stmt, err); end
+	local changed, err = stmt:affected();
+	if not changed then return rollback(changed, err); end
+	return commit(true, changed);
 end
 
 module:add_item("data-driver", driver);

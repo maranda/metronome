@@ -196,6 +196,7 @@ local function convert_legacy_storage()
 end
 
 local function check_mail(address)
+	if not address then return false; end
 	local node, domain = address:match("(.*)@(.*)");
 	if not node or not domain then
 		return false;
@@ -860,26 +861,28 @@ module:hook("message/host", function(event)
 	if origin.type == "c2s" and nomail_users[origin.username.."@"..origin.host] then
 		local jid = jid_join(origin.username, origin.host);
 		local mail = stanza:get_child_text("body");
-		if not check_mail(mail) then
-			module:send(st.message({ from = origin.host, to = jid, type = "chat", id = uuid() },
-				"The address you supplied doesn't look to be valid, sorry."
-			));
-		else
-			if hashes:exists(mail) then
+		if mail then
+			if not check_mail(mail) then
 				module:send(st.message({ from = origin.host, to = jid, type = "chat", id = uuid() },
-					"The address you supplied looks to be already associated to an account, please try with another one."
+					"The address you supplied doesn't look to be valid, sorry."
 				));
-				return true;
+			else
+				if hashes:exists(mail) then
+					module:send(st.message({ from = origin.host, to = jid, type = "chat", id = uuid() },
+						"The address you supplied looks to be already associated to an account, please try with another one."
+					));
+					return true;
+				end
+				timer.remove_task(nomail_users[jid].id);
+				validate_registration(origin.username, origin.host, nomail_users[jid].password, mail, nomail_users[jid].ip, true);
+				nomail_users[jid] = nil;
+				module:send(st.message({ from = origin.host, to = jid, type = "chat", id = uuid() },
+					"Thank you, the instructions to verify your account will be mailed to you shortly. Please remember you "
+					.."need to verify the account within five minutes or it'll be deleted."
+				));
 			end
-			timer.remove_task(nomail_users[jid].id);
-			validate_registration(origin.username, origin.host, nomail_users[jid].password, mail, nomail_users[jid].ip, true);
-			nomail_users[jid] = nil;
-			module:send(st.message({ from = origin.host, to = jid, type = "chat", id = uuid() },
-				"Thank you, the instructions to verify your account will be mailed to you shortly. Please remember you "
-				.."need to verify the account within five minutes or it'll be deleted."
-			));
+			return true;
 		end
-		return true;
 	end
 end, 460);
 

@@ -12,6 +12,8 @@ local datamanager = require "util.datamanager";
 local hmac_sha1 = require "util.hmac".sha1;
 local gen_uuid = require "util.uuid".generate;
 local b64_encode = require "util.encodings".base64.encode;
+local jid_join = require "util.jid".join;
+local purge = require "core.storagemanager".purge;
 local os_time = os.time;
 
 local multi_resourcing = module:get_option_boolean("allow_anonymous_multiresourcing", false);
@@ -103,13 +105,17 @@ if not module:get_option_boolean("allow_anonymous_s2s", false) then
 end
 
 function module.load()
-	if not test_mode then datamanager.add_callback(dm_callback); end
-	my_host.anonymous_host = not test_mode and true or nil;
+	my_host.anonymous_host = true;
 end
 function module.unload()
-	datamanager.remove_callback(dm_callback);
 	my_host.anonymous_host = nil;
 end
+
+module:hook("resource-unbind", function(event)
+	local user, host = event.session.username, event.session.host;
+	local jid = jid_join(user, host);
+	if not module:get_bare_session(jid) then purge(user, host); end
+end);
 
 module:add_item("auth-provider", new_default_provider(module.host));
 
