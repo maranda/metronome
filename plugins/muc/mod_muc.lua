@@ -30,10 +30,7 @@ local expire_inactive_rooms_time = module:get_option_number("expire_inactive_roo
 local expire_inactive_rooms_whitelist = module:get_option_set("expire_inactive_rooms_whitelist", {});
 local expire_unique_reservations = module:get_option_number("expire_unique_room_reservations", 180);
 local instant_room_on_creation = module:get_option_boolean("instant_room_on_creation", false);
-local room_default_whois = module:get_option_string("room_default_whois");
-if room_default_whois and (room_default_whois ~= "moderators" and room_default_whois ~= "anyone") then
-	room_default_whois = nil;
-end
+local room_default_config = module:get_option_table("room_default_config");
 local muclib = module:require "muc";
 local muc_new_room = muclib.new_room;
 local jid_section = require "util.jid".section;
@@ -317,7 +314,12 @@ function stanza_handler(event)
 			room.route_stanza = room_route_stanza;
 			room.save = room_save;
 			rooms[bare] = room;
-			if room_default_whois then room:set_option("whois", room_default_whois); end
+			if room_default_config then
+				for option, data in pairs(room_default_config) do
+					if option == "whois" and data ~= "anyone" and data ~= "moderators" then data = "moderators"; end
+					room:set_option(option, data);
+				end
+			end
 		end
 	end
 	if room then
