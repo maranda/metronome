@@ -49,7 +49,9 @@ if template then
 		(request_type == "associate" and "Account mail change verification for: ") or
 		"Account password reset for: ";
 
-	local user, pass, host = config.get("*", "mail_user"), config.get("*", "mail_pass"), config.get("*", "mail_host");
+	local user, pass, host, port =
+		config.get("*", "mail_user"), config.get("*", "mail_pass"),
+		config.get("*", "mail_host"), config.get("*", "mail_port");
 
 	send(mail_from, mail_to, reply_to, subject..new_jid, template,
 		{ user = user, password = pass, host = host, helo = section(new_jid, "host") }, secure and true);
