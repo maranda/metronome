@@ -47,6 +47,7 @@ local nameapi_ak = module:get_option_string("reg_api_nameapi_apikey");
 local plain_errors = module:get_option_boolean("reg_api_plain_http_errors", false);
 local mail_from = module:get_option_string("reg_api_mailfrom");
 local mail_reto = module:get_option_string("reg_api_mailreto");
+local mail_ssl = module:get_option_string("reg_api_mail_ssl", true);
 local restrict_node_pattern = module:get_option_boolean("reg_restrict_node_pattern", true);
 local negate_pattern = module:get_option_string("reg_api_node_negate_pattern", "^[^%s<>,:;%[%]%(%)%?\\]+$");
 
@@ -372,7 +373,7 @@ if do_mail_verification then
 				os_execute(
 					module_path.."/send_mail ".."associate '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..jid_join(user, my_host).."' '"
 					..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."associate/", base_host).."' '"..token.."' '"
-					..(secure and "secure" or "").."' &"
+					..(mail_ssl and "secure" or "").."' &"
 				);
 				return { status = "completed", info = "Sent verification instructions to the specified address" };
 			else
@@ -511,7 +512,7 @@ local function handle_register(data, event)
 				os_execute(
 					module_path.."/send_mail ".."register '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..jid_join(username, my_host).."' '"
 					..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."verify/", base_host).."' '"..id_token.."' '"
-					..(secure and "secure" or "").."' &"
+					..(mail_ssl and "secure" or "").."' &"
 				);
 			end
 
@@ -550,7 +551,7 @@ local function handle_password_reset(data, event)
 			os_execute(
 				module_path.."/send_mail ".."reset '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..jid_join(node, my_host).."' '"
 				..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."reset/", base_host).."' '"..id_token.."' '"
-				..(secure and "secure" or "").."' &"
+				..(mail_ssl and "secure" or "").."' &"
 			);
 		end
 		
