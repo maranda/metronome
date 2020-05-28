@@ -54,7 +54,7 @@ if template then
 		config.get("*", "mail_host"), config.get("*", "mail_port");
 
 	send(mail_from, mail_to, reply_to, subject..new_jid, template,
-		{ user = user, password = pass, host = host, helo = section(new_jid, "host") }, secure and true);
+		{ user = user, password = pass, host = host, port = port, helo = section(new_jid, "host") }, secure and true);
 end
 	
 os.exit(1);
