@@ -778,7 +778,7 @@ local function validate_registration(user, hostname, password, mail, ip, skip_gr
 	os_execute(
 		module_path.."/send_mail ".."register '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..user_jid.."' '"
 		..module:http_url(nil, base_path:gsub("[^%w][/\\]+[^/\\]*$", "/").."verify/", base_host).."' '"..id_token.."' '"
-		..(secure and "secure" or "").."' &"
+		..(mail_ssl and "secure" or "").."' &"
 	);
 
 	pending[id_token] = { node = user, password = password, ip = ip };
