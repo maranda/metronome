@@ -47,7 +47,7 @@ local nameapi_ak = module:get_option_string("reg_api_nameapi_apikey");
 local plain_errors = module:get_option_boolean("reg_api_plain_http_errors", false);
 local mail_from = module:get_option_string("reg_api_mailfrom");
 local mail_reto = module:get_option_string("reg_api_mailreto");
-local mail_ssl = module:get_option_string("reg_api_mail_ssl", true);
+local mail_ssl = module:get_option_boolean("reg_api_mail_ssl", true);
 local restrict_node_pattern = module:get_option_boolean("reg_restrict_node_pattern", true);
 local negate_pattern = module:get_option_string("reg_api_node_negate_pattern", "^[^%s<>,:;%[%]%(%)%?\\]+$");
 
