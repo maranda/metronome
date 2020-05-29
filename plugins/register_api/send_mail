@@ -16,6 +16,8 @@ url = arg[6];
 token = arg[7];
 secure = arg[8];
 
+if secure == "" then secure = nil; end
+
 CFG_SOURCEDIR=os.getenv("METRONOME_SRCDIR");
 CFG_CONFIGDIR=os.getenv("METRONOME_CFGDIR");
 
