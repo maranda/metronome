@@ -483,7 +483,7 @@ local function handle_register(data, event)
 			
 			if not hashes:add(username, mail) then
 				module:log("warn", "%s (%s) attempted to register to the server with an E-Mail address we already possess the hash of", username, ip);
-				return http_error_reply(event, 409, "The E-Mail Address provided matches the hash associated to an existing account.");
+				return http_error_reply(event, 409, "The E-Mail Address provided matches a hash already in our database.");
 			end
 
 			local id_token = generate_secret();
