@@ -68,7 +68,7 @@ local storage_path = module:get_option_string("http_file_path", join_path(metron
 lfs.mkdir(storage_path);
 
 -- condense mime types
-local mime_types = module:get_option_table("http_file_allow_mime_types", {});
+local mime_types = module:get_option_table("http_file_add_mime_types", {});
 for ext, mime in pairs(default_mime_types) do mime_types[ext] = mime; end
 for _, ext in ipairs(module:get_option_table("http_file_remove_mime_types", {})) do mime_types[ext] = nil; end
 
