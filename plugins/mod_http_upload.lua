@@ -56,7 +56,6 @@ local cache = module:shared("upload_file_cache")
 local throttle = module:shared("upload_throttles");
 
 -- config
-local mime_types = module:get_option_table("http_file_allowed_mime_types", default_mime_types);
 local file_size_limit = module:get_option_number("http_file_size_limit", 3*1024*1024); -- 3 MiB
 local quota = module:get_option_number("http_file_quota", 40*1024*1024);
 local max_age = module:get_option_number("http_file_expire_after", 172800);
@@ -67,6 +66,11 @@ local throttle_time = module:get_option_number("http_file_throttle_time", 180);
 local default_base_path = module:get_option_string("http_file_base_path", "share");
 local storage_path = module:get_option_string("http_file_path", join_path(metronome.paths.data, "http_file_upload"));
 lfs.mkdir(storage_path);
+
+-- condense mime types
+local mime_types = module:get_option_table("http_file_allow_mime_types", {});
+for ext, mime in pairs(default_mime_types) do mime_types[ext] = mime; end
+for _, ext in ipairs(module:get_option_table("http_file_remove_mime_types", {})) do mime_types[ext] = nil; end
 
 --- sanity
 if file_size_limit > 12*1024*1024 then
