@@ -226,17 +226,18 @@ local function handle_incoming(event)
 		
 	if origin.type == "s2sin" or origin.bidirectional then -- don't handle local traffic.
 		local to, from, type, name = stanza.attr.to, stanza.attr.from, stanza.attr.type, stanza.name;
+
+		if (name == "presence" and type ~= "subscribe") or type == "error" then return; end
+		if name == "message" and not type and #stanza.tags == 1 and stanza.tags[1].name == "result"  then
+			return; -- probable MAM archive result
+		end
+			
 		local full_session, from_bare, to_bare = module:get_full_session(to), jid_bare(from), jid_bare(to);
 		local directed_bare = full_session and full_session.directed_bare[from_bare];
 
 		if drop_unsolicited_muc_messages and name == "message" and type == "groupchat" and full_session and not directed_bare then
 			module:log("info", "dropping unsolicited muc message to %s from %s", to_bare, from_bare);
 			return true;
-		end
-
-		if (name == "presence" and type ~= "subscribe") or type == "error" or type == "groupchat" then return; end
-		if name == "message" and not type and #stanza.tags == 1 and stanza.tags[1].name == "result"  then
-			return; -- probable MAM archive result
 		end
 
 		local from_host = jid_section(from, "host");
