@@ -94,7 +94,9 @@ end
 
 local function iq_handler(event)
 	local origin, stanza = event.origin, event.stanza;
+
 	local tag = stanza.tags[1];
+	if not tag then return; end
 	local cid = tag.attr.cid;
 	if (tag.name ~= "data" and tag.attr.xmlns ~= bob_xmlns) or not cid then return; end
 
