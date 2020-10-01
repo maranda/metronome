@@ -109,7 +109,7 @@ module:hook("iq-set/self/"..push_xmlns..":enable", function(event)
 	local store = store_cache[user] or push:get(user) or {};
 
 	local form, secret = enable:get_child("x", "jabber:x:data");
-	if form.attr.type == "submit" then
+	if form and form.attr.type == "submit" then
 		for i, field in ipairs(form.tags) do
 			if field.attr.var == "secret" then
 				secret = field:get_child_text("value");
