@@ -154,6 +154,10 @@ function _ctl.controluser(params, action)
 	if not(provider) or provider.name == "null" then
 		usermanager.initialize_host(host);
 	end
+
+	if provider.name == "anonymous" then
+		return false, "You can't manage users on an anonymous host";
+	end
 	
 	local ok, errmsg;
 	if action == "check" then
