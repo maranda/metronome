@@ -55,14 +55,14 @@ local trigger_string = module:get_option_string("pastebin_trigger");
 trigger_string = (trigger_string and trigger_string .. " ");
 
 local pastes = {};
-local default_headers = { ["Content-Type"] = "text/plain; charset=utf-8" };
+local content_type = "text/plain; charset=utf-8";
 
 local xmlns_xhtmlim = "http://jabber.org/protocol/xhtml-im";
 local xmlns_xhtml = "http://www.w3.org/1999/xhtml";
 
 function pastebin_text(text)
 	local uuid = uuid_new();
-	pastes[uuid] = { body = text, time = os_time(), headers = default_headers };
+	pastes[uuid] = { body = text, time = os_time() };
 	pastes[#pastes+1] = uuid;
 	if not pastes[2] then -- No other pastes, give the timer a kick
 		add_task(expire_after, expire_pastes);
@@ -71,12 +71,16 @@ function pastebin_text(text)
 end
 
 function handle_request(event, pasteid)
-	if not pasteid or not pastes[pasteid] then
-		event.response.headers = default_headers;
-		return event.response:send("Invalid paste id, perhaps it expired?");
+	local paste = pastes[pasteid];
+	event.response.headers["Content-Type"] = content_type;
+
+	if not paste then
+		event.response:send("Invalid paste id, perhaps it expired?");
+	else
+		event.response:send(paste.body);
 	end
-	
-	return pastes[pasteid];
+
+	return true;
 end
 
 local function is_occupant(to, from)
