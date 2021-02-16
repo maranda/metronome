@@ -123,15 +123,14 @@ function check_message(data)
 		local summary = (body:sub(1, max_summary_length):gsub(utf8_pattern, drop_invalid_utf8) or ""):match("[^\n]+") or "";
 		summary = summary:match("^%s*(.-)%s*$");
 		local summary_prefixed = summary:match("[,:]$");
-		local link_pretext = ("\n...view %spaste (%d line%s):"):format(summary_prefixed and "" or "rest of ", line_count, line_count == 1 and "" or "s");
-		stanza[bodyindex][1] = (summary_prefixed and (summary.." ") or summary..link_pretext.." ")..url;
+		local link_text = ("view %spaste (%d line%s)"):format(summary_prefixed and "" or "rest of ", line_count, line_count == 1 and "" or "s");
+		stanza[bodyindex][1] = (summary_prefixed and (summary.." ") or summary.."\n..."..link_pretext..": ")..url;
 		
 		if html_preview then
 			local line_count = select(2, body:gsub("\n", "%0")) + 1;
-			local link_text = ("[view %spaste (%d line%s)]"):format(summary_prefixed and "" or "rest of ", line_count, line_count == 1 and "" or "s");
 			local html = st.stanza("html", { xmlns = xmlns_xhtmlim }):tag("body", { xmlns = xmlns_xhtml });
 			html:tag("p"):text(summary.." "):up();
-			html:tag("a", { href = url }):text(link_text):up();
+			html:tag("a", { href = url }):text("["..link_text.."]"):up();
 			stanza[htmlindex or #stanza+1] = html;
 		end
 	end
