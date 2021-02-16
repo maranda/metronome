@@ -125,7 +125,7 @@ function check_message(data)
 		local summary_prefixed = summary:match("[,:]$");
 		local line_count = select(2, body:gsub("\n", "%0")) + 1;
 		local link_text = ("view %spaste (%d line%s)"):format(summary_prefixed and "" or "rest of ", line_count, line_count == 1 and "" or "s");
-		stanza[bodyindex][1] = (summary_prefixed and (summary.." ") or summary.."\n..."..link_pretext..": ")..url;
+		stanza[bodyindex][1] = (summary_prefixed and (summary.." ") or summary.."\n..."..link_text..": ")..url;
 		
 		if html_preview then
 			local html = st.stanza("html", { xmlns = xmlns_xhtmlim }):tag("body", { xmlns = xmlns_xhtml });
