@@ -3,3 +3,4 @@ usr/lib/metronome
 etc/metronome/metronome*
 etc/metronome/certs/Makefile
 etc/metronome/certs/openssl.cnf
+etc/metronome/templates/*
