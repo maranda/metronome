@@ -194,9 +194,9 @@ local function do_tag_mapping(tag, object)
 		object.desc = { text = tag:get_text(), lang = tag.attr["xml:lang"] }
 	elseif tag.name == "Contact" then
 		local jid = tag:get_child("AdditionalData").tags[1]
-		local email = tag:get_child("Email")
-		local telephone = tag:get_child("Telephone")
-		local postaladdr = tag:get_child("PostalAddress")
+		local email = tag:get_child_text("Email")
+		local telephone = tag:get_child_text("Telephone")
+		local postaladdr = tag:get_child_text("PostalAddress")
 		if not object.contacts then
 			object.contacts = {}
 			object.contacts[1] = {
