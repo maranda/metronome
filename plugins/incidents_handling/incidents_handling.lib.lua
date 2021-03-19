@@ -128,7 +128,7 @@ local function render_single(incident)
 
 	insert_fixed(layout, "Targets --")
 	for _, target in ipairs(incident.data.event_data.targets) do
-		insert_fixed(layout, string.format("For NodeRole: %s", (target.noderole.cat == "ext-category" and target.noderole.ext) or targets.noderole.cat))
+		insert_fixed(layout, string.format("For NodeRole: %s", (target.noderole.cat == "ext-category" and target.noderole.ext) or target.noderole.cat))
 		for _, address in ipairs(target.addresses) do
 			insert_fixed(layout, string.format("---> Address: %s Type: %s", address.text, (address.cat == "ext-category" and address.ext) or address.cat))
 		end
