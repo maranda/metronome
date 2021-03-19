@@ -12,8 +12,11 @@ local st = require "util.stanza"
 local xmlns_inc = "urn:xmpp:incident:2"
 local xmlns_iodef = "urn:ietf:params:xml:ns:iodef-1.0"
 local my_host = nil
+local incidents
 
 -- // Util and Functions //
+
+local function set_incidents(v) incidents = v end
 
 local function ft_str()
 	local d = os_date("%FT%T%z"):gsub("^(.*)(%+%d+)", function(dt, z) 
@@ -402,6 +405,7 @@ _M.render_single = render_single
 _M.get_type = get_type
 _M.stanza_parser = stanza_parser
 _M.stanza_construct = stanza_construct
+_M.set_incidents = set_incidents
 _M.set_my_host = function(host) my_host = host end
 
 return _M
