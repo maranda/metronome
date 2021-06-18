@@ -407,7 +407,7 @@ function stream_callbacks.error(session, error, data)
 	elseif error == "stream-error" then
 		local condition, text = "undefined-condition";
 		for child in data:children() do
-			if child.attr.xmlns == xmlns_xmpp_streams then
+			if type(child.attr) == "table" and child.attr.xmlns == xmlns_xmpp_streams then
 				if child.name ~= "text" then
 					condition = child.name;
 				else
