@@ -3,8 +3,8 @@ Section: net
 Priority: extra
 Maintainer: Jérôme Lebleu <jerome@yunohost.org>
 Build-Depends:
- lua5.1, liblua5.1-0-dev,
- libidn11-dev, libssl-dev, debhelper (>=9), debhelper-compat (= 13), quilt, txt2man
+ lua5.1, liblua5.1-dev,
+ libidn11-dev, libssl-dev, debhelper (>> 8.1.3), txt2man, quilt (>= 0.46-7)
 Standards-Version: 3.9.4
 Homepage: https://lightwitch.org/metronome
 

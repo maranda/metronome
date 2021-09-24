@@ -4,7 +4,7 @@ CFLAGS:="$(shell dpkg-buildflags --get CPPFLAGS) $(shell dpkg-buildflags --get C
 LDFLAGS:="$(shell dpkg-buildflags --get LDFLAGS) -shared"
 
 %:
-	dh $@ --with quilt
+	dh --with quilt $@
 
 override_dh_auto_configure:
 	./configure --ostype=debian --prefix=/usr --cflags=$(CFLAGS) --ldflags=$(LDFLAGS)
