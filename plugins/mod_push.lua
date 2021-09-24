@@ -69,14 +69,15 @@ local function ping_app_server(user, app_server, node, last_from, count, send_la
 			:tag("publish", { node = node })
 				:tag("item")
 					:tag("notification", { xmlns = push_xmlns })
-						:tag("field", { var = "FORM_TYPE" }):tag("value"):text(summary_xmlns):up():up()
-						:tag("field", { var = "message-count" }):tag("value"):text(tostring(count)):up():up();
+						:tag("x", { xmlns = df_xmlns })
+							:tag("field", { var = "FORM_TYPE" }):tag("value"):text(summary_xmlns):up():up()
+							:tag("field", { var = "message-count" }):tag("value"):text(tostring(count)):up():up();
 
 	if send_last then
 		notification:tag("field", { var = "last-message-sender" }):tag("value"):text(last_from):up():up();
 	end
 
-	notification:up():up():up(); -- close <publish /> element
+	notification:up():up():up():up(); -- close <publish /> element
 
 	if secret then
 		notification:tag("publish-options")
@@ -108,8 +109,8 @@ module:hook("iq-set/self/"..push_xmlns..":enable", function(event)
 	local user, host = origin.username, origin.host;
 	local store = store_cache[user] or push:get(user) or {};
 
-	local form, secret = enable:get_child("x", "jabber:x:data");
-	if form.attr.type == "submit" then
+	local form, secret = enable:get_child("x", df_xmlns);
+	if form and form.attr.type == "submit" then
 		for i, field in ipairs(form.tags) do
 			if field.attr.var == "secret" then
 				secret = field:get_child_text("value");

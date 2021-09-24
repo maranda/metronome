@@ -35,6 +35,7 @@ local hosts = metronome.hosts;
 
 local recaptcha_key = module:get_option_string("spim_recaptcha_client_key");
 local recaptcha_secret = module:get_option_string("spim_recaptcha_server_key");
+local drop_unsolicited_muc_messages = module:get_option_boolean("spim_drop_unsolicited_muc_messages", true);
 if not recaptcha_key or not recaptcha_secret then
 	module:log("error", "spim_recaptcha_client_key and spim_recaptcha_server_key are required options!");
 	module_unload(module.host, "spim_block");
@@ -226,12 +227,20 @@ local function handle_incoming(event)
 	if origin.type == "s2sin" or origin.bidirectional then -- don't handle local traffic.
 		local to, from, type, name = stanza.attr.to, stanza.attr.from, stanza.attr.type, stanza.name;
 
-		if (name == "presence" and type ~= "subscribe") or type == "error" or type == "groupchat" then return; end
+		if (name == "presence" and type ~= "subscribe") or type == "error" then return; end
 		if name == "message" and not type and #stanza.tags == 1 and stanza.tags[1].name == "result"  then
 			return; -- probable MAM archive result
 		end
+			
+		local full_session, from_bare, to_bare = module:get_full_session(to), jid_bare(from), jid_bare(to);
+		local directed_bare = full_session and full_session.directed_bare[from_bare];
 
-		local from_bare, from_host, to_bare = jid_bare(from), jid_section(from, "host"), jid_bare(to);
+		if drop_unsolicited_muc_messages and name == "message" and type == "groupchat" and full_session and not directed_bare then
+			module:log("info", "dropping unsolicited muc message to %s from %s", to_bare, from_bare);
+			return true;
+		end
+
+		local from_host = jid_section(from, "host");
 		local user, host, resource = jid_split(to);
 
 		if disabled_list[to_bare] then return; end
@@ -259,9 +268,8 @@ local function handle_incoming(event)
 				return send_message(origin, name, to, from, token);
 			end
 		else
-			local full_session = module:get_full_session(to);
 			if full_session then
-				if full_session.directed_bare[from_bare] then return; end
+				if directed_bare then return; end
 				local token = generate_secret(9);
 				if not token then return; end
 				set_block(token, to_bare, from_bare);

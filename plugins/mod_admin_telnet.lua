@@ -30,7 +30,7 @@ local set, array = require "util.set", require "util.array";
 local cert_verify_identity = require "util.x509".verify_identity;
 local envload = require "util.envload".envload;
 local envloadfile = require "util.envload".envloadfile;
-local pcall, rand = pcall, math.random;
+local pcall, rand, abs = pcall, math.random, math.abs;
 local dns = require "net.dns";
 local st = require "util.stanza";
 local cm = require "core.configmanager";
@@ -320,8 +320,9 @@ function def_env.server:meminfo()
 							collectgarbage("count")*1024);
 	end
 	
+	-- also fix integer overflow from malloc after 4GB
 	return true, string.format("Used: %d bytes, Allocated: %d bytes, Unused: %d bytes",
-						info.used, info.allocated, info.unused);
+						abs(info.used), abs(info.allocated), abs(info.unused));
 end
 
 function def_env.server:version()

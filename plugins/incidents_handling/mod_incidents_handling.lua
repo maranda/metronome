@@ -352,4 +352,5 @@ module:hook("iq-result/host", results_handler)
 module.load = function()
 	incidents = incidents_store:get("incidents") or {}
 	setmetatable(incidents, _inc_mt) ; incidents:init()
+	ih_lib.set_incidents(incidents);
 end

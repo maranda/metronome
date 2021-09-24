@@ -79,12 +79,14 @@ local function handle_stanza(event)
 		if stanza.attr.type == "error" then return true; end -- drop errors silently
 		if trigger and trigger >= disconnect_after then
 			room:set_role(true, occupant_jid, "none", nil, "Exceeded number of allowed throttled stanzas");
-			origin:close{ condition = "policy-violation", text = "Exceeded number of allowed throttled stanzas" };
+			if origin.type ~= "component" then
+				origin:close{ condition = "policy-violation", text = "Exceeded number of allowed throttled stanzas" };
+			end
 			return true;
 		end
 
 		origin.muc_limits_trigger = (not trigger and 1) or trigger + 1;
-		if use_gate_guard then
+		if use_gate_guard and origin.type ~= "component" then
 			module:fire_event("call-gate-guard", 
 				{ origin = origin, from = from_jid, reason = "MUC Flooding/DoS", ban_time = gate_guard_time, hits = gate_guard_hits }
 			);

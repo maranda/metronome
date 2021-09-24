@@ -243,7 +243,7 @@ function init_global_state()
 		local settings = config.get("*", "metronome_gc");
 		settings = type(settings) ~= "table" and {} or settings;
 		collectgarbage("setpause", settings.setpause or 100);
-		collectgarbage("setstepmul", settings.setstepmul or 150);
+		collectgarbage("setstepmul", settings.setstepmul or 500);
 		collectgarbage("restart");
 	end
 	

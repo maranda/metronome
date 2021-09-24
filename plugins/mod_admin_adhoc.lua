@@ -193,7 +193,7 @@ end
 function disconnect_user(match_jid)
 	local node, hostname, givenResource = jid.split(match_jid);
 	local bare_session = module:get_bare_session(node);
-	for resource, session in pairs(bare_session.sessions or {}) do
+	for resource, session in pairs((bare_session and bare_session.sessions) or {}) do
 		if not givenResource or (resource == givenResource) then
 			module:log("debug", "Disconnecting %s@%s/%s", node, hostname, resource);
 			session:close();

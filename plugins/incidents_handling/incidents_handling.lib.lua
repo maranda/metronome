@@ -12,8 +12,11 @@ local st = require "util.stanza"
 local xmlns_inc = "urn:xmpp:incident:2"
 local xmlns_iodef = "urn:ietf:params:xml:ns:iodef-1.0"
 local my_host = nil
+local incidents
 
 -- // Util and Functions //
+
+local function set_incidents(v) incidents = v end
 
 local function ft_str()
 	local d = os_date("%FT%T%z"):gsub("^(.*)(%+%d+)", function(dt, z) 
@@ -125,7 +128,7 @@ local function render_single(incident)
 
 	insert_fixed(layout, "Targets --")
 	for _, target in ipairs(incident.data.event_data.targets) do
-		insert_fixed(layout, string.format("For NodeRole: %s", (target.noderole.cat == "ext-category" and target.noderole.ext) or targets.noderole.cat))
+		insert_fixed(layout, string.format("For NodeRole: %s", (target.noderole.cat == "ext-category" and target.noderole.ext) or target.noderole.cat))
 		for _, address in ipairs(target.addresses) do
 			insert_fixed(layout, string.format("---> Address: %s Type: %s", address.text, (address.cat == "ext-category" and address.ext) or address.cat))
 		end
@@ -191,9 +194,9 @@ local function do_tag_mapping(tag, object)
 		object.desc = { text = tag:get_text(), lang = tag.attr["xml:lang"] }
 	elseif tag.name == "Contact" then
 		local jid = tag:get_child("AdditionalData").tags[1]
-		local email = tag:get_child("Email")
-		local telephone = tag:get_child("Telephone")
-		local postaladdr = tag:get_child("PostalAddress")
+		local email = tag:get_child_text("Email")
+		local telephone = tag:get_child_text("Telephone")
+		local postaladdr = tag:get_child_text("PostalAddress")
 		if not object.contacts then
 			object.contacts = {}
 			object.contacts[1] = {
@@ -402,6 +405,7 @@ _M.render_single = render_single
 _M.get_type = get_type
 _M.stanza_parser = stanza_parser
 _M.stanza_construct = stanza_construct
+_M.set_incidents = set_incidents
 _M.set_my_host = function(host) my_host = host end
 
 return _M

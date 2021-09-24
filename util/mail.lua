@@ -35,6 +35,7 @@ local function do_ssl()
 end
 
 local function send(from, to, reply_to, subject, body, server, secure)
+	local _from = from:match("^.*<(.*)>");
 	local msg = {
 		headers = {
 			["Content-Type"] = "text/html; charset=UTF-8",
@@ -47,7 +48,7 @@ local function send(from, to, reply_to, subject, body, server, secure)
 	};
 
 	local mail = {
-		from = from,
+		from = _from or from,
 		rcpt = to,
 		source = smtp.message(msg),
 		user = type(server) == "table" and server.user or nil,
