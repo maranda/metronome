@@ -367,7 +367,11 @@ function stream_callbacks.streamopened(session, attr)
 		end
 	elseif session.direction == "outgoing" then
 		-- If we are just using the connection for verifying dialback keys, we won't try and auth it
-		if not attr.id then error("stream response did not give us a streamid!!!"); end
+		if not attr.id then
+			log("error", "stream response did not give us a streamid!");
+			session:close({ condition = "undefined-condition", text = "ID on the stream response is missing" });
+			return;
+		end
 		session.streamid = attr.id;
 
 		-- If server is pre-1.0, don't wait for features, just do dialback
