@@ -69,10 +69,14 @@ modules_enabled = {
 };
 
 -- Default logging
-log = {
-	{ levels = { min = "error" }, to = "file", filename = "/var/log/metronome/metronome.err" },
-	{ levels = { min = "info" }, to = "file", filename = "/var/log/metronome/metronome.log" }
-};
+-- Metronome by default does output logs to console with info logging level,
+-- if you built the software from source, you'll have to appropriately create and configure
+-- logging paths.
+--
+-- log = {
+-- 	{ levels = { min = "error" }, to = "file", filename = "/var/log/metronome/metronome.err" },
+-- 	{ levels = { min = "info" }, to = "file", filename = "/var/log/metronome/metronome.log" }
+-- };
 
 -- Default pidfile path
 pidfile = "/var/run/metronome/metronome.pid";
