@@ -314,3 +314,9 @@ module:add_item("net-provider", {
 		pattern = "^<.*:stream.*%sxmlns%s*=%s*(['\"])jabber:component%1.*>"
 	}
 });
+
+module:add_item("net-provider", {
+	name = "component_secure",
+	listener = listener,
+	encryption = "ssl"
+});
