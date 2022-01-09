@@ -37,6 +37,7 @@ local features = {
 	"http://jabber.org/protocol/pubsub#delete-nodes",
 	"http://jabber.org/protocol/pubsub#filtered-notifications",
 	"http://jabber.org/protocol/pubsub#meta-data",
+	"http://jabber.org/protocol/pubsub#multi-items",
 	"http://jabber.org/protocol/pubsub#persistent-items",
 	"http://jabber.org/protocol/pubsub#publish",
 	"http://jabber.org/protocol/pubsub#publish-options",
