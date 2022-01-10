@@ -1,13 +1,19 @@
 #!/usr/bin/make -f
 
+DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+
+ifeq ($(origin CC),default)
+CC := $(DEB_HOST_GNU_TYPE)-gcc
+endif
+
 CFLAGS:="$(shell dpkg-buildflags --get CPPFLAGS) $(shell dpkg-buildflags --get CFLAGS) -fPIC -Wall -D_GNU_SOURCE"
 LDFLAGS:="$(shell dpkg-buildflags --get LDFLAGS) -shared"
 
 %:
-	dh $@ --with quilt
+	dh $@   # --with quilt
 
 override_dh_auto_configure:
-	./configure --ostype=debian --prefix=/usr --cflags=$(CFLAGS) --ldflags=$(LDFLAGS)
+	./configure --ostype=debian --prefix=/usr --cflags=$(CFLAGS) --ldflags=$(LDFLAGS) --c-compiler=$(CC) --linker=$(CC)
 
 #override_dh_auto_build:
 #	dh_auto_build

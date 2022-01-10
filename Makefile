@@ -15,9 +15,9 @@ INSTALLEDDATA = $(DATADIR)
 
 all: generate_log.install send_mail.install metronome.install metronomectl.install metronome.cfg.lua.install metronome.version
 	$(MAKE) -C util-src install
-	$(MAKE) -C certs localhost.cnf
-	$(MAKE) -C certs localhost.key
-	$(MAKE) -C certs localhost.cert
+	#$(MAKE) -C certs localhost.cnf
+	#$(MAKE) -C certs localhost.key
+	#$(MAKE) -C certs localhost.cert
 
 clean:
 	rm -f generate_log.install
