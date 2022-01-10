@@ -1,7 +1,7 @@
 Source: metronome
 Section: net
 Priority: extra
-Maintainer: Jérôme Lebleu <jerome@yunohost.org>
+Maintainer: YunoHost Contributors <contrib@yunohost.org>
 Build-Depends:
  debhelper (>=9), debhelper-compat (= 13), quilt, txt2man
 Build-Depends-Arch:
