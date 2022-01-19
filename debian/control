@@ -3,7 +3,7 @@ Section: net
 Priority: extra
 Maintainer: YunoHost Contributors <contrib@yunohost.org>
 Build-Depends:
- debhelper (>=9), debhelper-compat (= 13), quilt, txt2man
+ debhelper (>=9), debhelper-compat (= 13), txt2man
 Build-Depends-Arch:
  lua5.1, liblua5.1-0-dev, libidn11-dev, libssl-dev
 Standards-Version: 3.9.4
