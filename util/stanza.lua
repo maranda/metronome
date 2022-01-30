@@ -19,6 +19,14 @@ if ok then
 	getstyle, getstring = termcolours.getstyle, termcolours.getstring;
 end
 
+local id, new_id, uuid = 0;
+ok, uuid = pcall(require, "util.uuid");
+if ok then
+	new_id = uuid.generate;
+else
+	new_id = function() id = id + 1; return "lx"..id; end
+end	
+
 local xmlns_stanzas = "urn:ietf:params:xml:ns:xmpp-stanzas";
 
 local _ENV = nil;
@@ -269,12 +277,6 @@ function stanza_mt.get_error(stanza)
 	return type, condition or "undefined-condition", text;
 end
 
-local id = 0;
-local function new_id()
-	id = id + 1;
-	return "lx"..id;
-end
-
 local function preserialize(stanza)
 	local s = { name = stanza.name, attr = stanza.attr };
 	for _, child in ipairs(stanza) do
@@ -341,10 +343,11 @@ end
 local clone = _clone;
 
 local function message(attr, body)
+	if attr and not attr.id then attr.id = new_id(); end
 	if not body then
-		return stanza("message", attr);
+		return stanza("message", attr or { id = new_id() });
 	else
-		return stanza("message", attr):tag("body"):text(body):up();
+		return stanza("message", attr or { id = new_id() }):tag("body"):text(body):up();
 	end
 end
 local function iq(attr)
@@ -367,7 +370,8 @@ local function error_reply(orig, type, condition, message)
 end
 
 local function presence(attr)
-	return stanza("presence", attr);
+	if attr and not attr.id then attr.id = new_id(); end
+	return stanza("presence", attr or { id = new_id() });
 end
 
 if do_pretty_printing then
