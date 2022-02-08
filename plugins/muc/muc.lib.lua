@@ -23,6 +23,7 @@ local base64 = require "util.encodings".base64;
 local sha1 = require "util.hashes".sha1;
 local clone_table = require "util.auxiliary".clone_table;
 local check_policy = module:require("acdf_aux").check_policy;
+local generate_id = require "util.uuid".generate;
 
 local muc_domain = nil; --module:get_host();
 local default_history_length = 20;
@@ -42,6 +43,7 @@ end
 
 local function get_filtered_presence(stanza)
 	local clone = st.clone(stanza);
+	if not clone.attr.id then clone.attr.id = generate_id(); end
 	return clone:maptags(filter_stanza);
 end
 
