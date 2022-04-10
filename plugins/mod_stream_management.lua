@@ -32,6 +32,7 @@ local xmlns_d = "urn:xmpp:delay";
 
 local timeout = module:get_option_number("sm_resume_timeout", 360);
 local max_unacked = module:get_option_number("sm_max_unacked_stanzas", 10);
+local max_queued_stanzas = module:get_option_number("sm_max_unacked_stanzas_limit", 15000);
 
 local handled_sessions = {};
 
@@ -75,6 +76,17 @@ local function replace_session(session, new)
 	end
 end
 
+local function check_carbons(session)
+	local bare_jid, resource = session.username.."@"..session.host, session.resource;
+	local bare_session, has_carbons = module:get_bare_session(bare_jid);
+	if bare_session.has_carbons then
+		for _resource, _session in pairs(bare_session.sessions) do
+			if _resource ~= resource and _session.carbons then has_carbons = true; break; end
+		end
+	end
+	return has_carbons;
+end
+
 local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 	local _q = (_r and session.sm_queue) or {};
 	if not _r then
@@ -101,6 +113,22 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 			end
 			t_insert(_q, cached);
 		end
+		if #_q > max_queued_stanzas then
+			local has_carbons = session.type == "c2s" and check_carbons(session);
+			local queued = _q[1];
+			module:log("warn", "%s session queue is over limit (%d stanzas), dropping oldest: %s",
+				(_type == "s2sin" or _type == "s2sout") and "Remote server" or "Client", #_q, queued:top_tag());
+			if session.type == "c2s" and (queued.name == "iq" or queued.name == "message" or queued.name == "presence") 
+				and queued.attr.type ~= "error" then
+				local reply = st_reply(queued);
+				if reply.attr.to and reply.attr.to ~= session.full_jid and (has_carbons and name ~= "message" or not has_carbons) then
+					reply.attr.type = "error";
+					reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
+					fire_event("route/process", session, reply);
+				end					
+			end
+			t_remove(_q, 1);
+		end
 		if session.type == "c2s" and stanza.name == "message" and #_q > 0 and (session.waiting_ack or session.halted) then
 			module:fire_event("sm-push-message", { username = session.username, host = session.host, stanza = stanza });
 		end
@@ -126,18 +154,12 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 	
 	function session.handle_unacked(session)
 		if session.type == "c2s" then
-			local full_jid, bare_jid, resource = session.full_jid, session.username.."@"..session.host, session.resource;
-			local bare_session, has_carbons = module:get_bare_session(bare_jid);
-			if bare_session.has_carbons then
-				for _resource, _session in pairs(bare_session.sessions) do
-					if _resource ~= resource and _session.carbons then has_carbons = true; break; end
-				end
-			end
+			has_carbons = check_carbons(session);
 			for _, queued in ipairs(_q) do
 				local name = queued.name;
 				if (name == "iq" or name == "message" or name == "presence") and queued.attr.type ~= "error" then
 					local reply = st_reply(queued);
-					if reply.attr.to and reply.attr.to ~= full_jid and (has_carbons and name ~= "message" or not has_carbons) then
+					if reply.attr.to and reply.attr.to ~= session.full_jid and (has_carbons and name ~= "message" or not has_carbons) then
 						reply.attr.type = "error";
 						reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
 						fire_event("route/process", session, reply);
