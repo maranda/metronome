@@ -154,7 +154,7 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 	
 	function session.handle_unacked(session)
 		if session.type == "c2s" then
-			has_carbons = check_carbons(session);
+			local has_carbons = check_carbons(session);
 			for _, queued in ipairs(_q) do
 				local name = queued.name;
 				if (name == "iq" or name == "message" or name == "presence") and queued.attr.type ~= "error" then
