@@ -89,9 +89,9 @@ end
 
 local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 	local _q = (_r and session.sm_queue) or {};
+	local session_type = session.type;
 	if not _r then
 		session.sm_queue, session.sm_last_ack, session.sm_last_req, session.sm_handled = _q, 0, 0, 0;
-		local session_type = session.type;
 		add_filter(session, (session_type == "s2sout" and "stanzas/out") or "stanzas/in", function(stanza)
 			local name = stanza.name;
 			if name == "iq" or name == "message" or name == "presence" then
@@ -117,7 +117,7 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 			local has_carbons = session.type == "c2s" and check_carbons(session);
 			local queued = _q[1];
 			module:log("warn", "%s session queue is over limit (%d stanzas), dropping oldest: %s",
-				(_type == "s2sin" or _type == "s2sout") and "Remote server" or "Client", #_q, queued:top_tag());
+				(session_type == "s2sin" or session_type == "s2sout") and "Remote server" or "Client", #_q, queued:top_tag());
 			if session.type == "c2s" and (queued.name == "iq" or queued.name == "message" or queued.name == "presence") 
 				and queued.attr.type ~= "error" then
 				local reply = st_reply(queued);
