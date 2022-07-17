@@ -40,6 +40,7 @@ local host_object = module:get_host_session();
 local store_elements = module:get_option_set("muc_log_allowed_elements", {});
 
 store_elements:add("acknowledged");
+store_elements:add("apply-to");
 store_elements:add("displayed");
 store_elements:add("encrypted");
 store_elements:add("encryption");
@@ -162,6 +163,20 @@ function disco_features(room, reply)
 	reply:tag("feature", { var = sid_xmlns }):up()
 end
 
+function tombstone_entry(event)
+	local node = jid_section(event.room.jid, "node");
+	local today = os.date("!%Y%m%d");
+	local data = data_load(node, mod_host, datastore .. "/" .. today) or {};
+	for i, entry in ripairs(data) do
+		if entry.id == event.moderation_id then
+			entry.oid = nil;
+			entry.body = nil;
+			entry.tags = nil;
+			break; 
+		end
+	end
+end
+
 function clear_logs(event) -- clear logs from disk
 	local node = jid_section(event.room.jid, "node");
 	for store in data_stores(node, mod_host, "keyval", datastore) do
@@ -172,6 +187,7 @@ end
 module:hook("muc-disco-info-features", disco_features, -99);
 module:hook("message/bare", log_if_needed, 50);
 module:hook("muc-room-destroyed", clear_logs);
+module:hook("muc-tombstone-entry", tombstone_entry);
 
 -- Define config methods
 
