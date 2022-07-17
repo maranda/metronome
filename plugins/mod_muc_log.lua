@@ -175,6 +175,8 @@ function tombstone_entry(event)
 			break; 
 		end
 	end
+	data_store(node, mod_host, datastore .. "/" .. today, data);
+	return true;
 end
 
 function clear_logs(event) -- clear logs from disk

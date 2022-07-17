@@ -36,7 +36,7 @@ local openpgp_xmlns = "urn:xmpp:openpgp:0";
 local xhtml_xmlns = "http://www.w3.org/1999/xhtml";
 
 local store_time = module:get_option_number("mam_save_time", 300);
-local stores_cap = module:get_option_number("mam_stores_cap", 10000);
+local stores_cap = module:get_option_number("mam_stores_cap", 50000);
 local store_elements = module:get_option_set("mam_allowed_elements", {});
 local unload_cache_time = module:get_option_number("mam_unload_cache_time", 3600);
 
