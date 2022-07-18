@@ -4,7 +4,9 @@ MAINTAINER "Marco Cirillo" <marco.cirillo@aria-net.org>
 
 # Install dependencies and add daemon user
 
-RUN apk add --upgrade build-base linux-headers make git lua5.2 lua5.2-dev lua5.2-socket lua5.2-expat lua5.2-filesystem lua5.2-sec libidn libidn-dev openssl openssl-dev libevent libevent-dev lua5.2-lzlib luarocks5.2
+RUN apk add --upgrade build-base linux-headers make git lua5.2 lua5.2-dev lua5.2-socket lua5.2-expat \
+	lua5.2-filesystem lua5.2-dbi-mysql lua5.2-dbi-postgresql lua5.2-dbi-sqlite3 lua5.2-sec libidn libidn-dev \
+	openssl openssl-dev libevent libevent-dev lua5.2-lzlib luarocks5.2
 RUN adduser -S -h /var/lib/metronome metronome && addgroup -S metronome
 
 
