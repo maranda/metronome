@@ -1,0 +1,17 @@
+PREFIX=/usr
+SYSCONFDIR=/etc/metronome
+DATADIR=/var/lib/metronome
+LUA_SUFFIX=5.2
+LUA_DIR=/usr/bin/lua5.2
+LUA_INCDIR=/usr/include/lua5.2
+LUA_LIBDIR=/usr/lib/lua5.2
+LUA_BINDIR=/usr/bin/lua5.2/bin
+REQUIRE_CONFIG=
+IDN_LIB=idn
+IDNA_LIBS=-lidn
+OPENSSL_LIB=crypto
+CFLAGS=-Wall -fPIC -D_GNU_SOURCE
+LDFLAGS=-shared
+CC=gcc
+CXX=g++
+LD=gcc
