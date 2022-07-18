@@ -53,6 +53,7 @@ if not load_theme(theme_path) then
 end
 
 function parse_message(body, title, time, nick, day_t, day_m, day_mm, day_title)
+	if not nick then return; end
 	local ret = "";
 	time = day_t:gsub("###TIME###", time):gsub("###UTC###", time);
 	nick = html_escape(nick:match("/(.+)$"));
