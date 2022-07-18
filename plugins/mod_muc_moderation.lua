@@ -77,7 +77,7 @@ module:hook("iq-set/bare/" .. xmlns_fasten .. ":apply-to", function (event)
 
 	if retract then
 		announcement:tag("retract", { xmlns = xmlns_retract }):up();
-		module:fire_event("muc-tombstone-entry", { room = room, moderation_id = stanza_id, announcement = announcement });
+		module:fire_event("muc-tombstone-entry", { room = room, moderation_id = stanza_id, announcement = st.clone(announcement) });
 	end
 
 	-- Done, tell people about it

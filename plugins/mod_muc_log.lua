@@ -26,6 +26,7 @@ local uuid = require "util.uuid".generate;
 local get_actions = module:require("acdf_aux").get_actions;
 local os_time, ripairs, t_insert, t_remove = os.time, ripairs, table.insert, table.remove;
 
+local xmlns_fasten = "urn:xmpp:fasten:0";
 local hints_xmlns = "urn:xmpp:hints";
 local labels_xmlns = "urn:xmpp:sec-label:0";
 local lmc_xmlns = "urn:xmpp:message-correct:0";
@@ -78,7 +79,7 @@ function log_if_needed(e)
 			end
 			
 			local apply_to, body, subject, omemo, html, openpgp =
-				stanza:child_with_name("apply-to"),
+				stanza:get_child("apply-to", xmlns_fasten),
 				stanza:child_with_name("body"),
 				stanza:child_with_name("subject"),
 				stanza:get_child("encrypted", omemo_xmlns),
@@ -99,18 +100,15 @@ function log_if_needed(e)
 				local id = stanza.attr.id;
 				
 				if replace then -- implements XEP-308
-					local count = 0;
 					local rid = replace.attr.id;
 					if rid and id ~= rid then
 						for i, entry in ripairs(data) do
-							count = count + 1; -- don't go back more then 100 entries, *sorry*.
-							if count <= 100 and entry.resource == from_room and entry.id == rid then
+							if entry.resource == from_room and entry.id == rid then
 								entry.oid = nil;
 								entry.body = nil;
 								entry.tags = nil;
 								break; 
 							end
-							if count == 100 then break; end
 						end
 						module:fire_event("muc-log-remove-from-mamcache", room, from_room, rid);
 					end
@@ -178,6 +176,7 @@ function tombstone_entry(event)
 		end
 	end
 	data_store(node, mod_host, datastore .. "/" .. today, data);
+	event.announcement.attr.to = event.room.jid;
 	log_if_needed({ stanza = event.announcement });
 	return true;
 end
