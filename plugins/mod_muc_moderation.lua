@@ -71,13 +71,13 @@ module:hook("iq-set/bare/" .. xmlns_fasten .. ":apply-to", function (event)
 		:tag("apply-to", { xmlns = xmlns_fasten, id = stanza_id })
 			:tag("moderated", { xmlns = xmlns_moderate, by = actor_nick })
 
-	if retract then
-		announcement:tag("retract", { xmlns = xmlns_retract }):up();
-		module:fire_event("muc-tombstone-entry", { room = room, moderation_id = stanza_id });
-	end
-
 	if reason then
 		announcement:tag("reason"):text(reason);
+	end
+
+	if retract then
+		announcement:tag("retract", { xmlns = xmlns_retract }):up();
+		module:fire_event("muc-tombstone-entry", { room = room, moderation_id = stanza_id, announcement = announcement });
 	end
 
 	-- Done, tell people about it

@@ -56,7 +56,7 @@ store_elements:remove("replace");
 -- Module Definitions
 
 function log_if_needed(e)
-	local stanza, origin = e.stanza, e.origin;
+	local stanza = e.stanza;
 	
 	if (stanza.name == "message" and stanza.attr.type == "groupchat") then
 		local to_room = stanza.attr.to;
@@ -77,21 +77,22 @@ function log_if_needed(e)
 				return;
 			end
 			
-			local body, subject, omemo, html, openpgp =
+			local apply_to, body, subject, omemo, html, openpgp =
+				stanza:child_with_name("apply-to"),
 				stanza:child_with_name("body"),
 				stanza:child_with_name("subject"),
 				stanza:get_child("encrypted", omemo_xmlns),
 				stanza:get_child("html", xhtml_xmlns),
 				stanza:get_child("openpgp", omemo_xmlns);
 			
-			if (not body and not subject and not omemo and not html and not openpgp) or
+			if (not apply_to and not body and not subject and not omemo and not html and not openpgp) or
 				stanza:get_child("no-store", hints_xmlns) or
 				stanza:get_child("no-permanent-storage", hints_xmlns) then
 				return;
 			end
 			muc_from = room._jid_nick[from_room];
 
-			if muc_from then
+			if muc_from or (apply_to and from_room == room.jid) then
 				local data = data_load(node, mod_host, datastore .. "/" .. today) or {};
 				local replace = stanza:get_child("replace", lmc_xmlns);
 				local oid = stanza:get_child("origin-id", sid_xmlns);
@@ -168,14 +169,16 @@ function tombstone_entry(event)
 	local today = os.date("!%Y%m%d");
 	local data = data_load(node, mod_host, datastore .. "/" .. today) or {};
 	for i, entry in ripairs(data) do
-		if entry.id == event.moderation_id then
+		if entry.uid == event.moderation_id then
 			entry.oid = nil;
 			entry.body = nil;
 			entry.tags = nil;
+			module:fire_event("muc-log-remove-from-mamcache", event.room, entry.from, entry.id);
 			break; 
 		end
 	end
 	data_store(node, mod_host, datastore .. "/" .. today, data);
+	log_if_needed({ stanza = event.announcement });
 	return true;
 end
 
