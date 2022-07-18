@@ -72,7 +72,7 @@ module:hook("iq-set/bare/" .. xmlns_fasten .. ":apply-to", function (event)
 			:tag("moderated", { xmlns = xmlns_moderate, by = actor_nick })
 
 	if reason then
-		announcement:tag("reason"):text(reason);
+		announcement:tag("reason"):text(reason):up();
 	end
 
 	if retract then
