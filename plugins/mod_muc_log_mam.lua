@@ -28,77 +28,15 @@ local delay_xmlns = "urn:xmpp:delay";
 local forward_xmlns = "urn:xmpp:forward:0";
 local markers_xmlns = "urn:xmpp:chat-markers:0";
 
+module:depends("muc_log");
+
 local mamlib = module:require("mam", "mam");
 local validate_query = module:require("validate", "mam").validate_query;
 local fields_handler, generate_stanzas = mamlib.fields_handler, mamlib.generate_stanzas;
 
-local check_inactivity = module:get_option_number("muc_log_mam_check_inactive", 1800);
-local kill_caches_after = module:get_option_number("muc_log_mam_expire_caches", 3600);
-
-local mam_cache = {};
-
-module:add_timer(check_inactivity, function()
-	module:log("debug", "Checking for inactive rooms MAM caches...");
-
-	for jid, room in pairs(host_object.muc.rooms) do
-		if os_time() - room.last_used > kill_caches_after and mam_cache[jid] then
-			module:log("debug", "Dumping MAM cache for %s", jid);
-			mam_cache[jid] = nil;
-		end
-	end
-
-	return check_inactivity;
-end);
-
-local function initialize_mam_cache(jid)
-	local node, host = jid_split(jid);
-	local room = host_object.muc.rooms[jid];
-
-	if room and not mam_cache[jid] then
-		-- load this last month's discussion.
-		mam_cache[jid] = {};
-		local cache = mam_cache[jid];
-		local yearmonth = os_date("!%Y%m");
-
-		module:log("debug", "Initialize MAM cache for %s", jid);
-		for day=1,31 do
-			local fday;
-			if day < 10 then fday = "0" .. tostring(day); else fday = tostring(day); end 
-			local data = data_load(node, host, datastore .. "/" .. yearmonth .. fday);
-
-			if data then
-				for n, entry in ipairs(data) do	cache[#cache + 1] = entry; end
-			end
-		end
-	end
-end
-
 module:hook("muc-disco-info-features", function(room, reply)
 	reply:tag("feature", { var = xmlns }):up()
 	reply:tag("feature", { var = markers_xmlns }):up()
-end, -100);
-
-module:hook("muc-log-add-to-mamcache", function(room, entry)
-	local cache = mam_cache[room.jid];
-	if cache then cache[#cache + 1] = entry; end
-end, -100);
-
-module:hook("muc-log-get-mamcache", function(jid)
-	return mam_cache[jid];
-end);
-
-module:hook("muc-log-remove-from-mamcache", function(room, from, rid)
-	local cache = mam_cache[room.jid];
-	if cache then
-		for i, entry in ripairs(cache) do
-			if entry.resource == from and entry.id == rid then
-				entry.oid = nil;
-				entry.body = nil;
-				entry.tags = nil;
-				break; 
-			end
-		end
-	end
 end, -100);
 
 module:hook("iq/bare/"..xmlns..":prefs", function(event)
@@ -124,10 +62,7 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 			origin.send(st.error_reply(stanza, "auth", "not-authorized"));
 			return true;
 		end
-	
-		initialize_mam_cache(to);
-		local archive = { logs = mam_cache[to] };
-	
+		
 		local start, fin, with, after, before, max, index;
 		local ok, ret = validate_query(stanza, query, qid);
 		if not ok then
@@ -136,6 +71,10 @@ module:hook("iq-set/bare/"..xmlns..":query", function(event)
 			start, fin, with, after, before, max, index =
 				ret.start, ret.fin, ret.with, ret.after, ret.before, ret.max, ret.index;
 		end
+
+		local archive = { 
+			logs = module:fire("stanza-log-load", jid_section(to, "node"), module.host, start, fin,	before, after)
+		};
 		
 		local messages, rq, count = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, { origin, stanza });
 		if not messages then
