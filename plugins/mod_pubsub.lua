@@ -27,13 +27,10 @@ if type(pubsub_disco_name) ~= "string" then pubsub_disco_name = "Metronome PubSu
 
 local service;
 
-local pubsub_lib = module:require "pubsub_aux";
+local pubsub_lib = module:require ("pubsub", "auxlibs");
 local handlers = pubsub_lib.handlers;
 local handlers_owner = pubsub_lib.handlers_owner;
 local pubsub_error_reply = pubsub_lib.pubsub_error_reply;
-local form_layout = pubsub_lib.form_layout;
-local send_config_form = pubsub_lib.send_config_form;
-local process_config_form = pubsub_lib.process_config_form;
 
 -- Begin
 
@@ -349,7 +346,6 @@ set_service(pubsub.new({
 			get_subscription = true;
 			get_subscriptions = true;
 			get_items = true;
-			
 			
 			subscribe_other = true;
 			unsubscribe_other = true;

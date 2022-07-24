@@ -7,7 +7,7 @@
 local st = require "util.stanza";
 local s2s_make_authenticated = require "util.s2smanager".make_authenticated;
 local base64 = require "util.encodings".base64;
-local can_do_external = module:require "sasl_aux".can_do_external;
+local can_do_external = module:require("sasl", "auxlibs").can_do_external;
 local cert_verify_identity = require "util.x509".verify_identity;
 
 local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";

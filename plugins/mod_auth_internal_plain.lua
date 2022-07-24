@@ -10,9 +10,9 @@
 local storagemanager = require "core.storagemanager";
 local new_sasl = require "util.sasl".new;
 local nodeprep = require "util.encodings".stringprep.nodeprep;
-local plain_backend = module:require "sasl_aux".plain_backend;
-local external_backend = module:require "sasl_aux".external_backend;
-local get_channel_binding_callback = module:require "sasl_aux".get_channel_binding_callback;
+local plain_backend = module:require("sasl", "auxlibs").plain_backend;
+local external_backend = module:require("sasl", "auxlibs").external_backend;
+local get_channel_binding_callback = module:require("sasl", "auxlibs").get_channel_binding_callback;
 
 local accounts = storagemanager.open(module.host, "accounts");
 

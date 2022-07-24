@@ -119,7 +119,7 @@ end
 
 -- Define the Node Service, some stuff based on mod_pubsub.
 
-local pubsub_lib = module:require "pubsub_aux";
+local pubsub_lib = module:require("pubsub", "auxlibs");
 local handlers = pubsub_lib.handlers;
 local handlers_owner = pubsub_lib.handlers_owner;
 local pubsub_error_reply = pubsub_lib.pubsub_error_reply;

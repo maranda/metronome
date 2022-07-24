@@ -32,7 +32,7 @@ local NULL = {};
 
 -- Define aux library imports
 
-local pep_lib = module:require "pep_aux";
+local pep_lib = module:require ("pep", "auxlibs");
 pep_lib.set_closures(services, hash_map);
 local features = pep_lib.features;
 local singleton_nodes = pep_lib.singleton_nodes;

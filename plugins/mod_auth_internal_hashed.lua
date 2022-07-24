@@ -12,14 +12,14 @@ local log = require "util.logger".init("auth_internal_hashed");
 local getAuthenticationDatabase = require "util.sasl.scram".getAuthenticationDatabase;
 local generate_uuid = require "util.uuid".generate;
 local new_sasl = require "util.sasl".new;
-local plain_test = module:require "sasl_aux".hashed_plain_test;
-local scram_sha1_backend = module:require "sasl_aux".scram_sha1_backend;
-local scram_sha256_backend = module:require "sasl_aux".scram_sha256_backend;
-local scram_sha384_backend = module:require "sasl_aux".scram_sha384_backend;
-local scram_sha512_backend = module:require "sasl_aux".scram_sha512_backend;
-local external_backend = module:require "sasl_aux".external_backend;
-local to_hex = module:require "sasl_aux".to_hex;
-local get_channel_binding_callback = module:require "sasl_aux".get_channel_binding_callback;
+local plain_test = module:require("sasl", "auxlibs").hashed_plain_test;
+local scram_sha1_backend = module:require("sasl", "auxlibs").scram_sha1_backend;
+local scram_sha256_backend = module:require("sasl", "auxlibs").scram_sha256_backend;
+local scram_sha384_backend = module:require("sasl", "auxlibs").scram_sha384_backend;
+local scram_sha512_backend = module:require("sasl", "auxlibs").scram_sha512_backend;
+local external_backend = module:require("sasl", "auxlibs").external_backend;
+local to_hex = module:require("sasl", "auxlibs").to_hex;
+local get_channel_binding_callback = module:require("sasl", "auxlibs").get_channel_binding_callback;
 
 local accounts = storagemanager.open(module.host, "accounts");
 

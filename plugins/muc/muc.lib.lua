@@ -22,7 +22,7 @@ local setmetatable = setmetatable;
 local base64 = require "util.encodings".base64;
 local sha1 = require "util.hashes".sha1;
 local clone_table = require "util.auxiliary".clone_table;
-local check_policy = module:require("acdf_aux").check_policy;
+local check_policy = module:require("acdf", "auxlibs").check_policy;
 local generate_id = require "util.uuid".generate;
 
 local muc_domain = nil; --module:get_host();
