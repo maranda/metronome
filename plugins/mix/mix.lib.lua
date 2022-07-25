@@ -369,7 +369,7 @@ function Channel:publish_participant(spid, participant)
                 st.stanza("item", { id = spid, xmlns = "http://jabber.org/protocol/pubsub" })
                     :tag("participant", { xmlns = namespaces.mix_core })
                         :tag("nick"):text(participant["nick"]):up()
-                        :tag("jid"):text(participant["jid"]));
+                        :tag("jid"):text(participant["jid"]), self.jid);
 end
 
 function Channel:remove_participant(jid)
@@ -407,7 +407,7 @@ function Channel:publish_info(srv)
                         ["Description"] = self.description,
                         ["Contact"] = self.contacts
                     }, "result"));
-    srv:publish(namespaces.info, true, timestamp, info);
+    srv:publish(namespaces.info, true, timestamp, info, self.jid);
 end
 
 
