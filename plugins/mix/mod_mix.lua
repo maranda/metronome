@@ -22,7 +22,6 @@ local st = require("util.stanza");
 local jid = require("util.jid");
 local uuid = require("util.uuid");
 local datetime = require("util.datetime");
-local time = require("util.time");
 local dataforms = require("util.dataforms");
 local array = require("util.array");
 local set = require("util.set");
@@ -44,14 +43,14 @@ local fields_handler, generate_stanzas = lib_mam.fields_handler, lib_mam.generat
 -- PubSub Libraries
 
 local lib_pubsub = module:require ("pubsub", "auxlibs");
-local handlers = pubsub_lib.handlers;
-local handlers_owner = pubsub_lib.handlers_owner;
-local pubsub_error_reply = pubsub_lib.pubsub_error_reply;
-local pubsub_set_service = pubsub_lib.set_service;
+local handlers = lib_pubsub.handlers;
+local handlers_owner = lib_pubsub.handlers_owner;
+local pubsub_error_reply = lib_pubsub.pubsub_error_reply;
+local pubsub_set_service = lib_pubsub.set_service;
 
 -- Persistent data
-local persistent_channels = storagemanager.open(module.host, "mix_channels");
-local persistent_channel_data = storagemanager.open(module.host, "mix_data");
+local persistent_channels = storagemanager.open(host, "mix_channels");
+local persistent_channel_data = storagemanager.open(host, "mix_data");
 
 -- Configuration
 local default_channel_description = module:get_option("default_description", "A MIX channel for chatting");
@@ -160,11 +159,12 @@ local function can_create_channels(user)
     -- Returns true when the jid is allowed to create MIX channels. False otherwise.
     -- NOTE: Taken from plugins/muc/mod_muc.lua
     local host_suffix = host:gsub("^[^%.]+%.", "");
+	local user_host = jid.section(user, "host")
 
     if restrict_channel_creation == "local" then
-        module:log("debug", "Comparing %s (Sender) to %s (Host)", jid.host(user), host_suffix);
+        module:log("debug", "Comparing %s (Sender) to %s (Host)", user_host, host_suffix);
 
-        if jid.host(user) == host_suffix then
+        if user_host == host_suffix then
             return true;
         else
             return false;
@@ -173,7 +173,7 @@ local function can_create_channels(user)
         if helpers.find_str(restrict_channel_creation, user) ~= -1 then
             -- User was specifically listed
             return true;
-        elseif helpers.find_str(restrict_channel_creation, jid.host(user)) then
+        elseif helpers.find_str(restrict_channel_creation, user_host) then
             -- User's host was allowed
             return true;
         end
@@ -302,7 +302,7 @@ module:hook("iq-set/bare/"..namespaces.mam..":query", function(event)
 	end
 
 	local archive = { 
-		logs = module:fire("stanza-log-load", jid_section(to, "node"), module.host, start, fin,	before, after)
+		logs = module:fire("stanza-log-load", jid_section(to, "node"), host, start, fin, before, after)
 	};
 		
 	local messages, rq, count = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, { origin, stanza });
@@ -329,7 +329,7 @@ module:hook("iq-set/bare/"..namespaces.mam..":query", function(event)
 end);
 
 module:hook("iq-get/bare/"..namespaces.mam..":query", fields_handler);
-module:hook("iq/bare/"..xmlns..":prefs", function(event)
+module:hook("iq/bare/"..namespaces.mam..":prefs", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	origin.send(st.error_reply(stanza, "cancel", "feature-not-implemented"));
 	return true;
@@ -645,7 +645,7 @@ module:hook("message/bare", function(event)
     -- even doing nothing if an event handler for "mix-broadcast-message"
     -- returns true.
     channel:broadcast_message(stanza, participant,
-		module:fire_event("load-stanza-log", jid.section(stanza.attr.to, "node"), module.host, now, now) or {}
+		module:fire_event("load-stanza-log", jid.section(stanza.attr.to, "node"), host, now, now) or {}
 	);
     return true;
 end);

@@ -9,12 +9,9 @@
 local st = require("util.stanza");
 local array = require("util.array");
 local jid_lib = require("util.jid");
-local uuid = require("util.uuid");
-local new_id = require("util.id").medium;
-local time = require("util.time");
+local new_id = require("util.uuid").generate;
 local datetime = require("util.datetime");
 local pubsub = require("util.pubsub");
-local lib_pubsub = module:require("pubsub", "mix");
 local storagemanager = require("core.storagemanager");
 
 local helpers = module:require("helpers", "mix");
@@ -251,7 +248,7 @@ function Channel:get_pubsub_service()
 				get_affiliations = true;
 				set_affiliation = true;
 			};
-		}
+		};
 
         node_default_config = {
             persist_items = true;
@@ -338,7 +335,7 @@ function Channel:broadcast_message(message, participant, archive)
 
     msg.attr.from = self.jid;
 	module:fire_event("store-stanza-log", jid_lib.section(self.jid, "node"), jid_lib.section(self.jid, "host"),
-		lib_stanzalog.process_stanza(self.jid, message, archive);
+		lib_stanzalog.process_stanza(self.jid, message, archive)
 	);
     msg.attr.from = self.jid.."/"..self:get_spid(participant.jid);
 
@@ -402,7 +399,7 @@ function Channel:remove_participant(jid)
 end
 
 function Channel:publish_info(srv)
-    local timestamp = datetime.datetime(time.now());
+    local timestamp = datetime.datetime(os.time());
     local info = st.stanza("item", { id = timestamp, xmlns = namespaces.pubsub })
                     :add_child(lib_forms.mix_info:form({
                         ["FORM_TYPE"] = "hidden",

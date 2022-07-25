@@ -117,6 +117,7 @@ local function load_batch(node, host, archive, start, fin, before, after, metada
 	end
 	if #archive > 0 and (not metadata.last or metadata.last > archive[#archive].timestamp) then
 		metadata.last = archive[#archive].timestamp;
+	end
 	return archive;
 end
 

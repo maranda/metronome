@@ -35,7 +35,7 @@ local function load_stanza_log(node, host, start, fin, before, after)
 	return log;
 end
 
-local function store_stanza_log(node, host, data) {
+local function store_stanza_log(node, host, data)
 	local metadata = storagemanager.open(host, "stanza_log_metada"):get(node) or {};
 	metadata.last = data.timestamp;
 	local jid = util_jid.join(node, host);
@@ -44,21 +44,15 @@ local function store_stanza_log(node, host, data) {
 	end
 	storagemanager.open(host, "stanza_log_metada"):store(node, metadata);
 	return storagemanager.open(host, "stanza_log/" .. os_date("!%Y%m%d")):store(node, data);
-}
+end
 
-local function purge_stanza_log(node, host) {
+local function purge_stanza_log(node, host)
 	for store in storagemanager.get_driver(host):stores(node, "keyval", "stanza_log") do
 		storagemanager.open(host, store):store(node, nil);
 	end
 	storagemanager.open(host, "stanza_log_metadata"):store(node, nil);
-}
+end
 
 module:hook("stanza-log-load", load_stanza_log);
 module:hook("stanza-log-store", store_stanza_log);
 module:hook("stanza-log-purge", purge_stanza_log);
-
-return {
-	load_stanza_log = load_stanza_log;
-	store_stanza_log = store_stanza_log;
-	process_stanza = process_stanza;
-}
