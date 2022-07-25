@@ -56,7 +56,7 @@ local persistent_channel_data = storagemanager.open(host, "mix_data");
 local default_channel_description = module:get_option("default_description", "A MIX channel for chatting");
 local default_channel_name = module:get_option("default_name", "MIX channel");
 local restrict_channel_creation = module:get_option("restrict_local_channels", "local");
-local service_name = module:get_option("service_name", "Metronome's MIX Channels");
+local service_name = module:get_option("name", "Metronome's MIX Channels");
 
 -- MIX configuration
 local default_mix_nodes = array { namespaces.info, namespaces.participants, namespaces.messages };
