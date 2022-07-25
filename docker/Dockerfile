@@ -30,13 +30,10 @@ EXPOSE 80 443 5000 5222 5223 5269 5270 5280 5281 5347 5582
 
 # Set possible volume (directories which can be mounted from the docker host machine)
 # like etc/, conf/, certs/, logs/, data/
-VOLUME ["/etc/metronome", "/usr/lib/metronome", "/var/lib/metronome", "/var/log/metronome"]
+VOLUME ["/etc/metronome", "/usr/lib/metronome", "/var/lib/metronome", "/var/log/metronome", "/var/run/metronome"]
 
 ADD scripts/start.sh /start.sh
 RUN chmod 755 /start.sh
-
-# Disable Posix, run metronome in foreground
-RUN sed -i 's/\"posix\";/--\"posix\";/g' /etc/metronome/metronome.cfg.lua
 USER metronome:metronome
 
 # Define script which should be executed on container startup
