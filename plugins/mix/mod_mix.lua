@@ -521,7 +521,7 @@ local function create_channel(node, creator, adhoc)
             --       need to explicitly set it
             access_model = lib_mix.get_node_access_model(psnode, adhoc);
             max_items = lib_mix.get_node_max_items(psnode);
-        });
+        }, creator);
         channel:set_affiliation(psnode, creator, "creator");
         table.insert(channel.nodes, psnode);
     end
