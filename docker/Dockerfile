@@ -26,7 +26,7 @@ RUN mkdir /var/log/metronome /var/run/metronome && chown metronome:metronome /va
 RUN apk del --purge build-base linux-headers make git lua5.2-dev libidn-dev openssl-dev libevent-dev
 
 # Set ports of the container which can be exposed
-EXPOSE 5000 5222 5223 5269 5270 5280 5281 5347 5582
+EXPOSE 80 443 5000 5222 5223 5269 5270 5280 5281 5347 5582
 
 # Set possible volume (directories which can be mounted from the docker host machine)
 # like etc/, conf/, certs/, logs/, data/
