@@ -314,7 +314,7 @@ def_env.st = st; -- expose util.stanza
 def_env.server = {};
 
 function def_env.server:meminfo()
-	local info = pposix and pposix.meminfo();
+	local info = pposix and pposix.meminfo and pposix.meminfo();
 	if not info then -- fallback to GC count
 		return true, string.format("Posix library unavailable reporting only lua memory usage: %d bytes",
 							collectgarbage("count")*1024);
