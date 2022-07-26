@@ -18,7 +18,7 @@ local storagemanager = require "core.storagemanager";
 local check_policy = module:require("acdf", "auxlibs").check_policy;
 
 local ipairs, next, now, pairs, ripairs, t_insert, t_remove, tostring, type, unpack = 
-	ipairs, next, os.time, pairs, ripairs, table.insert, table.remove, tostring, type, unpack or table.unpack;
+	ipairs, next, os.time, pairs, ripairs, table.insert, table.remove, tostring, type, table.unpack or unpack;
     
 local xmlns = "urn:xmpp:mam:2";
 local client_xmlns = "jabber:client";
