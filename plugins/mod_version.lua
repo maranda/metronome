@@ -5,7 +5,7 @@
 -- information about copyright and licensing.
 
 local st = require "util.stanza";
-local os_getenv = os.getenv;
+local lua_version = _G._VERSION;
 
 module:add_feature("jabber:iq:version");
 
@@ -15,25 +15,29 @@ local query = st.stanza("query", {xmlns = "jabber:iq:version"})
 	:tag("name"):text("Metronome"):up()
 	:tag("version"):text(metronome.version):up();
 
+local fixed_osv_string = module:get_option_string("fixed_osv_string");
 local random_osv_cmd = module:get_option_string("refresh_random_osv_cmd");
 local log_requests = module:get_option_boolean("log_version_requests", true);
 
 if not module:get_option_boolean("hide_os_type") and not random_osv_cmd then
 	local os_version_command = module:get_option_string("os_version_command");
 	local ok, pposix = pcall(require, "util.pposix");
-	if not os_version_command and (ok and pposix and pposix.uname) then
-		version = pposix.uname().sysname;
-	end
-	if not version then
-		local uname = io.popen(os_version_command or "uname");
-		if uname then
-			version = uname:read("*a");
+	if fixed_osv_string then
+		version = fixed_osv_string;
+	else
+		if not os_version_command and (ok and pposix and pposix.uname) then
+			version = pposix.uname().sysname .. " " .. pposix.uname().release;
 		end
-		uname:close();
+		if not version then
+			local uname = io.popen(os_version_command or "uname -sr");
+			if uname then
+				version = uname:read("*a");
+			end
+			uname:close();
+		end
 	end
 	if version then
-		version = version:match("^%s*(.-)%s*$") or version;
-		query:tag("os"):text(version):up();
+		query:tag("os"):text(lua_version .. " / " .. version):up();
 	end
 end
 
