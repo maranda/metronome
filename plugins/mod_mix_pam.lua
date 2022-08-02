@@ -18,7 +18,7 @@ local rm_roster_push = require("util.rostermanager").roster_push;
 local rm_load_roster = require("util.rostermanager").load_roster;
 
 -- Persistent storage
-local mix_pam = storagemanager.open("mix_pam");
+local mix_pam = storagemanager.open(module_host, "mix_pam");
 
 -- Runtime data
 local mix_hosts = {}; -- MIX host's JID -> Reference Counter
@@ -32,7 +32,7 @@ module:add_feature(mix_pam_xmlns);
 -- module:add_feature(mix_pam_xmlns.."#archive");
 
 local function add_mix_host(host)
-    if mix_hosts[host] ~= nil then
+    if mix_hosts[host] then
         mix_hosts[host] = mix_hosts[host] + 1;
         module:log("debug", "Known MIX host has a new user");
     else
@@ -43,7 +43,7 @@ local function add_mix_host(host)
     mix_pam:set("hosts", mix_hosts);
 end
 local function remove_mix_host(host)
-    if mix_hosts[host] ~= nil then
+    if mix_hosts[host] then
         local count = mix_hosts[host];
         if count == 1 then
             mix_hosts[host] = nil;
@@ -70,7 +70,7 @@ function module.load()
     mix_hosts = mix_pam:get("hosts");
     module:log("info", "Loaded known MIX hosts");
 
-    if mix_hosts == nil then
+    if not mix_hosts then
         module:log("info", "No known MIX hosts loaded");
         mix_hosts = {};
     end
@@ -257,7 +257,7 @@ end);
 
 module:hook("message/bare", function(event)
     local stanza = event.stanza;
-    local jid_host = jid.host(stanza.attr.from);
+    local jid_host = jid.section(stanza.attr.from, "host");
     if not is_mix_host(jid_host) then return; end
     if not is_mix_message(stanza) then return; end
 

@@ -7,8 +7,12 @@
 local uuid = require "util.uuid".generate;
 local get_actions = module:require("acdf", "auxlibs").get_actions;
 local deserialize = require "util.stanza".deserialize;
+local storagemanager = require "core.storagemanager";
 
-local os_date, t_insert = os.date, table.insert;
+local os_date, t_insert, t_sort = os.date, table.insert, table.sort;
+
+local sid_xmlns = "urn:xmpp:sid:0";
+local labels_xmlns = "urn:xmpp:sec-label:0";
 
 local store_elements = module:get_option_set("stanza_log_allowed_elements", {});
 store_elements:add("acknowledged");
@@ -75,7 +79,7 @@ function get_days_in_month(m, y)
   return os_date('*t', os.time{year=y, month=m+1, day=0})['day'];
 end
 
-function calculate_set(start, fin, before, after)
+function calculate_set(start, fin)
 	local start_m, start_yr = os_date("!%m", start), os_date("!%Y", start);
 	local end_m, end_yr = os_date("!%m", fin), os_date("!%Y", fin);
 	local year_offset = tonumber(end_yr) - tonumber(start_yr);
@@ -103,19 +107,24 @@ function calculate_set(start, fin, before, after)
 	return set;
 end
 
-local function load_batch(node, host, archive, start, fin, before, after, metadata)
-	local set = calculate_set(start, fin, before, after);
+local function load_batch(node, host, archive, start, fin, before, after, metadata, idx)
+	local set = calculate_set(start, fin);
 	for k, value in ipairs(set) do
 		local data = storagemanager.open(host, "stanza_log" .. "/" .. value):get(node);
 		if data then
-			for n, entry in ipairs(data) do	archive[#archive + 1] = entry; end
+			for n, entry in ipairs(data) do
+				if not idx[entry.uid] then
+					archive[#archive + 1] = entry;
+					idx[entry.uid] = entry.timestamp;
+				end
+			end
 		end
 	end
 	t_sort(archive, function(a, b) return a.timestamp < b.timestamp; end);
-	if #archive > 0 and (not metadata.start or metadata.start > archive[1].timestamp) then
-		metadata.start = archive[1].timestamp;
+	if #archive > 0 and (not metadata.first or metadata.first > archive[1].timestamp) then
+		metadata.first = archive[1].timestamp;
 	end
-	if #archive > 0 and (not metadata.last or metadata.last > archive[#archive].timestamp) then
+	if #archive > 0 and (not metadata.last or metadata.last < archive[#archive].timestamp) then
 		metadata.last = archive[#archive].timestamp;
 	end
 	return archive;

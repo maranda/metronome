@@ -302,7 +302,7 @@ module:hook("iq-set/bare/"..namespaces.mam..":query", function(event)
 	end
 
 	local archive = { 
-		logs = module:fire("stanza-log-load", jid_section(to, "node"), host, start, fin, before, after)
+		logs = module:fire_event("load-stanza-log", jid_section(to, "node"), host, start, fin, before, after)
 	};
 		
 	local messages, rq, count = generate_stanzas(archive, start, fin, with, max, after, before, index, qid, { origin, stanza });

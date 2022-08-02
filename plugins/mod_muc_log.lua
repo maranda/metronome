@@ -78,7 +78,7 @@ function log_if_needed(e)
 			
 			local muc_from = room._jid_nick[from_room];
 			if muc_from or (apply_to and from_room == room.jid) then
-				local data = module:fire_event("load-stanza-log", node, mod_host, now, now) or {};
+				local data, data_entry = module:fire_event("load-stanza-log", node, mod_host) or {};
 				local replace = stanza:get_child("replace", lmc_xmlns);
 
 				if replace then -- implements XEP-308
@@ -95,9 +95,9 @@ function log_if_needed(e)
 					end
 				end
 
-				data = stanzalog_lib.process_stanza(muc_from or room.jid, stanza, data);
-				module:fire_event("store-stanza-log", node, mod_host, data);
-				stanza:tag("stanza-id", { xmlns = sid_xmlns, by = bare, id = uid }):up();
+				data, data_entry = stanzalog_lib.process_stanza(muc_from or room.jid, stanza, data);
+				module:fire_event("store-stanza-log", node, mod_host, data, data_entry);
+				stanza:tag("stanza-id", { xmlns = sid_xmlns, by = bare, id = data_entry.uid }):up();
 			end
 		end
 	end
