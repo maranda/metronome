@@ -73,7 +73,7 @@ ret = "";
 
 html_day = html.day;
 day_t, day_m, day_mm, day_title = html_day.time, html_day.message, html_day.messageMe, html_day.titleChange;
-data = datamanager.load(node, host, "muc_log" .. "/" .. date);
+data = datamanager.load(node, host, "stanza_log" .. "/" .. date);
 if not data then
 	ret = "";
 elseif data and #data <= 5000 then
