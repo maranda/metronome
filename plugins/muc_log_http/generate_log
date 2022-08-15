@@ -79,6 +79,9 @@ if not data then
 elseif data and #data <= 5000 then
 	for i, entry in ipairs(data) do
 		local label, actions, dont_add = entry.label_name, entry.label_actions;
+		if os.date("!%Y%m%d", entry.timestamp) ~= date then -- Sanitize 4.0 dev artefacts
+			dont_add = true;
+		end
 		if label and (not actions or actions == "none" or (type(actions) == "table" and actions.type == "groupchat")) then
 			dont_add = true;
 		end
