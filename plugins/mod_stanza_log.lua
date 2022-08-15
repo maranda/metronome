@@ -7,7 +7,7 @@
 local util_jid = require "util.jid";
 local storagemanager = require "core.storagemanager";
 
-local os_date = os.date;
+local ipairs, os_date = ipairs, os.date;
 
 local stanzalog_lib = module:require("stanzalog", "auxlibs");
 logs = { index = {} };
@@ -55,16 +55,25 @@ local function load_stanza_log(node, host, start, fin, before, after)
 	return log;
 end
 
-local function store_stanza_log(node, host, data, last)
-	local metadata = storagemanager.open(host, "stanza_log_metada"):get(node) or {};
-	metadata.last = last.timestamp;
-	logs.index[last.uid] = last.timestamp;
+local function store_stanza_log(node, host, data, last, today)
+	if last then
+		local metadata = storagemanager.open(host, "stanza_log_metada"):get(node) or {};
+		metadata.last = last.timestamp;
+		logs.index[last.uid] = last.timestamp;
+		storagemanager.open(host, "stanza_log_metada"):set(node, metadata);
+	end
 	local jid = util_jid.join(node, host);
 	if logs[jid] then
 		logs[jid] = data;
 	end
-	storagemanager.open(host, "stanza_log_metada"):set(node, metadata);
-	return storagemanager.open(host, "stanza_log/" .. os_date("!%Y%m%d")):set(node, data);
+	local today = (today and os_date("!%Y%m%d", today)) or os_date("!%Y%m%d");
+	local today_data = {};
+	for i, entry in ipairs(data) do
+		if os_date("!%Y%m%d", entry.timestamp) == today then
+			today_data[#today_data + 1] = entry;
+		end
+	end
+	return storagemanager.open(host, "stanza_log/" .. today):set(node, today_data);
 end
 
 local function purge_stanza_log(node, host)

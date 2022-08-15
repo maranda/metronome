@@ -111,15 +111,17 @@ function tombstone_entry(event)
 	local node = jid_section(event.room.jid, "node");
 	local now = os.time();
 	local data = module:fire_event("load-stanza-log", node, mod_host, now - 2630000, now) or {};
+	local timestamp;
 	for i, entry in ripairs(data) do
 		if entry.uid == event.moderation_id then
 			entry.oid = nil;
 			entry.body = nil;
 			entry.tags = nil;
+			timestamp = entry.timestamp;
 			break; 
 		end
 	end
-	module:fire_event("store-stanza-log", node, mod_host, data);
+	module:fire_event("store-stanza-log", node, mod_host, data, nil, timestamp);
 	event.announcement.attr.to = event.room.jid;
 	log_if_needed({ stanza = event.announcement });
 	return true;
