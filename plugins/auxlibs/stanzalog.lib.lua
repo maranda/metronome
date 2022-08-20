@@ -108,6 +108,13 @@ function calculate_set(start, fin)
 end
 
 local function load_batch(node, host, archive, start, fin, before, after, metadata, idx)
+    local today = os.time();
+	if not start then
+		start = metadata.first or today - 2630000;
+	end
+	if not fin then
+		fin = metadata.last or today;
+	end
 	local set = calculate_set(start, fin);
 	for k, value in ipairs(set) do
 		local data = storagemanager.open(host, "stanza_log" .. "/" .. value):get(node);
