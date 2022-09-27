@@ -85,7 +85,7 @@ function calculate_set(start, fin)
 	local year_offset = tonumber(end_yr) - tonumber(start_yr);
 	local month_offset = tonumber(end_m) - tonumber(start_m);
 	if year_offset < 0 or month_offset < 0 then
-		return false; -- not supporting flipped results
+		return {}; -- not supporting flipped results
 	end
 	local start_date, end_date = os_date("!%Y%m%d", start), os_date("!%Y%m%d", fin)
 	local set = {}
