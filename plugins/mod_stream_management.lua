@@ -116,16 +116,16 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 		if #_q > max_queued_stanzas then
 			local has_carbons = session.type == "c2s" and check_carbons(session);
 			local queued = _q[1];
+			local name = queued.name;
 			module:log("warn", "%s session queue is over limit (%d stanzas), dropping oldest: %s",
 				(session_type == "s2sin" or session_type == "s2sout") and "Remote server" or "Client", #_q, queued:top_tag());
-			if session.type == "c2s" and (queued.name == "iq" or queued.name == "message" or queued.name == "presence") 
-				and queued.attr.type ~= "error" then
+			if session.type == "c2s" and (name == "iq" or name == "message" or name == "presence") and queued.attr.type ~= "error" then
 				local reply = st_reply(queued);
 				if reply.attr.to and reply.attr.to ~= session.full_jid and (has_carbons and name ~= "message" or not has_carbons) then
 					reply.attr.type = "error";
 					reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
 					fire_event("route/process", session, reply);
-				end					
+				end
 			end
 			t_remove(_q, 1);
 		end
