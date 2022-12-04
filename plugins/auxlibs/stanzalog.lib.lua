@@ -13,6 +13,7 @@ local os_date, t_insert, t_sort = os.date, table.insert, table.sort;
 
 local sid_xmlns = "urn:xmpp:sid:0";
 local labels_xmlns = "urn:xmpp:sec-label:0";
+local xhtml_xmlns = "http://www.w3.org/1999/xhtml";
 
 local store_elements = module:get_option_set("stanza_log_allowed_elements", {});
 store_elements:add("acknowledged");
@@ -33,6 +34,7 @@ store_elements:remove("replace");
 local function process_stanza(source, stanza, data)
 	local oid = stanza:get_child("origin-id", sid_xmlns);
 	local body = stanza:child_with_name("body");
+	local html = stanza:get_child("html", xhtml_xmlns);
 	local subject = stanza:child_with_name("subject");
 	local id = stanza.attr.id;
 	local uid = uuid();
