@@ -42,7 +42,8 @@ if metronome.serialization == "json" then
 end
 
 local raw_mkdir = lfs.mkdir;
-local function fallocate(f, offset, len)
+local fallocate;
+local function _fallocate(f, offset, len)
 	-- This assumes that current position == offset
 	local fake_data = (" "):rep(len);
 	local ok, msg = f:write(fake_data);
@@ -55,7 +56,7 @@ end;
 pcall(function()
 	local pposix = require "util.pposix";
 	raw_mkdir = pposix.mkdir or raw_mkdir; -- Doesn't trample on umask
-	fallocate = pposix.fallocate or fallocate;
+	fallocate = pposix.fallocate or _fallocate;
 end);
 
 local _ENV = nil;
@@ -260,6 +261,9 @@ function datamanager.list_append(username, host, datastore, data)
 	local data = "item(" ..  _serialize(data) .. ");\n";
 	local pos = f:seek("end");
 	local ok, msg = fallocate(f, pos, #data);
+	if not ok and msg == "Not Supported" then -- workaround for NFS storage
+		ok, msg = _fallocate(f, pos, #data);
+	end
 	f:seek("set", pos);
 	if ok then
 		f:write(data);
