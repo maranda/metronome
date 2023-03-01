@@ -83,7 +83,7 @@ function log_if_needed(e)
 
 				if replace then -- implements XEP-308
 					local rid = replace.attr.id;
-					if rid and id ~= rid then
+					if rid and stanza.attr.id ~= rid then
 						for i, entry in ripairs(data) do
 							if entry.resource == from_room and entry.id == rid then
 								entry.oid = nil;
