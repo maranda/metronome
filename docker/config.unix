@@ -1,11 +1,11 @@
 PREFIX=/usr
 SYSCONFDIR=/etc/metronome
 DATADIR=/var/lib/metronome
-LUA_SUFFIX=5.2
-LUA_DIR=/usr/bin/lua5.2
-LUA_INCDIR=/usr/include/lua5.2
-LUA_LIBDIR=/usr/lib/lua5.2
-LUA_BINDIR=/usr/bin/lua5.2/bin
+LUA_SUFFIX=5.3
+LUA_DIR=/usr/bin/lua5.3
+LUA_INCDIR=/usr/include/lua5.3
+LUA_LIBDIR=/usr/lib/lua5.3
+LUA_BINDIR=/usr/bin/lua5.3/bin
 REQUIRE_CONFIG=
 IDN_LIB=idn
 IDNA_LIBS=-lidn
