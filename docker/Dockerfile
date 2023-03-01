@@ -1,4 +1,4 @@
-FROM alpine
+FROM alpine:3.16
 
 MAINTAINER "Marco Cirillo" <marco.cirillo@aria-net.org>
 
