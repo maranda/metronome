@@ -9,7 +9,7 @@
 
 module:set_global();
 
-local t_concat = table.concat;
+local ipairs, t_concat, t_insert = ipairs, table.concat, table.insert;
 
 local logger = require "util.logger";
 local sha1 = require "util.hashes".sha1;
@@ -31,6 +31,7 @@ function module.add_host(module)
 	
 	local env = module.environment;
 	env.connected = false;
+	env.stanza_queue = module:get_option_boolean("component_stanza_queue", true) and {};
 
 	local send;
 
@@ -81,7 +82,14 @@ function module.add_host(module)
 		module:log("info", "External component successfully authenticated");
 		session.send(st.stanza("handshake"));
 		module:fire_event("component-authenticated", { session = session });
-	
+		if env.stanza_queue and #env.stanza_queue > 0 then
+			module:log("debug", "flushing component stanza queue...");
+			for _, stanza in ipairs(env.stanza_queue) do
+				log("debug", "sent queued stanza: %s\n", stanza:top_tag());
+				send(stanza);
+			end
+			env.stanza_queue = {};
+		end
 		return true;
 	end
 	module:hook("stanza/jabber:component:accept:handshake", handle_component_auth);
@@ -104,9 +112,13 @@ function module.add_host(module)
 					end
 				end
 			end
-			module:log("warn", "Component not connected, bouncing error for: %s", stanza:top_tag());
-			if stanza.attr.type ~= "error" and stanza.attr.type ~= "result" then
-				event.origin.send(st.error_reply(stanza, "wait", "service-unavailable", "Component unavailable"));
+			if env.stanza_queue then
+				t_insert(env.stanza_queue, stanza);
+			else
+				module:log("warn", "Component not connected, bouncing error for: %s", stanza:top_tag());
+				if stanza.attr.type ~= "error" and stanza.attr.type ~= "result" then
+					event.origin.send(st.error_reply(stanza, "wait", "service-unavailable", "Component unavailable"));
+				end
 			end
 		end
 		return true;
