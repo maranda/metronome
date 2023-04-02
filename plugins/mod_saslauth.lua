@@ -11,7 +11,7 @@ local st = require "util.stanza";
 local sm_make_authenticated = require "core.sessionmanager".make_authenticated;
 local base64 = require "util.encodings".base64;
 local usermanager_get_sasl_handler = require "core.usermanager".get_sasl_handler;
-local can_do_external = module:require "sasl_aux".can_do_external;
+local can_do_external = module:require ("sasl", "auxlibs").can_do_external;
 local pairs, tostring = pairs, tostring;
 local host_session = hosts[module.host];
 

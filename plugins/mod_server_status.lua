@@ -111,12 +111,14 @@ local function forge_response_xml()
 	
 	-- if pposix is there build memory stats
 	if pposix then
-		local info = pposix.meminfo()
+		local info = (pposix.meminfo and pposix.meminfo()) or { used = collectgarbage("count")*1024 }
 		local mem = response_table.memory
 		mem_stats[1] = mem.elem_header
-		mem_stats[2] = mem.allocated:format(info.allocated)
-		mem_stats[3] = mem.used:format(info.used)
-		mem_stats[4] = mem.elem_closure
+		if info.allocated then
+			mem_stats[#mem_stats + 1] = mem.allocated:format(info.allocated)
+		end
+		mem_stats[#mem_stats + 1] = mem.used:format(info.used)
+		mem_stats[#mem_stats + 1] = mem.elem_closure
 	end
 	
 	-- build stanza stats if there
@@ -187,10 +189,11 @@ local function forge_response_json()
 	sessions.s2s = { incoming = count_s2sin, outgoing = count_s2sout, bidi = count_bidi  }
 	
 	if pposix then
-		local info = pposix.meminfo and pposix.meminfo()
+		local info = (pposix.meminfo and pposix.meminfo()) or { used = collectgarbage("count")*1024 }
 		if info then
 			result.memory = {} ; local memory = result.memory
-			memory.allocated = { bytes = info.allocated } ; memory.used = { bytes = info.used }
+			if info.allocated then memory.allocated = { bytes = info.allocated } end
+			memory.used = { bytes = info.used }
 		end
 	end
 

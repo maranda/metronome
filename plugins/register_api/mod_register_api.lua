@@ -42,8 +42,7 @@ local min_pass_len = module:get_option_number("register_min_pass_length", 8);
 local max_pass_len = module:get_option_number("register_max_pass_length", 30);
 local fm_patterns = module:get_option_table("reg_api_filtered_mails", {});
 local fn_patterns = module:get_option_table("reg_api_filtered_nodes", {});
-local use_nameapi = module:get_option_boolean("reg_api_use_nameapi", false);
-local nameapi_ak = module:get_option_string("reg_api_nameapi_apikey");
+local use_kickbox_api = module:get_option_boolean("reg_api_use_kickbox_api", false);
 local plain_errors = module:get_option_boolean("reg_api_plain_http_errors", false);
 local mail_from = module:get_option_string("reg_api_mailfrom");
 local mail_reto = module:get_option_string("reg_api_mailreto");
@@ -60,8 +59,6 @@ if mail_from and mail_reto then
 else
 	module:log("warn", "Both reg_api_mailfrom and reg_api_mailreto need to be set to enable verification");
 end
-
-if use_nameapi and not nameapi_ak then use_nameapi = false; end
 
 local module_path = module.path:gsub("[/\\][^/\\]*$", "") or (metronome.paths.plugins or "./plugins").."/register_api";
 local files_base = module_path.."/template/";
@@ -82,7 +79,7 @@ local reset_tokens = {};
 local nomail_users = {};
 local default_whitelist, whitelisted, dea_checks;
 
-if use_nameapi then
+if use_kickbox_api then
 	default_whitelist = {
 		["fastmail.fm"] = true,
 		["gmail.com"] = true,
@@ -223,13 +220,13 @@ local function check_node_policy(node)
 	return true;
 end
 
-local api_url = "http://rc50-api.nameapi.org/rest/v5.0/email/disposableemailaddressdetector?apiKey=%s&emailAddress=%s";
+local api_url = "https://open.kickbox.com/v1/disposable/%s";
 local function check_dea(address, username)
 	local domain = address:match("@+(.*)$");
 	if whitelisted[domain] then return; end	
 
-	module:log("debug", "Submitting domain to NameAPI for checking...");
-	http_request(api_url:format(nameapi_ak, address), nil, function(data, code)
+	module:log("debug", "Submitting domain to Open Kickbox API for checking...");
+	http_request(api_url:format(domain), nil, function(data, code)
 		if code == 200 then
 			local ret = json_decode(data);
 			if not ret then
@@ -238,7 +235,7 @@ local function check_dea(address, username)
 				return;
 			end
 
-			if ret.disposable == "YES" then
+			if ret.disposable then
 				dea_checks[username] = true;
 			else
 				module:log("debug", "Mail domain %s is valid, whitelisting", domain);
@@ -368,7 +365,7 @@ if do_mail_verification then
 
 			local token = pending_mail_changes:add(user, mail);
 			if token then
-				if use_nameapi then check_dea(mail, user); end
+				if use_kickbox_api then check_dea(mail, user); end
 
 				os_execute(
 					module_path.."/send_mail ".."associate '"..mail_from.."' '"..mail.."' '"..mail_reto.."' '"..jid_join(user, my_host).."' '"
@@ -493,13 +490,13 @@ local function handle_register(data, event)
 			end
 
 			-- asynchronously run dea filtering if applicable
-			if use_nameapi then check_dea(mail, username); end
+			if use_kickbox_api then check_dea(mail, username); end
 
 			pending[id_token] = { node = username, password = password, ip = ip };
 			pending_node[username] = id_token;
 
 			timer.add_task(300, function()
-				if use_nameapi then dea_checks[username] = nil; end
+				if use_kickbox_api then dea_checks[username] = nil; end
 				if pending[id_token] then
 					pending[id_token] = nil;
 					pending_node[username] = nil;
@@ -620,7 +617,7 @@ local function handle_associate(event, path)
 				local username, mail, id =  
 				      pending_mail_changes[id_token].user, pending_mail_changes[id_token].mail, pending_mail_changes[id_token].id;
 
-				if use_nameapi and dea_checks[username] then
+				if use_kickbox_api and dea_checks[username] then
 					module:log("warn", "%s (%s) attempted to associate a disposable mail address, denying", username, ip);
 					pending_mail_changes[id_token] = nil; pending_mail_changes._index[username] = nil; dea_checks[username] = nil;
 					return r_template(event, "associate_fail");
@@ -712,7 +709,7 @@ local function handle_verify(event, path)
 				local username, password, ip = 
 				      pending[id_token].node, pending[id_token].password, pending[id_token].ip;
 
-				if use_nameapi and dea_checks[username] then
+				if use_kickbox_api and dea_checks[username] then
 					module:log("warn", "%s (%s) attempted to register using a disposable mail address, denying", username, ip);
 					pending[id_token] = nil; pending_node[username] = nil; dea_checks[username] = nil; hashes:remove(username);
 					return r_template(event, "verify_fail");
@@ -772,7 +769,7 @@ local function validate_registration(user, hostname, password, mail, ip, skip_gr
 
 	local user_jid = jid_join(user, hostname);
 		
-	if use_nameapi then check_dea(mail, user); end
+	if use_kickbox_api then check_dea(mail, user); end
 
 	module:log("info", "%s just registered on %s, sending verification mail to %s", user, hostname, mail);
 	os_execute(
@@ -785,7 +782,7 @@ local function validate_registration(user, hostname, password, mail, ip, skip_gr
 	pending_node[user] = id_token;
 			
 	timer.add_task(300, function()
-		if use_nameapi then dea_checks[user] = nil; end
+		if use_kickbox_api then dea_checks[user] = nil; end
 		if pending[id_token] then
 			pending[id_token] = nil;
 			pending_node[user] = nil;
@@ -927,6 +924,6 @@ module.restore = function(data)
 	setmt(hashes, hashes_mt);
 	pending_mail_changes = data.pending_mail_changes or { _index = {} };
 	setmt(pending_mail_changes, pending_mail_changes_mt);
-	whitelisted = use_nameapi and (data.whitelisted or default_whitelist) or nil;
+	whitelisted = use_kickbox_api and (data.whitelisted or default_whitelist) or nil;
 	nomail_users = data.nomail_users or {};
 end

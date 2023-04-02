@@ -6,8 +6,8 @@
 
 -- This module implements Access Control Decision Function (ACDF) for Security Labels
 
-local apply_policy = module:require("acdf_aux").apply_policy;
-local get_actions = module:require("acdf_aux").get_actions;
+local apply_policy = module:require("acdf", "auxlibs").apply_policy;
+local get_actions = module:require("acdf", "auxlibs").get_actions;
 
 local labels_xmlns = "urn:xmpp:sec-label:0";
 

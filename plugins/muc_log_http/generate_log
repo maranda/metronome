@@ -53,6 +53,7 @@ if not load_theme(theme_path) then
 end
 
 function parse_message(body, title, time, nick, day_t, day_m, day_mm, day_title)
+	if not nick then return; end
 	local ret = "";
 	time = day_t:gsub("###TIME###", time):gsub("###UTC###", time);
 	nick = html_escape(nick:match("/(.+)$"));
@@ -72,12 +73,15 @@ ret = "";
 
 html_day = html.day;
 day_t, day_m, day_mm, day_title = html_day.time, html_day.message, html_day.messageMe, html_day.titleChange;
-data = datamanager.load(node, host, "muc_log" .. "/" .. date);
+data = datamanager.load(node, host, "stanza_log" .. "/" .. date);
 if not data then
 	ret = "";
 elseif data and #data <= 5000 then
 	for i, entry in ipairs(data) do
 		local label, actions, dont_add = entry.label_name, entry.label_actions;
+		if os.date("!%Y%m%d", entry.timestamp) ~= date then -- Sanitize 4.0 dev artefacts
+			dont_add = true;
+		end
 		if label and (not actions or actions == "none" or (type(actions) == "table" and actions.type == "groupchat")) then
 			dont_add = true;
 		end

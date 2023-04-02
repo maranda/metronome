@@ -10,8 +10,8 @@ local dataforms = require "util.dataforms";
 local jid_compare = require "util.jid".compare;
 local jid_section = require "util.jid".section;
 local jid_split = require "util.jid".prepped_split;
-local extract_data = module:require("sasl_aux").extract_data;
-local get_address = module:require("sasl_aux").get_address;
+local extract_data = module:require("sasl", "auxlibs").extract_data;
+local get_address = module:require("sasl", "auxlibs").get_address;
 local user_exists = require "core.usermanager".user_exists;
 local storagemanager = require "core.storagemanager";
 

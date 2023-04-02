@@ -23,7 +23,7 @@ local jid = require "util.jid";
 local user_exists = require "core.usermanager".user_exists;
 local generate_directory = require "util.auxiliary".generate_shortid;
 local ipairs, pairs, os_time, unpack, t_insert, t_remove =
-	ipairs, pairs, os.time, unpack or table.unpack, table.insert, table.remove;
+	ipairs, pairs, os.time, table.unpack or unpack, table.insert, table.remove;
 
 -- config
 local file_size_limit = module:get_option_number("http_file_size_limit", 100 * 1024 * 1024); -- 100 MB

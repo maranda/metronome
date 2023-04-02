@@ -28,7 +28,7 @@ local http_event = require "net.http.server".fire_server_event;
 local datamanager = require "util.datamanager";
 local data_load, data_getpath, data_stores, data_store_exists = 
 	datamanager.load, datamanager.getpath, datamanager.stores, datamanager.store_exists;
-local datastore = "muc_log";
+local datastore = "stanza_log";
 local url_base = "logs";
 local config = nil;
 local tostring, tonumber = tostring, tonumber;

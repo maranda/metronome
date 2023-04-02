@@ -15,10 +15,10 @@ local st = require "util.stanza";
 local uuid = require "util.uuid".generate;
 local load_roster = require "util.rostermanager".load_roster;
 local storagemanager = require "core.storagemanager";
-local check_policy = module:require("acdf_aux").check_policy;
+local check_policy = module:require("acdf", "auxlibs").check_policy;
 
 local ipairs, next, now, pairs, ripairs, t_insert, t_remove, tostring, type, unpack = 
-	ipairs, next, os.time, pairs, ripairs, table.insert, table.remove, tostring, type, unpack or table.unpack;
+	ipairs, next, os.time, pairs, ripairs, table.insert, table.remove, tostring, type, table.unpack or unpack;
     
 local xmlns = "urn:xmpp:mam:2";
 local client_xmlns = "jabber:client";
@@ -36,7 +36,7 @@ local openpgp_xmlns = "urn:xmpp:openpgp:0";
 local xhtml_xmlns = "http://www.w3.org/1999/xhtml";
 
 local store_time = module:get_option_number("mam_save_time", 300);
-local stores_cap = module:get_option_number("mam_stores_cap", 10000);
+local stores_cap = module:get_option_number("mam_stores_cap", 50000);
 local store_elements = module:get_option_set("mam_allowed_elements", {});
 local unload_cache_time = module:get_option_number("mam_unload_cache_time", 3600);
 
@@ -184,16 +184,13 @@ end
 
 local function log_entry_with_replace(session_archive, to, bare_to, from, bare_from, id, rid, type, body, marker, marker_id, oid, tags)
 	-- handle XEP-308 or try to...
-	local count = 0;
 	local logs = session_archive.logs;
 	
 	if rid and rid ~= id then
 		for i, entry in ripairs(logs) do
-			count = count + 1;
-			if count <= 1000 and entry.to == to and entry.from == from and entry.id == rid then 
+			if entry.to == to and entry.from == from and entry.id == rid then 
 				make_placemarker(entry); break;
 			end
-			if count == 1000 then break; end
 		end
 	end
 	
@@ -201,20 +198,16 @@ local function log_entry_with_replace(session_archive, to, bare_to, from, bare_f
 end
 
 local function log_marker(session_archive, to, bare_to, from, bare_from, id, type, marker, marker_id, oid, tags)
-	local count = 0;
-
 	for i, entry in ripairs(session_archive.logs) do
-		count = count + 1;
 		local entry_marker, entry_from, entry_to = entry.marker, entry.bare_from, entry.bare_to;
 
-		if count <= 1000 and entry.id == marker_id and
+		if entry.id == marker_id and
 		   (entry_from == bare_from or entry_from == bare_to) and
 		   (entry_to == bare_to or entry_to == bare_from) and
 		   (entry_marker == "markable" or entry_marker == "received") and
 		   entry_marker ~= marker then
 			return log_entry(session_archive, to, bare_to, from, bare_from, id, type, nil, marker, marker_id, oid, tags);
 		end
-		if count == 1000 then break; end
 	end
 end
 

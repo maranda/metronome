@@ -17,6 +17,7 @@ local select_destination = require "util.address_selection".destination;
 local socket = require "socket";
 local adns = require "net.adns";
 local dns = require "net.dns";
+local set_new = require "util.set".new;
 local t_insert, t_sort, ipairs = table.insert, table.sort, ipairs;
 local st = require "util.stanza";
 
@@ -170,6 +171,7 @@ function s2sout.try_connect(host_session, connect_host, connect_port, err)
 
 	if not err then
 		local IPs = {};
+		local have_already = set_new{};
 		host_session.ip_hosts = IPs;
 		local handle4, handle6;
 		local have_other_result = not(has_ipv4) or not(has_ipv6) or false;
@@ -192,8 +194,11 @@ function s2sout.try_connect(host_session, connect_host, connect_port, err)
 
 				if reply and reply[#reply] and reply[#reply].a then
 					for _, ip in ipairs(reply) do
-						log("debug", "DNS reply for %s gives us %s", connect_host, ip.a);
-						IPs[#IPs+1] = new_ip(ip.a, "IPv4");
+						if not have_already:contains(ip.a) then
+							log("debug", "DNS reply for %s gives us %s", connect_host, ip.a);
+							IPs[#IPs+1] = new_ip(ip.a, "IPv4");
+							have_already:add(ip.a);
+						end
 					end
 				end
 
@@ -228,8 +233,11 @@ function s2sout.try_connect(host_session, connect_host, connect_port, err)
 
 				if reply and reply[#reply] and reply[#reply].aaaa then
 					for _, ip in ipairs(reply) do
-						log("debug", "DNS reply for %s gives us %s", connect_host, ip.aaaa);
-						IPs[#IPs+1] = new_ip(ip.aaaa, "IPv6");
+						if not have_already:contains(ip.aaaa) then
+							log("debug", "DNS reply for %s gives us %s", connect_host, ip.aaaa);
+							IPs[#IPs+1] = new_ip(ip.aaaa, "IPv6");
+							have_already:add(ip.aaaa);
+						end
 					end
 				end
 

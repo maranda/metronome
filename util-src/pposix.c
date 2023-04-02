@@ -41,7 +41,7 @@
 #include <linux/falloc.h>
 #endif
 
-#if !defined(WITHOUT_MALLINFO) && defined(_GNU_SOURCE)
+#if !defined(WITHOUT_MALLINFO) && defined(_GNU_SOURCE) && defined(__GLIBC__)
 	#include <malloc.h>
 	#define WITH_MALLINFO
 #endif
@@ -629,9 +629,14 @@ int lc_setenv(lua_State* L)
 }
 
 #ifdef WITH_MALLINFO
-int lc_meminfo(lua_State* L)
-{
+static int lc_meminfo(lua_State *L) {
+#if __GLIBC_PREREQ(2, 33)
+	struct mallinfo2 info = mallinfo2();
+#define MALLINFO_T size_t
+#else
 	struct mallinfo info = mallinfo();
+#define MALLINFO_T unsigned
+#endif
 	lua_newtable(L);
 	/* This is the total size of memory allocated with sbrk by malloc, in bytes. */
 	lua_pushinteger(L, (unsigned)info.arena);
@@ -651,6 +656,7 @@ int lc_meminfo(lua_State* L)
 	lua_setfield(L, -2, "returnable");
 	return 1;
 }
+#undef MALLINFO_T
 #endif
 
 /* File handle extraction blatantly stolen from
