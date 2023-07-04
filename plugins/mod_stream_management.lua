@@ -121,7 +121,7 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 				(session_type == "s2sin" or session_type == "s2sout") and "Remote server" or "Client", #_q, queued:top_tag());
 			if session.type == "c2s" and (name == "iq" or name == "message" or name == "presence") and queued.attr.type ~= "error" then
 				local reply = st_reply(queued);
-				if reply.attr.to and reply.attr.to ~= session.full_jid and (has_carbons and name ~= "message" or not has_carbons) then
+				if reply.attr.from and reply.attr.to and reply.attr.to ~= session.full_jid and (has_carbons and name ~= "message" or not has_carbons) then
 					reply.attr.type = "error";
 					reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
 					fire_event("route/process", session, reply);
