@@ -13,6 +13,7 @@
 module:set_global();
 
 local add_filter = require "util.filters".add_filter;
+local add_task = require "util.timer".add_task;
 local sha1 = require "util.hashes".sha1;
 local base64 = require "util.encodings".base64.encode;
 local portmanager = require "core.portmanager";

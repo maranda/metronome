@@ -261,7 +261,7 @@ function datamanager.list_append(username, host, datastore, data)
 	local data = "item(" ..  _serialize(data) .. ");\n";
 	local pos = f:seek("end");
 	local ok, msg = fallocate(f, pos, #data);
-	if not ok and msg == "Not Supported" then -- workaround for NFS storage
+	if not ok and msg == "Not supported" then -- workaround for NFS storage
 		ok, msg = _fallocate(f, pos, #data);
 	end
 	f:seek("set", pos);
