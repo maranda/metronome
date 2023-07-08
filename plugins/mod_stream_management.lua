@@ -111,6 +111,10 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 			if not cached:get_child("delay", xmlns_d) then
 				cached = cached:tag("delay", { xmlns = xmlns_d, from = session.host, stamp = dt() });
 			end
+			if #_q > max_queued_stanzas * 2 then
+				destroy(session, "Too many stanzas sent, server queue over limit");
+				return false, "Too many stanzas sent, server queue over limit";
+			end
 			t_insert(_q, cached);
 		end
 		if #_q > max_queued_stanzas then
@@ -125,6 +129,8 @@ local function wrap(session, _r, xmlns_sm) -- SM session wrapper
 					reply.attr.type = "error";
 					reply:tag("error", { type = "cancel" }):tag("recipient-unavailable", { xmlns = xmlns_e });
 					fire_event("route/process", session, reply);
+				else
+					reply = nil;
 				end
 			end
 			t_remove(_q, 1);
