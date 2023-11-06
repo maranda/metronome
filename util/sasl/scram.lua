@@ -142,8 +142,8 @@ local function scram_gen(hash_name, H_f, HMAC_f)
 			if not gs2_cbind_flag then return "failure", "malformed-request"; end
 			if supports_channel_binding and gs2_cbind_flag == "y" then return "failure", "malformed-request"; end
 			if gs2_cbind_flag == "n" then supports_channel_binding = nil; end
-			if supports_channel_binding and gs2_cbind_flag == "p" and gs2_cbind_name ~= "tls-unique" then
-				return "failure", "malformed-request", "Only tls-unique binding method is currently supported";
+			if supports_channel_binding and gs2_cbind_flag == "p" and (gs2_cbind_name ~= self.profile.channel_bind_type)  then
+				return "failure", "malformed-request", "Unsupported channel binding type";
 			elseif not supports_channel_binding then
 				self.profile.channel_bind_cb = nil;
 			end

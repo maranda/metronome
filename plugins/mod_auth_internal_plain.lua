@@ -99,7 +99,7 @@ function new_default_provider(host)
 			host = host
 		};
 		if session.secure then
-			getpass_authentication_profile.channel_bind_cb = get_channel_binding_callback(session);
+			getpass_authentication_profile.channel_bind_cb, getpass_authentication_profile.channel_bind_type = get_channel_binding_callback(session);
 			getpass_authentication_profile.order = { "external", "plain" };
 		else
 			getpass_authentication_profile.order = { "plain" };

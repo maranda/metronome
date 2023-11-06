@@ -223,9 +223,19 @@ end
 
 local function get_channel_binding_callback(session)
 	local socket = session.conn.socket and session.conn:socket();
+	local info = socket and socket.info and socket:info();
+	if info and info.protocol == "TLSv1.3" then
+		return function()
+			if socket.exportkeyingmaterial then
+				return socket:exportkeyingmaterial("EXPORT-Channel-Binding", 32, ""), "tls-exporter";
+			else
+				return nil;
+			end
+		end
+	end
 	if socket and socket.getpeerfinished then
 		return function()
-			return socket:getpeerfinished();
+			return socket:getpeerfinished(), "tls-unique";
 		end
 	end
 end
