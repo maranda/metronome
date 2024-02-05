@@ -13,6 +13,7 @@ LUA_LIBDIR="/usr/lib"
 IDN_LIB=idn
 ICU_FLAGS="-licui18n -licudata -licuuc"
 OPENSSL_LIB=crypto
+OPENSSL_VER=3
 CC=gcc
 CXX=g++
 LD=gcc
@@ -49,7 +50,9 @@ Configure Metronome prior to building.
 --idn-library=(idn|icu)		 Select library to use for IDNA functionality.
 									 idn: use GNU libidn (default)
 									 icu: use ICU from IBM
---with-ssl=LIB              The name of the SSL to link with.
+--with-ssl=LIB              The name of the SSL lib to link with.
+                            Default is $OPENSSL_LIB
+--with-ssl-ver=LIB          The version of the SSL lib to link with.
                             Default is $OPENSSL_LIB
 --cflags=FLAGS              Flags to pass to the compiler
                             Default is $CFLAGS
@@ -158,6 +161,13 @@ do
 		;;
    --with-ssl=*)
       OPENSSL_LIB="$value"
+      ;;
+   --with-ssl-ver=*)
+      OPENSSL_VER="$value"
+	  if [ "$OPENSSL_VER" = "1" ]
+	  then OPENSSL_CONFIG_FILE = "openssl-v1.cnf"
+	  else OPENSSL_CONFIG_FILE = "openssl.cnf"
+	  fi
       ;;
    --cflags=*)
       CFLAGS="$value"
@@ -336,6 +346,7 @@ REQUIRE_CONFIG=$REQUIRE_CONFIG
 IDN_LIB=$IDN_LIB
 IDNA_LIBS=$IDNA_LIBS
 OPENSSL_LIB=$OPENSSL_LIB
+OPENSSL_CONFIG_FILE=$OPENSSL_CONFIG_FILE
 CFLAGS=$CFLAGS
 LDFLAGS=$LDFLAGS
 CC=$CC

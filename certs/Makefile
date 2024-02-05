@@ -1,3 +1,5 @@
+include ../config.unix
+
 .DEFAULT: localhost.cert
 keysize=4096
 
@@ -15,11 +17,12 @@ keysize=4096
 
 # To request a cert
 %.csr: %.cnf %.key
-	openssl req -new -key $(lastword $^) -out $@ -utf8 -config $(firstword $^)
+	openssl req -config $(OPENSSL_CONFIG_FILE) -new -key $(lastword $^) \
+		-out $@ -utf8 -config $(firstword $^)
 
 # Self signed
 %.cert: %.cnf %.key
-	openssl req -new -x509 -nodes -key $(lastword $^) -days 1825 \
+	openssl req -config $(OPENSSL_CONFIG_FILE) -new -x509 -nodes -key $(lastword $^) -days 1825 \
 		-sha256 -out $@ -utf8 -config $(firstword $^)
 
 %.cnf:
