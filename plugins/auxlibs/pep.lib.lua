@@ -30,6 +30,7 @@ local hash_map, services;
 local features = {
 	"http://jabber.org/protocol/pubsub#access-presence",
 	"http://jabber.org/protocol/pubsub#auto-create",
+	"http://jabber.org/protocol/pubsub#auto-subscribe",
 	"http://jabber.org/protocol/pubsub#create-and-configure",
 	"http://jabber.org/protocol/pubsub#create-nodes",
 	"http://jabber.org/protocol/pubsub#config-node",
