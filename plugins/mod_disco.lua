@@ -14,6 +14,7 @@ local jid_bare = require "util.jid".bare;
 local st = require "util.stanza"
 local calculate_hash = require "util.caps".calculate_hash;
 local account_type = require "core.usermanager".account_type;
+local set_new = require "util.set".new
 
 local ipairs, pairs = ipairs, pairs;
 local hosts, my_host = hosts, module.host;
@@ -21,6 +22,7 @@ local hosts, my_host = hosts, module.host;
 local show_hosts = module:get_option_boolean("disco_show_hosts", false);
 local hidden_entities = module:get_option_set("disco_hidden_entities", {});
 local disco_items = module:get_option_table("disco_items", {});
+local hide_items_acl = module:get_option_table("hide_disco_items_for", {})
 do -- validate disco_items
 	for _, item in ipairs(disco_items) do
 		local err;
@@ -35,6 +37,17 @@ do -- validate disco_items
 			module:log("error", "option disco_items is malformed: %s", err);
 			disco_items = {};
 			break;
+		end
+	end
+end
+do -- validate hide disco acls
+	for jid, items in pairs(hide_items_acl) do
+		local err;
+		if type(items) ~= "table" then 
+			module:log("error", "%s items is not a table", jid);
+			hide_items_acl[jid] = nil;
+		else
+			hide_items_acl[jid] = set_new(items);
 		end
 	end
 end
@@ -149,8 +162,13 @@ module:hook("iq/host/http://jabber.org/protocol/disco#items:query", function(eve
 	if node and node ~= "" then return; end -- TODO fire event?
 
 	local reply = st.reply(stanza):query("http://jabber.org/protocol/disco#items");
+	local bare_to = jid_bare(reply.attr.to);
 	for jid, name in pairs(_cached_children_data) do
-		reply:tag("item", { jid = jid, name = name~=true and name or nil }):up();
+		if hide_items_acl[bare_to] and hide_items_acl[bare_to]:contains(jid) then
+		-- do nothing
+		else
+			reply:tag("item", { jid = jid, name = name~=true and name or nil }):up();
+		end
 	end
 	return origin.send(reply);
 end);
