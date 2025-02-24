@@ -335,8 +335,8 @@ local function generate_stanzas(store, start, fin, with, max, after, before, ind
 			end
 			if at ~= 1 and at > max then break; end
 		end
-		if #stanzas == 0 then return nil; end
-		complete = logs[#logs].uid == last;
+		if #stanzas == 0 then complete = true; end
+		if not complete then complete = logs[#logs].uid == last; end
 
 		query = generate_fin(stanzas, first, last, entries_count, index, complete);
 		return stanzas, query, #stanzas;
