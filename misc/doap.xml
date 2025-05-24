@@ -8,7 +8,7 @@
   <Project>
     <name>Metronome IM</name>
     <homepage rdf:resource="https://metronome.im"/>
-    <schema:logo rdf:resource="https://archon.im/metronome/"/>
+    <schema:logo rdf:resource="https://archon.im/wp-content/uploads/2024/02/metronome.png"/>
     <bug-database rdf:resource="https://github.com/maranda/metronome/issues"/>
     <support-forum rdf:resource="xmpp:grimoire@muc.metronome.im?join"/>
     <programming-langauge>Lua</programming-langauge>
