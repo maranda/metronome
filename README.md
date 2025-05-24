@@ -1,4 +1,4 @@
-![Metronome](https://archon.im/wp-content/uploads/2025/05/metronome-banner.png)
+![Metronome](misc/metronome-banner.png)
 -
 
 This software codebase began as a fork of prosody trunk (to be 0.9) merged with LW.Org's custom patches, initiating from August 7th 2012 (see first commit).
