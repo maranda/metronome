@@ -18,7 +18,8 @@ module:add_feature("jabber:iq:last");
 module:hook("iq/host/jabber:iq:last:query", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	if stanza.attr.type == "get" then
-		origin.send(st.reply(stanza):tag("query", {xmlns = "jabber:iq:last", seconds = tostring(os.difftime(os.time(), start_time))}));
+		seconds = string.format("%d", os.difftime(os.time(), start_time));
+		origin.send(st.reply(stanza):tag("query", {xmlns = "jabber:iq:last", seconds = seconds}));
 		return true;
 	end
 end);
